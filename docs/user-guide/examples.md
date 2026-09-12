@@ -163,12 +163,13 @@ print(df['preco_fechamento'].describe())
 
 ______________________________________________________________________
 
-## Exemplo 5: Processamento com Polars
+## Exemplo 5: Processamento em Batches com PyArrow
 
-Usar Polars para processamento de alto desempenho.
+Usar PyArrow para processar Parquet em batches com memória limitada.
 
 ```python
-import polars as pl
+import pyarrow.compute as pc
+import pyarrow.parquet as pq
 from globaldatafinance import HistoricalQuotesB3
 
 # Extrair dados
@@ -180,28 +181,15 @@ result = b3.extract(
     last_year=2023
 )
 
-# Carregar com Polars (muito mais rápido que Pandas)
-df = pl.read_parquet(result['output_file'])
-
-# Análises com Polars
-print(f"Shape: {df.shape}")
-print(f"Memória: {df.estimated_size('mb'):.2f} MB")
-
-# Filtrar apenas PETR4
-petr4 = df.filter(pl.col('ticker') == 'PETR4')
-
-# Calcular retornos diários
-petr4 = petr4.with_columns([
-    ((pl.col('preco_fechamento') / pl.col('preco_fechamento').shift(1)) - 1)
-    .alias('retorno_diario')
-])
-
-# Estatísticas
-print(f"\nPETR4 - Estatísticas:")
-print(f"  Retorno médio diário: {petr4['retorno_diario'].mean():.4%}")
-print(f"  Volatilidade: {petr4['retorno_diario'].std():.4%}")
-print(f"  Preço mínimo: R$ {petr4['preco_minimo'].min():.2f}")
-print(f"  Preço máximo: R$ {petr4['preco_maximo'].max():.2f}")
+# Projetar e filtrar sem carregar o arquivo inteiro
+parquet = pq.ParquetFile(result['output_file'])
+for batch in parquet.iter_batches(
+    batch_size=200_000,
+    columns=['ticker', 'preco_minimo', 'preco_maximo'],
+):
+    petr4 = batch.filter(pc.equal(batch.column('ticker'), 'PETR4'))
+    if petr4.num_rows:
+        print(petr4)
 ```
 
 ______________________________________________________________________
@@ -302,7 +290,7 @@ Usar Global-Data-Finance em notebooks Jupyter para análise interativa.
 ```ipython
 # Célula 1: Imports e configuração
 from globaldatafinance import HistoricalQuotesB3
-import polars as pl
+import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -318,8 +306,8 @@ result = b3.extract(
 )
 
 # Célula 3: Carregar e filtrar
-df = pl.read_parquet(result['output_file'])
-petr4 = df.filter(pl.col('ticker') == 'PETR4').to_pandas()
+df = pd.read_parquet(result['output_file'])
+petr4 = df[df['ticker'] == 'PETR4']
 
 # Célula 4: Visualizar
 plt.figure(figsize=(14, 6))

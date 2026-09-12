@@ -7,7 +7,7 @@ troque para `PHASE_2.md`.
 ## Abrir junto nesta etapa
 
 - `references/PLAN_TEMPLATE.md` ao preencher ou atualizar `modularizar_<target-basename>.md`
-- `skills/modularizar/scripts/modularizar_guard.sh` ao inicializar e validar o plano
+- `.agents/skills/modularizar/scripts/modularizar_guard.sh` ao inicializar e validar o plano
 
 ## Objetivo da etapa
 
@@ -20,7 +20,7 @@ troque para `PHASE_2.md`.
 ## Sequência operacional
 
 01. Inicialize ou atualize `modularizar_<target-basename>.md` com:
-    - `bash skills/modularizar/scripts/modularizar_guard.sh init-plan --target <file-or-module> --task <task-name> --author developer-engineer`
+    - `bash .agents/skills/modularizar/scripts/modularizar_guard.sh init-plan --target <file-or-module> --task <task-name> --author developer-engineer`
 02. Reescreva imediatamente cabeçalho, título e campos derivados do template. O guard falha se placeholders como `<target-basename>` ou `<file-or-module>` permanecerem.
 03. Preencha `## 3. Contract and Migration Baseline`.
 04. Preencha todas as subseções de `## 4. Phase 1A - Deep Remediation Proposal`.
@@ -42,7 +42,7 @@ troque para `PHASE_2.md`.
 09. Peça aprovação explícita do usuário para o Gate 1 e pare antes de editar código.
 10. Após a aprovação, valide com:
 
-- `bash skills/modularizar/scripts/modularizar_guard.sh validate-plan --phase phase1 --target <file-or-module>`
+- `bash .agents/skills/modularizar/scripts/modularizar_guard.sh validate-plan --phase phase1 --target <file-or-module>`
 
 11. Execute apenas o saneamento profundo aprovado na Fase 1B:
 
@@ -66,7 +66,7 @@ troque para `PHASE_2.md`.
 
 14. Se `PHASE_2_NEEDED: NO`, use `Structural separation needed: NO`, registre a justificativa, não preencha `## 6` nem `## 7`, e valide o encerramento com:
 
-- `bash skills/modularizar/scripts/modularizar_guard.sh validate-plan --phase phase1-complete --target <file-or-module>`
+- `bash .agents/skills/modularizar/scripts/modularizar_guard.sh validate-plan --phase phase1-complete --target <file-or-module>`
   Depois disso, não peça o Gate 2 nem gere o report da Fase 2.
 
 15. Só depois de `GATE_1_APPROVED: YES`, `PHASE_1_EXECUTED: YES`, `PHASE_2_NEEDED: YES` e nova aprovação explícita do usuário para continuar, troque para `PHASE_2.md` e comece a preencher `## 6`.

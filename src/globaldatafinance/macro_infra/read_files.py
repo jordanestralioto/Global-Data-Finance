@@ -1,6 +1,7 @@
 """Read CSV members from ZIP archives using a deterministic encoding policy."""
 
 import codecs
+import csv
 import zipfile
 from typing import IO
 
@@ -100,6 +101,7 @@ class ReadFilesAdapter:
         return pd.read_csv(
             text_wrapper,
             sep=';',
+            quoting=csv.QUOTE_NONE,
             on_bad_lines='error',
             chunksize=chunk_size,
         )

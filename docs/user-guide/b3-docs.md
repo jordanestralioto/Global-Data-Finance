@@ -121,7 +121,12 @@ def extract(
 | `processing_mode` | `str`            | Modo de processamento utilizado                       |
 | `elapsed_time`    | `float`          | Tempo total de execução em segundos                   |
 
-Para um arquivo COTAHIST selecionado, `success=True` também exige um Parquet gerado. Se não houver registro `01`, artefato temporário ou registro compatível com as classes solicitadas, o retorno tem `success=False`, `error_count` positivo, `output_file=""` e a causa em `errors`; um diretório não vazio sem COTAHIST selecionável continua retornando o resultado vazio documentado.
+Para um arquivo COTAHIST selecionado, `success=True` exige um Parquet gerado,
+inclusive quando todas as linhas `01` forem filtradas pelas classes solicitadas.
+Nesse caso válido, o Parquet tem o schema B3 explícito e zero linhas. Um arquivo
+sem registro `01` continua inválido; registros `01` selecionados com tamanho,
+data, texto, inteiro ou decimal inválidos falham com `ExtractionError`
+contextual, sem converter valores ausentes em zero ou nulo.
 
 #### Exemplos
 
@@ -431,6 +436,12 @@ consumir um ZIP, a biblioteca valida metadados e limites de tamanho, membros,
 expansão e compressão; formato inseguro ou corrompido falha com
 `ExtractionError`/`CorruptedZipError`, sem produzir resultado de sucesso.
 
+O parser é estrito: linhas vazias e controles `00`/`99` são apenas contadas;
+um identificador não vazio diferente de `01`, `00` ou `99` aborta a extração.
+O filtro TPMERC é aplicado antes da conversão dos demais campos. Portanto,
+registros fora do filtro são contabilizados como filtrados, enquanto um registro
+selecionado inválido nunca produz um valor financeiro padrão.
+
 ______________________________________________________________________
 
 ## Estrutura do Arquivo Parquet Gerado
@@ -462,29 +473,12 @@ O arquivo Parquet gerado contém as seguintes colunas:
 | `codigo_isin`          | `string`  | Código ISIN                            |
 | `numero_distribuicao`  | `int`     | Número de distribuição                 |
 
-### Leitura com Pandas
+### Leitura
 
-```python
-import pandas as pd
-
-df = pd.read_parquet("/data/cotacoes_extraidas/cotahist_extracted.parquet")
-
-print(df.head())
-print(f"\nShape: {df.shape}")
-print(f"Período: {df['data_pregao'].min()} a {df['data_pregao'].max()}")
-```
-
-### Leitura com Polars (Mais Rápido)
-
-```python
-import polars as pl
-
-df = pl.read_parquet("/data/cotacoes_extraidas/cotahist_extracted.parquet")
-
-print(df.head())
-print(f"\nShape: {df.shape}")
-print(f"Memória: {df.estimated_size('mb'):.2f} MB")
-```
+Use `pandas.read_parquet()` para carregar uma tabela inteira. Para processamento
+limitado por memória, use `pyarrow.parquet.ParquetFile(...).iter_batches()`
+com `batch_size=200_000`; PyArrow é o engine produtivo e Pandas permanece pelo
+contrato legado do adaptador CSV.
 
 ______________________________________________________________________
 
@@ -549,4 +543,6 @@ ______________________________________________________________________
 ______________________________________________________________________
 
 !!! tip "Dica de Análise"
-    Após extrair para Parquet, use Polars para análises de alto desempenho. É significativamente mais rápido que Pandas para grandes volumes de dados.
+    Após extrair para Parquet, use leitura em batches com PyArrow para limitar a
+    memória de análises grandes. Polars pode ser instalado separadamente por
+    consumidores que o prefiram como leitor downstream.

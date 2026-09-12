@@ -115,9 +115,8 @@ Global-Data-Finance builds upon an optimized selection of high-performance libra
 | Library             | Version | Purpose                                                  |
 | ------------------- | ------- | -------------------------------------------------------- |
 | `httpx`             | ≥0.28.1 | Asynchronous HTTP client with HTTP/2 support             |
-| `pandas`            | ≥2.3.3  | Data structures and numerical analytics                  |
-| `polars`            | ≥1.0.0  | High-performance columnar dataframe processing           |
-| `pyarrow`           | ≥23.0.1,<24.0.0 | Native support for Apache Parquet storage                |
+| `pandas`            | ≥2.3.3  | Compatibility for the legacy CSV adapter                 |
+| `pyarrow`           | ≥23.0.1,<24.0.0 | Production CSV and Apache Parquet engine                 |
 | `pydantic-settings` | ≥2.11.0 | Typed runtime configuration and environment validation   |
 | `psutil`            | ≥5.9.0  | Real-time CPU and RAM monitoring for adaptive throttling |
 
@@ -134,6 +133,11 @@ Installed automatically only when bootstrapping development mode:
 | `pre-commit`      | Automated code formatting and pre-commit linting |
 | `mkdocs`          | Documentation rendering engine                   |
 | `mkdocs-material` | Material design visual theme for MkDocs          |
+| `hypothesis`       | Property-based regression tests                   |
+
+`polars` is not a Global-Data-Finance runtime dependency. Consumers who want
+to analyze generated Parquet files with Polars can install it separately; the
+package produces Apache Parquet files independently of the chosen reader.
 
 ______________________________________________________________________
 

@@ -1,13 +1,3 @@
 {
-  "allowed_deletions": {
-    "tests/application/b3_docs/test_historical_quotes_result_formatter.py": "Consolidated its unique scenarios into the canonical result_formatters/test_historical_quotes_formatter.py suite.",
-    "tests/application/cvm_docs/test_api_integration.py": "Merged the mocked facade scenarios into test_fundamental_stocks_data.py at the public facade construction boundary.",
-    "tests/brazil/b3_data/historical_quotes/test_extraction_service.py": "Moved service-focused tests into the source-shaped extraction_service/test_service.py suite and split the other responsibilities into dedicated modules.",
-    "tests/brazil/b3_data/historical_quotes/test_integration_historical_quote.py": "Replaced the conditional duplicate local-data suite with the explicit integration/test_real_cotahist.py real_data contract.",
-    "tests/brazil/b3_data/historical_quotes/test_parquet_writer.py": "Moved writer tests into the source-shaped parquet_writer/test_writer.py suite.",
-    "tests/brazil/b3_data/historical_quotes/test_parquet_writer_streaming.py": "Moved streaming writer tests into the source-shaped parquet_writer/test_streaming.py suite.",
-    "tests/brazil/b3_data/historical_quotes/test_temp_parquet_merge.py": "Moved temporary merge tests into extraction_service/test_temp_parquet_merge.py.",
-    "tests/brazil/cvm/fundamental_stocks_data/integration/conftest.py": "Removed obsolete sys.path mutation and setup fixture; the repository environment provides the package import path and tests own their state.",
-    "tests/brazil/cvm/fundamental_stocks_data/integration/test_no_overwrite.py": "Renamed to test_overwrite_semantics.py to document the established replacement contract rather than the historical filename."
-  }
+  "allowed_deletions": {}
 }

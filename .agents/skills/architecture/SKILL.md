@@ -2,7 +2,7 @@
 name: architecture
 description: >-
   Use para decisões estruturais de software com trade-offs reais. Ative quando o
-  usuário perguntar "isso fica onde?", "separo em módulos?", "crio outro
+  usuário perguntar "isso fica onde na arquitetura?", "separo em módulos?", "crio outro
   serviço?", "vale usar fila?", "monólito ou serviço?", "isso está acoplado
   demais?", "preciso de ADR" ou "como organizo essa responsabilidade?". Cobre
   fronteiras, ownership, consistência, deploy, operabilidade e custo de mudança.

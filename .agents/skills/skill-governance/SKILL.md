@@ -3,7 +3,7 @@ name: skill-governance
 description: >-
   Use para criar, avaliar, reescrever ou governar agent skills. Ative quando o
   usuário pedir "cria uma skill", "melhora essa skill", "essa skill não dispara",
-  "a description está boa?", "segue governança?", "devo fazer skill ou script?",
+  "a description está boa?", "devo fazer skill ou script?",
   "revise esse SKILL.md" ou perguntar sobre `references/`, `scripts` e assets da
   skill. Não use para alterar código comum do projeto, escrever documentação
   geral ou criar workflows OpenSpec sem relação com skills.

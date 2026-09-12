@@ -15,7 +15,7 @@ ______________________________________________________________________
 
 ✅ **Fontes atuais**: documentos regulatórios brasileiros da CVM e cotações históricas da B3
 ✅ **Processamento otimizado**: Downloads assíncronos (`httpx[http2]`) com concorrência adaptativa por CPU/RAM
-✅ **Formato eficiente**: Extração nativa para Parquet (Pandas/Polars ready)
+✅ **Formato eficiente**: Extração nativa para Parquet com PyArrow
 ✅ **Robustez integrada**: Retries com back-off, validação de integridade e commit em lote CVM tolerante a falhas
 ✅ **Ownership claro por fonte**: módulos específicos permanecem nas pastas de CVM e B3, enquanto preocupações genéricas ficam em `core/`, `macro_infra/` e `macro_exceptions/`.
 
@@ -261,7 +261,7 @@ ______________________________________________________________________
 
 ### Para Analistas e Cientistas de Dados
 
-- ✅ **Formato Parquet**: Dados otimizados para análise com Pandas/Polars
+- ✅ **Formato Parquet**: Dados otimizados para análise com Pandas ou PyArrow
 - ✅ **API Intuitiva**: Interface simples e direta ao ponto
 - ✅ **Dados Limpos**: Processamento e validação automática
 - ✅ **Documentação Completa**: Exemplos práticos e casos de uso reais

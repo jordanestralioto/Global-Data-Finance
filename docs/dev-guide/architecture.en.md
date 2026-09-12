@@ -59,11 +59,12 @@ globaldatafinance/
 │   │           ├── http.py                    # AsyncDownloadAdapterCVM (async httpx + retry + integrity check)
 │   │           ├── extract.py                 # ParquetExtractorAdapterCVM
 │   │           ├── transaction.py             # failure-atomic CVM batch commit
+│   │           ├── csv_pipeline/              # global CSV inference + Arrow writer
 │   │           ├── download_validation.py     # validate_downloaded_file, validate_parquet_files, find_parquet_files
 │   │           ├── download_extraction.py     # extract_downloaded_file (orchestrates extraction + validation)
 │   │           └── errors.py                  # source-specific exception definitions
 │   ├── core/                        # config, ZIP/path safety, and shared utilities
-│   ├── macro_infra/                 # shared generic HTTP and filesystem adapters
+│   ├── macro_infra/                 # shared generic adapters and publication
 │   └── macro_exceptions/            # root project exception hierarchy
 ├── tests/                           # pytest suites mirroring src structure
 ├── docs/                            # MkDocs documentation corpus
@@ -93,7 +94,7 @@ match them.
 | Validation / domain services | `core.py` (`validate_docs_name`)                   | `assets.py` (`AvailableAssetsServiceB3`) + `filesystem.py` (`validate_directory_path`) |
 | Orchestration / use cases    | `client.py`                                        | `client.py`                                                                            |
 | HTTP network adaptation      | `http.py` (`AsyncDownloadAdapterCVM`)              | (N/A — COTAHIST ingestion operates on localized ZIP/TXT files via `zip_reader.py`)     |
-| Extraction / Parquet writer  | `extract.py` (`ParquetExtractorAdapterCVM`)        | `parquet_writer/` (subpackage)                                                         |
+| Extraction / Parquet writer  | `csv_pipeline/` + `transaction.py`                 | `parquet_writer/` + `extraction_service/`                                               |
 | Format schema parser         | —                                                  | `cotahist_parser.py`                                                                   |
 | Input catalog                | —                                                  | `catalog.py`                                                                           |
 | Validation helpers           | `download_validation.py`, `download_extraction.py` | Embedded inside `filesystem.py` / `client.py`                                          |
@@ -107,11 +108,13 @@ actually decompressed. `core/utils/path_safety.py` validates a caller-provided
 destination before directories are created. Naming rules remain in their
 owners: CSV in CVM and COTAHIST in B3.
 
-CVM keeps `transaction.py` as an internal extraction detail. It stages work on
-the same filesystem, validates every staged Parquet, prepares backups for
-existing targets, and applies or restores replacements in deterministic order.
-The result is a **failure-atomic, recoverable batch commit**, not an instantly
-atomic replacement of a caller-owned directory.
+`macro_infra/transactional_publication/` is shared infrastructure and does
+not know source schema or rules. It owns same-filesystem staging, a durable
+manifest, locking, backups, and recovery. CVM uses it to publish all Parquets
+from one ZIP; B3 uses it after merging source-owned artifacts. The owners still
+own parsing, schemas, and artifact validation. The result is a
+**failure-atomic, recoverable batch commit**, not an instantly atomic
+replacement of a caller-owned directory.
 
 Auxiliary utility classes or helper functions remain internal to their module unless explicitly consumed across boundaries — the true unit of extensibility in the codebase is the *source implementation*, not abstract object hierarchies.
 

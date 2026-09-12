@@ -4,6 +4,11 @@
 **Data:** 2026-08-31
 **Escopo:** extração automática de CSV ZIP CVM para Parquet
 
+> **Parcialmente substituída (2026-09-10):** a decisão de
+> [Cutover de ingestão PyArrow e integridade transacional](pyarrow-ingestion-integrity-cutover.md)
+> mantém o compromisso failure-atomic, mas substitui este mecanismo CVM-local
+> por publicação compartilhada com manifest durável, lock e recuperação.
+
 ## Contexto
 
 Um ZIP CVM pode gerar vários Parquets no diretório pertencente ao chamador.

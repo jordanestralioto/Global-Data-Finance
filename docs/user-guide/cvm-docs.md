@@ -385,22 +385,24 @@ destination_path/
 
 ### Integridade e recuperação da extração
 
-Cada ZIP é validado antes de consumir seu conteúdo. A leitura CSV escolhe o
-encoding por validação determinística do membro inteiro (`utf-8-sig`, UTF-8,
-CP1252 e Latin-1) e falha fechada para estrutura CSV inválida: nenhuma linha é
-silenciosamente descartada.
+Cada ZIP é validado antes do consumo. O pipeline PyArrow faz duas passagens:
+valida estrutura e schema global, depois grava row groups tipados. O encoding é
+escolhido ao validar o membro inteiro (UTF-8, UTF-8 BOM, CP1252 ou Latin-1);
+estrutura inválida nunca descarta linhas silenciosamente.
 
-Um ZIP pode originar vários Parquets. A extração usa staging dentro do
-diretório de destino, valida todos os artefatos staged e só então substitui os
-alvos em ordem determinística, com backups dos arquivos já existentes. Em
-falha normal, restaura os alvos preexistentes e remove os temporários. Este é
-um **commit em lote tolerante a falhas**, não uma transação instantaneamente
-atômica para leitores concorrentes; escritas simultâneas no mesmo destino não
-são suportadas.
+O dialeto continua `QUOTE_NONE`: aspas são literais e não há multiline. Linhas
+curtas recebem apenas nulos finais, linhas excedentes abortam e CSV só com
+cabeçalho vira Parquet vazio com campos Arrow `null`, nomes ordenados e sem
+metadata `b'pandas'`.
 
-Quando um arquivo bruto já existe, ele só é substituído após concluir a transferência e validação; se qualquer etapa falhar, o ZIP anterior permanece byte a byte inalterado.
+Um ZIP pode gerar vários Parquets. Staging, manifesto, backups e lock permitem
+um **commit em lote tolerante a falhas**: artefatos são validados antes da
+substituição determinística, e a próxima operação recupera uma interrupção. Não
+há atomicidade instantânea para leitores concorrentes nem escrita simultânea no
+mesmo destino; lock vivo ou de outro host é rejeitado. Um ZIP bruto existente
+só é substituído após transferência e validação bem-sucedidas.
 
-______________________________________________________________________
+Consulte a [nota de migração major](migration-pyarrow-integrity.md) para a tabela de compatibilidade e ações para consumidores.
 
 ## Boas Práticas
 
@@ -455,8 +457,6 @@ cvm.download(
 )
 ```
 
-______________________________________________________________________
-
 ## Performance
 
 ### Modo de Download
@@ -482,8 +482,6 @@ O `FundamentalStocksDataCVM` usa `AsyncDownloadAdapterCVM` por padrão, que ofer
 | ----------------------- | ----- | ------------------ |
 | Download sequencial     | ~60s  | 1x (baseline)      |
 | AsyncDownloadAdapterCVM | ~15s  | **4x mais rápido** |
-
-______________________________________________________________________
 
 ## Próximos Passos
 

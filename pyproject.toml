@@ -25,7 +25,6 @@ dependencies = [
     "pydantic-settings>=2.11.0,<3.0.0",
     "pyarrow>=23.0.1,<24.0.0",
     "httpx[http2]>=0.28.1,<0.29.0",
-    "polars>=1.0.0,<2.0.0",
     "psutil>=5.9.0,<7.0.0",
     "pandas>=2.3.3,<3.0.0",
 ]
@@ -52,6 +51,7 @@ dev = [
     "mdformat-gfm==1.0.0",
     "requests>=2.32.5",
     "pytest-benchmark>=4.0.0",
+    "hypothesis>=6.0.0,<7.0.0",
     "import-linter>=2.0",
     "grimp>=3.15,<4",
     # Also needed as CLIs: the workflows call `uv run ruff` and

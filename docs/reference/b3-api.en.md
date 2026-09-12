@@ -34,6 +34,11 @@ def extract(
 
 **Description**: Parses COTAHIST archives (`COTAHIST_A{YYYY}.ZIP` or `.TXT`), filters target asset transactions, and compiles a unified Parquet file. The API accepts both local formats; official B3 downloads continue to be distributed as ZIP archives.
 
+The parser is strict: `00`/`99` controls and blank lines are not persisted,
+TPMERC outside the filter is counted as filtered, and an invalid selected `01`
+record raises contextual `ExtractionError`. Invalid financial values never
+receive a zero or null fallback.
+
 **Parameters**:
 
 | Parameter          | Type                | Required | Default                | Description                                                                      |
@@ -72,8 +77,11 @@ Typed dictionary (`TypedDict`) containing execution results:
 - `EmptyDirectoryError` is raised only when the input directory is physically
   empty. If the directory is not empty but has no COTAHIST file for a requested
   year, the API returns an empty result with `success=True`, `total_files=0`,
-  `total_records=0`, `output_file=""`, and `errors={}`. Inspect these counters
-  when data presence is required.
+`total_records=0`, `output_file=""`, and `errors={}`. Inspect these counters
+when data presence is required.
+
+If valid inputs contain no records after asset filtering, extraction still
+succeeds and publishes an empty B3 Parquet with the explicit schema.
 
 **Raised Exceptions**:
 

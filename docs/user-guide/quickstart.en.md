@@ -239,7 +239,9 @@ ______________________________________________________________________
 
 ## Working with Extracted Data
 
-Once extracted into columnar Parquet format, consume your datasets using either Pandas or Polars:
+Once extracted into columnar Parquet format, consume datasets with Pandas or
+PyArrow. PyArrow is the engine used by the library to produce artifacts; Pandas
+remains compatible for tabular consumption.
 
 ### Analyzing with Pandas
 
@@ -258,19 +260,22 @@ print(f"Columns: {list(df.columns)}")
 print(f"Time series interval: {df['data_pregao'].min()} to {df['data_pregao'].max()}")
 ```
 
-### Analyzing with Polars (Optimized for Large Datasets)
+### Reading batches with PyArrow
 
 ```python
-import polars as pl
+import pyarrow.parquet as pq
 
-# Read Parquet dataset natively
-df = pl.read_parquet("/home/user/extracted_quotes/cotahist_extracted.parquet")
+# Read without materializing every row at once
+parquet = pq.ParquetFile(
+    "/home/user/extracted_quotes/cotahist_extracted.parquet"
+)
 
-# Quick preview and estimation
-print(df.head())
-print(f"\nDataframe shape: {df.shape}")
-print(f"In-memory estimation: {df.estimated_size('mb'):.2f} MB")
+for batch in parquet.iter_batches(batch_size=100_000, columns=["ticker"]):
+    print(batch.slice(0, min(5, batch.num_rows)))
 ```
+
+Polars is not installed as a library dependency. Install it explicitly in the
+consumer environment if it is the preferred downstream reader.
 
 ______________________________________________________________________
 

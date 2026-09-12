@@ -1141,8 +1141,6 @@ def _validate_spec(path: Path, strict: bool) -> list[dict[str, str]]:
 
 
 def cmd_validate(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
-    if not args.specs:
-        raise ValueError('use --specs; validacao de change e opsx:handoff')
     paths = sorted(SPECS_ROOT.glob('*/spec.md'))
     errors: list[dict[str, str]] = []
     for path in paths:

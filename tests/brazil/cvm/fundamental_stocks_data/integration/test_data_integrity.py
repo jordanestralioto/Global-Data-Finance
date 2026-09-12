@@ -1,6 +1,7 @@
 import zipfile
 
 import pandas as pd  # type: ignore
+import pyarrow.parquet as pq
 import pytest
 
 from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
@@ -125,23 +126,41 @@ class TestDataIntegrity:
                     f"Integer corruption in column '{col}'"
                 )
 
-    def test_empty_csv_aborts_the_batch_without_partial_outputs(
+    def test_zero_byte_csv_aborts_the_batch_without_partial_outputs(
         self, tmp_path
     ):
         zip_path = tmp_path / 'mixed.zip'
         with zipfile.ZipFile(zip_path, 'w') as z:
-            z.writestr('empty.csv', b'col1;col2\n')
+            z.writestr('empty.csv', b'')
             valid_data = pd.DataFrame({'col1': [1, 2], 'col2': ['a', 'b']})
             csv_content = valid_data.to_csv(sep=';', index=False)
             z.writestr('valid.csv', csv_content.encode('latin-1'))
         extractor = ParquetExtractorAdapterCVM()
-        with pytest.raises(ExtractionError, match='Staged Parquet validation'):
+        with pytest.raises(ExtractionError, match='No columns to parse'):
             extractor.extract(
                 source_path=str(zip_path), destination_path=str(tmp_path)
             )
 
         assert not (tmp_path / 'empty.parquet').exists()
         assert not (tmp_path / 'valid.parquet').exists()
+
+    def test_header_only_csv_produces_valid_empty_parquet(self, tmp_path):
+        zip_path = tmp_path / 'header_only.zip'
+        with zipfile.ZipFile(zip_path, 'w') as z:
+            z.writestr('empty.csv', b'col1;col2\n')
+            valid_data = pd.DataFrame({'col1': [1, 2], 'col2': ['a', 'b']})
+            csv_content = valid_data.to_csv(sep=';', index=False)
+            z.writestr('valid.csv', csv_content.encode('latin-1'))
+        extractor = ParquetExtractorAdapterCVM()
+        extractor.extract(
+            source_path=str(zip_path), destination_path=str(tmp_path)
+        )
+
+        assert (tmp_path / 'empty.parquet').exists()
+        assert (tmp_path / 'valid.parquet').exists()
+        meta = pq.ParquetFile(tmp_path / 'empty.parquet').metadata
+        assert meta.num_rows == 0
+        assert meta.num_columns == 2
 
     def test_extracted_parquet_matches_csv_content(self, tmp_path):
         df_original = pd.DataFrame(
@@ -272,7 +291,9 @@ class TestDataIntegrity:
             tmp_path / 'malformed.zip',
             {
                 'first.csv': csv_bytes(['id;name', '1;valid']),
-                'second.csv': csv_bytes(['id;name', '2;valid', '3;"unclosed']),
+                'second.csv': csv_bytes(
+                    ['id;name', '2;valid', '3;malformed;extra_col;even_more']
+                ),
             },
         )
 

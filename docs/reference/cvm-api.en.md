@@ -39,7 +39,13 @@ def download(
 | `list_docs`           | `list[str] \| None` | No       | `None`  | Targeted document codes (None = fetch all) |
 | `initial_year`        | `int \| None`       | No       | `None`  | Starting year (None = earliest available)  |
 | `last_year`           | `int \| None`       | No       | `None`  | Ending fiscal year (None = current year)   |
-| `automatic_extractor` | `bool`              | No       | `False` | Automatically convert to Parquet files     |
+| `automatic_extractor` | `bool`              | No       | `False` | Convert to Parquet through PyArrow         |
+
+With `automatic_extractor=True`, CVM CSV keeps the `QUOTE_NONE` dialect:
+quotes are literal, short rows receive trailing nulls only, and excess rows
+fail. A header-only CSV produces an empty Parquet with Arrow `null` fields and
+no `b'pandas'` metadata. Parquets from the same ZIP use recoverable batch
+publication, not instant visibility atomicity for concurrent readers.
 
 **Return Structure**:
 

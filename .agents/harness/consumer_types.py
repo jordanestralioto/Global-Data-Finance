@@ -8,7 +8,12 @@ from pathlib import Path
 from typing import Any
 
 SCOPE_VALIDATORS: dict[str, list[str]] = {
-    'skills': ['skill.frontmatter', 'skill.references', 'skill.structure'],
+    'skills': [
+        'skill.frontmatter',
+        'skill.references',
+        'skill.script-syntax',
+        'skill.structure',
+    ],
     'agents': ['agent.frontmatter', 'agent.references', 'agent.structure'],
     'workflows': [
         'workflow.frontmatter',
@@ -174,24 +179,59 @@ def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
     return meta, body
 
 
+FORBIDDEN_SOURCE_PREFIXES = (
+    'openspec/schema/',
+    'workflows/',
+    'skills/',
+    'agents/',
+    'runtime/',
+    'harness/',
+)
+
+
 def check_declared_refs(
     root: Path, file_path: Path, text: str, v_id: str, code_prefix: str
 ) -> list[Diagnostic]:
     diags: list[Diagnostic] = []
     item_str = file_path.relative_to(root).as_posix()
-    pattern = r'(?<![A-Za-z0-9._\-/])(?:references|assets|scripts|templates|schemas|data)/[A-Za-z0-9._\-/]+(?:\.[A-Za-z0-9._-]+)?'
-    for ref in sorted(set(re.findall(pattern, text))):
-        target = file_path.parent / ref
-        if not target.exists():
+    pattern = (
+        r'(?<![A-Za-z0-9._\-/])'
+        r'(?:'
+        r'\.agents/(?:skills|scripts|runtime)|'
+        r'references|assets|scripts|templates|schemas|data|'
+        r'openspec/schema|workflows|skills|agents|runtime|harness|'
+        r'(?:\.\./)+'
+        r')/[A-Za-z0-9._\-/]+(?:\.[A-Za-z0-9._-]+)?'
+    )
+    for raw_ref in sorted(set(re.findall(pattern, text))):
+        ref = raw_ref.rstrip('.,;:)')
+        if ref.startswith(FORBIDDEN_SOURCE_PREFIXES) or (
+            ref.startswith('..')
+            and any(f'/{p}' in ref for p in FORBIDDEN_SOURCE_PREFIXES)
+        ):
+            diags.append(
+                Diagnostic(
+                    item_str,
+                    v_id,
+                    f'{code_prefix}.reference.invalid',
+                    f'forbidden source-tree reference: {raw_ref}',
+                )
+            )
+            continue
+        if ref.startswith('.agents/'):
             target = root / ref
+        else:
+            target = file_path.parent / ref
         try:
-            if not target.resolve().is_relative_to(root.resolve()):
+            resolved_root = root.resolve()
+            resolved_target = target.resolve()
+            if not resolved_target.is_relative_to(resolved_root):
                 diags.append(
                     Diagnostic(
                         item_str,
                         v_id,
                         f'{code_prefix}.reference.outside-root',
-                        f'reference escapes root: {ref}',
+                        f'reference escapes root: {raw_ref}',
                     )
                 )
                 continue
@@ -201,7 +241,7 @@ def check_declared_refs(
                     item_str,
                     v_id,
                     f'{code_prefix}.reference.invalid',
-                    f'reference cannot be resolved: {ref}',
+                    f'reference cannot be resolved: {raw_ref}',
                 )
             )
             continue
@@ -211,7 +251,7 @@ def check_declared_refs(
                     item_str,
                     v_id,
                     f'{code_prefix}.reference.invalid',
-                    f'referenced file does not exist: {ref}',
+                    f'referenced file does not exist: {raw_ref}',
                 )
             )
     return diags

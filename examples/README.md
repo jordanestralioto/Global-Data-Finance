@@ -47,7 +47,9 @@ ______________________________________________________________________
 
 ## 📁 Estrutura dos Arquivos de Saída
 
-Por padrão, os exemplos salvam os dados em formato **Parquet** (ideal para integração com **Polars**, **Pandas** e **PyArrow**):
+Por padrão, os exemplos salvam os dados em formato **Parquet** (ideal para
+integração com **Pandas** e **PyArrow**). Polars pode ser instalado
+separadamente por quem o utilizar como leitor downstream:
 
 - `./dados_cvm/`: Contém os arquivos `.parquet` por tipo de relatório da CVM.
 - `./dados_b3/`: Contém os arquivos Parquet consolidados com o nome especificado em `output_filename`.

@@ -8,7 +8,7 @@ if [[ -z "$ROOT_DIR" ]]; then
   printf "[modularizar-guard] ERROR: Could not resolve the repository root from %s\n" "$SCRIPT_DIR" >&2
   exit 1
 fi
-DEFAULT_PLAN_TEMPLATE="${ROOT_DIR}/skills/modularizar/references/PLAN_TEMPLATE.md"
+DEFAULT_PLAN_TEMPLATE="${SCRIPT_DIR}/../references/PLAN_TEMPLATE.md"
 
 log() {
   printf "[modularizar-guard] %s\n" "$1"
@@ -22,9 +22,9 @@ fail() {
 usage() {
   cat <<EOF
 Usage:
-  bash skills/modularizar/scripts/modularizar_guard.sh init-plan [--plan PATH] [--template PATH] [--task NAME] [--author NAME] [--target PATH] [--ticket REF] [--force]
-  bash skills/modularizar/scripts/modularizar_guard.sh validate-plan --phase phase1|phase1-complete|phase2 [--plan PATH] [--target PATH]
-  bash skills/modularizar/scripts/modularizar_guard.sh validate-report [--report PATH] [--target PATH] [--plan PATH]
+  bash .agents/skills/modularizar/scripts/modularizar_guard.sh init-plan [--plan PATH] [--template PATH] [--task NAME] [--author NAME] [--target PATH] [--ticket REF] [--force]
+  bash .agents/skills/modularizar/scripts/modularizar_guard.sh validate-plan --phase phase1|phase1-complete|phase2 [--plan PATH] [--target PATH]
+  bash .agents/skills/modularizar/scripts/modularizar_guard.sh validate-report [--report PATH] [--target PATH] [--plan PATH]
 
 Commands:
   init-plan       Create modularizar_<target-basename>.md from PLAN_TEMPLATE and prefill metadata.
@@ -842,8 +842,8 @@ cmd_init_plan() {
     local report_file
     report_file="$(derive_report_file_from_target "$target_path")"
     replace_first_exact_line "$plan_file" "- Final report file path: modularizar_<target-basename>-output.md" "- Final report file path: ${report_file##*/}"
-    replace_first_exact_line "$plan_file" "- Phase 1-only lock command: \`bash skills/modularizar/scripts/modularizar_guard.sh validate-plan --phase phase1-complete --target <file-or-module>\`" "- Phase 1-only lock command: \`bash skills/modularizar/scripts/modularizar_guard.sh validate-plan --phase phase1-complete --target ${target_path}\`"
-    replace_first_exact_line "$plan_file" "- Final lock command: \`bash skills/modularizar/scripts/modularizar_guard.sh validate-report --target <file-or-module>\`" "- Final lock command: \`bash skills/modularizar/scripts/modularizar_guard.sh validate-report --target ${target_path}\`"
+    replace_first_exact_line "$plan_file" "- Phase 1-only lock command: \`bash .agents/skills/modularizar/scripts/modularizar_guard.sh validate-plan --phase phase1-complete --target <file-or-module>\`" "- Phase 1-only lock command: \`bash .agents/skills/modularizar/scripts/modularizar_guard.sh validate-plan --phase phase1-complete --target ${target_path}\`"
+    replace_first_exact_line "$plan_file" "- Final lock command: \`bash .agents/skills/modularizar/scripts/modularizar_guard.sh validate-report --target <file-or-module>\`" "- Final lock command: \`bash .agents/skills/modularizar/scripts/modularizar_guard.sh validate-report --target ${target_path}\`"
   fi
 
   if [[ -n "$ticket_ref" ]]; then

@@ -55,11 +55,22 @@ def test_validate_parquet_files_empty_zero_bytes(tmp_path: Path) -> None:
     )
 
 
-def test_validate_parquet_files_zero_rows_returns_false(
+def test_validate_parquet_files_zero_rows_with_columns_returns_true(
     tmp_path: Path,
 ) -> None:
     p = tmp_path / 'zero_rows.parquet'
     pq.write_table(pa.table({'col': pa.array([], type=pa.int64())}), str(p))
+
+    assert (
+        download_validation.validate_parquet_files([p], 'dfp', '2023') is True
+    )
+
+
+def test_validate_parquet_files_zero_columns_returns_false(
+    tmp_path: Path,
+) -> None:
+    p = tmp_path / 'zero_cols.parquet'
+    pq.write_table(pa.table({}), str(p))
 
     assert (
         download_validation.validate_parquet_files([p], 'dfp', '2023') is False

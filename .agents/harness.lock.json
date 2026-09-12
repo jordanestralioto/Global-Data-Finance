@@ -1,5 +1,5 @@
 {
-  "centralVersion": "0.1.0",
+  "centralVersion": "0.2.0",
   "components": [
     {
       "hasScripts": false,
@@ -21,43 +21,43 @@
     },
     {
       "hasScripts": true,
-      "hash": "sha256:ac7e8e3924ad3b3a90eb892d477bd6628217c6acd64ec2881f59c4204222dc18",
+      "hash": "sha256:ca9ac06234e1ed5b3efd75b3b90c43ade52b0a45236c96421d881f6c84e8f77d",
       "id": "skills/agents-md-author",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": false,
-      "hash": "sha256:66d3d8396413b48ef12a4d472a8d5122299367853c55adaf77523264f126a056",
+      "hash": "sha256:6dfeae3cd3cc15bd0becc96115b5d8f4cd9882f99481b34a63d5a3dc82bc9e4b",
       "id": "skills/architecture",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:f9a23c3115cfef6ba0878ad71bfc111c8f83ee2dc05ca90ad5180784f7590c9c",
+      "hash": "sha256:51ab785e0a78de04c27359ae2ab751c46e5d1f4138ec5772610c6ddeb048d217",
       "id": "skills/lint-and-validate",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:c9c3da14003fb9057232f643940c9a170e8fae2841e6c176761c8dfc1854b55d",
+      "hash": "sha256:980813ea066aad6f840ceb6f64cee19b49003f1580b72ee101821fea11e62acb",
       "id": "skills/local-quality-gates",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:dfd440772e7e6b10db355dab7e3e75fa93f95696f13628d27671eb3aa2e02891",
+      "hash": "sha256:72129cd78fc96d63ecbdc76d24c0c1384252cd0ecf249edacc6a939f3885bceb",
       "id": "skills/modularizar",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": false,
-      "hash": "sha256:419d89582fe932088e9579ea3242766d2afbe0cbd30b536111f2f7c3b8eb7ae5",
+      "hash": "sha256:f2375c04902e736d77373fb1b5448bd26c2d82c291ce309a246e33c3a279dcd7",
       "id": "skills/openspec-workflow",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:2c25a4a86188d46afa612769cdd84242a49e89a9337e1cf59f02a4f02e65e113",
+      "hash": "sha256:6c97f381e422a4125da72a94c8a0ccb2aab60c3ec69fdf0616f75a35cf59c4b7",
       "id": "skills/performance-profiling",
       "selectedBy": "manifest"
     },
@@ -69,13 +69,13 @@
     },
     {
       "hasScripts": false,
-      "hash": "sha256:19a6f132539f015749f79c839f7a397c9891c12ae468b142bceb3662cbb7d708",
+      "hash": "sha256:79ffe227997c1b83747c5567882e4e14fd7f91fdd6ccf0f07859062084c6fa27",
       "id": "skills/resolve-open-questions",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:2941bd1184652e67ea76061744693af707648b1312801db1f5aea47349720d31",
+      "hash": "sha256:113c81b05bc082e69d2f57a26a5cf8659bc1d99ceed44742fd00eec50c752ad5",
       "id": "skills/review-workflow",
       "selectedBy": "manifest"
     },
@@ -87,7 +87,7 @@
     },
     {
       "hasScripts": false,
-      "hash": "sha256:6ca82fce38cb13f1b9f861fef7ef53edb3920a17edabd954bd919df43e005779",
+      "hash": "sha256:48f065b17fd0ab6494660b6df54e76fffb4bb78aed64b1fc4261f4d82007086e",
       "id": "skills/skill-governance",
       "selectedBy": "manifest"
     },
@@ -99,19 +99,19 @@
     },
     {
       "hasScripts": false,
-      "hash": "sha256:b22a0681dc978deef63489cee35aadd28c65ef095572216b32e1ba8b35273ded",
+      "hash": "sha256:452cc3127f66fd63c1d12dbc6c45ab4ca9da56b38f018cd76901a2395b967a20",
       "id": "skills/systematic-debugging",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:43c8ddc413c443feb291204a16869e725e9e18895bc6345e6c00162baa87d32a",
+      "hash": "sha256:dc999f5b0927f2d03e90ab1d63ebae6b490764f94c1296e2cc9e0846680c0f6a",
       "id": "skills/testing-patterns",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:d3b0da43381dd8b8ebe1e2326182fd58c6f004d9c1b7223442fde96277936b6d",
+      "hash": "sha256:fe6def5f2066d33551e3dded01072435f6c21a95753aa68c067bef9e7cf0435a",
       "id": "skills/vulnerability-scanner",
       "selectedBy": "manifest"
     },
@@ -123,20 +123,8 @@
     },
     {
       "hasScripts": true,
-      "hash": "sha256:291218833050ec31883d08c0744676da526b256baa16085ce39b2683683b8b55",
+      "hash": "sha256:6646d9d6101e709be5b511510648e4f9024a8787c4ff2c5ff0cf65333112204b",
       "id": "tools/harness-verify",
-      "selectedBy": "manifest"
-    },
-    {
-      "hasScripts": true,
-      "hash": "sha256:86ca9aa1826cdf231f92cf38f66bd4e8ff51e54f88fde3c1f5ab752b99dec578",
-      "id": "tools/opsx-alignment",
-      "selectedBy": "manifest"
-    },
-    {
-      "hasScripts": true,
-      "hash": "sha256:5eb88b7d14b69664a9e022ac7d61f22c18d811544a3e5ffab41e835ad7050ad8",
-      "id": "tools/validate-agent-protocols",
       "selectedBy": "manifest"
     },
     {
@@ -147,7 +135,7 @@
     },
     {
       "hasScripts": false,
-      "hash": "sha256:d7916b0a918c17a7e2fbe9883f3531cf534ebcb030d9f5b2268f0f762fcbbab3",
+      "hash": "sha256:24cb5a5986bfb93948741f226b50e2bc2c21276563906ac3068aba50eb84c8aa",
       "id": "workflows/audit",
       "selectedBy": "manifest"
     },
@@ -177,13 +165,13 @@
     },
     {
       "hasScripts": false,
-      "hash": "sha256:d894ed1598ee2eb307cc80a99e159016c2c12ad804acc880bab9af5e4382c467",
+      "hash": "sha256:539e1446122c8b92f74a584ec844ee94fb2e4883a7f0364ae323c207f48864e1",
       "id": "workflows/opsx-ff",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": false,
-      "hash": "sha256:181db54bea439ec15c71ef89bd7825ee33e19873f63cb92826a08d69010d6959",
+      "hash": "sha256:8c7591020ad68dcff2f3df39baaf02a8ffd09782908aa074ec51441150903a9e",
       "id": "workflows/opsx-new",
       "selectedBy": "manifest"
     },
@@ -201,13 +189,13 @@
     },
     {
       "hasScripts": false,
-      "hash": "sha256:0d9e25e31942380535b033a83ef4e2b94cac76c593b4b310a27901afc2dabe2a",
+      "hash": "sha256:eca4fc23fd712a869e58ef94f4da3b7d8a0ba4dc1709447d3500a60410cfecea",
       "id": "workflows/opsx-verify",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": false,
-      "hash": "sha256:688726ae5fa33a5b5e3ddb5d6a37e6cee9e811c340de86d05a4f7933951737a6",
+      "hash": "sha256:534557df2a7f06bd6c6ef149c22fbc0f30f67a12058db6f943922234a500ac81",
       "id": "workflows/pre-commit-fix",
       "selectedBy": "manifest"
     }
@@ -218,9 +206,7 @@
     ".agents/harness",
     ".agents/runtime/review",
     ".agents/scripts/check-max-lines.py",
-    ".agents/scripts/check-opsx-alignment.sh",
     ".agents/scripts/harness_verify.py",
-    ".agents/scripts/validate-agent-protocols.py",
     ".agents/scripts/validate-commit-msg.sh",
     ".agents/skills/agents-md-author",
     ".agents/skills/architecture",

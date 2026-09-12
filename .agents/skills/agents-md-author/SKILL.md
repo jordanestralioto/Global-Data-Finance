@@ -5,12 +5,10 @@ description: >-
   projeto, oriente a navegação dos agentes e defina políticas rigorosas de
   desenvolvimento, qualidade e execução. Ative quando o usuário pedir "cria um
   agents.md", "documenta este projeto para agentes", "define as regras dos
-  agentes", "inclui meu idioma/gerenciador/framework", "melhora a política de
-  execução" ou exigir que arquitetura, comandos e preferências não sejam
+  agentes" ou exigir que arquitetura, comandos e preferências não sejam
   inventados. Cobre
   repositórios simples, monorepos e arquivos AGENTS.md locais. Não use para
-  criar outra skill, escrever um README comum ou decidir arquitetura sem
-  produzir ou revisar o AGENTS.md.
+  criar outra skill, escrever um README comum ou decidir arquitetura.
 ---
 
 # AGENTS.md Author

@@ -4,6 +4,11 @@
 **Date:** 2026-08-31
 **Scope:** automatic CVM ZIP CSV-to-Parquet extraction
 
+> **Partially superseded (2026-09-10):** the
+> [PyArrow ingestion and transactional-integrity cutover](pyarrow-ingestion-integrity-cutover.en.md)
+> retains the failure-atomic commitment, but replaces this CVM-local mechanism
+> with shared publication backed by a durable manifest, lock, and recovery.
+
 ## Context
 
 One CVM ZIP can generate multiple Parquet files in a caller-owned directory.

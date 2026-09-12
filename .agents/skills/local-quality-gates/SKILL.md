@@ -4,10 +4,8 @@ description: >-
   Use para criar, inspecionar, reparar ou atualizar sistemas de quality gates
   locais e hooks de pre-commit e pre-push em qualquer stack. Ative quando o
   usuário pedir "cria um pre-commit", "configura quality gates locais", "arruma
-  meu pre-commit", "adiciona validação de commit", "configura hooks git",
-  "previne commits ruins de IA", "adiciona verificação de diff", "bloqueia
-  debug no commit", "adiciona baseline no pre-commit", "bloqueia imports
-  circulares", "isola testes rápidos no pre-commit", "adiciona um atualizador
+  meu pre-commit", "adiciona validação de commit", "configura hooks git", "bloqueia
+  debug no commit", "adiciona um atualizador
   de dependências ao pre-commit" ou "separa atualização de dependências dos
   hooks". Cobre integridade de repositório, sintaxe, auto-fix seguro, linter,
   typecheck com baseline, dependências circulares, secret scanning, sanidade de

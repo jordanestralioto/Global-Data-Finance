@@ -96,7 +96,15 @@ def test_utf8_bom_with_invalid_bytes_fails_closed(tmp_path: Path) -> None:
 
 def test_csv_chunk_reader_fails_on_structurally_malformed_rows() -> None:
     """Malformed CSV rows abort extraction instead of being skipped."""
-    malformed = io.StringIO('first;second\n1;2\n3;"unclosed\n')
+    malformed = io.StringIO('first;second\n1;2\n1;2;3;4;5\n')
 
     with pytest.raises(pd.errors.ParserError):
-        list(ReadFilesAdapter.read_csv_chunk_size(malformed, chunk_size=1))
+        list(ReadFilesAdapter.read_csv_chunk_size(malformed, chunk_size=2))
+
+
+def test_csv_chunk_reader_preserves_unescaped_quotes_as_literals() -> None:
+    """Unescaped quotation marks in text are preserved as literal text."""
+    stream = io.StringIO('nome;descricao\nEmpresa;"Texto com "aspas" livres\n')
+    chunks = list(ReadFilesAdapter.read_csv_chunk_size(stream, chunk_size=10))
+    assert len(chunks) == 1
+    assert chunks[0]['descricao'].iloc[0] == '"Texto com "aspas" livres'

@@ -42,7 +42,7 @@ Use estes nomes técnicos apenas como identificadores estáveis de arquivo:
 4. Leia o diff e contexto adjacente de cada item planejado.
 5. Registre apenas apontamentos acionáveis com `scripts/append-finding.py`.
    Evite comentários de estilo que uma validação mecânica resolveria.
-6. Execute a validação repo-native (ex.: `pre-commit run --all-files` ou o comando declarado em `openspec/handoff.json`) e escreva o artefato `artifacts/gate-report.json` da sessão (com status `completed` e a lista `gates` preenchida a partir do resultado) usando a estrutura base de `build_empty_gate_report()` em `runtime/review/runtime_support.py`.
+6. Execute a validação repo-native (ex.: `pre-commit run --all-files` ou o comando declarado em `openspec/handoff.json`) e escreva o artefato `artifacts/gate-report.json` da sessão (com status `completed` e a lista `gates` preenchida a partir do resultado) usando a estrutura base de `build_empty_gate_report()` em `.agents/runtime/review/runtime_support.py`.
 7. Crie `security-handoff` quando houver risco material com
    `scripts/create-security-handoff.py`; não aprove segurança material sem uma
    revisão própria de segurança.
@@ -56,14 +56,14 @@ Use os scripts como interface canônica. Estes exemplos reduzem inferência sobr
 argumentos e payloads sem substituir a leitura do diff.
 
 ```bash
-python3 skills/review-workflow/scripts/init-review-session.py \
+python3 .agents/skills/review-workflow/scripts/init-review-session.py \
   --change-type bug-fix \
   --changed-by codex \
   --changed-file src/example.py
 ```
 
 ```bash
-python3 skills/review-workflow/scripts/build-review-plan.py \
+python3 .agents/skills/review-workflow/scripts/build-review-plan.py \
   --session-dir .agents/sessions/review-<id>
 ```
 
@@ -74,7 +74,7 @@ Para registrar `finding`, envie JSON pelo stdin para manter o artefato
 validável pelo schema:
 
 ```bash
-python3 skills/review-workflow/scripts/append-finding.py \
+python3 .agents/skills/review-workflow/scripts/append-finding.py \
   --session-dir .agents/sessions/review-<id> <<'JSON'
 {
   "topic": "behavior:runtime",

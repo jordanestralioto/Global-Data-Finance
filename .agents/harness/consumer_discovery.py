@@ -7,9 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from harness.consumer_types import BoundaryError, Diagnostic
 from harness.consumer_validators import (
-    BoundaryError,
-    Diagnostic,
     validate_agent_item,
     validate_skill_item,
     validate_workflow_item,

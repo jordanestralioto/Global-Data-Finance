@@ -35,10 +35,9 @@ Only deterministic mechanical facts may be resolved from the repository.
 
 2. **Determine the workflow schema**
 
-   This repository ships exactly one schema, `spec-driven`, owned at
-   `openspec/schema/spec-driven.json`. There is nothing to choose: if the user
-   asks for a different workflow, say that adding one means authoring a new
-   schema file here, and confirm before doing it.
+   This repository uses the standard workflow schema `spec-driven`. There is
+   nothing to choose: if the user asks for a different workflow, say that adding
+   one requires an explicit custom schema, and confirm before doing it.
 
 3. **Preflight Spec Consistency Check**
 

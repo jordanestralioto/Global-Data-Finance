@@ -2,8 +2,7 @@
 
 ## Globais
 
-- `workflows/` é canônico; sincronize GitHub, OpenCode e Claude com
-  `python3 scripts/sync-workflows.py` após qualquer edição.
+- Os prompts do lifecycle são canônicos; execute os comandos oficiais do harness (`opsx`, `opsx-handoff`).
 - Confirme schema e estado com `opsx status`/`opsx instructions`.
 - O gate suporta apenas `spec-driven`; schema não suportado falha.
 - Artefatos OpenSpec são integralmente em inglês e têm um desenvolvedor júnior

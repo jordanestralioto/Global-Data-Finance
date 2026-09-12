@@ -336,22 +336,24 @@ ______________________________________________________________________
 
 ## Memory Optimization Patterns
 
-### Targeted Column Projection & Lazy Scanning with Polars
+### Column projection and batch filtering
 
 ```python
-import polars as pl
+import pyarrow.compute as pc
+import pyarrow.parquet as pq
 
-# Project exclusively required columns during disk decompression
-df = pl.read_parquet(
-    "cotahist.parquet",
-    columns=["data_pregao", "ticker", "preco_fechamento"]
-)
-
-# Leverage lazy computation graphs to evaluate predicates prior to in-memory collection
-df = pl.scan_parquet("cotahist.parquet") \
-    .filter(pl.col("ticker") == "PETR4") \
-    .collect()
+# Read only required columns in bounded batches
+parquet = pq.ParquetFile("cotahist.parquet")
+for batch in parquet.iter_batches(
+    batch_size=100_000,
+    columns=["data_pregao", "ticker", "preco_fechamento"],
+):
+    petr4 = batch.filter(pc.equal(batch.column("ticker"), "PETR4"))
+    process_chunk(petr4)
 ```
+
+Polars is not a runtime dependency. Applications that use it as a downstream
+reader must declare it in their own environment.
 
 ### Batch Processing via Streaming (PyArrow)
 
@@ -361,8 +363,7 @@ import pyarrow.parquet as pq
 # Stream large Parquet dataset in memory-efficient batches
 parquet_file = pq.ParquetFile("cotahist.parquet")
 for batch in parquet_file.iter_batches(batch_size=100000):
-    chunk_df = batch.to_pandas()
-    process_chunk(chunk_df)
+    process_chunk(batch)
 ```
 
 ______________________________________________________________________

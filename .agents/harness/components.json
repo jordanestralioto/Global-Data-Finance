@@ -48,7 +48,6 @@
     "skills/lint-and-validate": {
       "hasScripts": true,
       "requires": [
-        "tools/validate-agent-protocols",
         "tools/check-max-lines"
       ],
       "source": "skills/lint-and-validate"
@@ -75,9 +74,7 @@
     },
     "skills/openspec-workflow": {
       "hasScripts": false,
-      "requires": [
-        "tools/opsx-alignment"
-      ],
+      "requires": [],
       "source": "skills/openspec-workflow"
     },
     "skills/performance-profiling": {
@@ -179,16 +176,6 @@
       "hasScripts": true,
       "requires": [],
       "source": "scripts/harness_verify.py"
-    },
-    "tools/opsx-alignment": {
-      "hasScripts": true,
-      "requires": [],
-      "source": "scripts/check-opsx-alignment.sh"
-    },
-    "tools/validate-agent-protocols": {
-      "hasScripts": true,
-      "requires": [],
-      "source": "scripts/validate-agent-protocols.py"
     },
     "tools/validate-commit-msg": {
       "hasScripts": true,

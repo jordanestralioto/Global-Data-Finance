@@ -116,12 +116,13 @@ def extract(
 | `processing_mode` | `str`            | Processing mode utilized (`"fast"` or `"slow"`)      |
 | `elapsed_time`    | `float`          | Elapsed execution duration in seconds                |
 
-For a selected COTAHIST input, `success=True` also requires a generated
-Parquet artifact. If the input contains no type-`01` record, produces no
-temporary artifact, or has no records matching the requested asset classes,
-the result has `success=False`, a positive `error_count`, `output_file=""`,
-and its cause in `errors`. This differs from a nonempty directory with no
-selectable COTAHIST file, which retains the documented empty result.
+For a selected COTAHIST input, `success=True` requires a generated Parquet
+artifact, including when every type-`01` record is filtered by the requested
+asset classes. That valid case produces zero rows with the explicit B3 schema.
+An input with no type-`01` record remains invalid; a selected type-`01` record
+with an invalid length, date, text, integer, or decimal fails with contextual
+`ExtractionError` rather than turning an invalid financial value into zero or
+null.
 
 #### Usage Examples
 
@@ -424,6 +425,12 @@ layouts and converts them to Parquet; a structurally unsafe or corrupted
 archive fails with `ExtractionError`/`CorruptedZipError` rather than yielding a
 successful result.
 
+The parser is strict: blank lines and official `00`/`99` controls are counted
+only; a nonempty identifier other than `01`, `00`, or `99` aborts extraction.
+TPMERC filtering happens before conversion of the remaining fields. Records
+outside the filter are counted as filtered, while an invalid selected record
+never yields a default financial value.
+
 ## Extracted Parquet Schema
 
 ### Consolidated Column Architecture
@@ -453,29 +460,12 @@ The resulting consolidated Parquet file surfaces the following structured schema
 | `codigo_isin`          | `string`  | International Securities Identification Number |
 | `numero_distribuicao`  | `int`     | Corporate action distribution sequence number  |
 
-### Reading with Pandas
+### Reading
 
-```python
-import pandas as pd
-
-df = pd.read_parquet("/data/processed_quotes/cotahist_extracted.parquet")
-
-print(df.head())
-print(f"\nDataframe shape: {df.shape}")
-print(f"Time series interval: {df['data_pregao'].min()} to {df['data_pregao'].max()}")
-```
-
-### Reading with Polars (High Performance)
-
-```python
-import polars as pl
-
-df = pl.read_parquet("/data/processed_quotes/cotahist_extracted.parquet")
-
-print(df.head())
-print(f"\nDataframe shape: {df.shape}")
-print(f"In-memory estimation: {df.estimated_size('mb'):.2f} MB")
-```
+Use `pandas.read_parquet()` to load a complete table. For memory-bounded work,
+use `pyarrow.parquet.ParquetFile(...).iter_batches()` with
+`batch_size=200_000`; PyArrow is the production engine, while Pandas remains
+for the legacy CSV adapter contract.
 
 ## Best Practices
 
@@ -533,4 +523,6 @@ else:
 - ❓ **[FAQ](faq.md)** - Answers to common installation and architectural inquiries
 
 !!! tip "Analytical Best Practice"
-    Once historical quotes are compiled into Parquet files, consume them via `polars`. Its lazy evaluation engine and predicate pushdown capabilities significantly outperform pandas when processing multi-year tick ledgers.
+    For large analysis jobs, consume Parquet in PyArrow batches to bound memory.
+    Polars can be installed separately by consumers who prefer it as a
+    downstream reader.

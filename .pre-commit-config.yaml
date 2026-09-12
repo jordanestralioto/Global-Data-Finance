@@ -150,18 +150,6 @@ repos:
         always_run: true
         stages: [pre-commit]
 
-      # The checked-in protocol validator is portable and does not require the
-      # optional central-skills installation used to regenerate `.agents/`.
-      - id: validate-agent-protocols
-        name: validate-agent-protocols
-        entry: >-
-          uv run --locked --no-sync python
-          .agents/scripts/validate-agent-protocols.py
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit, pre-push]
-
   # --------------------------------------------------------------------------
   # 1. Basic File Checks
   # --------------------------------------------------------------------------
@@ -382,7 +370,7 @@ repos:
   # --------------------------------------------------------------------------
   # 5. Type Checking
   # --------------------------------------------------------------------------
-  # Runs inside the uv environment so mypy actually sees pydantic, polars,
+  # Runs inside the uv environment so mypy actually sees pydantic, pandas,
   # pyarrow and httpx types -- a hook-isolated mypy would silently treat every
   # third-party import as `Any`.
   - repo: local

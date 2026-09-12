@@ -268,9 +268,6 @@ class ExtractorAdapter:
                 )
                 try:
                     for chunk_df in csv_reader:
-                        if len(chunk_df) == 0:
-                            continue
-
                         table = pa.Table.from_pandas(
                             chunk_df,
                             preserve_index=False,
@@ -285,16 +282,16 @@ class ExtractorAdapter:
                             )
                             logger.debug(f'Created {parquet_path.name}')
 
-                        try:
-                            writer.write_table(table)
-                            total_rows += len(chunk_df)
-                        except OSError as e:
-                            if 'No space left on device' in str(e):
-                                raise DiskFullError(str(parquet_path)) from e
-                            raise
-                        finally:
-                            del table
-                            del chunk_df
+                        if not chunk_df.empty:
+                            try:
+                                writer.write_table(table)
+                                total_rows += len(chunk_df)
+                            except OSError as e:
+                                if 'No space left on device' in str(e):
+                                    raise DiskFullError(
+                                        str(parquet_path)
+                                    ) from e
+                                raise
                 finally:
                     csv_reader.close()
                     text_wrapper.close()

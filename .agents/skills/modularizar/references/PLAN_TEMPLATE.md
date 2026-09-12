@@ -23,7 +23,7 @@ Fluxo:
 
 Comando recomendado:
 
-- `bash skills/modularizar/scripts/modularizar_guard.sh init-plan --target <file-or-module> --task <task-name> --author developer-engineer`
+- `bash .agents/skills/modularizar/scripts/modularizar_guard.sh init-plan --target <file-or-module> --task <task-name> --author developer-engineer`
 
 > [!IMPORTANT]
 >
@@ -310,5 +310,5 @@ For each finding, copy the block below:
 
 - FINAL_VALIDATION_READY: NO
 - Final report file path: modularizar\_<target-basename>-output.md
-- Phase 1-only lock command: `bash skills/modularizar/scripts/modularizar_guard.sh validate-plan --phase phase1-complete --target <file-or-module>`
-- Final lock command (Phase 2 only): `bash skills/modularizar/scripts/modularizar_guard.sh validate-report --target <file-or-module>`
+- Phase 1-only lock command: `bash .agents/skills/modularizar/scripts/modularizar_guard.sh validate-plan --phase phase1-complete --target <file-or-module>`
+- Final lock command (Phase 2 only): `bash .agents/skills/modularizar/scripts/modularizar_guard.sh validate-report --target <file-or-module>`

@@ -15,7 +15,7 @@ ______________________________________________________________________
 
 ✅ **Current data sources**: Brazilian CVM regulatory filings and B3 historical market quotes.
 ✅ **Optimized processing**: Asynchronous downloads (`httpx[http2]`) with adaptive concurrency monitored by CPU and memory.
-✅ **Efficient format**: Native Parquet extraction (ready for Pandas/Polars).
+✅ **Efficient format**: Native Parquet extraction through PyArrow.
 ✅ **Integrated robustness**: Retries with exponential back-off, data integrity validation, and a failure-atomic CVM batch commit.
 ✅ **Clear source ownership**: Source-specific modules remain under the CVM and B3 feature directories, while generic concerns live in `core/`, `macro_infra/`, and `macro_exceptions/`.
 
@@ -259,7 +259,7 @@ ______________________________________________________________________
 
 ### For Analysts & Data Scientists
 
-- ✅ **Parquet Output**: Columnar storage natively optimized for fast querying in Pandas, Polars, and PyArrow
+- ✅ **Parquet Output**: Columnar storage optimized for Pandas and PyArrow consumers
 - ✅ **Intuitive API**: Direct, semantic public methods with minimal boilerplate
 - ✅ **Normalized Data**: Automated parsing, normalization, and validation of positional files and ZIP bundles
 - ✅ **Rich Documentation**: Executable onboarding scripts, operational examples, and comprehensive tutorials

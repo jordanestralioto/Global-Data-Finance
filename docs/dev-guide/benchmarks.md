@@ -5,12 +5,33 @@ módulos da B3 e da CVM. Os números são evidência de um cenário de referênc
 servem como métrica para regressão de performance, não uma promessa de tempo
 fixo para qualquer hardware.
 
-## 1. Linha de Base em Escala Real — B3 (2026-08-06)
+## 1. Linha de Base em Escala Real — B3
+
+### 1.1. Linha de Base v2 — 25 Anos Completos (2026-09-02, Revisão `703d9ab`)
 
 **Ambiente:** Python 3.13.7 · Linux x86_64 (kernel 6.8) · 8 CPUs · 7,55 GB de
 memória total. Sem chamadas de rede; apenas extração local dos ZIPs oficiais.
 
-- **Dataset:** 17 arquivos ZIP oficiais (2008–2024), 503,77 MB comprimido.
+- **Dataset:** 25 arquivos ZIP oficiais (2000–2024), 503,77 MB comprimido.
+- **Escopo de ativos:** todas as categorias atualmente suportadas (`ações`, `etf`, `opções`, `termo`, `exercicio_opcoes`, `forward`, `leilao`).
+- **Erros:** 0 (todos os 25 arquivos processados com sucesso).
+- **Saída Parquet consolidada:** 344,71 MB por modo.
+
+| Modo   | Linhas gravadas | Tempo decorrido (API) | Tempo decorrido (ponta a ponta) |    Pico RSS |   Throughput |
+| ------ | --------------: | --------------------: | ------------------------------: | ----------: | -----------: |
+| `fast` |      16.460.458 |   1.557,73 s |          1.557,28 s | 4.433,19 MB | 10.566,9 reg/s |
+| `slow` |      16.460.458 |   2.143,77 s |          2.143,93 s | 1.545,97 MB |  7.678,3 reg/s |
+
+> **Observação:** O modo `slow` utilizou apenas 1.545,97 MB (~1,51 GiB) de pico
+> RSS (uma redução de ~65% de memória em relação ao modo `fast`), mantendo 100%
+> de paridade de esquema e dados em todos os 16.460.458 registros dos 25 anos.
+
+### 1.2. Linha de Base Histórica v1 — 17 Anos (2026-08-06, Revisão `7ee1843`)
+
+**Ambiente:** Python 3.13.7 · Linux x86_64 (kernel 6.8) · 8 CPUs · 7,55 GB de
+memória total. Sem chamadas de rede; apenas extração local dos ZIPs oficiais.
+
+- **Dataset:** 17 arquivos ZIP oficiais (2008–2024), 445,85 MB comprimido.
 - **Escopo de ativos:** todas as categorias atualmente suportadas (`ações`, `etf`, `opções`, `termo`, `exercicio_opcoes`, `forward`, `leilao`).
 - **Erros:** 0 (todos os 17 arquivos processados com sucesso).
 - **Saída Parquet consolidada:** 311,55 MB por modo.
@@ -81,7 +102,28 @@ O arquivo sintético da linha de base tem SHA-256
 
 ______________________________________________________________________
 
-## 3. Linha de Base CVM — Download + Extração (2026-08-06)
+## 3. Linha de Base CVM — Download + Extração
+
+### 3.1. Linha de Base v2 — 17 Anos (2010–2026, Revisão `703d9ab`)
+
+Medição do fluxo completo de `FundamentalStocksDataCVM` com
+`automatic_extractor=True`: download dos ZIPs brutos da CVM, extração CSV com
+tratamento robusto de aspas em texto livre (`QUOTE_NONE`) e geração dos Parquets
+primários com commit atômico. Executado na mesma máquina dos benchmarks B3.
+
+- **Docs:** DFP, ITR, FRE, FCA, CGVN, VLMO, IPE (todos os 7 tipos disponíveis)
+- **Período:** 2010–2026 (17 anos)
+
+| ZIPs baixados | Parquets gerados | Linhas extraídas | Saída total | Tempo decorrido |  Pico RSS | Erros |
+| ------------: | ---------------: | ---------------: | ----------: | ---------------: | --------: | ----: |
+|           102 |            1.569 |       70.821.466 |   382,27 MB |    906,85 s | 333,91 MB |     0 |
+
+- Inclui: conexão com servidores CVM, download de todos os 102 ZIPs disponíveis,
+  validação, extração CSV e conversão para Parquet.
+- O pico de memória RSS reduziu para 333,91 MB (~27% menor que a v1), mesmo com
+  o processamento de 70,82 milhões de linhas e 1.569 arquivos Parquet.
+
+### 3.2. Linha de Base Histórica v1 — 15 Anos (2010–2024, Revisão `7ee1843`)
 
 Medição do fluxo completo de `FundamentalStocksDataCVM` com
 `automatic_extractor=True`: download dos ZIPs brutos da CVM, extração CSV e
@@ -109,3 +151,41 @@ ______________________________________________________________________
 - Ao atualizar os números reprodutíveis, preserve: dataset, checksum, hardware,
   versão do Python, revisão do código, número de repetições e definição de cada
   métrica.
+
+______________________________________________________________________
+
+## 5. Runner de ingestão em processo novo
+
+`scripts/benchmark_ingestion.py` mede import raiz, CVM, texto CVM, B3 de 100k e
+250k registros, footprint de runtime e, quando disponível, o corpus anual B3.
+Ele gera corpus determinístico em diretório temporário, repete cada cenário três
+vezes por padrão, executa a operação em processo Python novo e amostra RSS a
+cada 10 ms no processo filho. Antes de registrar uma medição, valida contagem,
+ordem, schema, valores-limite e o artefato Parquet lógico.
+
+```bash
+# Medição pequena para verificar o protocolo JSON
+uv run --locked --no-sync python scripts/benchmark_ingestion.py \
+  --scenario import_root --scenario cvm --rows 10 --repeats 1
+
+# Corpora sintéticos completos, três repetições e relatório persistido
+uv run --locked --no-sync python scripts/benchmark_ingestion.py \
+  --scenario cvm --scenario cvm_text --scenario b3_100k \
+  --scenario b3_250k --repeats 3 --output benchmark.json
+
+# Corpus anual externo: ausência do corpus é registrada como skipped, nunca pass
+uv run --locked --no-sync python scripts/benchmark_ingestion.py \
+  --scenario b3_annual --cotahist-path /caminho/COTAHIST --output annual.json
+```
+
+Cada resultado JSON contém versão do schema, revisão, ambiente, checksum de
+entrada, contagem, fingerprint de schema, equivalência lógica, tempo, RSS
+inicial/pico/final, bytes de saída e `status`. O status anual sem corpus é
+`skipped` com a razão `external corpus unavailable`; não deve ser convertido em
+sucesso em relatórios de release.
+
+Os gates de referência desta mudança são avaliados apenas em comparação
+baseline/candidato na mesma máquina: import raiz ≤50 MiB e ≤0,50 s; CVM 269.181
+linhas ≤60% do tempo e ≤70% do RSS de baseline; B3 250k ≤50% do tempo e ≤25%
+do RSS; e footprint runtime fechado sem Polars ≤260 MiB. Estes são objetivos de
+release, não limites universais de CI.

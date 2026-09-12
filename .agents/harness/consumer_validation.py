@@ -75,10 +75,15 @@ def verify_path_confinement(
 def _validate_scope_filters(
     scope_name: str, scope_def: dict[str, Any]
 ) -> None:
+    is_required = bool(scope_def.get('required'))
     for filter_key in ('include', 'exclude'):
         if filter_key not in scope_def:
             continue
         val = scope_def[filter_key]
+        if is_required and val:
+            raise ContractError(
+                f"required scope '{scope_name}' cannot use include or exclude filters"
+            )
         if not isinstance(val, list) or any(
             not isinstance(x, str) for x in val
         ):
@@ -198,7 +203,7 @@ def execute_consumer_validation(
             root,
             s_def['path'],
             f"scope '{s_name}.path'",
-            must_exist=s_def['required'],
+            must_exist=False,
         )
     all_diagnostics: list[Diagnostic] = []
     effective_scopes_list: list[dict[str, Any]] = []
@@ -213,40 +218,74 @@ def execute_consumer_validation(
         scope_path_str = scope_def['path']
         is_required = scope_def['required']
         scope_dir = root / scope_path_str
-        if not scope_dir.exists() and not is_required:
-            skipped_scopes_count += 1
-            effective_scopes_list.append(
-                {
-                    'excludedItems': [],
-                    'items': [],
-                    'name': scope_name,
-                    'path': scope_path_str,
-                    'required': False,
-                    'status': 'skipped',
-                }
-            )
+        if not scope_dir.exists():
+            if not is_required:
+                skipped_scopes_count += 1
+                effective_scopes_list.append(
+                    {
+                        'excludedItems': [],
+                        'items': [],
+                        'name': scope_name,
+                        'path': scope_path_str,
+                        'required': False,
+                        'status': 'skipped',
+                    }
+                )
+            else:
+                diag = Diagnostic(
+                    scope_path_str,
+                    'scope.missing',
+                    'scope.missing',
+                    f"required scope '{scope_name}' path does not exist: {scope_path_str}",
+                )
+                all_diagnostics.append(diag)
+                effective_scopes_list.append(
+                    {
+                        'excludedItems': [],
+                        'items': [],
+                        'name': scope_name,
+                        'path': scope_path_str,
+                        'required': True,
+                        'status': 'failed',
+                    }
+                )
+                for v_id in SCOPE_VALIDATORS[scope_name]:
+                    active_validators.add(v_id)
             continue
         discovered = discover_scope_items(root, scope_name, scope_path_str)
-        if not discovered and is_required:
-            diag = Diagnostic(
-                scope_path_str,
-                'scope.empty',
-                'scope.empty',
-                f"required scope '{scope_name}' has no discovered items",
-            )
-            all_diagnostics.append(diag)
-            effective_scopes_list.append(
-                {
-                    'excludedItems': [],
-                    'items': [],
-                    'name': scope_name,
-                    'path': scope_path_str,
-                    'required': True,
-                    'status': 'failed',
-                }
-            )
-            for v_id in SCOPE_VALIDATORS[scope_name]:
-                active_validators.add(v_id)
+        if not discovered:
+            if is_required:
+                diag = Diagnostic(
+                    scope_path_str,
+                    'scope.empty',
+                    'scope.empty',
+                    f"required scope '{scope_name}' has no discovered items",
+                )
+                all_diagnostics.append(diag)
+                effective_scopes_list.append(
+                    {
+                        'excludedItems': [],
+                        'items': [],
+                        'name': scope_name,
+                        'path': scope_path_str,
+                        'required': True,
+                        'status': 'failed',
+                    }
+                )
+                for v_id in SCOPE_VALIDATORS[scope_name]:
+                    active_validators.add(v_id)
+            else:
+                skipped_scopes_count += 1
+                effective_scopes_list.append(
+                    {
+                        'excludedItems': [],
+                        'items': [],
+                        'name': scope_name,
+                        'path': scope_path_str,
+                        'required': False,
+                        'status': 'skipped',
+                    }
+                )
             continue
         try:
             effective, excluded = apply_scope_selection(

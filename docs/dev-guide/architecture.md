@@ -59,11 +59,12 @@ globaldatafinance/
 │   │           ├── http.py                    # AsyncDownloadAdapterCVM (httpx async + retry + integrity)
 │   │           ├── extract.py                 # ParquetExtractorAdapterCVM
 │   │           ├── transaction.py             # commit em lote CVM tolerante a falhas
+│   │           ├── csv_pipeline/              # inferência global CSV + escrita Arrow
 │   │           ├── download_validation.py     # validate_downloaded_file, validate_parquet_files, find_parquet_files
 │   │           ├── download_extraction.py     # extract_downloaded_file (orquestra adapter + validation)
 │   │           └── errors.py                  # exceções específicas da fonte
 │   ├── core/                        # configuração, segurança de ZIP/path e utilidades
-│   ├── macro_infra/                 # adapters genéricos compartilhados
+│   ├── macro_infra/                 # adapters e publicação genérica compartilhada
 │   └── macro_exceptions/            # exceções de base do projeto
 ├── tests/                           # pytest, mirror por fonte
 ├── docs/                            # MkDocs
@@ -92,7 +93,7 @@ arquivos. Uma nova fonte pode reutilizar esses limites quando fizer sentido.
 | Validação / domain services | `core.py` (`validate_docs_name`)                   | `assets.py` (`AvailableAssetsServiceB3`) + `filesystem.py` (`validate_directory_path`) |
 | Orquestração / use cases    | `client.py`                                        | `client.py`                                                                            |
 | HTTP / download             | `http.py` (`AsyncDownloadAdapterCVM`)              | (no `zip_reader.py` + `extraction_service/`; não há download HTTP)                     |
-| Extração / escrita Parquet  | `extract.py` (`ParquetExtractorAdapterCVM`)        | `parquet_writer/` (subpacote)                                                          |
+| Extração / escrita Parquet  | `csv_pipeline/` + `transaction.py`                 | `parquet_writer/` + `extraction_service/`                                               |
 | Parser de formato           | —                                                  | `cotahist_parser.py`                                                                   |
 | Catálogo de inputs          | —                                                  | `catalog.py`                                                                           |
 | Helpers de validação        | `download_validation.py`, `download_extraction.py` | embutidos em `filesystem.py` / `client.py`                                             |
@@ -106,11 +107,13 @@ bytes efetivamente descompactados. `core/utils/path_safety.py` valida o
 destino fornecido pelo chamador antes de criar diretórios. As regras de nomes
 permanecem nos owners: CSV na CVM e COTAHIST na B3.
 
-A CVM mantém `transaction.py` como detalhe interno de sua extração. Ele faz
-staging no mesmo filesystem, valida todos os Parquets staged, prepara backups
-dos alvos existentes e aplica/restaura substituições em ordem determinística.
-O resultado é um **commit em lote tolerante a falhas**, recuperável em caso de
-erro, e não uma troca instantaneamente atômica de um diretório caller-owned.
+`macro_infra/transactional_publication/` é a infraestrutura compartilhada e
+não conhece schema ou regras de fonte. Ela mantém staging no mesmo filesystem,
+manifesto durável, lock, backups e recuperação. CVM a usa para publicar os
+múltiplos Parquets do ZIP; B3 a usa depois do merge dos artefatos por fonte.
+Os owners continuam responsáveis por parser, schema e validação. O resultado é
+um **commit em lote tolerante a falhas**, recuperável em caso de erro, e não uma
+troca instantaneamente atômica de um diretório caller-owned.
 
 Funções/classes auxiliares são internas ao módulo a menos que sejam usadas em outro arquivo — o ponto de extensibilidade real é a fonte, não o "tipo de objeto".
 

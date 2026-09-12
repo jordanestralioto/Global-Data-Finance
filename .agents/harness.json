@@ -31,8 +31,6 @@
     "tools": [
       "check-max-lines",
       "harness-verify",
-      "opsx-alignment",
-      "validate-agent-protocols",
       "validate-commit-msg"
     ],
     "workflows": [
@@ -49,5 +47,5 @@
       "pre-commit-fix"
     ]
   },
-  "version": "0.1.0"
+  "version": "0.2.0"
 }

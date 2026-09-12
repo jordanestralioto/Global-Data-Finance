@@ -261,36 +261,32 @@ ______________________________________________________________________
 
 ### Como ler os arquivos Parquet gerados?
 
-Use Pandas ou Polars:
+Use Pandas ou PyArrow:
 
 ```python
 # Com Pandas
 import pandas as pd
 df = pd.read_parquet("cotahist_extracted.parquet")
 
-# Com Polars (mais rápido)
-import polars as pl
-df = pl.read_parquet("cotahist_extracted.parquet")
+# Com PyArrow em batches
+import pyarrow.parquet as pq
+for batch in pq.ParquetFile("cotahist_extracted.parquet").iter_batches():
+    print(batch)
 ```
 
-### Qual biblioteca é melhor: Pandas ou Polars?
+### Qual biblioteca é usada pela extração?
 
-- **Pandas**: Mais popular, maior ecossistema, boa para datasets pequenos/médios
-- **Polars**: Muito mais rápido, menor uso de memória, ideal para grandes volumes
+- **PyArrow**: engine produtivo de leitura/escrita e opção de batches para
+  volumes grandes.
+- **Pandas**: compatível com os Parquets gerados e mantido pelo adaptador CSV
+  legado.
 
-Para análise de dados financeiros (grandes volumes), recomendamos **Polars**.
+Polars não é instalado pelo pacote, mas pode ser adicionado pelo consumidor como
+um leitor downstream opcional.
 
 ### Como filtrar dados de um ativo específico?
 
 ```python
-import polars as pl
-
-df = pl.read_parquet("cotahist_extracted.parquet")
-
-# Filtrar PETR4
-petr4 = df.filter(pl.col('ticker') == 'PETR4')
-
-# Ou com Pandas
 import pandas as pd
 df = pd.read_parquet("cotahist_extracted.parquet")
 petr4 = df[df['ticker'] == 'PETR4']

@@ -240,7 +240,9 @@ ______________________________________________________________________
 
 ## Trabalhando com os Dados Extraídos
 
-Após extrair os dados, você pode analisá-los com Pandas ou Polars:
+Após extrair os dados, você pode analisá-los com Pandas ou PyArrow. PyArrow é
+o engine usado pela biblioteca para produzir os artefatos; Pandas permanece
+compatível para consumo tabular.
 
 ### Com Pandas
 
@@ -259,19 +261,22 @@ print(f"Colunas: {list(df.columns)}")
 print(f"Período: {df['data_pregao'].min()} a {df['data_pregao'].max()}")
 ```
 
-### Com Polars (Mais Rápido)
+### Com PyArrow em batches
 
 ```python
-import polars as pl
+import pyarrow.parquet as pq
 
-# Ler arquivo Parquet
-df = pl.read_parquet("/home/usuario/cotacoes_extraidas/cotahist_extracted.parquet")
+# Ler o arquivo sem materializar todas as linhas de uma vez
+parquet = pq.ParquetFile(
+    "/home/usuario/cotacoes_extraidas/cotahist_extracted.parquet"
+)
 
-# Análise rápida
-print(df.head())
-print(f"\nShape: {df.shape}")
-print(f"Memória: {df.estimated_size('mb'):.2f} MB")
+for batch in parquet.iter_batches(batch_size=100_000, columns=["ticker"]):
+    print(batch.slice(0, min(5, batch.num_rows)))
 ```
+
+Polars não é instalado como dependência da biblioteca. Caso seja o leitor
+preferido da sua aplicação, instale-o explicitamente no ambiente consumidor.
 
 ______________________________________________________________________
 

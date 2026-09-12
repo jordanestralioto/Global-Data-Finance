@@ -57,6 +57,12 @@ Baixa demonstrativos financeiros regulatórios da CVM para um diretório local.
 - `last_year` (`int`, opcional): Ano final da consulta (inclusivo). Se `None`, usa o ano corrente do sistema.
 - `automatic_extractor` (`bool`): Se `True`, extrai automaticamente os arquivos ZIP baixados para o formato Apache Parquet. Padrão: `False`.
 
+Quando ativado, o extrator CVM usa PyArrow e o dialeto CSV `QUOTE_NONE`.
+Linhas curtas recebem apenas nulos finais, linhas excedentes falham, e um CSV
+somente com cabeçalho gera Parquet vazio com campos Arrow `null`. O lote de
+múltiplos Parquets é publicado de forma recuperável; não há atomicidade de
+visibilidade instantânea para leitores concorrentes.
+
 **Retorno**:
 
 - `DownloadResultCVM`: Objeto estruturado com as seguintes propriedades:
@@ -182,6 +188,11 @@ correspondente ao ano solicitado, a API retorna um resultado vazio com
 `success=True`, `total_files=0`, `total_records=0`, `output_file=""` e
 `errors={}`. Inspecione `total_files` e `total_records` quando a presença de
 dados for obrigatória.
+
+Um arquivo válido cujos registros sejam todos filtrados pelo TPMERC solicitado
+também retorna sucesso e publica um Parquet vazio com o schema B3. Em contraste,
+qualquer registro selecionado inválido falha com contexto de fonte, membro,
+linha e campo; o parser não substitui dados inválidos por zero ou nulo.
 
 **`extract_async()`**
 

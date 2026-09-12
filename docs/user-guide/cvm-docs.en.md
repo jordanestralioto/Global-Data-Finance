@@ -382,24 +382,24 @@ destination_path/
 
 ### Extraction integrity and recovery
 
-Every ZIP is validated before its contents are consumed. CSV reading selects
-encoding through deterministic full-member validation (`utf-8-sig`, UTF-8,
-CP1252, and Latin-1) and fails closed for invalid CSV structure: no rows are
-silently discarded.
+Every ZIP is validated before consumption. The PyArrow pipeline makes two
+passes: it validates structure and a global schema, then writes typed row
+groups. Encoding comes from full-member validation (UTF-8, UTF-8 BOM, CP1252,
+or Latin-1); invalid structure never silently drops rows.
 
-One ZIP can produce several Parquets. Extraction stages work inside the
-destination directory, validates every staged artifact, and only then replaces
-targets in deterministic order with backups of pre-existing files. A normal
-failure restores pre-existing targets and removes temporary state. This is a
-**failure-atomic batch commit**, not an instantly atomic transaction for
-concurrent readers; simultaneous writes to the same destination are not
-supported.
+The dialect remains `QUOTE_NONE`: quotes are literal and multiline is disabled.
+Short rows receive trailing nulls only, excess rows abort, and a header-only CSV
+becomes an empty Parquet with ordered Arrow `null` fields and no `b'pandas'`
+metadata.
 
-When a raw file already exists, an update replaces it only after the new file
-has completed transfer and validation; if either step fails, the previous ZIP
-remains byte-for-byte unchanged.
+One ZIP can create several Parquets. Staging, a manifest, backups, and a lock
+provide a **failure-atomic batch commit**: artifacts are validated before
+deterministic replacement, and the next operation recovers an interruption.
+There is no instant atomic visibility for concurrent readers or concurrent
+writes to one destination; a live-process or other-host lock is rejected. An
+existing raw ZIP is replaced only after successful transfer and validation.
 
-______________________________________________________________________
+See the [major migration note](migration-pyarrow-integrity.en.md) for the consumer compatibility table and required actions.
 
 ## Best Practices
 
@@ -454,8 +454,6 @@ cvm.download(
 )
 ```
 
-______________________________________________________________________
-
 ## Performance & Optimization
 
 ### Asynchronous Concurrency
@@ -481,8 +479,6 @@ Estimated duration required to fetch 1 complete annual DFP archive bundle:
 | ------------------------ | ------------------ | ------------------- |
 | Sequential standard HTTP | ~60s               | 1x (Baseline)       |
 | AsyncDownloadAdapterCVM  | ~15s               | **4x Faster**       |
-
-______________________________________________________________________
 
 ## Next Steps
 

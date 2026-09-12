@@ -104,6 +104,7 @@ plugins:
             Documentos CVM: CVM Documents
             Cotações Históricas B3: B3 Historical Quotes
             Exemplos Práticos: Practical Examples
+            Migração major: Major Migration
             Arquitetura: Architecture
             Referência da API: API Reference
             Como Contribuir: Contributing
@@ -117,6 +118,7 @@ plugins:
             Campanha Real Auditável: Auditable Real-Data Campaign
             Limites ZIP e Destinos UNC: ZIP Limits and UNC Destinations
             Commit CVM Tolerante a Falhas: Failure-Atomic CVM Batch Commit
+            Cutover PyArrow e Integridade: PyArrow and Integrity Cutover
             API CVM: CVM API
             API B3: B3 API
             Exceções: Exceptions
@@ -163,6 +165,7 @@ nav:
       - Cotações Históricas B3: user-guide/b3-docs.md
       - Exemplos Práticos: user-guide/examples.md
       - FAQ: user-guide/faq.md
+      - Migração major: user-guide/migration-pyarrow-integrity.md
   - Guia do Desenvolvedor:
       - Arquitetura: dev-guide/architecture.md
       - Referência da API: dev-guide/api-reference.md
@@ -174,6 +177,7 @@ nav:
           - Campanha Real Auditável: decisions/real-validation-campaign.md
           - Limites ZIP e Destinos UNC: decisions/archive-safety-and-unc.md
           - Commit CVM Tolerante a Falhas: decisions/cvm-failure-atomic-batch-commit.md
+          - Cutover PyArrow e Integridade: decisions/pyarrow-ingestion-integrity-cutover.md
       - Uso Avançado: dev-guide/advanced-usage.md
       - Sistema de Logging: dev-guide/logging-system.md
       - Monitoramento de Recursos: dev-guide/resource-monitoring.md

@@ -248,11 +248,13 @@ assert result.success_count_downloads == 2
 
 ### Required engines and real proofs
 
-Polars and PyArrow are required package dependencies. Unit tests may use fakes
-for project-owned collaborators such as a resource monitor, parser, or
-filesystem seam. They do not replace every test of a component that reads or
-writes Parquet: that component also needs integration tests with real engines,
-artifact reads, schema and type checks, and temporary-file cleanup.
+PyArrow is the required production read/write engine. Pandas remains a
+compatibility dependency for the legacy `ReadFilesAdapter`, while Polars is not
+part of runtime dependencies. Unit tests may use fakes for project-owned
+collaborators such as a resource monitor, parser, or filesystem seam. They do
+not replace tests of a component that reads or writes Parquet: that component
+also needs integration tests with real PyArrow, artifact reads, schema and type
+checks, and temporary-file cleanup.
 
 ### Integration Testing Pattern
 

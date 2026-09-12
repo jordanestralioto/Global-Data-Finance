@@ -163,12 +163,13 @@ print(df['preco_fechamento'].describe())
 
 ______________________________________________________________________
 
-## Example 5: High-Performance Analytics with Polars
+## Example 5: Bounded PyArrow Batch Processing
 
-Utilize Polars dataframe structures for blazing-fast filtering and calculations across extended historical datasets.
+Use PyArrow to process Parquet data in bounded batches.
 
 ```python
-import polars as pl
+import pyarrow.compute as pc
+import pyarrow.parquet as pq
 from globaldatafinance import HistoricalQuotesB3
 
 # Extract transaction records
@@ -180,28 +181,15 @@ result = b3.extract(
     last_year=2023
 )
 
-# Load dataset into a Polars dataframe (significantly faster than traditional alternatives)
-df = pl.read_parquet(result['output_file'])
-
-# Verify physical dimensions
-print(f"Dataframe shape: {df.shape}")
-print(f"Estimated RAM usage: {df.estimated_size('mb'):.2f} MB")
-
-# Filter exclusively for ticker PETR4
-petr4 = df.filter(pl.col('ticker') == 'PETR4')
-
-# Derive daily proportional percentage return calculations
-petr4 = petr4.with_columns([
-    ((pl.col('preco_fechamento') / pl.col('preco_fechamento').shift(1)) - 1)
-    .alias('daily_return')
-])
-
-# Display numerical performance metrics
-print(f"\nPETR4 - Analytical Statistics:")
-print(f"  Mean daily returns: {petr4['daily_return'].mean():.4%}")
-print(f"  Historical Volatility (Std Dev): {petr4['daily_return'].std():.4%}")
-print(f"  Minimum intraday price: R$ {petr4['preco_minimo'].min():.2f}")
-print(f"  Maximum intraday price: R$ {petr4['preco_maximo'].max():.2f}")
+# Project and filter without loading the entire artifact
+parquet = pq.ParquetFile(result['output_file'])
+for batch in parquet.iter_batches(
+    batch_size=200_000,
+    columns=['ticker', 'preco_minimo', 'preco_maximo'],
+):
+    petr4 = batch.filter(pc.equal(batch.column('ticker'), 'PETR4'))
+    if petr4.num_rows:
+        print(petr4)
 ```
 
 ______________________________________________________________________
@@ -302,7 +290,7 @@ Harnessing Global-Data-Finance inside interactive Jupyter notebook sessions to g
 ```ipython
 # Cell 1: Package imports and visual configuration
 from globaldatafinance import HistoricalQuotesB3
-import polars as pl
+import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -318,8 +306,8 @@ result = b3.extract(
 )
 
 # Cell 3: Load Parquet dataset and isolate instrument records
-df = pl.read_parquet(result['output_file'])
-petr4 = df.filter(pl.col('ticker') == 'PETR4').to_pandas()
+df = pd.read_parquet(result['output_file'])
+petr4 = df[df['ticker'] == 'PETR4']
 
 # Cell 4: Plot historical closing quote trajectories
 plt.figure(figsize=(14, 6))

@@ -45,7 +45,7 @@ SHELL_SYNTAX = REPOSITORY_ROOT / 'scripts' / 'check-shell-syntax.py'
 
 
 pytestmark = pytest.mark.unit
-# allow-assertion-reduction: Shell cases moved to the dedicated gate module.
+# allow-assertion-reduction: Retired validate-agent-protocols pre-commit hook.
 
 
 def run_git(repo: Path, *args: str) -> ProcessResult:
@@ -132,7 +132,6 @@ def test_precommit_configuration_preserves_the_quality_gate_contract() -> None:
     )
     assert 'entry: harness-sync --check' in content
     assert 'entry: uv lock --check' in content
-    assert 'id: validate-agent-protocols' in content
     assert 'id: import-cycles' in content
     assert 'id: import-linter' in content
     assert 'exclude: ^tests/support/' in hook_block(content, 'name-tests-test')

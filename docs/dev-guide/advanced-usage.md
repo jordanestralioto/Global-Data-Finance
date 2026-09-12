@@ -337,22 +337,24 @@ ______________________________________________________________________
 
 ## Otimizações de Performance
 
-### Uso Eficiente de Memória
+### Projeção de colunas e filtro em batches
 
 ```python
-import polars as pl
+import pyarrow.compute as pc
+import pyarrow.parquet as pq
 
-# Ler apenas colunas necessárias
-df = pl.read_parquet(
-    "cotahist.parquet",
-    columns=["data_pregao", "ticker", "preco_fechamento"]
-)
-
-# Filtrar durante leitura
-df = pl.scan_parquet("cotahist.parquet") \
-    .filter(pl.col("ticker") == "PETR4") \
-    .collect()
+# Ler somente as colunas necessárias em batches limitados
+parquet = pq.ParquetFile("cotahist.parquet")
+for batch in parquet.iter_batches(
+    batch_size=100_000,
+    columns=["data_pregao", "ticker", "preco_fechamento"],
+):
+    petr4 = batch.filter(pc.equal(batch.column("ticker"), "PETR4"))
+    process_chunk(petr4)
 ```
+
+Polars não é dependência de runtime. Aplicações que o utilizem como leitor
+downstream devem declarar essa dependência no próprio ambiente.
 
 ### Processamento em Batches (Streaming com PyArrow)
 
@@ -362,8 +364,7 @@ import pyarrow.parquet as pq
 # Processar arquivo Parquet grande em batches com streaming
 parquet_file = pq.ParquetFile("cotahist.parquet")
 for batch in parquet_file.iter_batches(batch_size=100000):
-    chunk_df = batch.to_pandas()
-    process_chunk(chunk_df)
+    process_chunk(batch)
 ```
 
 ______________________________________________________________________

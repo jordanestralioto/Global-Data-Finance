@@ -264,36 +264,32 @@ ______________________________________________________________________
 
 ### What libraries should I use to analyze generated Parquet datasets?
 
-Use either Pandas or Polars:
+Use Pandas or PyArrow:
 
 ```python
 # Utilizing traditional Pandas
 import pandas as pd
 df = pd.read_parquet("cotahist_extracted.parquet")
 
-# Utilizing optimized Polars (Recommended)
-import polars as pl
-df = pl.read_parquet("cotahist_extracted.parquet")
+# Reading bounded PyArrow batches
+import pyarrow.parquet as pq
+for batch in pq.ParquetFile("cotahist_extracted.parquet").iter_batches():
+    print(batch)
 ```
 
-### Which dataframe engine is recommended: Pandas or Polars?
+### Which engine does extraction use?
 
-- **Pandas**: Traditional industry standard with broad legacy support, well suited for small to moderate tabular structures.
-- **Polars**: High-performance Rust-based query engine featuring minimal RAM consumption and extreme speed; ideally suited for massive multi-year tick ledgers.
+- **PyArrow**: the production read/write engine and a bounded-batch option for
+  large inputs.
+- **Pandas**: compatible with generated Parquets and retained by the legacy CSV
+  adapter.
 
-For analyzing extensive quantitative financial times series, we deeply recommend **Polars**.
+Polars is not installed by the package, but consumers can add it as an optional
+downstream reader.
 
 ### How do I isolate trading activity for a specific ticker symbol?
 
 ```python
-import polars as pl
-
-df = pl.read_parquet("cotahist_extracted.parquet")
-
-# Isolate PETR4 stock executions
-petr4 = df.filter(pl.col('ticker') == 'PETR4')
-
-# Or equivalently in Pandas
 import pandas as pd
 df = pd.read_parquet("cotahist_extracted.parquet")
 petr4 = df[df['ticker'] == 'PETR4']

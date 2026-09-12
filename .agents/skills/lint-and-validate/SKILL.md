@@ -21,9 +21,8 @@ description: >-
 ## Procedimento
 
 1. Identifique o artefato que precisa ser validado antes de escolher o comando:
-   - diff comum do repositório: comando repo-native declarado em `openspec/handoff.json` (`validationCommand`) ou `pre-commit run --all-files`
-   - skills gerais ou específicas: `python3 scripts/validate-skills.py` (ou `python3 scripts/validate-skills.py --skill <nome>`)
-   - agents, manifests e protocolo `review-workflow`: `python3 scripts/validate-agent-protocols.py`
+   - diff comum do repositório: comando repo-native oficial declarado pelo consumidor (`openspec/handoff.json` via `validationCommand`, `.pre-commit-config.yaml` ou `AGENTS.md`)
+   - skills, agents e workflows projetados no consumidor: executar `harness-validate --request <caminho>` (ex.: `harness-validate --request .agents/validation/request.json`)
 2. Execute a suíte de validação e os gates pertinentes à mudança sem pular verificações obrigatórias.
 3. Leia o resultado das gates e garanta que todas passaram com código 0. Não trate gate não executada ou skipped como sucesso implícito.
 4. Responda com evidência terminal mínima: comando, escopo, status, classificação da falha quando existir e próximo passo. Não declare sucesso sem output correspondente.
@@ -71,24 +70,24 @@ Assertions:
 - [ ] reporta status das gates executadas de forma determinística
 - [ ] reporta falhas e saídas de terminal com clareza
 
-### Cenário 2 - validação de skill
+### Cenário 2 - validação de skills, agents ou workflows
 
-Entrada: pedido para validar apenas a skill `lint-and-validate`.
-
-Assertions:
-
-- [ ] usa `python3 scripts/validate-skills.py --skill lint-and-validate`
-- [ ] não chama `validate-agent-protocols.py` como se cobrisse toda governança de skills
-- [ ] reporta erro estrutural se o `SKILL.md` violar o contrato da `skill-governance`
-
-### Cenário 3 - protocolo de agents
-
-Entrada: pedido para validar agents, manifests e protocolo `review-workflow`.
+Entrada: pedido para validar skills, agents ou workflows projetados no consumidor.
 
 Assertions:
 
-- [ ] usa `python3 scripts/validate-agent-protocols.py`
-- [ ] deixa claro que o escopo é protocolo de agents, não qualquer skill do repo
+- [ ] usa `harness-validate --request <caminho-do-request>`
+- [ ] não recomenda `validate-skills.py` nem `validate-agent-protocols.py` fora da central
+- [ ] reporta diagnósticos e códigos de erro de validação com clareza
+
+### Cenário 3 - validação repo-native do projeto
+
+Entrada: pedido para validar o projeto segundo seus comandos declarados.
+
+Assertions:
+
+- [ ] usa o comando oficial declarado pelo consumidor
+- [ ] reporta status das gates executadas de forma determinística
 - [ ] reporta falha estrutural sem declarar sucesso parcial implícito
 
 ### Cenário 4 - falha externa
@@ -118,16 +117,8 @@ Assertions:
   harness publica o contrato que ele precisa satisfazer
   (`schemas/ai-verify.schema.json` e `assets/verification-profiles.json`),
   não o executor.
-- `scripts/normalize-skill-metadata.py`: remove metadados extras do frontmatter de skills em lote controlado.
-- `scripts/validate-agent-protocols.py`: valida manifests, agents e protocol skills do fluxo de review.
-- `scripts/check-max-lines.py`: gate portátil de tamanho de arquivo por
-  responsabilidade (produção 400, teste 1000, documentação 500 linhas).
-  Selecionar esta skill projeta a ferramenta em
-  `.agents/scripts/check-max-lines.py` (via `tools/check-max-lines`); o
-  consumidor executa `python .agents/scripts/check-max-lines.py` e adiciona
-  o comando ao próprio gate roster — o harness nunca edita a configuração
-  de hooks do consumidor. O repositório central usa
-  `uv run python scripts/check-max-lines.py`.
+- `scripts/normalize-skill-metadata.py`: helper privado desta skill que remove metadados extras do frontmatter de skills em lote controlado.
+- `.agents/scripts/check-max-lines.py`: tool pública selecionada pelo catálogo (`tools/check-max-lines`) como gate portátil de tamanho de arquivo por responsabilidade (produção 400, teste 1000, documentação 500 linhas). O consumidor executa `python .agents/scripts/check-max-lines.py` e adiciona o comando ao próprio gate roster.
 
 ## Referências
 

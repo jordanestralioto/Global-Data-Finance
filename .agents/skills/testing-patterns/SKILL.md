@@ -3,8 +3,7 @@ name: testing-patterns
 description: >-
   Use para planejar ou revisar testes unitários, integração, mocks, fixtures,
   regressões e negativos de segurança. Ative com "que teste escrevo?", "isso é
-  unit ou integração?", "mocko isso como?", "como testo auth expirada?", "usuário
-  errado não pode acessar", "essa assertion prova o bug?" ou "cobertura fraca".
+  unit ou integração?", "mocko isso como?", "como testo auth expirada?", "essa assertion prova o bug?" ou "cobertura fraca".
   Cobre asserções que pegam regressões reais sem testes tautológicos. Não use
   apenas para executar checagens (`lint-and-validate`), coordenar E2E no
   navegador (`webapp-testing`), validar UI visualmente ou conduzir TDD quando o

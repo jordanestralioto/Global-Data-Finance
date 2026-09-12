@@ -161,13 +161,10 @@ staged não equivale a aprovação de CI.
 portáteis, mas é uma projeção gerada e mantida pelo repositório separado
 `central-skills`; seus arquivos gerados nunca devem ser editados manualmente.
 Colaboradores comuns e usuários do projeto não precisam instalar
-`central-skills`: o hook portátil `validate-agent-protocols` já valida a
-estrutura rastreada. Um mantenedor que alterar a seleção ou a projeção deve
-corrigir a fonte canônica, regenerar com `harness-sync` e executar os dois
-checks:
+`central-skills`. Um mantenedor que alterar a seleção ou a projeção deve
+corrigir a fonte canônica, regenerar com `harness-sync` e executar o check:
 
 ```bash
-uv run --locked --no-sync python .agents/scripts/validate-agent-protocols.py
 harness-sync --check
 ```
 

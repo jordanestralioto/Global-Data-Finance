@@ -15,6 +15,7 @@ reach the lock document.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 from dataclasses import dataclass
@@ -42,7 +43,6 @@ INSTALLED_COMMANDS = frozenset(
     {'opsx', 'opsx-handoff', 'opsx-sync', 'sabatina'}
 )
 BASE_DIRS = frozenset({'harness'})
-
 _SERIALIZE_KWARGS: dict[str, Any] = {
     'indent': 2,
     'sort_keys': True,
@@ -133,8 +133,7 @@ def load_component_migrations(
     for item in migrations:
         if not isinstance(item, dict):
             raise SelectionError(f'{path}: migration entry must be an object')
-        comp_id = item.get('componentId')
-        if not isinstance(comp_id, str):
+        if not isinstance(comp_id := item.get('componentId'), str):
             raise SelectionError(
                 f'{path}: migration entry missing "componentId"'
             )
@@ -215,15 +214,13 @@ def load_catalog(path: Path | None = None) -> dict[str, CatalogEntry]:
             raise SelectionError(
                 f'{path}: entry {component_id} must be an object'
             )
-        source = raw.get('source')
-        requires = raw.get('requires', [])
-        if not isinstance(source, str) or not source:
+        if not isinstance(source := raw.get('source'), str) or not source:
             raise SelectionError(f'{path}: entry {component_id} has no source')
-        violation = _relative_path_violation(source)
-        if violation is not None:
+        if (violation := _relative_path_violation(source)) is not None:
             raise SelectionError(
                 f'{path}: entry {component_id} source {violation}'
             )
+        requires = raw.get('requires', [])
         if not isinstance(requires, list) or not all(
             isinstance(item, str) for item in requires
         ):
@@ -264,12 +261,13 @@ def load_manifest(path: Path) -> Manifest:
 
     for key in payload:
         if key not in ('version', 'components'):
-            if key == 'profiles':
-                raise SelectionError(
-                    f'{path}: unknown key "profiles"; components are '
-                    'selected individually and no profile or bundle exists'
-                )
-            raise SelectionError(f'{path}: unknown key {key!r}')
+            msg = (
+                'unknown key "profiles"; components are selected individually '
+                'and no profile or bundle exists'
+                if key == 'profiles'
+                else f'unknown key {key!r}'
+            )
+            raise SelectionError(f'{path}: {msg}')
 
     version = payload.get('version')
     if not isinstance(version, str) or not version:
@@ -337,15 +335,10 @@ def _resolve_name(
     if component_id not in catalog:
         if migrations is not None and component_id in migrations:
             rec = migrations[component_id]
-            action = rec.get('action')
-            msg = rec.get('message', '')
-            replacement = rec.get('replacement')
-            if replacement:
-                raise SelectionError(
-                    f'{manifest_path}: {component_id} is retired ({action} -> {replacement}): {msg}'
-                )
+            action, msg = rec.get('action'), rec.get('message', '')
+            rep = f' -> {r}' if (r := rec.get('replacement')) else ''
             raise SelectionError(
-                f'{manifest_path}: {component_id} is retired ({action}): {msg}'
+                f'{manifest_path}: {component_id} is retired ({action}{rep}): {msg}'
             )
         raise SelectionError(
             f'{manifest_path}: unknown component {component_id}'
@@ -472,6 +465,13 @@ def _managed_authority(catalog: dict[str, CatalogEntry]) -> frozenset[str]:
         if _relative_path_violation(entry.source) is None
     }
     targets.update(f'.agents/{name}' for name in BASE_DIRS)
+    with contextlib.suppress(OSError, ValueError, TypeError, KeyError):
+        targets.update(
+            f'.agents/{src}'
+            for rec in load_component_migrations().values()
+            if isinstance(src := rec.get('source'), str)
+            and _relative_path_violation(src) is None
+        )
     return frozenset(targets)
 
 

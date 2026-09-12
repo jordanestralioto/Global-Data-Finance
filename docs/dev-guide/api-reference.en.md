@@ -57,6 +57,12 @@ Downloads regulatory CVM archives directly into a local filesystem directory.
 - `last_year` (`int`, optional): Ending fiscal year (inclusive). Defaults to the active system year.
 - `automatic_extractor` (`bool`): When set to `True`, deconstructs downloaded ZIP archives into columnar Apache Parquet files. Default: `False`.
 
+When enabled, the CVM extractor uses PyArrow and the `QUOTE_NONE` CSV dialect.
+Short rows receive trailing nulls only, excess rows fail, and a header-only CSV
+produces an empty Parquet with Arrow `null` fields. Its multi-Parquet batch is
+recoverably published; concurrent readers do not get instant visibility
+atomicity.
+
 **Returns**:
 
 - `DownloadResultCVM`: Structured result object containing:
@@ -181,6 +187,11 @@ empty. If the directory is not empty but contains no COTAHIST file for the
 requested year, the API returns an empty result with `success=True`,
 `total_files=0`, `total_records=0`, `output_file=""`, and `errors={}`. Inspect
 `total_files` and `total_records` when data presence is required.
+
+A valid input whose records are all filtered by the requested TPMERC also
+returns success and publishes an empty Parquet with the B3 schema. In contrast,
+an invalid selected record fails with source, member, line, and field context;
+the parser never turns invalid data into zero or null.
 
 **`extract_async()`**
 

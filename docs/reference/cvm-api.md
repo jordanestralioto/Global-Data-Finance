@@ -39,7 +39,14 @@ def download(
 | `list_docs`           | `list[str] \| None` | Não         | `None`  | Tipos de documentos (None = todos)     |
 | `initial_year`        | `int \| None`       | Não         | `None`  | Ano inicial (None = mínimo disponível) |
 | `last_year`           | `int \| None`       | Não         | `None`  | Ano final (None = ano atual)           |
-| `automatic_extractor` | `bool`              | Não         | `False` | Extrair para Parquet                   |
+| `automatic_extractor` | `bool`              | Não         | `False` | Extrair para Parquet com PyArrow       |
+
+Com `automatic_extractor=True`, o CSV CVM mantém o dialeto `QUOTE_NONE`: aspas
+são literais, linhas curtas recebem apenas nulos ao final e linhas excedentes
+falham. Um CSV somente com cabeçalho gera Parquet vazio com campos Arrow
+`null`, sem metadata `b'pandas'`. Os Parquets do mesmo ZIP usam publicação em
+lote recuperável, não visibilidade instantaneamente atômica para leitores
+concorrentes.
 
 **Retorno**:
 

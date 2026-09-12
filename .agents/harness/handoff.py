@@ -70,8 +70,6 @@ CONFIG, CONFIG_ERROR = load_config()
 
 def _config_list(key: str) -> tuple[str, ...]:
     value = CONFIG.get(key)
-    if value is None:
-        return ()
     if not isinstance(value, list) or not all(
         isinstance(item, str) and item for item in value
     ):
@@ -1301,8 +1299,10 @@ def check_evidence(docs: ChangeDocs) -> list[Finding]:
                 'Configured evidence verifier does not exist.',
             )
         ]
+    venv_py = REPO_ROOT / '.venv/bin/python'
+    py = str(venv_py) if venv_py.is_file() else sys.executable
     result = subprocess.run(
-        [sys.executable, str(verifier), '--verify-evidence', str(evidence)],
+        [py, str(verifier), '--verify-evidence', str(evidence)],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,

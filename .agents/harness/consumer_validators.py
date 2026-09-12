@@ -12,37 +12,11 @@ from harness.consumer_types import (
     ALLOWED_SKILL_ACTIVE_FM,
     ALLOWED_SKILL_ARCHIVED_FM,
     ALLOWED_WORKFLOW_FM,
-    SCOPE_VALIDATORS,
-    BoundaryError,
-    ConsumerValidationError,
-    ContractError,
     Diagnostic,
-    DistributionVersionError,
     check_declared_refs,
     check_fm_base,
     parse_frontmatter,
 )
-
-__all__ = [
-    'AGENT_LEGACY_SECTIONS',
-    'AGENT_REQUIRED_SECTIONS',
-    'ALLOWED_AGENT_FM',
-    'ALLOWED_SKILL_ACTIVE_FM',
-    'ALLOWED_SKILL_ARCHIVED_FM',
-    'ALLOWED_WORKFLOW_FM',
-    'SCOPE_VALIDATORS',
-    'BoundaryError',
-    'ConsumerValidationError',
-    'ContractError',
-    'Diagnostic',
-    'DistributionVersionError',
-    'check_declared_refs',
-    'check_fm_base',
-    'parse_frontmatter',
-    'validate_agent_item',
-    'validate_skill_item',
-    'validate_workflow_item',
-]
 
 
 def validate_skill_item(
@@ -163,6 +137,84 @@ def validate_skill_item(
     diags.extend(
         check_declared_refs(root, file_path, text, 'skill.references', 'skill')
     )
+    diags.extend(check_skill_script_syntax(root, file_path, text))
+    return diags
+
+
+def check_skill_script_syntax(
+    root: Path, file_path: Path, text: str
+) -> list[Diagnostic]:
+    diags: list[Diagnostic] = []
+    scripts_dir = file_path.parent / 'scripts'
+    resolved_root = root.resolve()
+    if scripts_dir.is_dir():
+        for script_path in sorted(scripts_dir.rglob('*.py')):
+            if not script_path.is_file():
+                continue
+            script_rel = script_path.relative_to(root).as_posix()
+            try:
+                if not script_path.resolve().is_relative_to(resolved_root):
+                    diags.append(
+                        Diagnostic(
+                            script_rel,
+                            'skill.script-syntax',
+                            'skill.script-syntax.outside-root',
+                            f'script escapes root via symlink: {script_rel}',
+                        )
+                    )
+                    continue
+            except OSError:
+                continue
+            try:
+                content = script_path.read_text(encoding='utf-8')
+                compile(content, script_rel, 'exec')
+            except SyntaxError as exc:
+                diags.append(
+                    Diagnostic(
+                        script_rel,
+                        'skill.script-syntax',
+                        'skill.script-syntax.invalid',
+                        f'syntax error: {exc}',
+                    )
+                )
+            except (UnicodeDecodeError, OSError) as exc:
+                diags.append(
+                    Diagnostic(
+                        script_rel,
+                        'skill.script-syntax',
+                        'skill.script-syntax.invalid',
+                        f'cannot read script: {exc}',
+                    )
+                )
+
+    tool_ref_pattern = (
+        r'(?<![A-Za-z0-9._\-/])\.agents/scripts/[A-Za-z0-9._\-/]+\.py'
+    )
+    for raw_ref in sorted(set(re.findall(tool_ref_pattern, text))):
+        tool_ref = raw_ref.rstrip('.,;:)')
+        tool_path = root / tool_ref
+        if tool_path.is_file():
+            try:
+                content = tool_path.read_text(encoding='utf-8')
+                compile(content, tool_ref, 'exec')
+            except SyntaxError as exc:
+                diags.append(
+                    Diagnostic(
+                        tool_ref,
+                        'skill.script-syntax',
+                        'skill.script-syntax.invalid',
+                        f'syntax error: {exc}',
+                    )
+                )
+            except (UnicodeDecodeError, OSError) as exc:
+                diags.append(
+                    Diagnostic(
+                        tool_ref,
+                        'skill.script-syntax',
+                        'skill.script-syntax.invalid',
+                        f'cannot read script: {exc}',
+                    )
+                )
     return diags
 
 

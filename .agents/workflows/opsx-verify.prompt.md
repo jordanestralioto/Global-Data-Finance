@@ -14,8 +14,8 @@ Verify that an implementation matches the change artifacts (specs, tasks, design
 **Schema note**: Use `opsx status --change "<name>" --json` and the available context files as the source of truth. Verification must compare implementation with artifacts, not only with task checkboxes.
 
 **Semantic evidence contract**: Verification MUST persist
-`openspec/changes/<name>/evidence/verification-report.json` using
-`skills/openspec-workflow/schemas/verification-report.schema.json`.
+`openspec/changes/<name>/evidence/verification-report.json` conforming to
+the verification report schema (`verification-report-v1`).
 The report is bound to `decision_source.sha256` and to the repository
 fingerprint returned by `opsx fingerprint --change "<name>" --json`; the report and gate report are excluded from that
 fingerprint. Unresolved in-contract divergence is a blocker, not a warning.
@@ -176,7 +176,7 @@ fingerprint. Unresolved in-contract divergence is a blocker, not a warning.
 
    Persist exactly this JSON artifact at
    `openspec/changes/<name>/evidence/verification-report.json`, conforming to
-   `skills/openspec-workflow/schemas/verification-report.schema.json`:
+   the verification report schema (`verification-report-v1`):
 
    ```json
    {

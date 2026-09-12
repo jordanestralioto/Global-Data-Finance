@@ -79,9 +79,9 @@ def validate_parquet_files(
                     )
                     return False
 
-                if parquet_metadata.num_rows == 0:
+                if parquet_metadata.num_columns == 0:
                     logger.error(
-                        'Parquet file has no data rows: %s for %s_%s',
+                        'Parquet file has no columns: %s for %s_%s',
                         parquet_file,
                         doc_name,
                         year,

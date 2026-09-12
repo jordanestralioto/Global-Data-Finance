@@ -25,7 +25,7 @@ description: >-
 Adote as fases abaixo na ordem. Quando o sintoma apontar para setup local, a Fase 0 é obrigatória antes de tocar em código.
 
 1. **Fase 0: Preflight de Ambiente**
-   - Use esta fase quando houver sinais como "funciona na minha máquina", CI/local divergente, falha de import, módulo ausente, variáveis ausentes ou suspeita de drift de runtime/dependências.
+   - Use esta fase quando houver sinais como "funciona na minha máquina", CI/local divergente, falha de import, módulo ausente, variáveis ausentes ou suspeita de drift de runtime ou dependências.
    - Compare os arquivos de configuração de ambiente usados no projeto com seus exemplos ou templates, se existirem. Verifique apenas presença e nomes de chaves; nunca faça dump dos valores.
    - Use a documentação viva do projeto, manifests, arquivos de exemplo e arquivos de versão como fonte de verdade. Se houver duas instruções operacionais conflitantes, resolva esse drift documental antes de concluir que a aplicação está lendo o arquivo "errado".
    - Confirme o fluxo oficial de bootstrap, sincronização de dependências e inicialização definido pelo repositório antes de concluir que o bug é de código.

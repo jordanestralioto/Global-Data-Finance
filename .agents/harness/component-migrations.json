@@ -30,6 +30,18 @@
       "action": "remove",
       "componentId": "skills/tdd-workflow",
       "message": "skills/tdd-workflow was retired; gpt-5.6-luna with max reasoning effort performs this task natively"
+    },
+    {
+      "action": "remove",
+      "componentId": "tools/opsx-alignment",
+      "message": "ferramenta exclusiva da sincroniza\u00e7\u00e3o de espelhos da central; consumidores devem usar opsx validate --specs --strict e opsx-handoff.",
+      "source": "scripts/check-opsx-alignment.sh"
+    },
+    {
+      "action": "remove",
+      "componentId": "tools/validate-agent-protocols",
+      "message": "ferramenta exclusiva do protocolo de review da central; consumidores devem usar harness-validate.",
+      "source": "scripts/validate-agent-protocols.py"
     }
   ],
   "schemaVersion": 1

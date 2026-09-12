@@ -125,4 +125,4 @@ Para cada passo aprovado na Fase 2A, crie um bloco próprio:
 
 - Refactor status: complete/incomplete
 - Recommended next action:
-- Final lock command: `bash skills/modularizar/scripts/modularizar_guard.sh validate-report --target <file-or-module>`
+- Final lock command: `bash .agents/skills/modularizar/scripts/modularizar_guard.sh validate-report --target <file-or-module>`

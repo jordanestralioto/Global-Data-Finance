@@ -35,14 +35,14 @@ Resolve failures in logical dependency order:
    - Hooks that automatically modify files will exit with failure on their first run. Let them format and check if a simple re-run resolves them.
 2. **Synchronization & Generated Mirrors** (`harness-sync`, `*-mirror-sync`, `skill-index-sync`):
    - **CRITICAL:** NEVER edit generated mirror files directly (e.g., in `.claude/`, `.github/`, `.opencode/`, `.agents/`).
-   - Fix the source in `skills/`, `workflows/`, `agents/`, or `harness/` and run the designated sync script (e.g., `harness-sync`, `python scripts/sync-workflows.py`).
+   - Fix the source in the designated component directories and run the sync command (e.g., `harness-sync`).
 3. **Linting & Code Quality** (`ruff check`, `bandit`, `flake8`):
    - Fix genuine lint and security issues.
    - **NO HACKS:** Do not bypass checks with `# noqa`, `// @ts-ignore`, `eslint-disable`, or `type: ignore` unless strictly necessary and architecturally justified.
 4. **Type Checking** (`mypy`, `pyright`, `tsc`):
    - Fix underlying type discrepancies with proper annotations, guards, and type-safe narrowings.
    - Do not weaken types to `Any` / `unknown` merely to satisfy the checker.
-5. **Domain & Protocol Validators** (`validate-skills`, `opsx-alignment`, `validate-agent-protocols`):
+5. **Domain & Protocol Validators** (domain validation, contract checks, protocol validators):
    - Follow the exact specification schemas and structural rules defined by the project.
 6. **Test Regressions** (`pytest`, test suites):
    - Fix broken tests by addressing root causes, not by deleting or tautologically neutering assertions.

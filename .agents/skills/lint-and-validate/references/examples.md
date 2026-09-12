@@ -3,12 +3,12 @@
 ## Exemplo 1 - positivo
 
 Pedido: "Alterei código e preciso validar o minimo antes do review."
-Esperado: rodar a validação repo-native (`pre-commit run --all-files` ou `uv run python scripts/harness_verify.py`).
+Esperado: rodar a validação repo-native (`pre-commit run --all-files` ou o comando oficial do projeto).
 
 ## Exemplo 2 - positivo
 
 Pedido: "Gerar evidencia estruturada de gates para a change OpenSpec."
-Esperado: usar `uv run python scripts/harness_verify.py --evidence-path openspec/changes/<change>/evidence/gate-report.json`.
+Esperado: usar o entrypoint oficial do projeto (`uv run python -m scripts.ai_verify --evidence-path ...` ou equivalente).
 
 ## Exemplo 3 - positivo
 
@@ -22,13 +22,13 @@ Esperado: usar os comandos repo-native correspondentes (`uv run ruff check .` e 
 
 ## Exemplo 5 - positivo
 
-Pedido: "Valide so a skill lint-and-validate contra a governance."
-Esperado: usar `python3 scripts/validate-skills.py --skill lint-and-validate`.
+Pedido: "Valide as skills projetadas do consumidor contra a governance."
+Esperado: usar `harness-validate --request .agents/validation/request.json`.
 
 ## Exemplo 6 - positivo
 
-Pedido: "Confere agents, manifests e protocolo review-workflow."
-Esperado: usar `python3 scripts/validate-agent-protocols.py` e deixar claro que isso nao cobre toda skill do repo.
+Pedido: "Confere agents, manifests e skills projetadas."
+Esperado: usar `harness-validate --request .agents/validation/request.json` e deixar claro que a validação portátil cobre a projeção do consumidor.
 
 ## Exemplo 7 - negativo
 

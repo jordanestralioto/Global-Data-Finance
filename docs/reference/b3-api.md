@@ -34,6 +34,11 @@ def extract(
 
 **Descrição**: Extrai cotações históricas de arquivos COTAHIST (`COTAHIST_A{YYYY}.ZIP` ou `.TXT`), filtra os ativos e consolida o resultado em formato Parquet. A API aceita os dois formatos locais; o download oficial da B3 continua sendo distribuído em ZIP.
 
+O parser é estrito: controles `00`/`99` e linhas vazias não são persistidos,
+TPMERC fora do filtro é contabilizado como filtrado, e um registro `01`
+selecionado inválido levanta `ExtractionError` contextual. Valores financeiros
+inválidos não recebem fallback para zero ou nulo.
+
 **Parâmetros**:
 
 | Nome               | Tipo                | Obrigatório | Padrão                 | Descrição                                                                      |
@@ -74,8 +79,11 @@ Objeto `TypedDict` contendo o resultado da extração:
   fisicamente vazio. Se o diretório não está vazio, mas não contém um COTAHIST
   correspondente aos anos solicitados, a API retorna um resultado vazio com
   `success=True`, `total_files=0`, `total_records=0`, `output_file=""` e
-  `errors={}`. Inspecione esses contadores quando a presença de dados for
-  obrigatória.
+`errors={}`. Inspecione esses contadores quando a presença de dados for
+obrigatória.
+
+Se arquivos válidos não tiverem registros após o filtro de ativos, a extração
+continua bem-sucedida e publica Parquet B3 vazio com schema explícito.
 
 **Exceções**:
 

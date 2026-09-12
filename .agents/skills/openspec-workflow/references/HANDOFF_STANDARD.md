@@ -95,10 +95,10 @@ deste contrato.
   cenários exatos que prova;
 - `[validation]`: contém o comando exato que produz a evidência estruturada.
 
-Exemplo final deste repositório, substituindo o nome real da change:
+Exemplo final com o comando oficial declarado pelo repositório:
 
 ```markdown
-- [ ] 4.1 [validation] Run `uv run python scripts/harness_verify.py --evidence-path openspec/changes/add-example/evidence/gate-report.json` and require exit code `0`.
+- [ ] 4.1 [validation] Run `<comando-oficial-de-validacao> --evidence-path openspec/changes/add-example/evidence/gate-report.json` and require exit code `0`.
 ```
 
 Tasks de remoção citam exatamente um caminho. Ao concluir, esse caminho deve
@@ -107,10 +107,10 @@ estar ausente; tasks mistas de remover e alterar são divididas.
 ## Evidência de conclusão
 
 Markdown ou logs copiados soltos não são prova. O arquivo canônico é
-`openspec/changes/<change>/evidence/gate-report.json`, escrito por:
+`openspec/changes/<change>/evidence/gate-report.json`, escrito pelo executor oficial do projeto:
 
 ```bash
-uv run python scripts/harness_verify.py --evidence-path openspec/changes/<change>/evidence/gate-report.json
+<comando-oficial-de-validacao> --evidence-path openspec/changes/<change>/evidence/gate-report.json
 ```
 
 O relatório estende o schema canônico `gate-report`, preserva seus campos de

@@ -46,8 +46,6 @@ EVIDENCE_REPORT_RE = re.compile(
 )
 # Parse the simple hook roster without third-party dependencies.
 HOOK_ID_RE = re.compile(r'^\s*-\s+id:\s*([A-Za-z0-9._-]+)\s*$')
-COMMIT_MSG_STAGE_RE = re.compile(r'^\s*stages:\s*\[[^\]]*commit-msg')
-PRE_PUSH_STAGE_RE = re.compile(r'^\s*stages:\s*\[[^\]]*pre-push')
 COMMIT_MSG_SAMPLE = 'feat(harness): synthetic commit-msg gate evidence\n'
 
 
@@ -75,26 +73,32 @@ def git_head() -> str:
     return head
 
 
-def _stage_hooks(stage_re: re.Pattern[str]) -> set[str]:
+def _stage_hooks(stage: str) -> set[str]:
+    pattern = re.compile(rf'^\s*stages:\s*\[[^\]]*{stage}')
     hooks: set[str] = set()
     current = ''
     for line in PRECOMMIT_CONFIG.read_text(encoding='utf-8').splitlines():
         match = HOOK_ID_RE.match(line)
         if match:
             current = match.group(1)
-        elif stage_re.match(line):
+        elif pattern.match(line):
             hooks.add(current)
     return hooks
 
 
 def commit_msg_hooks() -> set[str]:
     """Hook ids declared for the commit-msg stage."""
-    return _stage_hooks(COMMIT_MSG_STAGE_RE)
+    return _stage_hooks('commit-msg')
 
 
 def pre_push_hooks() -> set[str]:
     """Hook ids declared for the pre-push stage."""
-    return _stage_hooks(PRE_PUSH_STAGE_RE)
+    return _stage_hooks('pre-push')
+
+
+def manual_hooks() -> set[str]:
+    """Hook ids declared for the manual stage."""
+    return _stage_hooks('manual')
 
 
 def normalize_repo_path(raw_path: str) -> str:
@@ -144,24 +148,13 @@ def detect_changed_files() -> list[str]:
 def _path_state(repo_path: str) -> dict[str, str]:
     path = REPO_ROOT / repo_path
     if path.is_symlink():
-        digest = hashlib.sha256(os.readlink(path).encode('utf-8'))
-        return {
-            'path': repo_path,
-            'kind': 'symlink',
-            'sha256': digest.hexdigest(),
-        }
+        digest = hashlib.sha256(os.readlink(path).encode('utf-8')).hexdigest()
+        return {'path': repo_path, 'kind': 'symlink', 'sha256': digest}
     if path.is_file():
-        digest = hashlib.sha256(path.read_bytes())
-        return {
-            'path': repo_path,
-            'kind': 'file',
-            'sha256': digest.hexdigest(),
-        }
-    return {
-        'path': repo_path,
-        'kind': 'other' if path.exists() else 'missing',
-        'sha256': '',
-    }
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        return {'path': repo_path, 'kind': 'file', 'sha256': digest}
+    kind = 'other' if path.exists() else 'missing'
+    return {'path': repo_path, 'kind': kind, 'sha256': ''}
 
 
 def hook_contract() -> dict[str, bool]:
@@ -262,6 +255,8 @@ def run_gate(hook_id: str) -> dict[str, Any]:
         ]
     elif hook_id in pre_push_hooks():
         extra = ['--hook-stage', 'pre-push']
+    elif hook_id in manual_hooks():
+        extra = ['--hook-stage', 'manual']
     command = ' '.join(['pre-commit', 'run', '--all-files', *extra, hook_id])
     started, start = datetime.now(UTC), time.monotonic()
     try:

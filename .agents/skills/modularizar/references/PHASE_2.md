@@ -10,7 +10,7 @@ estrutural.
 
 - `references/PLAN_TEMPLATE.md` ao atualizar `## 6` e `## 7` do plano
 - `references/OUTPUT_TEMPLATE.md` ao montar `modularizar_<target-basename>-output.md`
-- `skills/modularizar/scripts/modularizar_guard.sh` ao validar plano e report
+- `.agents/skills/modularizar/scripts/modularizar_guard.sh` ao validar plano e report
 
 ## Pré-condições
 
@@ -56,7 +56,7 @@ estrutural.
     - motivo da ordem
 04. Peça aprovação explícita do usuário para o Gate 2 e pare antes de extrair módulos.
 05. Após a aprovação, valide com:
-    - `bash skills/modularizar/scripts/modularizar_guard.sh validate-plan --phase phase2 --target <file-or-module>`
+    - `bash .agents/skills/modularizar/scripts/modularizar_guard.sh validate-plan --phase phase2 --target <file-or-module>`
 06. Execute a Fase 2B:
     - extraia módulos por responsabilidade real
     - preserve como público apenas o que continua com callers reais ou reuso planejado
@@ -72,7 +72,7 @@ estrutural.
 10. Rode a validação final via `lint-and-validate` com o menor escopo útil para o diff.
 11. Finalize com:
 
-- `bash skills/modularizar/scripts/modularizar_guard.sh validate-report --target <file-or-module>`
+- `bash .agents/skills/modularizar/scripts/modularizar_guard.sh validate-report --target <file-or-module>`
 
 ## Regras que não podem ser violadas
 

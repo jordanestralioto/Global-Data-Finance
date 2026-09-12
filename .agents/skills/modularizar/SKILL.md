@@ -3,7 +3,7 @@ name: modularizar
 description: >-
   Use para sanear god files, god components e módulos monolíticos com migração
   auditável. Ative quando o usuário pedir "quebra esse arquivo gigante", "esse
-  componente virou monstro", "separa em módulos", "remove duplicação", "extrai
+  componente virou monstro", "separa em módulos", "extrai
   utilitários" ou invocar `[$modularizar]`. Aplique quando imports, exports,
   callers, contratos e gates precisarem ser rastreados. Não use para ajustes
   locais simples, pequenos renames, funções isoladas grandes ou quando o melhor
@@ -39,7 +39,7 @@ description: >-
 07. Depois de executar a Fase 1, preencha a avaliação de necessidade da Fase 2. Só considere a Fase 2 quando o alvo ainda tiver tamanho ou complexidade material e existir uma necessidade estrutural concreta de separar responsabilidades; tamanho isolado ou redistribuição mecânica não bastam.
 08. Se `PHASE_2_NEEDED: NO`, registre a justificativa, mantenha `## 6` e `## 7` intocadas, valide `phase1-complete` e encerre o workflow na Fase 1 sem pedir o Gate 2.
 09. Antes de editar código, peça a aprovação explícita do gate correspondente.
-10. Em cada gate, valide com `skills/modularizar/scripts/modularizar_guard.sh` antes de avançar.
+10. Em cada gate, valide com `.agents/skills/modularizar/scripts/modularizar_guard.sh` antes de avançar.
 11. Se o escopo mudar materialmente em qualquer etapa, revise o plano e peça nova aprovação antes de continuar.
 
 ## Procedimento
@@ -149,7 +149,7 @@ Não deve acionar:
 
 ## Scripts
 
-- `skills/modularizar/scripts/modularizar_guard.sh`: inicializa o plano, valida cada gate de fase e confere o relatório final do workflow.
+- `.agents/skills/modularizar/scripts/modularizar_guard.sh`: inicializa o plano, valida cada gate de fase e confere o relatório final do workflow.
 
 ## Referências
 

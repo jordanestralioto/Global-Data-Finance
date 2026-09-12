@@ -2,7 +2,7 @@
 name: performance-profiling
 description: >-
   Use para identificar o gargalo dominante quando a lentidão ainda não estiver
-  isolada. Ative com "está lento e não sei onde", "mede antes/depois", "qual
+  isolada de um serviço. Ative com "está lento e não sei onde", "mede antes/depois", "qual
   gargalo atacar primeiro?", "quero prova antes de otimizar", "ficou mais lento"
   ou "onde está o bottleneck?". Cobre profiling, baseline, comparação e
   evidências de antes/depois. Não use quando a causa já for query Postgres, query
@@ -73,7 +73,7 @@ Entregue:
 
 ## Uso de scripts
 
-- Use `python3 skills/performance-profiling/scripts/lighthouse_audit.py <url>` quando houver uma URL executavel e a suspeita inicial estiver no browser.
+- Use `python3 .agents/skills/performance-profiling/scripts/lighthouse_audit.py <url>` quando houver uma URL executavel e a suspeita inicial estiver no browser.
 - Trate o script como helper opcional de baseline, nao como diagnostico completo.
 - Nao exponha o script como solucao principal para backend ou banco; nesses casos ele so adiciona ruido.
 

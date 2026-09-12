@@ -332,6 +332,27 @@ class TestExtractorCsvToParquetSuccess:
         assert parquet_file.metadata.num_rows == 1
         assert parquet_file.schema_arrow.names == ['first', 'second']
 
+    def test_public_extraction_writes_empty_parquet_for_header_only_csv(
+        self, tmp_path
+    ):
+        archive_path = tmp_path / 'empty.zip'
+        output_path = tmp_path / 'empty.parquet'
+        with zipfile.ZipFile(archive_path, 'w') as archive:
+            archive.writestr('empty.csv', b'first;second\n')
+
+        with zipfile.ZipFile(archive_path) as archive:
+            ExtractorAdapter().extract_csv_from_zip_to_parquet(
+                archive,
+                output_path,
+                'empty.parquet',
+                'empty.csv',
+            )
+
+        parquet_file = pq.ParquetFile(output_path)
+        assert parquet_file.metadata.num_rows == 0
+        assert parquet_file.metadata.num_columns == 2
+        assert parquet_file.schema_arrow.names == ['first', 'second']
+
 
 class TestExtractorCsvToParquetFailureHandling:
     def test_public_extraction_wraps_unexpected_encoding_error(

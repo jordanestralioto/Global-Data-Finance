@@ -157,12 +157,10 @@ push commit range, so a diff `SKIP` without staged files is not a CI approval.
 but it is a generated projection maintained by the separate `central-skills`
 repository; generated files must never be edited manually.
 Ordinary contributors and project users do not need a `central-skills`
-installation: the portable `validate-agent-protocols` hook validates the
-tracked structure. A maintainer changing the selection or projection must fix
-the canonical source, regenerate with `harness-sync`, and run both checks:
+installation. A maintainer changing the selection or projection must fix
+the canonical source, regenerate with `harness-sync`, and run the check:
 
 ```bash
-uv run --locked --no-sync python .agents/scripts/validate-agent-protocols.py
 harness-sync --check
 ```
 
