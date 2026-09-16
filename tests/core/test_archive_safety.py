@@ -262,19 +262,22 @@ def test_crc_validation_respects_an_explicit_empty_info_list(
     archive_path = tmp_path / 'empty-selection.zip'
     archive_path.write_bytes(b'placeholder')
 
-    class _UnexpectedInfolist:
-        def infolist(self) -> list[zipfile.ZipInfo]:
-            raise AssertionError('infolist must not be called')
+    class _InfolistSpy:
+        def __init__(self) -> None:
+            self.calls = 0
 
-    assert (
-        validate_zip_crc_with_limits(
-            archive_path,
-            cast(zipfile.ZipFile, _UnexpectedInfolist()),
-            limits=_limits(),
-            infos=[],
-        )
-        is None
+        def infolist(self) -> list[zipfile.ZipInfo]:
+            self.calls += 1
+            return []
+
+    infolist_spy = _InfolistSpy()
+    validate_zip_crc_with_limits(
+        archive_path,
+        cast(zipfile.ZipFile, infolist_spy),
+        limits=_limits(),
+        infos=[],
     )
+    assert infolist_spy.calls == 0
 
 
 class _MetadataOnlyZip:
