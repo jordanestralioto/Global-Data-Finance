@@ -60,6 +60,7 @@ globaldatafinance/
 │   │           ├── extract.py                 # ParquetExtractorAdapterCVM
 │   │           ├── transaction.py             # commit em lote CVM tolerante a falhas
 │   │           ├── csv_pipeline/              # inferência global CSV + escrita Arrow
+│   │           ├── download_paths.py           # basename seguro derivado de URL
 │   │           ├── download_validation.py     # validate_downloaded_file, validate_parquet_files, find_parquet_files
 │   │           ├── download_extraction.py     # extract_downloaded_file (orquestra adapter + validation)
 │   │           └── errors.py                  # exceções específicas da fonte
@@ -96,7 +97,7 @@ arquivos. Uma nova fonte pode reutilizar esses limites quando fizer sentido.
 | Extração / escrita Parquet  | `csv_pipeline/` + `transaction.py`                 | `parquet_writer/` + `extraction_service/`                                               |
 | Parser de formato           | —                                                  | `cotahist_parser.py`                                                                   |
 | Catálogo de inputs          | —                                                  | `catalog.py`                                                                           |
-| Helpers de validação        | `download_validation.py`, `download_extraction.py` | embutidos em `filesystem.py` / `client.py`                                             |
+| Helpers de validação        | `download_paths.py`, `download_validation.py`, `download_extraction.py` | embutidos em `filesystem.py` / `client.py`                                             |
 | Exceções                    | `errors.py`                                        | `errors.py`                                                                            |
 
 ### Segurança compartilhada e commits de fonte
@@ -105,7 +106,10 @@ arquivos. Uma nova fonte pode reutilizar esses limites quando fizer sentido.
 fontes: limites configuráveis, validação do central directory e contagem dos
 bytes efetivamente descompactados. `core/utils/path_safety.py` valida o
 destino fornecido pelo chamador antes de criar diretórios. As regras de nomes
-permanecem nos owners: CSV na CVM e COTAHIST na B3.
+permanecem nos owners: CSV e nomes derivados de URL na CVM e COTAHIST na B3.
+`core/archive_names.py` expõe o validador neutro de basename portátil usado
+tanto pela fronteira de ZIP quanto pelo fluxo de URL da CVM; cada owner traduz
+o `ValueError` para sua própria exceção de diagnóstico.
 
 `macro_infra/transactional_publication/` é a infraestrutura compartilhada e
 não conhece schema ou regras de fonte. Ela mantém staging no mesmo filesystem,

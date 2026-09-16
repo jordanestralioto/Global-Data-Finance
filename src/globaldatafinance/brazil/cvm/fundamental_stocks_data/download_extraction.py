@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 from pathlib import Path
+from typing import Protocol
 
 from ....core import get_logger, remove_file
 from ....macro_exceptions import (
@@ -11,15 +12,21 @@ from ....macro_exceptions import (
 )
 from .core import DownloadResultCVM
 from .download_validation import find_parquet_files, validate_parquet_files
-from .extract import ParquetExtractorAdapterCVM
 
 logger = get_logger(__name__)
 
 ParquetArtifactStateCVM = dict[Path, tuple[int, int]]
 
 
+class _ParquetExtractor(Protocol):
+    """Minimal deferred CVM extraction collaborator contract."""
+
+    def extract(self, source_path: str, destination_path: str) -> None:
+        """Convert one source ZIP into destination Parquet artifacts."""
+
+
 def extract_downloaded_file(
-    file_extractor_repository: ParquetExtractorAdapterCVM,
+    file_extractor_repository: _ParquetExtractor,
     filepath: str,
     dest_path: str,
     doc_name: str,
@@ -70,14 +77,16 @@ def extract_downloaded_file(
     except DiskFullError as disk_err:
         logger.exception('Disk full during extraction of %s', document_key)
         result.add_error_downloads(document_key, f'DiskFull: {disk_err}')
-        cleanup_file(filepath)
+        logger.info(
+            'Keeping ZIP after disk-full extraction failure: %s', filepath
+        )
 
     except CorruptedZipError as zip_err:
         logger.exception(
             'Corrupted ZIP detected during extraction of %s', document_key
         )
         result.add_error_downloads(document_key, f'CorruptedZIP: {zip_err}')
-        cleanup_file(filepath)
+        logger.info('Keeping corrupted ZIP for investigation: %s', filepath)
 
     except ExtractionError as extract_err:
         logger.exception('Extraction error for %s', document_key)

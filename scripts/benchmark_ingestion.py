@@ -31,7 +31,6 @@ _prepare_input = _corpus.prepare_input
 _run_parent_scenario = _runtime.run_parent_scenario
 _median_records = _runtime.median_records
 _write_json = _support.write_json
-_child_operation = _runtime._child_operation
 
 
 def _current_git_sha() -> str:
@@ -92,15 +91,19 @@ def _child_source(arguments: argparse.Namespace) -> ScenarioInput:
 
 
 def _run_child(
-    source: ScenarioInput, repeat_index: int, result_path: Path
+    source: ScenarioInput,
+    repeat_index: int,
+    result_path: Path,
+    *,
+    operation: _runtime.ChildOperation = _runtime.execute_child_operation,
 ) -> None:
     """Run a child while honoring test seams exposed by this entry point."""
-    original = _runtime._child_operation
-    _runtime._child_operation = _child_operation
-    try:
-        _runtime.run_child(source, repeat_index, result_path)
-    finally:
-        _runtime._child_operation = original
+    _runtime.run_child(
+        source,
+        repeat_index,
+        result_path,
+        operation=operation,
+    )
 
 
 def main() -> int:
@@ -153,7 +156,7 @@ def main() -> int:
     if arguments.output is not None:
         _write_json(arguments.output, payload)
     else:
-        print(json.dumps(payload, indent=2, sort_keys=True))
+        sys.stdout.write(json.dumps(payload, indent=2, sort_keys=True) + '\n')
     return 1 if payload['status'] == 'failed' else 0
 
 

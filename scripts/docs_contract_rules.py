@@ -10,6 +10,7 @@ DISALLOWED_SYMBOLS = {
     'GlobalDataFinanceError',
     'download_single',
     'download_files',
+    'get_logging_settings',
 }
 KNOWN_IMPORTS: dict[str, set[str]] = {
     'globaldatafinance': {
@@ -21,7 +22,6 @@ KNOWN_IMPORTS: dict[str, set[str]] = {
         'ResourceLimits',
         'setup_logging',
         'get_logger',
-        'get_logging_settings',
         'is_logging_configured',
         'log_execution_time',
         'log_with_context',
@@ -29,12 +29,17 @@ KNOWN_IMPORTS: dict[str, set[str]] = {
         'ResourceState',
         'RetryStrategy',
     },
+    'globaldatafinance.core.config': {
+        'ArchiveSafetySettings',
+        'NetworkSettings',
+        'PathSafetySettings',
+        'Settings',
+    },
     'globaldatafinance.core.logging_config': {
         'ContextFilter',
         'LoggingSettings',
         'StructuredFormatter',
         'get_logger',
-        'get_logging_settings',
         'is_logging_configured',
         'log_execution_time',
         'log_with_context',

@@ -159,9 +159,9 @@ ______________________________________________________________________
 
 ## Dependência
 
-O monitoramento utiliza `psutil` para consultar métricas do sistema operacional. O pacote `psutil` já é uma dependência padrão do `globaldatafinance` instalada automaticamente.
+O monitoramento utiliza `psutil` para consultar métricas do sistema operacional. O pacote `psutil` é uma dependência obrigatória do `globaldatafinance` e é instalado automaticamente.
 
-Caso o `psutil` não esteja disponível ou seja restrito no ambiente de execução, o `ResourceMonitor` entra automaticamente em modo degradado seguro (retornando `ResourceState.HEALTHY`).
+Se a instalação estiver incompleta ou o módulo não puder ser carregado, a importação falhará explicitamente. Não há modo degradado que reporte `ResourceState.HEALTHY` sem telemetria, pois esse resultado poderia liberar processamento sem os limites de segurança de memória e CPU.
 
 ______________________________________________________________________
 

@@ -5,6 +5,7 @@ import pytest
 from globaldatafinance.brazil.b3_data.historical_quotes.filesystem import (
     FileSystemServiceB3,
 )
+from globaldatafinance.core.utils import assert_path_not_sensitive
 from globaldatafinance.macro_exceptions import (
     EmptyDirectoryError,
     InvalidDestinationPathError,
@@ -106,59 +107,59 @@ class TestFileSystemServiceSecurityValidation:
     def service(self):
         return FileSystemServiceB3()
 
-    def test_validate_path_safety_blocks_etc(self, service):
+    def test_validate_path_safety_blocks_etc(self):
         with pytest.raises(SecurityError):
-            service._validate_path_safety(Path('/etc/passwd').resolve())
+            assert_path_not_sensitive(Path('/etc/passwd').resolve())
 
-    def test_validate_path_safety_blocks_root(self, service):
+    def test_validate_path_safety_blocks_root(self):
         with pytest.raises(SecurityError):
-            service._validate_path_safety(Path('/root/secret').resolve())
+            assert_path_not_sensitive(Path('/root/secret').resolve())
 
-    def test_validate_path_safety_blocks_sys(self, service):
+    def test_validate_path_safety_blocks_sys(self):
         with pytest.raises(SecurityError):
-            service._validate_path_safety(Path('/sys/kernel').resolve())
+            assert_path_not_sensitive(Path('/sys/kernel').resolve())
 
-    def test_validate_path_safety_blocks_proc(self, service):
+    def test_validate_path_safety_blocks_proc(self):
         with pytest.raises(SecurityError):
-            service._validate_path_safety(Path('/proc/meminfo').resolve())
+            assert_path_not_sensitive(Path('/proc/meminfo').resolve())
 
-    def test_validate_path_safety_blocks_dev(self, service):
+    def test_validate_path_safety_blocks_dev(self):
         with pytest.raises(SecurityError):
-            service._validate_path_safety(Path('/dev/null').resolve())
+            assert_path_not_sensitive(Path('/dev/null').resolve())
 
-    def test_validate_path_safety_blocks_boot(self, service):
+    def test_validate_path_safety_blocks_boot(self):
         with pytest.raises(SecurityError):
-            service._validate_path_safety(Path('/boot/grub').resolve())
+            assert_path_not_sensitive(Path('/boot/grub').resolve())
 
-    def test_validate_path_safety_blocks_usr(self, service):
+    def test_validate_path_safety_blocks_usr(self):
         with pytest.raises(SecurityError):
-            service._validate_path_safety(Path('/usr/local/bin').resolve())
+            assert_path_not_sensitive(Path('/usr/local/bin').resolve())
 
-    def test_validate_path_safety_blocks_var(self, service):
+    def test_validate_path_safety_blocks_var(self):
         with pytest.raises(SecurityError):
-            service._validate_path_safety(Path('/var/log/secret').resolve())
+            assert_path_not_sensitive(Path('/var/log/secret').resolve())
 
-    def test_validate_path_safety_blocks_lib(self, service):
+    def test_validate_path_safety_blocks_lib(self):
         with pytest.raises(SecurityError):
-            service._validate_path_safety(Path('/lib/systemd').resolve())
+            assert_path_not_sensitive(Path('/lib/systemd').resolve())
 
-    def test_validate_path_safety_blocks_user_ssh(self, service):
+    def test_validate_path_safety_blocks_user_ssh(self):
         target = Path.home() / '.ssh' / 'id_rsa'
         with pytest.raises(SecurityError):
-            service._validate_path_safety(target)
+            assert_path_not_sensitive(target)
 
-    def test_validate_path_safety_blocks_user_aws(self, service):
+    def test_validate_path_safety_blocks_user_aws(self):
         target = Path.home() / '.aws' / 'credentials'
         with pytest.raises(SecurityError):
-            service._validate_path_safety(target)
+            assert_path_not_sensitive(target)
 
-    def test_validate_path_safety_blocks_user_gnupg(self, service):
+    def test_validate_path_safety_blocks_user_gnupg(self):
         target = Path.home() / '.gnupg' / 'secring.gpg'
         with pytest.raises(SecurityError):
-            service._validate_path_safety(target)
+            assert_path_not_sensitive(target)
 
     def test_validate_path_safety_allows_user_config(
-        self, service, tmp_path, monkeypatch
+        self, tmp_path, monkeypatch
     ):
         # ~/.config is intentionally allowed for legitimate user configuration.
         fake_home = tmp_path / 'fake_home'
@@ -166,7 +167,7 @@ class TestFileSystemServiceSecurityValidation:
         config_dir = fake_home / '.config' / 'globaldatafinance' / 'cache'
         config_dir.mkdir(parents=True)
         monkeypatch.setenv('HOME', str(fake_home))
-        assert service._validate_path_safety(config_dir.resolve()) is None
+        assert assert_path_not_sensitive(config_dir.resolve()) is None
 
     def test_validate_directory_path_blocks_windows_system(self, service):
         # Cross-platform: even on POSIX, a Windows system path must be
@@ -180,29 +181,25 @@ class TestFileSystemServiceSecurityValidation:
         with pytest.raises(SecurityError):
             service.validate_directory_path('C:\\Program Files\\Sensitive')
 
-    def test_validate_path_safety_does_not_false_positive_etcd(
-        self, service, tmp_path
-    ):
+    def test_validate_path_safety_does_not_false_positive_etcd(self, tmp_path):
         # Regression: the previous CVM `startswith` check would block
         # /etcd_data because the prefix /etc matches; the path-aware
         # helper must allow such directories.
         etcd_like = tmp_path / 'etcd_data'
         etcd_like.mkdir()
-        assert service._validate_path_safety(etcd_like.resolve()) is None
+        assert assert_path_not_sensitive(etcd_like.resolve()) is None
 
-    def test_validate_path_safety_allows_safe_paths(self, service, tmp_path):
+    def test_validate_path_safety_allows_safe_paths(self, tmp_path):
         safe_dir = tmp_path / 'safe_directory'
         safe_dir.mkdir()
 
-        assert service._validate_path_safety(safe_dir.resolve()) is None
+        assert assert_path_not_sensitive(safe_dir.resolve()) is None
 
-    def test_validate_path_safety_allows_home_directory(
-        self, service, tmp_path
-    ):
+    def test_validate_path_safety_allows_home_directory(self, tmp_path):
         home_like = tmp_path / 'home' / 'user' / 'data'
         home_like.mkdir(parents=True)
 
-        assert service._validate_path_safety(home_like.resolve()) is None
+        assert assert_path_not_sensitive(home_like.resolve()) is None
 
     def test_validate_directory_with_path_traversal_attempt(
         self, service, tmp_path

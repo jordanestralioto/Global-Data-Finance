@@ -12,7 +12,6 @@ from globaldatafinance.application.b3_docs import (
 )
 
 pytestmark = pytest.mark.unit
-# allow-assertion-reduction: Consolidated facade contract cases.
 
 
 def _raw_result(*, error_count: int = 0) -> dict[str, object]:
@@ -74,6 +73,7 @@ def test_extract_forwards_normalized_arguments_and_enriches_result(
         initial_year=2020,
         last_year=2023,
         destination_path='/output',
+        allowed_unc_roots=(),
     )
     extract_use_case.execute.assert_awaited_once_with(
         docs_to_extract=docs,
@@ -122,6 +122,7 @@ async def test_extract_async_applies_defaults_and_preserves_error(
         initial_year=1986,
         last_year=2026,
         destination_path=None,
+        allowed_unc_roots=(),
     )
     extract_use_case.execute.assert_awaited_once_with(
         docs_to_extract=docs,

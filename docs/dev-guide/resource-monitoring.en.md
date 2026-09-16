@@ -159,9 +159,9 @@ ______________________________________________________________________
 
 ## External Dependencies
 
-The monitoring module utilizes `psutil` to query OS-level process and system metrics. The `psutil` package is a standard core dependency of `globaldatafinance` and is installed automatically.
+The monitoring module utilizes `psutil` to query OS-level process and system metrics. The `psutil` package is a mandatory core dependency of `globaldatafinance` and is installed automatically.
 
-If `psutil` is absent or restricted in the host runtime environment, the monitoring engine operates gracefully in a fallback degraded mode (consistently returning `ResourceState.HEALTHY`).
+If the installation is incomplete or the module cannot be loaded, importing the package fails explicitly. There is no degraded mode that reports `ResourceState.HEALTHY` without telemetry, because that result could admit work without the memory and CPU safety limits.
 
 ______________________________________________________________________
 

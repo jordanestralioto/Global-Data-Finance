@@ -2,9 +2,11 @@
 
 import os
 import re
+from collections.abc import Sequence
 from pathlib import Path
 
 from ....core import get_logger
+from ....core.config import PathSafetySettings
 from ....core.utils import assert_path_not_sensitive
 from ....macro_exceptions import (
     EmptyDirectoryError,
@@ -30,22 +32,15 @@ class FileSystemServiceB3:
     ``assert_path_not_sensitive`` helper.
     """
 
-    @staticmethod
-    def _validate_path_safety(path: Path) -> None:
-        """Block writes into sensitive system or user-secret directories.
-
-        Thin wrapper around
-        :func:`globaldatafinance.core.utils.assert_path_not_sensitive`.
-        Kept as a staticmethod on the service so existing callers and
-        tests that depend on the method name continue to work.
-
-        Args:
-            path: A resolved ``Path`` to validate.
-
-        Raises:
-            SecurityError: If path falls inside any blocked directory.
-        """
-        assert_path_not_sensitive(path.resolve())
+    def __init__(
+        self,
+        *,
+        allowed_unc_roots: Sequence[str] | None = None,
+    ) -> None:
+        """Store an immutable trusted-UNC policy snapshot."""
+        self._allowed_unc_roots = PathSafetySettings.resolve_allowed_unc_roots(
+            allowed_unc_roots
+        )
 
     def validate_directory_path(self, path: str) -> Path:
         """Validate that a path exists and is a directory."""
@@ -97,8 +92,8 @@ class FileSystemServiceB3:
 
         return normalized_path
 
-    @staticmethod
     def _normalize_path(
+        self,
         path: str,
         *,
         type_label: str,
@@ -113,7 +108,11 @@ class FileSystemServiceB3:
             raise InvalidDestinationPathError(empty_message)
 
         normalized_path = Path(path).expanduser().resolve()
-        assert_path_not_sensitive(normalized_path, raw_input=path)
+        assert_path_not_sensitive(
+            normalized_path,
+            raw_input=path,
+            allowed_unc_roots=self._allowed_unc_roots,
+        )
         return normalized_path
 
     def find_files_by_years(self, directory: Path, years: range) -> set[str]:

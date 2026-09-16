@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Detect test erosion in staged or ranged Git diffs.
 
-The gate rejects focused/skipped tests, assertion loss, unauthorized test
-deletions, and stale deletion-policy entries.
+The gate rejects focused tests, skips, assertion loss, and stale policies.
 """
 
 from __future__ import annotations
@@ -17,8 +16,10 @@ if __package__ in {None, ''}:
 
 from scripts.git_changes import GitInspectionError, get_diff, read_git_file
 from scripts.integrity_policy import (
-    read_policy_entries,
-    stale_deletion_policy_errors,
+    file_patch_hashes,
+    is_assertion_reduction_approved,
+    is_test_deletion_approved,
+    test_integrity_policy_errors,
 )
 
 # Focused tests are strictly prohibited in pre-commit (no bypass allowed)
@@ -51,13 +52,9 @@ ASSERTION_PATTERNS = re.compile(
     r'assertIs|assertEqual|assertTrue|assertFalse|pytest\.(?:raises|warns)\()'
 )
 
-# Must include a colon and non-empty reason content
+# Must include a colon and non-empty reason content.
 ALLOW_SKIP_RE = re.compile(
     r'(?:allow-skip|skip-reason):\s*\S+.*', re.IGNORECASE
-)
-ALLOW_ASSERTION_REDUCTION_RE = re.compile(
-    r'(?:allow-assertion-reduction|assertion-reduction-reason):\s*\S+.*',
-    re.IGNORECASE,
 )
 _ALLOW_DELETED_FLAG = '--allow-' + 'deleted-tests'
 
@@ -95,23 +92,6 @@ def read_staged_git_file(
     return read_git_file(file_path, repo_root=repo_root)
 
 
-def is_test_deletion_approved(
-    file_path: str,
-    repo_root: Path | None = None,
-    revision_range: str | None = None,
-) -> bool:
-    """Check whether a test deletion has approval in inspected Git state."""
-    for policy_name in ('.test-deletions.json', '.test-integrity-policy.json'):
-        reason = read_policy_entries(
-            policy_name, repo_root=repo_root, revision_range=revision_range
-        ).get(file_path)
-        if isinstance(reason, str) and reason.strip():
-            return True
-        if isinstance(reason, dict) and str(reason.get('reason', '')).strip():
-            return True
-    return False
-
-
 def get_staged_diff(target_files: list[str] | None = None) -> str:
     """Retrieve a non-renamed staged diff for direct script callers."""
     return get_diff(
@@ -125,9 +105,9 @@ def _evaluate_file_assertions(
     file_path: str,
     removed_assertions: int,
     added_assertions: int,
-    has_reduction_allow: bool,
     is_deleted: bool,
     allow_deleted: bool,
+    diff_sha256: str | None,
     repo_root: Path | None = None,
     revision_range: str | None = None,
 ) -> list[str]:
@@ -149,12 +129,21 @@ def _evaluate_file_assertions(
                 f'changes. To authorize, pass {_ALLOW_DELETED_FLAG} '
                 'or stage a policy entry in .test-integrity-policy.json.'
             )
-    elif removed_assertions > added_assertions and not has_reduction_allow:
+    elif (
+        removed_assertions > added_assertions
+        and not is_assertion_reduction_approved(
+            file_path,
+            diff_sha256,
+            is_test_file,
+            repo_root,
+            revision_range,
+        )
+    ):
         errors.append(
-            f'{file_path}: [TEST_INTEGRITY] Net reduction of test assertions '
-            f'detected ({removed_assertions} removed vs {added_assertions} '
-            'added without '
-            f'"allow-assertion-reduction: <reason>")'
+            f'{file_path}: [TEST_INTEGRITY] Net reduction of test '
+            f'assertions detected ({removed_assertions} removed vs '
+            f'{added_assertions} added without '
+            'a hash-bound allowed_assertion_reductions entry)'
         )
     return errors
 
@@ -179,20 +168,20 @@ def _check_focus_or_skip_line(
 
 
 class _FileDiffState:
-    def __init__(self) -> None:
+    def __init__(self, patch_hashes: dict[str, str]) -> None:
         self.current_file: str = ''
         self.prev_file: str = ''
         self.line_num: int = 0
         self.removed_assertions: int = 0
         self.added_assertions: int = 0
-        self.has_assertion_reduction_allow: bool = False
         self.is_deleted_file: bool = False
+        self.patch_hashes = patch_hashes
+        self.reduced_paths: set[str] = set()
 
     def reset_for_file(self, file_path: str, is_deleted: bool = False) -> None:
         self.current_file = file_path
         self.removed_assertions = 0
         self.added_assertions = 0
-        self.has_assertion_reduction_allow = False
         self.is_deleted_file = is_deleted
 
     def evaluate(
@@ -201,13 +190,18 @@ class _FileDiffState:
         repo_root: Path | None = None,
         revision_range: str | None = None,
     ) -> list[str]:
+        if (
+            not self.is_deleted_file
+            and self.removed_assertions > self.added_assertions
+        ):
+            self.reduced_paths.add(self.current_file)
         return _evaluate_file_assertions(
             self.current_file,
             self.removed_assertions,
             self.added_assertions,
-            self.has_assertion_reduction_allow,
             self.is_deleted_file,
             allow_deleted,
+            self.patch_hashes.get(self.current_file),
             repo_root,
             revision_range,
         )
@@ -257,8 +251,6 @@ class _FileDiffState:
         content = line[1:].strip()
         if not content:
             return []
-        if ALLOW_ASSERTION_REDUCTION_RE.search(content):
-            self.has_assertion_reduction_allow = True
         if ASSERTION_PATTERNS.search(content):
             self.added_assertions += 1
         return _check_focus_or_skip_line(
@@ -279,7 +271,7 @@ def scan_test_integrity(
 ) -> list[str]:
     """Scan diff for test integrity violations."""
     errors: list[str] = []
-    state = _FileDiffState()
+    state = _FileDiffState(file_patch_hashes(diff_text))
 
     for line in diff_text.splitlines():
         if state.track_previous_file(line):
@@ -297,11 +289,12 @@ def scan_test_integrity(
 
     errors.extend(state.evaluate(allow_deleted, repo_root, revision_range))
     errors.extend(
-        stale_deletion_policy_errors(
+        test_integrity_policy_errors(
             diff_text,
+            state.reduced_paths,
+            is_test_file,
             repo_root=repo_root,
             revision_range=revision_range,
-            is_test_file=is_test_file,
         )
     )
     return errors
@@ -331,6 +324,14 @@ def main() -> int:
             'Inspect an explicit Git A..B or A...B range instead of the index.'
         ),
     )
+    parser.add_argument(
+        '--print-hash',
+        action='store_true',
+        help=(
+            'Print canonical SHA-256 hashes for test-file patches without '
+            'evaluating the integrity policy.'
+        ),
+    )
     args = parser.parse_args()
     if args.files and args.revision_range:
         parser.error('files cannot be combined with --range')
@@ -347,6 +348,13 @@ def main() -> int:
             sys.stdout.write(
                 f'SKIP [TEST_INTEGRITY]: No {scope} changes to inspect.\n'
             )
+            return 0
+        if args.print_hash:
+            for file_path, digest in sorted(
+                file_patch_hashes(diff_text).items()
+            ):
+                if is_test_file(file_path):
+                    sys.stdout.write(f'{file_path} {digest}\n')
             return 0
         errors = scan_test_integrity(
             diff_text,
@@ -368,8 +376,8 @@ def main() -> int:
             sys.stderr.write(f'  • {error_msg}\n')
         sys.stderr.write(
             '\nResolution: Restore assertions, remove .only/fit markers, or '
-            'justify with '
-            '"allow-assertion-reduction: <reason>" / "allow-skip: <reason>".\n'
+            'add a matching hash-bound entry to '
+            'allowed_assertion_reductions or use the documented skip reason.\n'
         )
         return 1
 

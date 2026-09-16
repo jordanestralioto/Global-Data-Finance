@@ -1,398 +1,388 @@
-"""Parse B3 COTAHIST fixed-width quote records."""
+"""Strict parser for B3 COTAHIST fixed-width quote records."""
 
-from datetime import date, datetime
-from decimal import Decimal, InvalidOperation
-from typing import Any
+from __future__ import annotations
 
-from ....core import get_logger
+from dataclasses import dataclass
+from datetime import date
+from decimal import Decimal
+from typing import Any, cast
 
-logger = get_logger(__name__)
+from ....macro_exceptions import ExtractionError
+from .integrity import B3RecordContext
+
+_EXPECTED_LENGTH = 245
+# ``decimal128(38, 2)`` has 38 total significant digits, two of which are
+# reserved for the fractional scale.  COTAHIST V99 values are integer cents,
+# so at most 36 digits may appear before the implicit decimal point.
+_DECIMAL_MAX_INTEGER_DIGITS = 36
+_MAX_INT64_TEXT = str(2**63 - 1)
+
+
+@dataclass
+class B3ParserMetrics:
+    """Per-source classification counts produced by the strict parser."""
+
+    blank_lines: int = 0
+    header_records: int = 0
+    trailer_records: int = 0
+    filtered_records: int = 0
+    selected_records: int = 0
+    parsed_records: int = 0
+
+
+CsvRow = tuple[str | None, ...]
+
+_FIELD_NAMES = (
+    'data_pregao',
+    'codigo_bdi',
+    'ticker',
+    'tipo_mercado',
+    'nome_resumido',
+    'especificacao_papel',
+    'preco_abertura',
+    'preco_maximo',
+    'preco_minimo',
+    'preco_medio',
+    'preco_fechamento',
+    'melhor_oferta_compra',
+    'melhor_oferta_venda',
+    'numero_negocios',
+    'quantidade_total',
+    'volume_total',
+    'data_vencimento',
+    'fator_cotacao',
+    'codigo_isin',
+    'numero_distribuicao',
+)
 
 
 class CotahistParserB3:
-    """Parser for COTAHIST fixed-width format files from B3.
+    """Parse only valid selected COTAHIST records into typed dictionaries."""
 
-    Each line is 245 bytes. The parser follows the official B3 layout
-    specification.
-    Includes robust error handling and validation for malformed data.
-    """
-
-    # Expected line length for COTAHIST format
-    EXPECTED_LINE_LENGTH = 245
-
-    _error_count = 0
-    _max_errors_to_log = 10  # Only log first 10 errors to avoid spam
-    _filtered_count = 0  # Track lines filtered out by TPMERC
-    _log_filtering_interval = 100_000  # Log filtering stats every 100k lines
-    _max_degradation_warnings_per_category = 3
+    EXPECTED_LINE_LENGTH = _EXPECTED_LENGTH
 
     def __init__(self) -> None:
-        """Initialize parser counters and degraded-value tracking."""
-        self._error_count = 0
-        self._filtered_count = 0
-        self._degradation_counts: dict[str, int] = {}
+        """Initialize source-local classification metrics."""
+        self.metrics = B3ParserMetrics()
+
+    @property
+    def filtered_records(self) -> int:
+        """Return records excluded by TPMERC before field conversion."""
+        return self.metrics.filtered_records
 
     def parse_line(
-        self, line: str, target_tpmerc_codes: set[str]
-    ) -> dict[str, Any] | None:
-        """Parse a single line from COTAHIST file with robust error handling.
-
-        Args:
-            line: A line from COTAHIST file (expected 245 bytes)
-            target_tpmerc_codes: Set of TPMERC codes to filter, such as
-                ``{'010', '020'}``.
-
-        Returns:
-            Dictionary with parsed data if TPMERC matches; otherwise ``None``.
-            Returns ``None`` for headers (00), trailers (99), and malformed
-            records.
-        """
-        normalized_line = self._normalize_line(line)
-        if normalized_line is None:
-            return None
-
-        try:
-            if normalized_line[0:2] != '01':
-                return None
-            if not self._matches_target_market(
-                normalized_line, target_tpmerc_codes
-            ):
-                return None
-            return self._parse_quote_record(normalized_line)
-        except (IndexError, ValueError, AttributeError) as error:
-            self._log_parse_failure(normalized_line, error)
-            return None
-        except Exception:
-            if self._error_count < self._max_errors_to_log:
-                logger.exception(
-                    'Unexpected error parsing line',
-                    extra={'line_preview': normalized_line[:50]},
-                )
-                self._error_count += 1
-            return None
-
-    def _normalize_line(self, line: str) -> str | None:
-        """Accept exact-width quote records without altering their data."""
-        if len(line) < 2:
-            return None
-        record_type = line[:2]
-        if record_type != '01':
-            return line
-        if len(line) != self.EXPECTED_LINE_LENGTH:
-            self._log_invalid_record_layout(line, record_type)
-            return None
-        return line
-
-    def _log_invalid_record_layout(self, line: str, record_type: str) -> None:
-        """Warn about malformed quote records without flooding the logs."""
-        if self._error_count >= self._max_errors_to_log:
-            return
-        logger.warning(
-            'Discarding malformed COTAHIST quote record',
-            extra={
-                'line_length': len(line),
-                'record_type': record_type,
-                'line_preview': line[:80],
-                'error_count': self._error_count + 1,
-            },
-        )
-        self._error_count += 1
-
-    def _matches_target_market(
-        self, line: str, target_tpmerc_codes: set[str]
-    ) -> bool:
-        """Return whether the quote belongs to a requested B3 market."""
-        tpmerc = line[24:27].strip()
-        if tpmerc in target_tpmerc_codes:
-            return True
-
-        self._filtered_count += 1
-        if self._filtered_count % self._log_filtering_interval == 0:
-            logger.debug(
-                f'Filtered {self._filtered_count:,} lines by TPMERC code',
-                extra={'target_codes': sorted(target_tpmerc_codes)},
-            )
-        return False
-
-    def _log_parse_failure(
         self,
         line: str,
-        error: Exception,
-    ) -> None:
-        """Log one parsing failure while respecting the existing throttle."""
-        if self._error_count >= self._max_errors_to_log:
-            return
-        extra = {'line_preview': line[:50] if len(line) >= 50 else line}
-        logger.warning(
-            f'Error parsing line (error #{self._error_count + 1}): '
-            f'{type(error).__name__} - {error}',
-            extra=extra,
+        target_tpmerc_codes: set[str],
+        context: B3RecordContext | None = None,
+    ) -> dict[str, Any] | None:
+        """Classify and strictly parse one physical COTAHIST source line."""
+        row = self.parse_line_to_csv_row(
+            line, target_tpmerc_codes, context=context
         )
-        self._error_count += 1
-
-    def _parse_quote_record(self, line: str) -> dict[str, Any] | None:
-        """Parse a type 01 (quote) record with safe field extraction.
-
-        Field positions are 1-indexed in the specification.
-        Python uses 0-indexed slicing, so we subtract 1 from start positions.
-
-        Args:
-            line: A 245-character line from COTAHIST file
-
-        Returns:
-            Dictionary with parsed fields, or ``None`` when the record cannot
-            be parsed at all. Individual unparseable fields fall back to safe
-            defaults (the record is still kept), but a catastrophic failure
-            drops the line instead of emitting an all-zeros garbage row, since
-            data integrity is a declared product priority.
-        """
-        try:
-            return {
-                # Data do Pregão (positions 3-10)
-                'data_pregao': self._parse_required_date(
-                    self._safe_slice(line, 2, 10),
-                    field_name='data_pregao',
-                ),
-                # Código BDI (positions 11-12)
-                'codigo_bdi': self._safe_slice(line, 10, 12).strip(),
-                # Código de Negociação - Ticker (positions 13-24)
-                'ticker': self._safe_slice(line, 12, 24).strip(),
-                # Tipo de Mercado (positions 25-27)
-                'tipo_mercado': self._safe_slice(line, 24, 27).strip(),
-                # Nome Resumido (positions 28-39)
-                'nome_resumido': self._safe_slice(line, 27, 39).strip(),
-                # Especificação do Papel (positions 40-49)
-                'especificacao_papel': self._safe_slice(line, 39, 49).strip(),
-                # Preço de Abertura (positions 57-69, format (11)V99)
-                'preco_abertura': self._parse_decimal_v99(
-                    self._safe_slice(line, 56, 69),
-                    field_name='preco_abertura',
-                ),
-                # Preço Máximo (positions 70-82, format (11)V99)
-                'preco_maximo': self._parse_decimal_v99(
-                    self._safe_slice(line, 69, 82),
-                    field_name='preco_maximo',
-                ),
-                # Preço Mínimo (positions 83-95, format (11)V99)
-                'preco_minimo': self._parse_decimal_v99(
-                    self._safe_slice(line, 82, 95),
-                    field_name='preco_minimo',
-                ),
-                # Preço Médio (positions 96-108, format (11)V99)
-                'preco_medio': self._parse_decimal_v99(
-                    self._safe_slice(line, 95, 108),
-                    field_name='preco_medio',
-                ),
-                # Preço de Fechamento (positions 109-121, format (11)V99)
-                'preco_fechamento': self._parse_decimal_v99(
-                    self._safe_slice(line, 108, 121),
-                    field_name='preco_fechamento',
-                ),
-                # Melhor Oferta de Compra (positions 122-134, format (11)V99)
-                'melhor_oferta_compra': self._parse_decimal_v99(
-                    self._safe_slice(line, 121, 134),
-                    field_name='melhor_oferta_compra',
-                ),
-                # Melhor Oferta de Venda (positions 135-147, format (11)V99)
-                'melhor_oferta_venda': self._parse_decimal_v99(
-                    self._safe_slice(line, 134, 147),
-                    field_name='melhor_oferta_venda',
-                ),
-                # Número de Negócios (positions 148-152)
-                'numero_negocios': self._parse_int(
-                    self._safe_slice(line, 147, 152),
-                    field_name='numero_negocios',
-                ),
-                # Quantidade Total (positions 153-170)
-                'quantidade_total': self._parse_int(
-                    self._safe_slice(line, 152, 170),
-                    field_name='quantidade_total',
-                ),
-                # Volume Total (positions 171-188, format (16)V99)
-                'volume_total': self._parse_decimal_v99(
-                    self._safe_slice(line, 170, 188),
-                    field_name='volume_total',
-                ),
-                # Data de Vencimento (positions 203-210) - for options/term
-                'data_vencimento': self._parse_date_optional(
-                    self._safe_slice(line, 202, 210)
-                ),
-                # Fator de Cotação (positions 211-217)
-                'fator_cotacao': self._parse_int(
-                    self._safe_slice(line, 210, 217),
-                    field_name='fator_cotacao',
-                ),
-                # Código ISIN (positions 231-242)
-                'codigo_isin': self._safe_slice(line, 230, 242).strip(),
-                # Número de Distribuição (positions 243-245)
-                'numero_distribuicao': self._parse_int(
-                    self._safe_slice(line, 242, 245),
-                    field_name='numero_distribuicao',
-                ),
-            }
-        except Exception as e:
-            self._warn_degraded_value(
-                category='quote_record',
-                field_name='record',
-                raw_value=line[:50],
-                fallback='dropped record',
-            )
-            logger.error(f'Error parsing quote record: {e}', exc_info=True)
+        if row is None:
             return None
+        return self._typed_record(row)
 
-    def _safe_slice(self, line: str, start: int, end: int) -> str:
-        """Safely slice a string with bounds checking.
-
-        Args:
-            line: String to slice
-            start: Start index
-            end: End index
-
-        Returns:
-            Sliced string, empty if indices are out of bounds
-        """
-        try:
-            if start < 0 or end > len(line) or start >= end:
-                return ''
-            return line[start:end]
-        except TypeError:
-            return ''
-
-    def _parse_date_optional(self, date_str: str) -> date | None:
-        """Parse optional date field.
-
-        Args:
-            date_str: Date string in YYYYMMDD format
-
-        Returns:
-            date object or None if empty/invalid
-        """
-        date_str = date_str.strip()
-        if not date_str or date_str == '00000000':
-            return None
-        return self._parse_date(date_str)
-
-    def _parse_required_date(
+    def parse_line_to_csv_row(
         self,
-        date_str: str,
+        line: str,
+        target_tpmerc_codes: set[str],
+        context: B3RecordContext | None = None,
+    ) -> CsvRow | None:
+        """Return a validated canonical row for Arrow CSV conversion.
+
+        This internal fast path validates the same fixed-width record before
+        constructing Arrow values.  It avoids creating temporary ``date``,
+        ``Decimal``, and dictionary objects that the writer would serialize
+        back into CSV immediately afterwards.
+        """
+        normalized = line.rstrip('\r\n')
+        record_type = normalized[:2]
+        if not normalized:
+            self.metrics.blank_lines += 1
+            return None
+        if record_type == '00':
+            self.metrics.header_records += 1
+            return None
+        if record_type == '99':
+            self.metrics.trailer_records += 1
+            return None
+        if record_type != '01':
+            raise self._record_error(
+                context,
+                normalized,
+                record_type,
+                'record_type',
+                normalized[:2],
+                'Unsupported non-empty COTAHIST record type',
+            )
+        if len(normalized) != _EXPECTED_LENGTH:
+            raise self._record_error(
+                context,
+                normalized,
+                record_type,
+                'record_length',
+                str(len(normalized)),
+                f'Expected exactly {_EXPECTED_LENGTH} characters',
+            )
+        market = normalized[24:27].strip()
+        if market not in target_tpmerc_codes:
+            self.metrics.filtered_records += 1
+            return None
+        self.metrics.selected_records += 1
+        row = self._normalize_selected_record(normalized, context)
+        self.metrics.parsed_records += 1
+        return row
+
+    def _normalize_selected_record(
+        self, line: str, context: B3RecordContext | None
+    ) -> CsvRow:
+        """Normalize the exact COTAHIST layout in canonical schema order."""
+        return (
+            self._normalize_required_date(
+                line[2:10], context, field_name='data_pregao'
+            ),
+            line[10:12].strip(),
+            self._normalize_required_text(
+                line[12:24], context, field_name='ticker'
+            ),
+            self._normalize_required_text(
+                line[24:27], context, field_name='tipo_mercado'
+            ),
+            line[27:39].strip(),
+            line[39:49].strip(),
+            self._normalize_decimal_v99(
+                line[56:69], context, field_name='preco_abertura'
+            ),
+            self._normalize_decimal_v99(
+                line[69:82], context, field_name='preco_maximo'
+            ),
+            self._normalize_decimal_v99(
+                line[82:95], context, field_name='preco_minimo'
+            ),
+            self._normalize_decimal_v99(
+                line[95:108], context, field_name='preco_medio'
+            ),
+            self._normalize_decimal_v99(
+                line[108:121], context, field_name='preco_fechamento'
+            ),
+            self._normalize_decimal_v99(
+                line[121:134], context, field_name='melhor_oferta_compra'
+            ),
+            self._normalize_decimal_v99(
+                line[134:147], context, field_name='melhor_oferta_venda'
+            ),
+            self._normalize_int(
+                line[147:152], context, field_name='numero_negocios'
+            ),
+            self._normalize_int(
+                line[152:170], context, field_name='quantidade_total'
+            ),
+            self._normalize_decimal_v99(
+                line[170:188], context, field_name='volume_total'
+            ),
+            self._normalize_optional_date(
+                line[202:210], context, field_name='data_vencimento'
+            ),
+            self._normalize_int(
+                line[210:217], context, field_name='fator_cotacao'
+            ),
+            line[230:242].strip(),
+            self._normalize_int(
+                line[242:245], context, field_name='numero_distribuicao'
+            ),
+        )
+
+    @staticmethod
+    def _typed_record(row: CsvRow) -> dict[str, Any]:
+        """Materialize the legacy typed dictionary from canonical values."""
+        values: tuple[object, ...] = (
+            date.fromisoformat(cast(str, row[0])),
+            row[1],
+            row[2],
+            row[3],
+            row[4],
+            row[5],
+            Decimal(cast(str, row[6])),
+            Decimal(cast(str, row[7])),
+            Decimal(cast(str, row[8])),
+            Decimal(cast(str, row[9])),
+            Decimal(cast(str, row[10])),
+            Decimal(cast(str, row[11])),
+            Decimal(cast(str, row[12])),
+            int(cast(str, row[13])),
+            int(cast(str, row[14])),
+            Decimal(cast(str, row[15])),
+            date.fromisoformat(row[16]) if row[16] is not None else None,
+            int(cast(str, row[17])),
+            row[18],
+            int(cast(str, row[19])),
+        )
+        return dict(zip(_FIELD_NAMES, values, strict=True))
+
+    @staticmethod
+    def _record_error(
+        context: B3RecordContext | None,
+        line: str,
+        record_type: str,
+        field_name: str,
+        raw_value: str,
+        cause: Exception | str,
+    ) -> ExtractionError:
+        """Create full source context only for a rejected record."""
+        record_context = context or B3RecordContext(
+            source_basename='<memory>',
+            zip_member='',
+            physical_line=0,
+            logical_record=0,
+            record_type=record_type,
+            raw_preview=line[:80],
+        )
+        return record_context.with_field(
+            field_name, raw_value
+        ).extraction_error(cause)
+
+    @staticmethod
+    def _field_error(
+        context: B3RecordContext | None,
+        field_name: str,
+        raw_value: str,
+        cause: Exception | str,
+    ) -> ExtractionError:
+        """Build field context only for a rejected value."""
+        if context is None:
+            context = B3RecordContext('<memory>', '', 0, 0)
+        return context.with_field(field_name, raw_value).extraction_error(
+            cause
+        )
+
+    @staticmethod
+    def _normalize_required_date(
+        raw_value: str,
+        context: B3RecordContext | None = None,
+        *,
+        field_name: str = 'data_pregao',
+    ) -> str:
+        """Validate a required date and return its Arrow CSV representation."""
+        value = raw_value.strip()
+        if (
+            len(value) != 8
+            or not _is_ascii_digits(value)
+            or value == '00000000'
+        ):
+            raise CotahistParserB3._field_error(
+                context,
+                field_name,
+                raw_value,
+                'Required date is invalid or empty',
+            )
+        try:
+            date(int(value[:4]), int(value[4:6]), int(value[6:]))
+        except ValueError as error:
+            raise CotahistParserB3._field_error(
+                context, field_name, raw_value, error
+            ) from error
+        return f'{value[:4]}-{value[4:6]}-{value[6:]}'
+
+    @staticmethod
+    def _normalize_optional_date(
+        raw_value: str,
+        context: B3RecordContext | None = None,
+        *,
+        field_name: str = 'data_vencimento',
+    ) -> str | None:
+        """Validate an optional date for Arrow CSV conversion."""
+        value = raw_value.strip()
+        if not value or value == '00000000':
+            return None
+        if len(value) != 8 or not _is_ascii_digits(value):
+            raise CotahistParserB3._field_error(
+                context,
+                field_name,
+                raw_value,
+                'Optional date is invalid',
+            )
+        try:
+            date(int(value[:4]), int(value[4:6]), int(value[6:]))
+        except ValueError as error:
+            raise CotahistParserB3._field_error(
+                context, field_name, raw_value, error
+            ) from error
+        return f'{value[:4]}-{value[4:6]}-{value[6:]}'
+
+    @staticmethod
+    def _normalize_decimal_v99(
+        raw_value: str,
+        context: B3RecordContext | None = None,
+        *,
+        field_name: str = 'decimal',
+    ) -> str:
+        """Validate a V99 field without materializing a temporary Decimal."""
+        value = raw_value.strip()
+        if not value or not _is_ascii_digits(value):
+            raise CotahistParserB3._field_error(
+                context,
+                field_name,
+                raw_value,
+                'Required V99 decimal is empty or non-numeric',
+            )
+        normalized = value.lstrip('0') or '0'
+        if len(normalized) > _DECIMAL_MAX_INTEGER_DIGITS:
+            raise CotahistParserB3._field_error(
+                context,
+                field_name,
+                raw_value,
+                'V99 decimal exceeds decimal128(38, 2)',
+            )
+        padded = normalized.zfill(3)
+        return f'{padded[:-2]}.{padded[-2:]}'
+
+    @staticmethod
+    def _normalize_int(
+        raw_value: str,
+        context: B3RecordContext | None = None,
+        *,
+        field_name: str = 'integer',
+    ) -> str:
+        """Validate an int64 field without calling ``int`` on invalid input."""
+        value = raw_value.strip()
+        if not value or not _is_ascii_digits(value):
+            raise CotahistParserB3._field_error(
+                context,
+                field_name,
+                raw_value,
+                'Required integer is empty or non-numeric',
+            )
+        normalized = value.lstrip('0') or '0'
+        if len(normalized) > len(_MAX_INT64_TEXT) or (
+            len(normalized) == len(_MAX_INT64_TEXT)
+            and normalized > _MAX_INT64_TEXT
+        ):
+            raise CotahistParserB3._field_error(
+                context, field_name, raw_value, 'Integer exceeds int64'
+            )
+        return normalized
+
+    @staticmethod
+    def _normalize_required_text(
+        raw_value: str,
+        context: B3RecordContext | None = None,
         *,
         field_name: str,
-    ) -> date | None:
-        parsed_date = self._parse_date(date_str)
-        if parsed_date is None:
-            self._warn_degraded_value(
-                category='required_date',
-                field_name=field_name,
-                raw_value=date_str,
-                fallback=None,
+    ) -> str:
+        """Strip a required text field while rejecting an empty value."""
+        value = raw_value.strip()
+        if not value:
+            raise CotahistParserB3._field_error(
+                context,
+                field_name,
+                raw_value,
+                'Required text field is empty',
             )
-        return parsed_date
+        return value
 
-    def _parse_date(self, date_str: str) -> date | None:
-        """Parse date in YYYYMMDD format.
 
-        Args:
-            date_str: Date string in YYYYMMDD format
-
-        Returns:
-            date object or None if invalid
-        """
-        date_str = date_str.strip()
-        if not date_str or date_str == '00000000':
-            return None
-
-        try:
-            return datetime.strptime(date_str, '%Y%m%d').date()
-        except ValueError:
-            return None
-
-    def _parse_decimal_v99(
-        self,
-        value_str: str,
-        *,
-        field_name: str | None = None,
-    ) -> Decimal:
-        """Parse decimal value with 2 implied decimal places.
-
-        Format (X)V99 means the value has 2 implicit decimal places.
-        Example: "0000001234567" represents 12345.67
-
-        Args:
-            value_str: String representation of the number
-            field_name: Optional field name used in degraded-value warnings.
-
-        Returns:
-            Decimal value with proper decimal places
-        """
-        value_str = value_str.strip()
-        if not value_str:
-            return Decimal('0')
-
-        try:
-            # Convert to Decimal and divide by 100 for 2 decimal places
-            return Decimal(value_str) / Decimal('100')
-        except (ValueError, InvalidOperation):
-            if field_name is not None:
-                self._warn_degraded_value(
-                    category='decimal',
-                    field_name=field_name,
-                    raw_value=value_str,
-                    fallback=Decimal('0'),
-                )
-            return Decimal('0')
-
-    def _parse_int(
-        self,
-        value_str: str,
-        *,
-        field_name: str | None = None,
-    ) -> int:
-        """Parse integer value.
-
-        Args:
-            value_str: String representation of the integer
-            field_name: Optional field name used in degraded-value warnings.
-
-        Returns:
-            Integer value
-        """
-        value_str = value_str.strip()
-        if not value_str:
-            return 0
-
-        try:
-            return int(value_str)
-        except ValueError:
-            if field_name is not None:
-                self._warn_degraded_value(
-                    category='integer',
-                    field_name=field_name,
-                    raw_value=value_str,
-                    fallback=0,
-                )
-            return 0
-
-    def _warn_degraded_value(
-        self,
-        *,
-        category: str,
-        field_name: str,
-        raw_value: object,
-        fallback: object,
-    ) -> None:
-        """Warn when permissive parsing accepts a degraded field value."""
-        warning_count = self._degradation_counts.get(category, 0)
-        self._degradation_counts[category] = warning_count + 1
-        if warning_count >= self._max_degradation_warnings_per_category:
-            return
-
-        logger.warning(
-            'Accepted COTAHIST record with degraded %s field',
-            category,
-            extra={
-                'field_name': field_name,
-                'raw_value': str(raw_value)[:80],
-                'fallback': str(fallback),
-                'degradation_count': self._degradation_counts[category],
-            },
-        )
+def _is_ascii_digits(value: str) -> bool:
+    """Accept only decimal ASCII digits in fixed-width numeric fields."""
+    return value.isascii() and value.isdecimal()

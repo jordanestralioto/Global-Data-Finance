@@ -21,7 +21,6 @@ class TestExtractHistoricalQuotesUseCaseInitialization:
         use_case = ExtractHistoricalQuotesUseCaseB3()
         assert use_case.zip_reader is not None
         assert use_case.parser is not None
-        assert use_case.data_writer is not None
 
     def test_initializes_zip_reader(self):
         use_case = ExtractHistoricalQuotesUseCaseB3()
@@ -31,9 +30,9 @@ class TestExtractHistoricalQuotesUseCaseInitialization:
         use_case = ExtractHistoricalQuotesUseCaseB3()
         assert hasattr(use_case, 'parser')
 
-    def test_initializes_data_writer(self):
+    def test_does_not_store_a_data_writer(self):
         use_case = ExtractHistoricalQuotesUseCaseB3()
-        assert hasattr(use_case, 'data_writer')
+        assert not hasattr(use_case, 'data_writer')
 
 
 class TestExecuteAsyncMethod:
@@ -73,7 +72,6 @@ class TestExecuteAsyncMethod:
         use_case = ExtractHistoricalQuotesUseCaseB3()
         result = await use_case.execute(docs)
         assert isinstance(result, dict)
-        mock_service.close.assert_awaited_once()
 
     @pytest.mark.asyncio
     @patch(
@@ -169,7 +167,7 @@ class TestExecuteAsyncMethod:
         assert result['total_records'] == 0
         assert result['errors'] == {}
         assert result['output_file'] == ''
-        mock_extraction_service.return_value.close.assert_called_once()
+        mock_extraction_service.assert_called_once()
 
     @pytest.mark.asyncio
     @patch(
@@ -324,7 +322,7 @@ class TestExecuteSyncMethod:
         result = use_case.execute_sync(docs)
         assert result['total_files'] == 0
         assert result['output_file'] == ''
-        mock_extraction_service.return_value.close.assert_called_once()
+        mock_extraction_service.assert_called_once()
 
 
 class TestOutputPathGeneration:

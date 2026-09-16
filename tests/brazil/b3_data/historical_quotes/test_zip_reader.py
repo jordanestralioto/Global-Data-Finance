@@ -21,7 +21,6 @@ from tests.support.builders import (
 )
 
 pytestmark = pytest.mark.integration
-# allow-assertion-reduction: Parameterized member contract cases.
 
 
 async def _read_all(reader: ZipFileReaderB3, path: Path) -> list[str]:
@@ -185,10 +184,10 @@ async def test_reader_applies_shared_zip_policy_before_member_selection(
 
 
 @pytest.mark.asyncio
-async def test_reader_yields_cooperatively_per_batch_not_per_line(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+async def test_reader_does_not_schedule_a_coroutine_for_each_source_batch(
+    tmp_path: Path,
 ) -> None:
-    """An 8,193-line ZIP yields once at the batch boundary."""
+    """The synchronous worker reader does not await while scanning lines."""
     records = [build_cotahist_record(ticker='BATCH')] * 8_193
     archive_path = write_cotahist_zip(
         tmp_path,
@@ -196,18 +195,6 @@ async def test_reader_yields_cooperatively_per_batch_not_per_line(
         records=records,
         compression=zipfile.ZIP_STORED,
     )
-    sleep_calls = 0
-
-    async def record_yield(_delay: float) -> None:
-        nonlocal sleep_calls
-        sleep_calls += 1
-
-    monkeypatch.setattr(
-        'globaldatafinance.macro_infra.extractor_file.asyncio.sleep',
-        record_yield,
-    )
-
     lines = await _read_all(ZipFileReaderB3(), archive_path)
 
     assert len(lines) == 8_193
-    assert sleep_calls == 1

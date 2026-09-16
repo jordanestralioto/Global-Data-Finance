@@ -47,6 +47,12 @@ fail. A header-only CSV produces an empty Parquet with Arrow `null` fields and
 no `b'pandas'` metadata. Parquets from the same ZIP use recoverable batch
 publication, not instant visibility atomicity for concurrent readers.
 
+The local filename is the URL path's final component after one
+percent-encoding decode. The library rejects separators, invalid Win32
+characters, controls, trailing periods or spaces, and reserved DOS devices
+such as `CON`, `AUX`, `COM1`, and `LPT1` with `SecurityError`, before starting
+the download or creating staging.
+
 **Return Structure**:
 
 Returns a `DownloadResultCVM` object containing consolidated download metrics:
@@ -64,6 +70,7 @@ Returns a `DownloadResultCVM` object containing consolidated download metrics:
 - `InvalidFirstYear`: Requested initial year below historic floor or above upper boundaries.
 - `InvalidLastYear`: Ending year preceded initial year or surpassed active year limits.
 - `InvalidDestinationPathError`: Destination filesystem directory access blocked or restricted.
+- `SecurityError`: URL-derived filename or local destination is unsafe.
 
 Transient HTTP transmission failures during asynchronous downloads are handled
 by the internal retry mechanism. When retries are exhausted, each final failure

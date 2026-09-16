@@ -1,15 +1,13 @@
-import importlib
-
 import pytest
 from pydantic import ValidationError
 
 pytestmark = pytest.mark.unit
 
 
-def test_defaults_imported_settings():
-    from globaldatafinance.core import config
+def test_defaults_settings():
+    from globaldatafinance.core.config import Settings
 
-    settings = config.settings
+    settings = Settings()
 
     assert settings.network.timeout == 180
     assert settings.network.max_retries == 5
@@ -19,14 +17,12 @@ def test_defaults_imported_settings():
     assert settings.debug is False
 
 
-def test_env_overrides_reflect_after_reload(monkeypatch):
+def test_env_overrides_construct_new_snapshot(monkeypatch):
     monkeypatch.setenv('DATAFINANCE_NETWORK_TIMEOUT', '60')
 
-    from globaldatafinance.core import config as cfg_mod
+    from globaldatafinance.core.config import Settings
 
-    importlib.reload(cfg_mod)
-
-    settings = cfg_mod.settings
+    settings = Settings()
     assert settings.network.timeout == 60
 
 
@@ -43,15 +39,17 @@ def test_network_settings_bounds_validation():
 @pytest.mark.unit
 class TestSettingsScenarios:
     def test_scenarios_debug_flag(self):
-        from globaldatafinance.core import config
+        from globaldatafinance.core.config import Settings
 
-        assert hasattr(config.settings, 'debug')
-        assert isinstance(config.settings.debug, bool)
+        settings = Settings()
+        assert hasattr(settings, 'debug')
+        assert isinstance(settings.debug, bool)
 
     def test_scenarios_network_user_agent(self):
-        from globaldatafinance.core import config
+        from globaldatafinance.core.config import Settings
 
-        assert config.settings.network.user_agent is None
+        settings = Settings()
+        assert settings.network.user_agent is None
 
     def test_scenarios_network_user_agent_can_be_configured(self, monkeypatch):
         from globaldatafinance.core.config import NetworkSettings
@@ -153,12 +151,14 @@ def test_archive_and_unc_defaults_are_safe() -> None:
 
     settings = Settings()
 
-    assert settings.path_safety.allowed_unc_roots == []
+    assert settings.path_safety.allowed_unc_roots == ()
+    assert isinstance(settings.path_safety.allowed_unc_roots, tuple)
     assert settings.archive.max_archive_bytes == 2 * 1024**3
     assert settings.archive.max_members == 10_000
     assert settings.archive.max_member_uncompressed_bytes == 2 * 1024**3
     assert settings.archive.max_total_uncompressed_bytes == 8 * 1024**3
     assert settings.archive.max_compression_ratio == 200.0
+    assert not hasattr(settings, 'archive_safety')
 
 
 def test_archive_and_unc_environment_values_are_typed(monkeypatch) -> None:
@@ -176,9 +176,21 @@ def test_archive_and_unc_environment_values_are_typed(monkeypatch) -> None:
 
     assert settings.archive.max_members == 7
     assert settings.archive.max_compression_ratio == 17.5
-    assert settings.path_safety.allowed_unc_roots == [
-        r'\\fileserver\finance\trusted'
-    ]
+    assert settings.path_safety.allowed_unc_roots == (
+        r'\\fileserver\finance\trusted',
+    )
+    assert isinstance(settings.path_safety.allowed_unc_roots, tuple)
+
+
+def test_path_safety_snapshot_copies_explicit_roots() -> None:
+    """Explicit UNC roots are validated and detached from caller mutation."""
+    from globaldatafinance.core.config import PathSafetySettings
+
+    roots = [r'\\fileserver\finance\trusted']
+    resolved_roots = PathSafetySettings.resolve_allowed_unc_roots(roots)
+    roots.append(r'\\fileserver\finance\other')
+
+    assert resolved_roots == (r'\\fileserver\finance\trusted',)
 
 
 @pytest.mark.parametrize(
@@ -210,3 +222,54 @@ def test_archive_and_unc_settings_reject_unsafe_values(
 
     with pytest.raises(ValidationError):
         configured_type(**kwargs)
+
+
+def test_settings_models_are_frozen() -> None:
+    """Settings models must be immutable with frozen=True."""
+    from globaldatafinance.core.config import (
+        ArchiveSafetySettings,
+        NetworkSettings,
+        PathSafetySettings,
+        Settings,
+    )
+
+    settings = Settings()
+    with pytest.raises(ValidationError):
+        settings.debug = True
+
+    with pytest.raises(ValidationError):
+        settings.network = NetworkSettings()
+
+    network = NetworkSettings()
+    with pytest.raises(ValidationError):
+        network.timeout = 100
+
+    path = PathSafetySettings()
+    with pytest.raises(ValidationError):
+        path.allowed_unc_roots = ()
+
+    archive = ArchiveSafetySettings()
+    with pytest.raises(ValidationError):
+        archive.max_members = 5
+
+
+def test_facade_instances_hold_independent_snapshots(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Mutating environment after facade creation does not affect existing."""
+    from globaldatafinance import FundamentalStocksDataCVM, HistoricalQuotesB3
+    from globaldatafinance.core.config import NetworkSettings, Settings
+
+    s1 = Settings(network=NetworkSettings(timeout=100))
+    cvm1 = FundamentalStocksDataCVM(settings=s1)
+    b31 = HistoricalQuotesB3(settings=s1)
+
+    monkeypatch.setenv('DATAFINANCE_NETWORK_TIMEOUT', '200')
+
+    cvm2 = FundamentalStocksDataCVM()
+    b32 = HistoricalQuotesB3()
+
+    assert cvm1.settings.network.timeout == 100
+    assert b31.settings.network.timeout == 100
+    assert cvm2.settings.network.timeout == 200
+    assert b32.settings.network.timeout == 200

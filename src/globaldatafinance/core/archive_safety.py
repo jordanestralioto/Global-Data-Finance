@@ -18,7 +18,7 @@ from typing import IO
 
 from ..macro_exceptions import CorruptedZipError
 from .archive_names import canonicalize_archive_member_name
-from .config import ArchiveSafetySettings, settings
+from .config import ArchiveSafetySettings
 
 
 @dataclass(frozen=True)
@@ -35,7 +35,7 @@ class ArchiveSafetyLimits:
     def from_settings(
         cls, configured: ArchiveSafetySettings
     ) -> ArchiveSafetyLimits:
-        """Build an immutable policy from the global validated settings."""
+        """Build an immutable policy from validated archive settings."""
         return cls(
             max_archive_bytes=configured.max_archive_bytes,
             max_members=configured.max_members,
@@ -48,10 +48,10 @@ class ArchiveSafetyLimits:
             max_compression_ratio=configured.max_compression_ratio,
         )
 
-
-def get_archive_safety_limits() -> ArchiveSafetyLimits:
-    """Return the current application-wide ZIP safety policy."""
-    return ArchiveSafetyLimits.from_settings(settings.archive)
+    @classmethod
+    def from_environment(cls) -> ArchiveSafetyLimits:
+        """Build a fresh immutable policy from the current environment."""
+        return cls.from_settings(ArchiveSafetySettings())
 
 
 def validate_zip_archive(
@@ -76,23 +76,22 @@ def validate_zip_archive(
             file/descendant collision.
     """
     source_path = Path(archive_path)
-    active_limits = limits or get_archive_safety_limits()
-    _validate_archive_size(source_path, active_limits)
+    if limits is None:
+        limits = ArchiveSafetyLimits.from_environment()
+    _validate_archive_size(source_path, limits)
 
     infos = zip_file.infolist()
-    if len(infos) > active_limits.max_members:
+    if len(infos) > limits.max_members:
         _raise_rejected_archive(
             source_path,
             'member count exceeds configured limit '
-            f'({len(infos)} > {active_limits.max_members})',
+            f'({len(infos)} > {limits.max_members})',
         )
 
     total_uncompressed_size = 0
     normalized_infos: dict[str, zipfile.ZipInfo] = {}
     for info in infos:
-        normalized_name = _validate_member_metadata(
-            source_path, info, active_limits
-        )
+        normalized_name = _validate_member_metadata(source_path, info, limits)
         if normalized_name in normalized_infos:
             _raise_rejected_archive(
                 source_path,
@@ -105,15 +104,12 @@ def validate_zip_archive(
             continue
 
         total_uncompressed_size += info.file_size
-        if (
-            total_uncompressed_size
-            > active_limits.max_total_uncompressed_bytes
-        ):
+        if total_uncompressed_size > limits.max_total_uncompressed_bytes:
             _raise_rejected_archive(
                 source_path,
                 'total uncompressed size exceeds configured limit '
                 f'({total_uncompressed_size} > '
-                f'{active_limits.max_total_uncompressed_bytes})',
+                f'{limits.max_total_uncompressed_bytes})',
             )
 
     _reject_file_ancestor_collisions(source_path, normalized_infos)
@@ -135,7 +131,8 @@ def open_limited_zip_member(
     decompressor delivering more bytes than the central-directory metadata
     advertised, without loading the member in memory.
     """
-    active_limits = limits or get_archive_safety_limits()
+    if limits is None:
+        limits = ArchiveSafetyLimits.from_environment()
     source_path = Path(archive_path or zip_file.filename or 'unknown.zip')
     try:
         info = zip_file.getinfo(member_name)
@@ -144,9 +141,9 @@ def open_limited_zip_member(
             str(source_path), f'ZIP member does not exist: {member_name!r}'
         ) from error
 
-    _validate_member_metadata(source_path, info, active_limits)
+    _validate_member_metadata(source_path, info, limits)
     budget = byte_budget or ArchiveByteBudget(
-        max_total_bytes=active_limits.max_total_uncompressed_bytes
+        max_total_bytes=limits.max_total_uncompressed_bytes
     )
     raw_member = zip_file.open(info, 'r')
     return io.BufferedReader(
@@ -154,7 +151,7 @@ def open_limited_zip_member(
             raw_member,
             archive_path=source_path,
             member_name=member_name,
-            max_member_bytes=active_limits.max_member_uncompressed_bytes,
+            max_member_bytes=limits.max_member_uncompressed_bytes,
             byte_budget=budget,
         )
     )
@@ -174,12 +171,15 @@ def validate_zip_crc_with_limits(
     decompressed-byte counter at the archive boundary.
     """
     source_path = Path(archive_path)
-    active_limits = limits or get_archive_safety_limits()
-    validated_infos = infos or validate_zip_archive(
-        source_path, zip_file, limits=active_limits
+    if limits is None:
+        limits = ArchiveSafetyLimits.from_environment()
+    validated_infos = (
+        infos
+        if infos is not None
+        else validate_zip_archive(source_path, zip_file, limits=limits)
     )
     budget = ArchiveByteBudget(
-        max_total_bytes=active_limits.max_total_uncompressed_bytes
+        max_total_bytes=limits.max_total_uncompressed_bytes
     )
     try:
         for info in validated_infos:
@@ -189,7 +189,7 @@ def validate_zip_crc_with_limits(
                 zip_file,
                 info.filename,
                 archive_path=source_path,
-                limits=active_limits,
+                limits=limits,
                 byte_budget=budget,
             ) as member:
                 while member.read(64 * 1024):

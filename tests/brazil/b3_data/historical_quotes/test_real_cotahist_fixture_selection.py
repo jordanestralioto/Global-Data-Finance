@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import zipfile
 from pathlib import Path
 
 import pytest
 
+from globaldatafinance.macro_exceptions import ExtractionError
 from tests.brazil.b3_data.historical_quotes import conftest as fixture_module
 from tests.brazil.b3_data.historical_quotes.integration import (
     test_real_cotahist as real_cotahist_module,
@@ -67,46 +69,29 @@ def test_rejects_ambiguous_catalog_without_an_explicit_year(
         )
 
 
-@pytest.mark.asyncio
-async def test_collect_quote_sample_accepts_fewer_than_the_upper_bound(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+def test_collect_quote_sample_accepts_fewer_than_the_upper_bound(
+    tmp_path: Path,
 ) -> None:
     """A small valid input remains useful for bounded parity coverage."""
-    lines = ['99ignored', '01first', '01second']
+    input_file = tmp_path / 'COTAHIST_A2024.ZIP'
+    with zipfile.ZipFile(input_file, 'w') as archive:
+        archive.writestr(
+            'COTAHIST_A2024.TXT', '99ignored\n01first\n01second\n'
+        )
 
-    async def read_lines(_reader, _path: str):
-        for line in lines:
-            yield line
-
-    monkeypatch.setattr(
-        real_cotahist_module.ZipFileReaderB3,
-        'read_lines_from_zip',
-        read_lines,
-    )
-
-    sampled = await real_cotahist_module._collect_quote_sample(
-        tmp_path / 'short-input.ZIP'
-    )
+    sampled = real_cotahist_module._collect_quote_sample(input_file)
 
     assert sampled == ['01first', '01second']
 
 
-@pytest.mark.asyncio
-async def test_collect_quote_sample_rejects_input_without_type_01_records(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+def test_collect_quote_sample_rejects_input_without_type_01_records(
+    tmp_path: Path,
 ) -> None:
     """An empty parity sample fails instead of silently passing."""
 
-    async def read_lines(_reader, _path: str):
-        yield '99header'
+    input_file = tmp_path / 'COTAHIST_A2024.ZIP'
+    with zipfile.ZipFile(input_file, 'w') as archive:
+        archive.writestr('COTAHIST_A2024.TXT', '99header\n')
 
-    monkeypatch.setattr(
-        real_cotahist_module.ZipFileReaderB3,
-        'read_lines_from_zip',
-        read_lines,
-    )
-
-    with pytest.raises(AssertionError, match='no type-01 records'):
-        await real_cotahist_module._collect_quote_sample(
-            tmp_path / 'empty-input.ZIP'
-        )
+    with pytest.raises(ExtractionError, match='no type-01 quote data record'):
+        real_cotahist_module._collect_quote_sample(input_file)

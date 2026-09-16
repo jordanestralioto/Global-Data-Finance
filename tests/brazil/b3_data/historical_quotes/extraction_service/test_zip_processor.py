@@ -1,264 +1,83 @@
-import asyncio
-from importlib import import_module
+"""B3 source-worker tests for strict bounded Arrow artifacts."""
 
+from pathlib import Path
+
+import pyarrow.parquet as pq
 import pytest
 
 from globaldatafinance.brazil.b3_data.historical_quotes import (
-    ExtractionServiceB3,
-    ProcessingModeEnumB3,
+    extraction_service,
 )
-from globaldatafinance.core import ResourceState
-from tests.brazil.b3_data.historical_quotes.conftest import (
-    DummyLoop,
-    FakeParser,
-    FakeResourceMonitor,
-    FakeWriter,
-    FakeZipReader,
+from globaldatafinance.brazil.b3_data.historical_quotes.zip_reader import (
+    ZipFileReaderB3,
 )
+from globaldatafinance.macro_exceptions import ExtractionError
+from tests.support.builders import build_cotahist_record, write_cotahist_txt
 
-zip_processor = import_module(
-    'globaldatafinance.brazil.b3_data.historical_quotes.extraction_service.zip_processor'
-)
-
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.integration
 
 
-def _service(monkeypatch, *, mode, reader, parser, writer):
-    monitor = FakeResourceMonitor(states=[ResourceState.HEALTHY])
-    monkeypatch.setattr(
-        'globaldatafinance.brazil.b3_data.historical_quotes.extraction_service.resource_policy.ResourceMonitor',
-        lambda: monitor,
+def test_processor_writes_one_validated_temp_artifact_per_source(
+    tmp_path: Path,
+) -> None:
+    """The worker holds no more than the configured Python record buffer."""
+    source = write_cotahist_txt(
+        tmp_path,
+        year=2024,
+        records=[
+            build_cotahist_record(ticker='PETR4'),
+            build_cotahist_record(ticker='VALE3'),
+        ],
     )
-    return ExtractionServiceB3(
-        zip_reader=reader,
-        parser=parser,
-        data_writer=writer,
-        processing_mode=mode,
-    )
-
-
-@pytest.mark.asyncio
-async def test_process_and_write_zip_slow_mode(monkeypatch, tmp_path):
-    parser = FakeParser()
-    reader = FakeZipReader({'sample.zip': ['keep-1', 'skip', 'keep-2']})
-    service = _service(
-        monkeypatch,
-        mode=ProcessingModeEnumB3.SLOW,
-        reader=reader,
-        parser=parser,
-        writer=FakeWriter(),
+    output = tmp_path / 'staging' / 'source.parquet'
+    processor = extraction_service.ZipProcessorB3(
+        ZipFileReaderB3(), python_record_limit=1
     )
 
-    result = await service.zip_processor.process(
-        zip_file='sample.zip',
-        target_tpmerc_codes={'010'},
-        output_path=tmp_path / 'data.parquet',
-    )
+    result = processor.process(source, {'010'}, output)
 
-    assert result['records'] == 2
-    assert reader.calls == ['sample.zip']
-    assert parser.calls == [
-        ('keep-1', frozenset({'010'})),
-        ('skip', frozenset({'010'})),
-        ('keep-2', frozenset({'010'})),
+    assert result.temp_path == output
+    assert result.selected_records == 2
+    assert result.parsed_records == result.written_records == 2
+    assert pq.ParquetFile(output).read()['ticker'].to_pylist() == [
+        'PETR4',
+        'VALE3',
     ]
 
 
-@pytest.mark.asyncio
-async def test_processor_temp_paths_include_input_extension(
-    monkeypatch, tmp_path
-):
-    service = _service(
-        monkeypatch,
-        mode=ProcessingModeEnumB3.SLOW,
-        reader=FakeZipReader(
-            {
-                'COTAHIST_A2023.ZIP': ['keep'],
-                'COTAHIST_A2023.TXT': ['keep'],
-            }
-        ),
-        parser=FakeParser(),
-        writer=FakeWriter(),
+def test_processor_returns_no_temp_artifact_when_every_record_is_filtered(
+    tmp_path: Path,
+) -> None:
+    """Valid but nonmatching records remain a successful zero-row source."""
+    source = write_cotahist_txt(
+        tmp_path,
+        year=2024,
+        records=[build_cotahist_record(market='070')],
+    )
+    output = tmp_path / 'staging' / 'filtered.parquet'
+
+    result = extraction_service.ZipProcessorB3(ZipFileReaderB3()).process(
+        source, {'010'}, output
     )
 
-    zip_result = await service.zip_processor.process(
-        zip_file='COTAHIST_A2023.ZIP',
-        target_tpmerc_codes={'010'},
-        output_path=tmp_path / 'data.parquet',
-    )
-    txt_result = await service.zip_processor.process(
-        zip_file='COTAHIST_A2023.TXT',
-        target_tpmerc_codes={'010'},
-        output_path=tmp_path / 'data.parquet',
-    )
-
-    assert zip_result['temp_file'] != txt_result['temp_file']
-    assert zip_result['temp_file'].endswith(
-        'data_COTAHIST_A2023.ZIP_temp.parquet'
-    )
-    assert txt_result['temp_file'].endswith(
-        'data_COTAHIST_A2023.TXT_temp.parquet'
-    )
+    assert result.temp_path is None
+    assert result.metrics.filtered_records == 1
+    assert result.written_records == 0
+    assert output.exists() is False
 
 
-@pytest.mark.asyncio
-async def test_slow_mode_throttles_flush_checks(monkeypatch, tmp_path):
-    lines = [f'keep-{index}' for index in range(7)]
-    writer = FakeWriter()
-    service = _service(
-        monkeypatch,
-        mode=ProcessingModeEnumB3.SLOW,
-        reader=FakeZipReader({'sample.zip': lines}),
-        parser=FakeParser(),
-        writer=writer,
-    )
-    service.zip_processor.SEQUENTIAL_FLUSH_CHECK_INTERVAL = 3
-    service.zip_processor.SEQUENTIAL_RESOURCE_CHECK_INTERVAL = 100
-    flush_buffer_sizes: list[int] = []
+def test_processor_removes_derived_temp_on_selected_record_failure(
+    tmp_path: Path,
+) -> None:
+    """A malformed financial record cannot leave a publishable temp behind."""
+    malformed = build_cotahist_record()[:244]
+    source = write_cotahist_txt(tmp_path, year=2024, records=[malformed])
+    output = tmp_path / 'staging' / 'broken.parquet'
 
-    async def fake_flush_if_needed(
-        buffer,
-        temp_output,
-        *,
-        is_first_write: bool,
-    ):
-        _ = temp_output
-        flush_buffer_sizes.append(len(buffer))
-        return 0, is_first_write
-
-    monkeypatch.setattr(
-        service.buffered_writer,
-        'flush_if_needed',
-        fake_flush_if_needed,
-    )
-
-    result = await service.zip_processor.process(
-        zip_file='sample.zip',
-        target_tpmerc_codes={'010'},
-        output_path=tmp_path / 'data.parquet',
-    )
-
-    assert flush_buffer_sizes == [3, 6]
-    assert result['records'] == 7
-    assert writer.calls[0]['records'] == [{'value': line} for line in lines]
-
-
-@pytest.mark.asyncio
-async def test_process_and_write_zip_fast_mode(monkeypatch, tmp_path):
-    service = _service(
-        monkeypatch,
-        mode=ProcessingModeEnumB3.FAST,
-        reader=FakeZipReader({'fast.zip': ['keep-1', 'drop', 'keep-2']}),
-        parser=FakeParser(),
-        writer=FakeWriter(),
-    )
-    service.resource_policy.parse_batch_size = 2
-    batch_calls: list[list[str]] = []
-
-    async def fake_batch(lines, target_codes):
-        _ = target_codes
-        batch_calls.append(list(lines))
-        return [{'value': line} for line in lines if 'keep' in line]
-
-    monkeypatch.setattr(
-        service.zip_processor,
-        '_parse_lines_batch_parallel',
-        fake_batch,
-    )
-
-    result = await service.zip_processor.process(
-        zip_file='fast.zip',
-        target_tpmerc_codes={'010'},
-        output_path=tmp_path / 'data.parquet',
-    )
-
-    assert result['records'] == 2
-    assert batch_calls == [['keep-1', 'drop'], ['keep-2']]
-
-
-@pytest.mark.asyncio
-async def test_process_and_write_zip_propagates_errors(monkeypatch, tmp_path):
-    service = _service(
-        monkeypatch,
-        mode=ProcessingModeEnumB3.FAST,
-        reader=FakeZipReader({'error.zip': ['line']}),
-        parser=FakeParser(),
-        writer=FakeWriter(),
-    )
-
-    async def failing_batch(_lines, _codes):
-        raise RuntimeError('boom')
-
-    monkeypatch.setattr(
-        service.zip_processor,
-        '_parse_lines_batch_parallel',
-        failing_batch,
-    )
-
-    with pytest.raises(RuntimeError, match='boom'):
-        await service.zip_processor.process(
-            zip_file='error.zip',
-            target_tpmerc_codes={'010'},
-            output_path=tmp_path / 'data.parquet',
+    with pytest.raises(ExtractionError, match='Expected exactly 245'):
+        extraction_service.ZipProcessorB3(ZipFileReaderB3()).process(
+            source, {'010'}, output
         )
 
-
-@pytest.mark.asyncio
-async def test_parse_lines_batch_parallel_filters_none(monkeypatch):
-    service = _service(
-        monkeypatch,
-        mode=ProcessingModeEnumB3.FAST,
-        reader=FakeZipReader(),
-        parser=FakeParser(),
-        writer=FakeWriter(),
-    )
-    dummy_loop = DummyLoop(result=[None, {'value': 'ok'}])
-    monkeypatch.setattr(
-        zip_processor.asyncio,
-        'get_running_loop',
-        lambda: dummy_loop,
-    )
-
-    records = await service.zip_processor._parse_lines_batch_parallel(
-        ['line'], {'010'}
-    )
-
-    assert records == [{'value': 'ok'}]
-    assert dummy_loop.calls
-
-
-@pytest.mark.asyncio
-async def test_parse_lines_batch_parallel_awaits_executor_without_polling(
-    monkeypatch,
-):
-    service = _service(
-        monkeypatch,
-        mode=ProcessingModeEnumB3.FAST,
-        reader=FakeZipReader(),
-        parser=FakeParser(),
-        writer=FakeWriter(),
-    )
-    event_loop = asyncio.get_running_loop()
-    future = event_loop.create_future()
-    event_loop.call_later(0.01, future.set_result, [None, {'value': 'ok'}])
-
-    class FutureLoop:
-        def run_in_executor(self, _executor, _func, *_args):
-            return future
-
-    monkeypatch.setattr(
-        zip_processor.asyncio,
-        'get_running_loop',
-        lambda: FutureLoop(),
-    )
-
-    async def unexpected_sleep(_delay: float) -> None:
-        raise AssertionError('executor completion must be awaited directly')
-
-    monkeypatch.setattr(zip_processor.asyncio, 'sleep', unexpected_sleep)
-
-    records = await service.zip_processor._parse_lines_batch_parallel(
-        ['line'], {'010'}
-    )
-
-    assert records == [{'value': 'ok'}]
+    assert output.exists() is False
+    assert source.exists()

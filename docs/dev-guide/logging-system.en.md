@@ -9,13 +9,61 @@ ______________________________________________________________________
 Global-Data-Finance incorporates a professional centralized logging subsystem designed specifically for high-throughput library distribution:
 
 - ✅ **Lazy Initialization**: Logging remains silently disabled by default (respecting standard Python library citizenship practices)
-- ✅ **Multi-Target Handlers**: Configurable simultaneous routing to console outputs and rotating filesystem files
+- ✅ **Multi-Target Handlers**: Configurable simultaneous routing to console outputs and filesystem files
 - ✅ **Granular Level Filtering**: Full support for standard severity thresholds (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`)
 - ✅ **Performance Benchmarking**: Integrated timing context managers designed to capture operation latencies automatically
 - ✅ **Structured Metadata Binding**: Context-aware log emission supporting structured parameter propagation
-- ✅ **Environment Override Compatibility**: Real-time runtime overrides via confirmed OS environment variables
+- ✅ **Environment Override Compatibility**: Runtime configuration via confirmed OS environment variables
 
 ______________________________________________________________________
+
+## Initial State and Isolation
+
+Importing the library does not configure the application root logger or attach
+visible output handlers. The `globaldatafinance` logger starts with a
+`NullHandler` and `propagate=False`, so events remain quiet until the consumer
+explicitly calls `setup_logging()`. Configuration affects only this logger
+hierarchy.
+
+`LoggingSettings` accepts only its documented fields: `level`, `format`,
+`log_file`, and `detailed_format`. Extra fields, including the removed
+`structured` field, raise `ValidationError`.
+
+Supported environment variables are `DATAFIN_LOG_LEVEL`,
+`DATAFIN_LOG_FORMAT`, `DATAFIN_LOG_FILE`, and
+`DATAFIN_LOG_DETAILED_FORMAT`. `DATAFIN_LOG_LOG_FILE` is also accepted for
+compatibility with the field-derived name. Any other `DATAFIN_LOG_*` variable,
+including `DATAFIN_LOG_STRUCTURED`, raises `ValidationError` when
+`LoggingSettings()` is created.
+
+The formatter performs best-effort redaction for common URL parameters and
+sensitive context fields such as `token`, `password`, `authorization`, and
+`cookie`. This does not replace the consumer's responsibility: secrets must
+not be passed in messages, exceptions, or logging context.
+
+`log_file` must point to a consumer-approved application path. Before creating
+directories or the file, `setup_logging()` rejects system roots, protected
+directories, and untrusted UNC destinations using the same path-safety policy
+as the data facades. Use an application-owned directory or `/tmp` for local
+diagnostics.
+
+## Reconfiguration and Rollback
+
+`setup_logging()` builds and configures every candidate handler before touching
+the package logger. On success, only library-managed handlers are replaced;
+external handlers are preserved. If file creation or the handler swap fails,
+the candidates are closed and the previous level, propagation setting, and
+handlers are restored.
+
+This lets applications reconfigure library logging without losing the active
+configuration:
+
+```python
+from globaldatafinance.core.logging_config import LoggingSettings, setup_logging
+
+setup_logging(LoggingSettings(level="INFO"))
+setup_logging(LoggingSettings(level="DEBUG", log_file="app-debug.log"))
+```
 
 ## Architecture
 
@@ -41,16 +89,16 @@ ______________________________________________________________________
 In accordance with Python best practices for dependency distributions, logging is **disabled by default**. To activate event reporting:
 
 ```python
-from globaldatafinance.core import setup_logging
+from globaldatafinance.core.logging_config import LoggingSettings, setup_logging
 
 # Activate logging across the library hierarchy at severity INFO
-setup_logging(level="INFO")
+setup_logging(LoggingSettings(level="INFO"))
 ```
 
 ### 2. Retrieve a Module Logger Instance
 
 ```python
-from globaldatafinance.core import get_logger
+from globaldatafinance.core.logging_config import get_logger
 
 logger = get_logger(__name__)
 logger.info("Processing job started")
@@ -95,21 +143,25 @@ ______________________________________________________________________
 ### Programmatic Configuration
 
 ```python
-from globaldatafinance.core import setup_logging
+from globaldatafinance.core.logging_config import LoggingSettings, setup_logging
 
 # Standard activation
-setup_logging(level="INFO")
+setup_logging(LoggingSettings(level="INFO"))
 
 # Route logging outputs directly to a filesystem log destination
 setup_logging(
-    level="DEBUG",
-    log_file="/var/log/datafinance/execution.log"
+    LoggingSettings(
+        level="DEBUG",
+        log_file="/tmp/datafinance/execution.log",
+    )
 )
 
 # Enable detailed formatting (includes precise line numbers and symbol signatures)
 setup_logging(
-    level="DEBUG",
-    use_detailed_format=True
+    LoggingSettings(
+        level="DEBUG",
+        detailed_format=True,
+    )
 )
 ```
 
@@ -122,19 +174,19 @@ Confirmed environment configuration parameter names:
 export DATAFIN_LOG_LEVEL=DEBUG
 
 # Direct logging output to file destination
-export DATAFIN_LOG_FILE=/var/log/datafin.log
+export DATAFIN_LOG_FILE=/tmp/datafin.log
 
 # Enable detailed structural reporting
 export DATAFIN_LOG_DETAILED_FORMAT=true
-
-# Toggle structured formatting
-export DATAFIN_LOG_STRUCTURED=true
 ```
 
-```python
-from globaldatafinance.core import setup_logging
+Unknown `DATAFIN_LOG_*` variables are rejected so removed or misspelled
+options cannot appear to have been applied.
 
-# Ingest settings directly from environment declarations
+```python
+from globaldatafinance.core.logging_config import setup_logging
+
+# Ingest settings directly from environment declarations (default LoggingSettings snapshot)
 setup_logging()
 ```
 
@@ -147,7 +199,7 @@ ______________________________________________________________________
 Leverage the automated `log_execution_time()` context manager to track operational durations:
 
 ```python
-from globaldatafinance.core import log_execution_time, get_logger
+from globaldatafinance.core.logging_config import log_execution_time, get_logger
 
 logger = get_logger(__name__)
 
@@ -171,7 +223,7 @@ Failed: Parse COTAHIST ZIP archive | operation=Parse COTAHIST ZIP archive | elap
 ### Contextual Event Reporting
 
 ```python
-from globaldatafinance.core import log_with_context, get_logger
+from globaldatafinance.core.logging_config import log_with_context, get_logger
 
 logger = get_logger(__name__)
 
@@ -189,18 +241,24 @@ log_with_context(
 ### Confirming Active Configuration State
 
 ```python
-from globaldatafinance.core import is_logging_configured, setup_logging
+from globaldatafinance.core.logging_config import (
+    LoggingSettings,
+    is_logging_configured,
+    setup_logging,
+)
 
 if not is_logging_configured():
-    setup_logging(level="INFO")
+    setup_logging(LoggingSettings(level="INFO"))
 ```
 
-### Accessing Active Settings Metrics
+### Configuration Snapshot
+
+`setup_logging()` returns the immutable `LoggingSettings` snapshot applied to the library hierarchy:
 
 ```python
-from globaldatafinance.core import get_logging_settings
+from globaldatafinance.core.logging_config import LoggingSettings, setup_logging
 
-settings = get_logging_settings()
+settings = setup_logging(LoggingSettings(level="INFO"))
 print(f"Active threshold level: {settings.level}")
 print(f"Registered file sink: {settings.log_file}")
 print(f"Detailed syntax enabled: {settings.detailed_format}")
@@ -214,10 +272,14 @@ ______________________________________________________________________
 
 ```python
 from globaldatafinance import FundamentalStocksDataCVM
-from globaldatafinance.core import setup_logging, get_logger
+from globaldatafinance.core.logging_config import (
+    LoggingSettings,
+    get_logger,
+    setup_logging,
+)
 
 # Activate operational logging
-setup_logging(level="INFO", log_file="pipeline.log")
+setup_logging(LoggingSettings(level="INFO", log_file="pipeline.log"))
 
 logger = get_logger(__name__)
 logger.info("Application execution commenced")
@@ -237,13 +299,15 @@ logger.info("Application execution finished successfully")
 
 ```python
 from globaldatafinance import HistoricalQuotesB3
-from globaldatafinance.core import setup_logging
+from globaldatafinance.core.logging_config import LoggingSettings, setup_logging
 
 # Enable DEBUG intensity alongside detailed function line signatures
 setup_logging(
-    level="DEBUG",
-    log_file="/tmp/datafinance_debug.log",
-    use_detailed_format=True
+    LoggingSettings(
+        level="DEBUG",
+        log_file="/tmp/datafinance_debug.log",
+        detailed_format=True,
+    )
 )
 
 b3 = HistoricalQuotesB3()
@@ -259,13 +323,14 @@ result = b3.extract(
 ```python
 # my_processing_pipeline.py
 from globaldatafinance import FundamentalStocksDataCVM
-from globaldatafinance.core import (
-    setup_logging,
+from globaldatafinance.core.logging_config import (
+    LoggingSettings,
     get_logger,
-    log_execution_time
+    log_execution_time,
+    setup_logging,
 )
 
-setup_logging(level="INFO")
+setup_logging(LoggingSettings(level="INFO"))
 logger = get_logger(__name__)
 
 def process_financial_filings():
@@ -371,26 +436,23 @@ ______________________________________________________________________
 
 ```python
 # Confirm explicit initialization was performed
-from globaldatafinance.core import setup_logging
-setup_logging(level="INFO")
+from globaldatafinance.core.logging_config import LoggingSettings, setup_logging
+setup_logging(LoggingSettings(level="INFO"))
 ```
 
 ### Duplicate log statements emitting simultaneously
 
 ```python
-# Ensure setup_logging() is not instantiated within internal functional loops;
-# Re-invoking setup_logging() dynamically reconfigures existing root handlers cleanly.
-setup_logging(level="DEBUG")
+# Re-invoking setup_logging() safely replaces only library-managed handlers
+setup_logging(LoggingSettings(level="DEBUG"))
 ```
 
 ### Filesystem log generation fails with permissions exceptions
 
 ```python
-# Ensure appropriate directory read/write capability exists for target destinations
-setup_logging(level="INFO", log_file="/var/log/app.log")
-
-# On unprivileged user workstations, direct sinks toward /tmp or user profile folders
-setup_logging(level="INFO", log_file="/tmp/app.log")
+# Use an application-owned directory or /tmp; roots and protected directories
+# are rejected before any creation or write.
+setup_logging(LoggingSettings(level="INFO", log_file="/tmp/app.log"))
 ```
 
 ______________________________________________________________________

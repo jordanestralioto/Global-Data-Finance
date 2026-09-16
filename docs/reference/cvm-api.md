@@ -48,6 +48,12 @@ falham. Um CSV somente com cabeçalho gera Parquet vazio com campos Arrow
 lote recuperável, não visibilidade instantaneamente atômica para leitores
 concorrentes.
 
+O nome do arquivo local é o último componente do caminho da URL, após uma
+decodificação percent-encoded. A biblioteca rejeita, com `SecurityError`,
+separadores, caracteres inválidos do Win32, controles, pontos ou espaços no
+final e dispositivos DOS reservados, como `CON`, `AUX`, `COM1` e `LPT1`, antes
+de iniciar o download ou criar staging.
+
 **Retorno**:
 
 Retorna um objeto `DownloadResultCVM` contendo os resultados consolidados:
@@ -65,6 +71,7 @@ Retorna um objeto `DownloadResultCVM` contendo os resultados consolidados:
 - `InvalidFirstYear`: Ano inicial inválido.
 - `InvalidLastYear`: Ano final inválido.
 - `InvalidDestinationPathError`: Caminho de destino inválido ou não seguro.
+- `SecurityError`: Nome derivado da URL ou destino local não é seguro.
 
 Falhas de rede ou indisponibilidade transitória de arquivos específicos durante
 o download assíncrono são tratadas pelo mecanismo interno de retry. Quando as

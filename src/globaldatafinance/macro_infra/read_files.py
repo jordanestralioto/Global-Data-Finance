@@ -1,11 +1,11 @@
 """Read CSV members from ZIP archives using a deterministic encoding policy."""
 
+from __future__ import annotations
+
 import codecs
 import csv
 import zipfile
-from typing import IO
-
-import pandas as pd  # type: ignore
+from typing import IO, Any
 
 from ..core import get_logger
 from ..core.archive_safety import open_limited_zip_member
@@ -94,10 +94,10 @@ class ReadFilesAdapter:
         decoder.decode(b'', final=True)
 
     @staticmethod
-    def read_csv_chunk_size(
-        text_wrapper: IO[str], chunk_size: int
-    ) -> pd.DataFrame:
+    def read_csv_chunk_size(text_wrapper: IO[str], chunk_size: int) -> Any:
         """Read a CSV stream in pandas chunks using the project delimiter."""
+        import pandas as pd
+
         return pd.read_csv(
             text_wrapper,
             sep=';',

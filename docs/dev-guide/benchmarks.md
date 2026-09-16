@@ -66,6 +66,33 @@ erros. O pico RSS inclui interpretador, dependências, parser e escritor Parquet
 > picos RSS próximos (~1,1 GB). A diferença significativa de memória (~4,2 GB
 > vs ~1,6 GB) só fica evidente em escala real, conforme métricas da Seção 1.
 
+### 2.1. Candidato Arrow v3 — 250 Mil Registros (2026-09-12 UTC, Revisão `703d9ab`)
+
+Esta medição usa o runner de ingestão Arrow introduzido neste cutover. Ela não
+substitui a linha de base histórica v1: o gerador de corpus, o schema explícito
+e a separação entre tempo operacional e validação são parte de um protocolo mais
+rigoroso. Serve como evidência reproduzível do candidato e como ponto de partida
+para comparações futuras feitas sob o mesmo protocolo.
+
+**Ambiente:** Python 3.13.7 · Linux x86_64 (kernel 6.8) · 8 CPUs. Três processos
+Python novos processaram o corpus sintético determinístico, sem chamadas de
+rede.
+
+| Cenário | Repetições | Linhas | Tempo operacional (mediana) | Pico RSS (mediana) | Saída Parquet | Equivalência lógica |
+| ------- | ---------: | -----: | --------------------------: | -----------------: | -------------: | ------------------: |
+| B3 250k |          3 | 250.000 |                     5,832 s |         215,898 MiB |    5.822.005 B |                 3/3 |
+
+- O SHA-256 da entrada é
+  `329f30c6d160401071ab321ebe796e8d91be5a2e0bf502fc68b1cc1c66c30d39`.
+- Cada repetição validou contagem, ordem, schema, nulos, valores tipados e
+  precisão decimal; todas produziram o mesmo digest lógico.
+- A validação pós-escrita é registrada separadamente do tempo operacional; ela
+  não é misturada à métrica de throughput da tabela.
+- O JSON bruto local está em
+  `.benchmarks/pyarrow-ingestion-integrity-cutover-b3-250k-20260912.json`.
+  Esse diretório é ignorado intencionalmente pelo Git porque contém evidência
+  dependente de máquina.
+
 ### Como reproduzir
 
 ```bash
@@ -173,16 +200,20 @@ uv run --locked --no-sync python scripts/benchmark_ingestion.py \
   --scenario cvm --scenario cvm_text --scenario b3_100k \
   --scenario b3_250k --repeats 3 --output benchmark.json
 
-# Corpus anual externo: ausência do corpus é registrada como skipped, nunca pass
+# O corpus anual só executa com os 17 ZIPs; caso contrário, fica skipped
 uv run --locked --no-sync python scripts/benchmark_ingestion.py \
   --scenario b3_annual --cotahist-path /caminho/COTAHIST --output annual.json
 ```
 
 Cada resultado JSON contém versão do schema, revisão, ambiente, checksum de
-entrada, contagem, fingerprint de schema, equivalência lógica, tempo, RSS
-inicial/pico/final, bytes de saída e `status`. O status anual sem corpus é
-`skipped` com a razão `external corpus unavailable`; não deve ser convertido em
-sucesso em relatórios de release.
+entrada, contagem, fingerprint de schema, equivalência lógica, digest lógico,
+tempo da operação, fases de operação/validação, RSS inicial/pico/final, bytes
+de saída e `status`. A equivalência compara todas as linhas tipadas (incluindo
+nulos, ordem e tuplas decimais), não apenas valores de borda. O filho confere o
+checksum antes da medição; uma fonte modificada falha em vez de produzir uma
+comparação inválida. O status anual sem os 17 ZIPs requeridos é `skipped` com a
+razão `external corpus unavailable`; não deve ser convertido em sucesso em
+relatórios de release.
 
 Os gates de referência desta mudança são avaliados apenas em comparação
 baseline/candidato na mesma máquina: import raiz ≤50 MiB e ≤0,50 s; CVM 269.181

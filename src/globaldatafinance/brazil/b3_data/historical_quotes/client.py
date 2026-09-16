@@ -1,17 +1,17 @@
-"""Orchestration layer for B3 historical_quotes extraction.
+"""Orchestration layer for B3 historical quotes extraction.
 
-Consolidates use cases from prior `application/use_cases/`. Use case classes
-are preserved here (rather than converted to bare functions) to keep the
-existing test contract intact — tests call `<Class>.execute(...)` patterns and
-are migrated only by import path per Phase 1 plan.
+The module keeps explicit use-case boundaries for the source facade and
+delegates validation, filesystem access, parsing, and extraction to their
+owning services.
 """
 
 import asyncio
-import inspect
-from collections.abc import Callable
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
+from ....core.archive_safety import ArchiveSafetyLimits
+from ....core.config import PathSafetySettings
 from ....macro_exceptions import InvalidDestinationPathError
 from .assets import AvailableAssetsServiceB3
 from .cotahist_parser import CotahistParserB3
@@ -19,7 +19,6 @@ from .errors import InvalidOutputFilename
 from .extraction_service import ExtractionServiceB3
 from .filesystem import FileSystemServiceB3
 from .models import DocsToExtractorB3
-from .parquet_writer import ParquetWriterB3
 from .processing import ExtractionConfigServiceB3, ProcessingModeEnumB3
 from .years import YearValidationServiceB3
 from .zip_reader import ZipFileReaderB3
@@ -73,7 +72,12 @@ class CreateSetToDownloadUseCaseB3:
     """Use case for finding COTAHIST ZIP or TXT inputs by year range."""
 
     @staticmethod
-    def execute(range_years: range, path: str) -> set[str]:
+    def execute(
+        range_years: range,
+        path: str,
+        *,
+        allowed_unc_roots: Sequence[str] | None = None,
+    ) -> set[str]:
         """Find all document files in the given path for the year range."""
         if not isinstance(path, str):
             raise TypeError(
@@ -85,7 +89,7 @@ class CreateSetToDownloadUseCaseB3:
                 'path_of_docs cannot be empty or whitespace'
             )
 
-        file_system = FileSystemServiceB3()
+        file_system = FileSystemServiceB3(allowed_unc_roots=allowed_unc_roots)
         validated_path = file_system.validate_directory_path(path)
         return file_system.find_files_by_years(validated_path, range_years)
 
@@ -94,9 +98,15 @@ class VerifyDestinationPathsUseCaseB3:
     """Validate and prepare the destination directory for extraction."""
 
     @staticmethod
-    def execute(destination_path: str) -> Path:
+    def execute(
+        destination_path: str,
+        *,
+        allowed_unc_roots: Sequence[str] | None = None,
+    ) -> Path:
         """Return a safe, normalized destination path."""
-        return FileSystemServiceB3().prepare_destination_path(destination_path)
+        return FileSystemServiceB3(
+            allowed_unc_roots=allowed_unc_roots
+        ).prepare_destination_path(destination_path)
 
 
 class ValidateExtractionConfigUseCaseB3:
@@ -124,6 +134,8 @@ class CreateDocsToExtractUseCaseB3:
         initial_year: int,
         last_year: int,
         destination_path: str | None = None,
+        *,
+        allowed_unc_roots: Sequence[str] | None = None,
     ):
         """Store raw inputs before validating them in ``execute``."""
         if not isinstance(path_of_docs, str):
@@ -147,6 +159,9 @@ class CreateDocsToExtractUseCaseB3:
         self.destination_path = (
             destination_path if destination_path else path_of_docs
         )
+        self.allowed_unc_roots = PathSafetySettings.resolve_allowed_unc_roots(
+            allowed_unc_roots
+        )
 
     def execute(self) -> DocsToExtractorB3:
         """Create and return a validated DocsToExtractorB3 entity."""
@@ -157,7 +172,8 @@ class CreateDocsToExtractUseCaseB3:
         )
 
         normalized_destination = VerifyDestinationPathsUseCaseB3().execute(
-            self.destination_path
+            self.destination_path,
+            allowed_unc_roots=self.allowed_unc_roots,
         )
         destination_path = (
             str(normalized_destination)
@@ -165,7 +181,9 @@ class CreateDocsToExtractUseCaseB3:
             else self.destination_path
         )
         documents_to_download = CreateSetToDownloadUseCaseB3.execute(
-            range_years, self.path_of_docs
+            range_years,
+            self.path_of_docs,
+            allowed_unc_roots=self.allowed_unc_roots,
         )
 
         return DocsToExtractorB3(
@@ -180,15 +198,22 @@ class CreateDocsToExtractUseCaseB3:
 class ExtractHistoricalQuotesUseCaseB3:
     """Main orchestrator for extracting historical quotes from COTAHIST files.
 
-    Holds reusable collaborators (zip_reader, parser, writer) across calls per
-    D3 — this is the one use case kept as a class because it has real state.
+    Holds reusable reader and parser collaborators across calls per D3 — this
+    is the one use case kept as a class because it has real state.
     """
 
-    def __init__(self) -> None:
-        """Initialize reusable readers, parser, and Parquet writer objects."""
-        self.zip_reader = ZipFileReaderB3()
+    def __init__(
+        self,
+        *,
+        limits: ArchiveSafetyLimits | None = None,
+        allowed_unc_roots: Sequence[str] | None = None,
+    ) -> None:
+        """Initialize reusable reader and parser objects."""
+        self.zip_reader = ZipFileReaderB3(limits=limits)
         self.parser = CotahistParserB3()
-        self.data_writer = ParquetWriterB3()
+        self.allowed_unc_roots = PathSafetySettings.resolve_allowed_unc_roots(
+            allowed_unc_roots
+        )
 
     async def execute(
         self,
@@ -205,54 +230,44 @@ class ExtractHistoricalQuotesUseCaseB3:
         extraction_service = ExtractionServiceB3(
             zip_reader=self.zip_reader,
             parser=self.parser,
-            data_writer=self.data_writer,
             processing_mode=mode,
+            allowed_unc_roots=self.allowed_unc_roots,
         )
 
-        try:
-            target_tpmerc_codes = (
-                AvailableAssetsServiceB3.get_tpmerc_codes_for_assets(
-                    docs_to_extract.set_assets
-                )
+        target_tpmerc_codes = (
+            AvailableAssetsServiceB3.get_tpmerc_codes_for_assets(
+                docs_to_extract.set_assets
+            )
+        )
+
+        zip_files: set[str] = docs_to_extract.documents_to_download
+
+        if not zip_files:
+            return {
+                'total_files': 0,
+                'success_count': 0,
+                'error_count': 0,
+                'total_records': 0,
+                'errors': {},
+                'output_file': '',
+            }
+
+        output_path = Path(docs_to_extract.destination_path) / output_filename
+
+        destination_resolved = Path(docs_to_extract.destination_path).resolve()
+        output_resolved = output_path.resolve()
+        if not output_resolved.is_relative_to(destination_resolved):
+            raise InvalidOutputFilename(
+                f'output path escapes destination: '
+                f'{output_resolved} not under {destination_resolved}'
             )
 
-            zip_files: set[str] = docs_to_extract.documents_to_download
-
-            if not zip_files:
-                return {
-                    'total_files': 0,
-                    'success_count': 0,
-                    'error_count': 0,
-                    'total_records': 0,
-                    'errors': {},
-                    'output_file': '',
-                }
-
-            output_path = (
-                Path(docs_to_extract.destination_path) / output_filename
-            )
-
-            destination_resolved = Path(
-                docs_to_extract.destination_path
-            ).resolve()
-            output_resolved = output_path.resolve()
-            if not output_resolved.is_relative_to(destination_resolved):
-                raise InvalidOutputFilename(
-                    f'output path escapes destination: '
-                    f'{output_resolved} not under {destination_resolved}'
-                )
-
-            result = await extraction_service.extract_from_zip_files(
-                zip_files=zip_files,
-                target_tpmerc_codes=target_tpmerc_codes,
-                output_path=output_path,
-            )
-            return result
-        finally:
-            close_service = cast(Callable[[], Any], extraction_service.close)
-            close_result = close_service()
-            if inspect.isawaitable(close_result):
-                await close_result
+        result = await extraction_service.extract_from_zip_files(
+            zip_files=zip_files,
+            target_tpmerc_codes=target_tpmerc_codes,
+            output_path=output_path,
+        )
+        return result
 
     def execute_sync(
         self,

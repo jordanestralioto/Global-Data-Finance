@@ -8,6 +8,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from ....core.archive_safety import (
+    ArchiveSafetyLimits,
     validate_zip_archive,
     validate_zip_crc_with_limits,
 )
@@ -28,6 +29,7 @@ def validate_cotahist_catalog(
     directory: str | Path,
     *,
     expected_years: Iterable[int] | None = None,
+    limits: ArchiveSafetyLimits | None = None,
 ) -> dict[int, list[Path]]:
     """Validate and index official COTAHIST inputs by external year.
 
@@ -39,7 +41,7 @@ def validate_cotahist_catalog(
     """
     catalog_path = _validate_directory(directory)
     expected = None if expected_years is None else set(expected_years)
-    candidates_by_year = _collect_candidates(catalog_path)
+    candidates_by_year = _collect_candidates(catalog_path, limits=limits)
     _validate_expected_years(candidates_by_year, expected, catalog_path)
     _validate_conflicts(candidates_by_year, catalog_path)
     return {
@@ -69,7 +71,11 @@ def select_cotahist_file(
     )[0]
 
 
-def validate_cotahist_input(path: str | Path) -> str | None:
+def validate_cotahist_input(
+    path: str | Path,
+    *,
+    limits: ArchiveSafetyLimits | None = None,
+) -> str | None:
     """Validate one official COTAHIST input and resolve a ZIP member."""
     candidate = Path(path).expanduser().resolve()
     match = _COTAHIST_PATTERN.fullmatch(candidate.name)
@@ -82,7 +88,11 @@ def validate_cotahist_input(path: str | Path) -> str | None:
         raise CotahistCatalogError(
             f'COTAHIST input is not a regular file: {candidate}'
         )
-    return _validate_candidate(candidate, match.group('extension').casefold())
+    return _validate_candidate(
+        candidate,
+        match.group('extension').casefold(),
+        limits=limits,
+    )
 
 
 def _validate_directory(directory: str | Path) -> Path:
@@ -108,7 +118,11 @@ def _validate_directory(directory: str | Path) -> Path:
     return catalog_path
 
 
-def _collect_candidates(directory: Path) -> dict[int, list[Path]]:
+def _collect_candidates(
+    directory: Path,
+    *,
+    limits: ArchiveSafetyLimits | None = None,
+) -> dict[int, list[Path]]:
     candidates_by_year: dict[int, list[Path]] = {}
     for candidate in sorted(directory.iterdir(), key=lambda path: path.name):
         if not candidate.is_file():
@@ -117,12 +131,21 @@ def _collect_candidates(directory: Path) -> dict[int, list[Path]]:
         if match is None:
             continue
         year = int(match.group('year'))
-        _validate_candidate(candidate, match.group('extension').casefold())
+        _validate_candidate(
+            candidate,
+            match.group('extension').casefold(),
+            limits=limits,
+        )
         candidates_by_year.setdefault(year, []).append(candidate)
     return candidates_by_year
 
 
-def _validate_candidate(path: Path, extension: str) -> str | None:
+def _validate_candidate(
+    path: Path,
+    extension: str,
+    *,
+    limits: ArchiveSafetyLimits | None = None,
+) -> str | None:
     try:
         if path.stat().st_size == 0:
             raise CotahistCatalogError(f'COTAHIST input is empty: {path}')
@@ -137,7 +160,7 @@ def _validate_candidate(path: Path, extension: str) -> str | None:
         ) from error
 
     if extension == 'zip':
-        return _validate_zip(path)
+        return _validate_zip(path, limits=limits)
     try:
         with path.open('rb') as lines:
             _require_quote_data_record(lines, path)
@@ -150,11 +173,20 @@ def _validate_candidate(path: Path, extension: str) -> str | None:
     return None
 
 
-def _validate_zip(path: Path) -> str:
+def _validate_zip(
+    path: Path,
+    *,
+    limits: ArchiveSafetyLimits | None = None,
+) -> str:
     try:
         with zipfile.ZipFile(path, 'r') as zip_file:
-            infos = validate_zip_archive(path, zip_file)
-            validate_zip_crc_with_limits(path, zip_file, infos=infos)
+            infos = validate_zip_archive(path, zip_file, limits=limits)
+            validate_zip_crc_with_limits(
+                path,
+                zip_file,
+                infos=infos,
+                limits=limits,
+            )
             member_name = resolve_cotahist_member(path, infos)
             member_info = zip_file.getinfo(member_name)
             if member_info.file_size == 0:

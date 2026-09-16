@@ -7,8 +7,6 @@ from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
     generate_urls,
 )
 
-# allow-assertion-reduction: Consolidated URL result checks.
-
 
 @pytest.mark.unit
 class TestGenerateUrlsUseCaseSuccess:

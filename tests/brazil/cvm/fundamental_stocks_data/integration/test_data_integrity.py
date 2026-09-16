@@ -1,6 +1,6 @@
 import zipfile
 
-import pandas as pd  # type: ignore
+import pandas as pd
 import pyarrow.parquet as pq
 import pytest
 
@@ -136,7 +136,7 @@ class TestDataIntegrity:
             csv_content = valid_data.to_csv(sep=';', index=False)
             z.writestr('valid.csv', csv_content.encode('latin-1'))
         extractor = ParquetExtractorAdapterCVM()
-        with pytest.raises(ExtractionError, match='No columns to parse'):
+        with pytest.raises(ExtractionError, match='CSV member has no header'):
             extractor.extract(
                 source_path=str(zip_path), destination_path=str(tmp_path)
             )

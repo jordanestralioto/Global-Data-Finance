@@ -65,6 +65,33 @@ includes the interpreter, dependencies, parser, and Parquet writer.
 > The significant memory difference (~4.2 GB vs ~1.6 GB) only becomes apparent at
 > real scale, as shown in Section 1.
 
+### 2.1. Arrow v3 Candidate — 250 Thousand Records (2026-09-12 UTC, Revision `703d9ab`)
+
+This measurement uses the Arrow ingestion runner introduced by this cutover. It
+does not replace the historical v1 baseline: the corpus generator, explicit
+schema, and separation between operation and validation time are part of a
+stricter protocol. It is reproducible candidate evidence and a starting point
+for future comparisons made under the same protocol.
+
+**Environment:** Python 3.13.7 · Linux x86_64 (kernel 6.8) · 8 CPUs. Three fresh
+Python processes handled the deterministic synthetic corpus without network
+calls.
+
+| Scenario | Repeats | Rows | Operation time (median) | Peak RSS (median) | Parquet output | Logical equivalence |
+| -------- | ------: | ---: | ----------------------: | ----------------: | -------------: | -----------------: |
+| B3 250k |       3 | 250,000 |                 5.832 s |       215.898 MiB |    5,822,005 B |                3/3 |
+
+- The input SHA-256 is
+  `329f30c6d160401071ab321ebe796e8d91be5a2e0bf502fc68b1cc1c66c30d39`.
+- Each repeat validated row count, order, schema, nulls, typed values, and
+  decimal precision; all produced the same logical digest.
+- Post-write validation is recorded separately from operation time; it is not
+  mixed into the throughput metric in the table.
+- The local raw JSON is stored at
+  `.benchmarks/pyarrow-ingestion-integrity-cutover-b3-250k-20260912.json`.
+  That directory is deliberately Git-ignored because it contains
+  machine-dependent evidence.
+
 ### Reproduction
 
 ```bash
@@ -173,16 +200,20 @@ uv run --locked --no-sync python scripts/benchmark_ingestion.py \
   --scenario cvm --scenario cvm_text --scenario b3_100k \
   --scenario b3_250k --repeats 3 --output benchmark.json
 
-# External annual corpus: absence is skipped, never reported as passed
+# The annual corpus runs only with all 17 ZIPs; otherwise it is skipped
 uv run --locked --no-sync python scripts/benchmark_ingestion.py \
   --scenario b3_annual --cotahist-path /path/to/COTAHIST --output annual.json
 ```
 
 Each JSON result contains schema version, revision, environment, input checksum,
-row count, schema fingerprint, logical equivalence, elapsed time,
-initial/peak/final RSS, output bytes, and `status`. An annual run without a
-corpus reports `skipped` with `external corpus unavailable`; release reports
-must not turn that into success.
+row count, schema fingerprint, logical equivalence, a typed logical digest,
+operation time, operation/validation phases, initial/peak/final RSS, output
+bytes, and `status`. Equivalence compares every typed row (including nulls,
+ordering, and decimal tuples), not only boundary values. The child verifies the
+checksum before measuring, so a changed source fails instead of producing an
+invalid comparison. An annual run without all 17 required ZIPs reports
+`skipped` with `external corpus unavailable`; release reports must not turn that
+into success.
 
 Reference gates for this change are compared only on the same baseline/candidate
 machine: root import ≤50 MiB and ≤0.50 s; CVM 269,181 rows ≤60% of baseline

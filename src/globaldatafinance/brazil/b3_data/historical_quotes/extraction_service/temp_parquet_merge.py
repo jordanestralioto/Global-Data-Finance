@@ -1,161 +1,138 @@
-"""Merge temporary B3 Parquet artifacts while limiting memory use."""
+"""Ordered streaming merge for transaction-private B3 Parquet artifacts."""
 
-from collections.abc import Awaitable, Callable
+from __future__ import annotations
+
+import contextlib
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
-import pyarrow.parquet as pq  # type: ignore
-
-from .....core import get_logger
 from .....macro_exceptions import ExtractionError, ParquetWriteError
+from ..parquet_writer.session import ROW_GROUP_LIMIT, B3ParquetWriterSession
 
-logger = get_logger(__name__)
-
-
-def _remove_temp_file(temp_file: Path) -> None:
-    """Remove one merged temporary file without aborting a valid merge."""
-    try:
-        temp_file.unlink()
-        logger.debug(f'Deleted temporary file: {temp_file.name}')
-    except OSError:
-        logger.warning(
-            'Failed to delete temp file %s', temp_file.name, exc_info=True
-        )
+if TYPE_CHECKING:
+    from pyarrow import Schema
 
 
-async def _check_merge_resources(
-    total_rows: int,
-    check_resources: Callable[[], Awaitable[None]],
-) -> None:
-    """Check resources at the established cumulative row boundary."""
-    if total_rows > 0 and total_rows % 500_000 == 0:
-        await check_resources()
-
-
-async def _write_temp_parquet(
-    writer: Any,
-    temp_file: Path,
-    *,
-    index: int,
-    file_count: int,
-    total_rows: int,
-    check_resources: Callable[[], Awaitable[None]],
-) -> int:
-    """Stream one temporary Parquet into the merge writer."""
-    logger.debug(f'Merging file {index}/{file_count}: {temp_file.name}')
-    parquet_file = pq.ParquetFile(str(temp_file))
-    file_rows = 0
-    for batch in parquet_file.iter_batches(batch_size=200_000):
-        writer.write_batch(batch)
-        file_rows += batch.num_rows
-        total_rows += batch.num_rows
-
-    logger.debug(
-        f'Merged {file_rows:,} rows from {temp_file.name}',
-        extra={'cumulative_rows': total_rows},
-    )
-    _remove_temp_file(temp_file)
-    await _check_merge_resources(total_rows, check_resources)
-    return total_rows
-
-
-def _cleanup_path(path: Path) -> None:
-    """Best-effort cleanup one merge artifact with observable failures."""
-    try:
-        path.unlink(missing_ok=True)
-    except OSError:
-        logger.warning(
-            'Failed to clean up merge artifact %s', path, exc_info=True
-        )
-
-
-def _cleanup_failed_merge(temp_merge: Path, temp_files: list[Path]) -> None:
-    """Remove the intermediate output and all remaining temporary inputs."""
-    _cleanup_path(temp_merge)
-    for temp_file in temp_files:
-        _cleanup_path(temp_file)
-
-
-async def merge_temp_files_streaming(
-    temp_files: list[Path],
+def merge_temp_files_streaming(
+    temp_files: Sequence[Path],
     final_output: Path,
-    *,
-    check_resources: Callable[[], Awaitable[None]],
+    expected_schema: Schema,
+    expected_rows: Sequence[int] | None = None,
 ) -> int:
-    """Merge temporary parquet files without loading all rows into memory."""
-    if not temp_files:
-        logger.warning('No temporary files to merge')
-        return 0
+    """Merge valid temporary files in input order without deleting sources.
 
-    if len(temp_files) == 1:
-        logger.info('Only one temp file, replacing final output')
-        temp_files[0].replace(final_output)
-        return count_parquet_rows(final_output)
+    ``expected_rows`` carries the counts established by each source worker.
+    When supplied, the merge validates those counts against the temporary
+    Parquet metadata before copying any batches, preventing a mutated or
+    truncated private artifact from being published under a valid schema.
+    """
+    _validate_merge_inputs(temp_files, expected_rows)
 
-    logger.info(
-        f'Merging {len(temp_files)} temporary files using streaming',
-        extra={
-            'temp_files': [f.name for f in temp_files],
-            'final_output': str(final_output),
-        },
+    session = B3ParquetWriterSession().open(final_output, expected_schema)
+    try:
+        for index, temp_file in enumerate(temp_files):
+            source = _open_validated_temporary(
+                temp_file,
+                expected_schema,
+                None if expected_rows is None else expected_rows[index],
+            )
+            written_before = session.rows_written
+            session.write_batches(
+                source.iter_batches(batch_size=ROW_GROUP_LIMIT)
+            )
+            if session.rows_written < written_before:
+                raise ExtractionError(
+                    str(temp_file), 'B3 merge row count regressed unexpectedly'
+                )
+        session.close()
+        return session.rows_written
+    except Exception as error:
+        with contextlib.suppress(OSError):
+            final_output.unlink(missing_ok=True)
+        if isinstance(error, ExtractionError):
+            raise
+        raise ParquetWriteError(
+            str(final_output), f'B3 streaming merge failed: {error}'
+        ) from error
+    finally:
+        with contextlib.suppress(Exception):
+            session.close()
+
+
+def _validate_temporary_row_count(
+    temp_file: Path,
+    observed_rows: int,
+    expected_rows: int | None,
+) -> None:
+    """Reject a private artifact whose metadata disagrees with its source."""
+    if expected_rows is None or observed_rows == expected_rows:
+        return
+    raise ExtractionError(
+        str(temp_file),
+        'B3 temporary Parquet row count is incompatible: '
+        f'expected {expected_rows}, observed {observed_rows}',
     )
 
-    temp_merge = final_output.with_suffix('.parquet.merge_tmp')
 
-    try:
-        first_file = pq.ParquetFile(str(temp_files[0]))
-        schema = first_file.schema_arrow
+def validate_one_temp_file(
+    temp_file: Path,
+    expected_schema: Schema,
+    expected_rows: int,
+) -> int:
+    """Validate one source artifact before publishing it without a merge.
 
-        writer = pq.ParquetWriter(
-            str(temp_merge),
-            schema,
-            compression='zstd',
-            compression_level=3,
-        )
-
-        total_rows = 0
-
-        for index, temp_file in enumerate(temp_files, 1):
-            total_rows = await _write_temp_parquet(
-                writer,
-                temp_file,
-                index=index,
-                file_count=len(temp_files),
-                total_rows=total_rows,
-                check_resources=check_resources,
-            )
-
-        writer.close()
-
-        temp_merge.replace(final_output)
-
-        logger.info(
-            'Merge completed successfully',
-            extra={
-                'total_rows': f'{total_rows:,}',
-                'output_file': str(final_output),
-                'files_merged': len(temp_files),
-            },
-        )
-
-        return total_rows
-
-    except Exception as error:
-        logger.exception('Failed to merge temporary files')
-        _cleanup_failed_merge(temp_merge, temp_files)
-        raise ParquetWriteError(
-            str(final_output), f'Merge operation failed: {error}'
-        ) from error
-
-
-def count_parquet_rows(path: Path) -> int:
-    """Count rows in parquet file without loading rows into memory."""
-    try:
-        parquet_file = pq.ParquetFile(str(path))
-        result: int = parquet_file.metadata.num_rows
-        return result
-    except Exception as error:
-        logger.exception('Error counting rows in %s', path)
+    The one-source path is logically a degenerate ordered merge.  It keeps
+    the same integrity checks as the multi-source implementation while
+    avoiding a needless read-and-rewrite of a fully validated Parquet file.
+    """
+    _validate_merge_inputs([temp_file], [expected_rows])
+    source = _open_validated_temporary(
+        temp_file, expected_schema, expected_rows
+    )
+    metadata = source.metadata
+    if metadata is None:
         raise ExtractionError(
-            str(path), f'Failed to read rows count: {error}'
-        ) from error
+            str(temp_file), 'B3 temporary Parquet metadata is missing'
+        )
+    return cast(int, metadata.num_rows)
+
+
+def _validate_merge_inputs(
+    temp_files: Sequence[Path], expected_rows: Sequence[int] | None
+) -> None:
+    """Reject structurally inconsistent merge metadata before I/O."""
+    if expected_rows is not None and (
+        len(expected_rows) != len(temp_files)
+        or any(rows < 0 for rows in expected_rows)
+    ):
+        raise ValueError(
+            'expected_rows must match temp_files and contain '
+            'non-negative values'
+        )
+
+
+def _open_validated_temporary(
+    temp_file: Path,
+    expected_schema: Schema,
+    expected_rows: int | None,
+) -> Any:
+    """Open a private source artifact only after its invariants hold."""
+    import pyarrow.parquet as pq
+
+    if not temp_file.is_file():
+        raise ExtractionError(
+            str(temp_file), 'B3 temporary Parquet artifact is missing'
+        )
+    source = pq.ParquetFile(temp_file)
+    if source.schema_arrow != expected_schema:
+        raise ExtractionError(
+            str(temp_file), 'B3 temporary Parquet schema is incompatible'
+        )
+    metadata = source.metadata
+    if metadata is None:
+        raise ExtractionError(
+            str(temp_file), 'B3 temporary Parquet metadata is missing'
+        )
+    _validate_temporary_row_count(temp_file, metadata.num_rows, expected_rows)
+    return source

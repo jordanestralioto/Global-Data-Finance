@@ -76,6 +76,37 @@ e decimais válidos; valores inválidos nunca viram zero, string vazia ou nulo.
 Registros fora do filtro são contados, mas não persistidos. Fontes válidas
 integralmente filtradas publicam Parquet vazio com schema B3 explícito.
 
+## Decisões de remediação da revisão
+
+As seguintes decisões fecham os contratos encontrados na revisão de
+implementação:
+
+- `Settings.archive` é o único namespace canônico para limites de ZIP;
+  `Settings.archive_safety` não é alias compatível. `infos=None` significa que
+  a validação deve consultar o diretório central; uma lista fornecida, inclusive
+  `[]`, é uma seleção já validada e deve ser respeitada literalmente.
+- O logger `globaldatafinance` permanece isolado da hierarquia da aplicação
+  desde o import, com `NullHandler` e `propagate=False`. `setup_logging()` só
+  instala handlers gerenciados depois de construir todos os candidatos; uma
+  falha de preparação ou troca restaura nível, propagação e handlers anteriores
+  sem tocar em handlers externos. `LoggingSettings` é estrito e não aceita o
+  campo removido `structured` nem variáveis `DATAFIN_LOG_*` desconhecidas.
+  Destinos de arquivo passam pela política de segurança de caminhos antes de
+  qualquer criação; o formatter redige
+  parâmetros e campos de contexto sensíveis conhecidos, mas consumidores
+  continuam proibidos de enviar segredos ao logging.
+- A inferência CVM mantém inteiros assinados anuláveis como `int64`; não usa
+  `float64` apenas porque a coluna contém nulos. O dialeto `QUOTE_NONE` também
+  preserva uma linha física vazia de CSV de uma coluna como nulo lógico.
+- O corte B3 remove o writer da dependência de estado do service e deixa o
+  fechamento apenas na session concreta. A session tem estados explícitos
+  `NEW`, `OPEN` e `CLOSED`; uma falha de fechamento é terminal, e o marcador
+  interno de nulo nunca é aceito como dado literal de entrada.
+- `ResourceMonitor` continua singleton deliberado, enquanto o cache de
+  imports Arrow permanece lazy e privado ao caminho operacional que precisa
+  dele. Essas escolhas não são atalhos de compatibilidade nem caminhos
+  alternativos de ingestão.
+
 ## Consequências
 
 - A release é major: parser B3 estrito, remoção de Polars e remoção do caminho

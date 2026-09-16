@@ -11,13 +11,15 @@ Note: For logging configuration, use the
 globaldatafinance.core.logging_config module directly.
 
 Example:
-    >>> from globaldatafinance.core.config import settings
+    >>> from globaldatafinance.core.config import Settings
+    >>> settings = Settings()
     >>> print(settings.network.timeout)
     180
     >>> # Override via environment variable
     >>> # export DATAFINANCE_NETWORK_TIMEOUT=600
 """
 
+from collections.abc import Sequence
 from pathlib import PureWindowsPath
 
 from pydantic import Field, field_validator, model_validator
@@ -62,14 +64,15 @@ class NetworkSettings(BaseSettings):
         env_prefix='DATAFINANCE_NETWORK_',
         case_sensitive=False,
         extra='ignore',
+        frozen=True,
     )
 
 
 class PathSafetySettings(BaseSettings):
     """Global allowlist configuration for caller-provided UNC destinations."""
 
-    allowed_unc_roots: list[str] = Field(
-        default_factory=list,
+    allowed_unc_roots: tuple[str, ...] = Field(
+        default_factory=tuple,
         description=(
             'JSON list of trusted UNC roots allowed as caller destinations'
         ),
@@ -79,12 +82,17 @@ class PathSafetySettings(BaseSettings):
         env_prefix='DATAFINANCE_PATH_SAFETY_',
         case_sensitive=False,
         extra='ignore',
+        frozen=True,
     )
 
-    @field_validator('allowed_unc_roots')
+    @field_validator('allowed_unc_roots', mode='before')
     @classmethod
-    def validate_allowed_unc_roots(cls, roots: list[str]) -> list[str]:
+    def validate_allowed_unc_roots(
+        cls, roots: Sequence[str] | None
+    ) -> tuple[str, ...]:
         """Require absolute, non-administrative UNC roots in the allowlist."""
+        if roots is None:
+            return ()
         normalized_roots: list[str] = []
         for root in roots:
             if not isinstance(root, str):
@@ -102,7 +110,16 @@ class PathSafetySettings(BaseSettings):
             if share_name.rstrip(' .').endswith('$'):
                 raise ValueError('Administrative UNC shares cannot be allowed')
             normalized_roots.append(str(unc_path))
-        return normalized_roots
+        return tuple(normalized_roots)
+
+    @classmethod
+    def resolve_allowed_unc_roots(
+        cls, roots: Sequence[str] | None = None
+    ) -> tuple[str, ...]:
+        """Return a validated immutable UNC-root snapshot."""
+        if roots is None:
+            return cls().allowed_unc_roots
+        return cls(allowed_unc_roots=tuple(roots)).allowed_unc_roots
 
 
 class ArchiveSafetySettings(BaseSettings):
@@ -143,6 +160,7 @@ class ArchiveSafetySettings(BaseSettings):
         env_prefix='DATAFINANCE_ARCHIVE_',
         case_sensitive=False,
         extra='ignore',
+        frozen=True,
     )
 
     @model_validator(mode='after')
@@ -183,8 +201,5 @@ class Settings(BaseSettings):
         env_prefix='DATAFINANCE_',
         case_sensitive=False,
         extra='ignore',
+        frozen=True,
     )
-
-
-# Singleton instance
-settings = Settings()

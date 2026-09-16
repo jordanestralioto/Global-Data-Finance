@@ -1,3 +1,4 @@
+from . import extraction_service, parquet_writer
 from .assets import AvailableAssetsServiceB3
 from .client import (
     CreateDocsToExtractUseCaseB3,
@@ -40,4 +41,6 @@ __all__ = [
     'YearRangeB3',
     'YearValidationServiceB3',
     'ZipFileReaderB3',
+    'extraction_service',
+    'parquet_writer',
 ]

@@ -76,6 +76,36 @@ values never become zero, an empty string, or null. Records outside the filter
 are counted but not persisted. Fully filtered valid sources publish an empty
 Parquet with the explicit B3 schema.
 
+## Review-remediation decisions
+
+The following decisions close the contracts found during the implementation
+review:
+
+- `Settings.archive` is the only canonical namespace for ZIP limits;
+  `Settings.archive_safety` is not a compatibility alias. `infos=None` means
+  that central-directory validation must run; a supplied list, including `[]`,
+  is an already validated selection and must be honored literally.
+- The `globaldatafinance` logger is isolated from the application hierarchy at
+  import time with a `NullHandler` and `propagate=False`. `setup_logging()` only
+  installs managed handlers after all candidates are prepared; a preparation or
+  swap failure restores the previous level, propagation, and handlers without
+  touching external handlers. `LoggingSettings` is strict and rejects the
+  removed `structured` field and unknown `DATAFIN_LOG_*` variables. File
+  destinations pass through the path-safety policy before any creation, and
+  the formatter redacts known sensitive
+  parameters and context fields; consumers still must not send secrets to
+  logging.
+- CVM inference keeps nullable signed integers as `int64`; a null does not by
+  itself promote the column to `float64`. The `QUOTE_NONE` dialect also keeps a
+  physical blank one-column CSV record as a logical null.
+- The B3 clean cut removes the writer from service state and leaves closing to
+  the concrete session. The session has explicit `NEW`, `OPEN`, and `CLOSED`
+  states; a close failure is terminal, and the internal null marker is never
+  accepted as literal input data.
+- `ResourceMonitor` remains a deliberate singleton, while the Arrow import
+  cache remains lazy and private to the operational path that needs it. These
+  are not compatibility shortcuts or parallel ingestion paths.
+
 ## Consequences
 
 - This is a major release: strict B3 parsing, Polars removal, and removal of

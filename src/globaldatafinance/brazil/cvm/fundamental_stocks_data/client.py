@@ -2,9 +2,11 @@
 
 import os
 import time
+from collections.abc import Sequence
 from pathlib import Path
 
 from ....core import get_logger
+from ....core.config import PathSafetySettings
 from ....core.utils import assert_path_not_sensitive
 from ....macro_exceptions import (
     InvalidDestinationPathError,
@@ -50,8 +52,7 @@ def generate_range_years(
         'Generating Range Years, years=%s-%s', initial_year, last_year
     )
     range_years = core.AvailableYearsCVM().return_range_years(
-        initial_year=initial_year,
-        last_year=last_year,
+        initial_year=initial_year, last_year=last_year
     )
     logger.debug('Generated range of years: %s', list(range_years))
     return range_years
@@ -97,11 +98,16 @@ class VerifyPathsUseCasesCVM:
         destination_path: str,
         new_set_docs: set[str],
         range_years: range,
+        *,
+        allowed_unc_roots: Sequence[str] | None = None,
     ):
         """Initialize the destination and requested document-year scope."""
         self.destination_path = destination_path
         self.new_set_docs = new_set_docs
         self.range_years = range_years
+        self.allowed_unc_roots = PathSafetySettings.resolve_allowed_unc_roots(
+            allowed_unc_roots
+        )
         self.__available_years = core.AvailableYearsCVM()
 
         if not new_set_docs:
@@ -149,23 +155,14 @@ class VerifyPathsUseCasesCVM:
 
     def __is_valid_year_for_doc(self, doc: str, year: int) -> bool:
         doc_upper = doc.upper()
-        min_itr = self.__available_years.get_minimal_itr_year()
-        min_cgvn_vlmo = self.__available_years.get_minimal_cgvn_vlmo_year()
-        min_general = self.__available_years.get_minimal_general_year()
-
         if doc_upper == 'ITR':
-            return year >= min_itr
-
+            return year >= self.__available_years.get_minimal_itr_year()
         if doc_upper in {'VLMO', 'CGVN'}:
-            return year >= min_cgvn_vlmo
+            return year >= self.__available_years.get_minimal_cgvn_vlmo_year()
+        return year >= self.__available_years.get_minimal_general_year()
 
-        return year >= min_general
-
-    @staticmethod
-    def __validate_and_create_paths(path: str) -> str:
-        normalized_path = VerifyPathsUseCasesCVM.__normalize_and_assert_safe(
-            path
-        )
+    def __validate_and_create_paths(self, path: str) -> str:
+        normalized_path = self.__normalize_and_assert_safe(path)
 
         if normalized_path.exists():
             if not normalized_path.is_dir():
@@ -193,8 +190,7 @@ class VerifyPathsUseCasesCVM:
         )
         return str(normalized_path)
 
-    @staticmethod
-    def __normalize_and_assert_safe(path: str) -> Path:
+    def __normalize_and_assert_safe(self, path: str) -> Path:
         """Validate raw destination syntax before a child path is composed."""
         if not isinstance(path, str):
             raise TypeError(
@@ -208,20 +204,28 @@ class VerifyPathsUseCasesCVM:
 
         normalized_path = Path(path).expanduser().resolve()
 
-        assert_path_not_sensitive(normalized_path, raw_input=path)
+        assert_path_not_sensitive(
+            normalized_path,
+            raw_input=path,
+            allowed_unc_roots=self.allowed_unc_roots,
+        )
         return normalized_path
 
 
 class DownloadDocumentsUseCaseCVM:
-    """Orchestrator use case for downloading CVM documents.
+    """Orchestrate CVM document downloads through one adapter."""
 
-    Maintains its repository collaborator across executions. Collaborators
-    interact directly via duck typing and static type checking.
-    """
-
-    def __init__(self, repository: AsyncDownloadAdapterCVM) -> None:
+    def __init__(
+        self,
+        repository: AsyncDownloadAdapterCVM,
+        *,
+        allowed_unc_roots: Sequence[str] | None = None,
+    ) -> None:
         """Initialize the orchestrator with its repository collaborator."""
         self.__repository: AsyncDownloadAdapterCVM = repository
+        self.__allowed_unc_roots = (
+            PathSafetySettings.resolve_allowed_unc_roots(allowed_unc_roots)
+        )
 
         logger.debug(
             'DownloadDocumentsUseCaseCVM initialized with repository=%s',
@@ -247,8 +251,7 @@ class DownloadDocumentsUseCaseCVM:
         try:
             tasks = self.__prepare_download_tasks(dict_urls_zips, docs_paths)
             result = self.__repository.download_docs(
-                tasks,
-                automatic_extractor=automatic_extractor,
+                tasks, automatic_extractor=automatic_extractor
             )
             return self.__finalize(result, start_time)
 
@@ -280,8 +283,7 @@ class DownloadDocumentsUseCaseCVM:
         try:
             tasks = self.__prepare_download_tasks(dict_urls_zips, docs_paths)
             result = await self.__repository.async_download_docs(
-                tasks,
-                automatic_extractor=automatic_extractor,
+                tasks, automatic_extractor=automatic_extractor
             )
             return self.__finalize(result, start_time)
 
@@ -310,8 +312,7 @@ class DownloadDocumentsUseCaseCVM:
         )
 
         range_years = generate_range_years(
-            initial_year=initial_year,
-            last_year=last_year,
+            initial_year=initial_year, last_year=last_year
         )
 
         dict_urls_zips, new_set_docs = generate_urls(
@@ -324,6 +325,7 @@ class DownloadDocumentsUseCaseCVM:
             destination_path=destination_path,
             new_set_docs=new_set_docs,
             range_years=range_years,
+            allowed_unc_roots=self.__allowed_unc_roots,
         )
         docs_paths = verify_paths.execute()
 

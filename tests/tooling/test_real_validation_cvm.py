@@ -12,8 +12,8 @@ from types import SimpleNamespace
 from typing import Any, cast
 
 import httpx
-import polars as pl
 import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
 
 import scripts.real_validation_cvm as cvm
@@ -114,8 +114,8 @@ def _facade_adapter() -> SimpleNamespace:
             _ = source_path
             destination = Path(destination_path)
             destination.mkdir(parents=True, exist_ok=True)
-            pl.DataFrame({'id': [1, 2]}).write_parquet(
-                destination / 'data.parquet'
+            pq.write_table(
+                pa.table({'id': [1, 2]}), destination / 'data.parquet'
             )
 
     return SimpleNamespace(
@@ -357,7 +357,7 @@ def test_validate_result_requires_document_after_artifact_checks(
     """A valid artifact without a document identity is not reportable."""
     output = tmp_path / 'output'
     output.mkdir()
-    pl.DataFrame({'id': [1]}).write_parquet(output / 'data.parquet')
+    pq.write_table(pa.table({'id': [1]}), output / 'data.parquet')
     result = DownloadResultCVM(successful_downloads=['unknown'])
 
     details = cvm._validate_result(result, output, _cvm_case(None))
@@ -396,8 +396,8 @@ def test_inspect_parquet_files_reads_metadata_and_counts_batches(
     first = output / 'first.parquet'
     second = output / 'nested' / 'second.parquet'
     second.parent.mkdir()
-    pl.DataFrame({'id': [1, 2]}).write_parquet(first)
-    pl.DataFrame({'value': ['x']}).write_parquet(second)
+    pq.write_table(pa.table({'id': [1, 2]}), first)
+    pq.write_table(pa.table({'value': ['x']}), second)
 
     inspected = cvm._inspect_parquet_files([first, second], output)
 
@@ -418,11 +418,11 @@ def test_inspect_parquet_files_rejects_invalid_evidence(
     output.mkdir()
     path = output / 'data.parquet'
     if kind == 'empty':
-        pl.DataFrame({'id': []}).write_parquet(path)
+        pq.write_table(pa.table({'id': pa.array([], type=pa.int64())}), path)
     elif kind == 'unreadable':
         path.write_bytes(b'not parquet')
     else:
-        pl.DataFrame({'id': [1]}).write_parquet(path)
+        pq.write_table(pa.table({'id': [1]}), path)
 
         class FakeParquet:
             metadata = SimpleNamespace(num_rows=2)

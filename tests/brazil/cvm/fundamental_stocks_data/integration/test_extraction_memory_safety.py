@@ -1,6 +1,7 @@
 import zipfile
+from pathlib import Path
 
-import pandas as pd  # type: ignore
+import pyarrow.parquet as pq
 import pytest
 
 from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
@@ -8,33 +9,35 @@ from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
 )
 
 pytestmark = pytest.mark.integration
-# allow-assertion-reduction: Resource checks replace print-heavy stress cases.
 
 
 class TestMemorySafety:
-    def test_small_csv_is_processed_in_multiple_chunks(self, tmp_path):
-        source_data = pd.DataFrame(
-            {
-                'row_id': range(7),
-                'label': [f'row-{index}' for index in range(7)],
-                'value': [index * 1.5 for index in range(7)],
-            }
-        )
+    def test_small_csv_is_written_as_one_bounded_arrow_row_group(
+        self, tmp_path: Path
+    ) -> None:
+        """The pipeline owns bounded Arrow groups instead of pandas chunks."""
+        source_rows = [
+            {'row_id': index, 'label': f'row-{index}', 'value': index * 1.5}
+            for index in range(7)
+        ]
         archive_path = tmp_path / 'multi_chunk.zip'
         with zipfile.ZipFile(archive_path, 'w') as archive:
             archive.writestr(
                 'multi_chunk.csv',
-                source_data.to_csv(sep=';', index=False).encode('latin-1'),
+                'row_id;label;value\n'
+                + ''.join(
+                    f'{row["row_id"]};{row["label"]};{row["value"]}\n'
+                    for row in source_rows
+                ),
             )
 
-        extractor = ParquetExtractorAdapterCVM()
-        extractor.extractor_adapter.CHUNK_SIZE_PARQUET = 2
-        extractor.extract(
+        ParquetExtractorAdapterCVM().extract(
             source_path=str(archive_path), destination_path=str(tmp_path)
         )
 
         output_path = tmp_path / 'multi_chunk.parquet'
         assert output_path.exists()
-        result = pd.read_parquet(output_path)
-        pd.testing.assert_frame_equal(result, source_data)
-        assert len(result) == 7
+        parquet = pq.ParquetFile(output_path)
+        assert parquet.metadata.num_rows == 7
+        assert parquet.metadata.num_row_groups == 1
+        assert pq.read_table(output_path).to_pylist() == source_rows

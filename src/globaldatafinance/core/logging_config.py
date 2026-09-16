@@ -4,29 +4,24 @@ This module provides a unified, production-ready logging system with lazy
 initialization, console/file handlers, configurable log levels, execution
 timing utilities, and structured context formatting.
 
-Example:
-    >>> from globaldatafinance.core.logging_config import (
-    ...     setup_logging, get_logger
-    ... )
-    >>> setup_logging(level="INFO")
-    >>> logger = get_logger(__name__)
-    >>> logger.info("Processing file", extra={"file_target": "data.csv"})
 """
 
 import logging
+import os
 import sys
+import threading
 import time
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import Field, field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# ============================================================================
-# LOG FORMATS
-# ============================================================================
+from .logging_redaction import format_structured_message
+
+# Log formats
 
 DEFAULT_FORMAT = '%(asctime)s | %(levelname)-8s | %(name)s | %(message)s'
 DETAILED_FORMAT = (
@@ -34,33 +29,53 @@ DETAILED_FORMAT = (
     '%(funcName)s | %(message)s'
 )
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
-
-
-# ============================================================================
-# SETTINGS
-# ============================================================================
+_LOGGING_ENV_PREFIX = 'DATAFIN_LOG_'
+_KNOWN_LOGGING_ENV_NAMES = frozenset(
+    {
+        'DATAFIN_LOG_LEVEL',
+        'DATAFIN_LOG_FORMAT',
+        'DATAFIN_LOG_FILE',
+        'DATAFIN_LOG_LOG_FILE',
+        'DATAFIN_LOG_DETAILED_FORMAT',
+    }
+)
 
 
 class LoggingSettings(BaseSettings):
     """Global logging configuration with environment variable support."""
 
+    def __init__(self, **data: Any) -> None:
+        """Reject unknown logging environment variables before resolution."""
+        unknown_environment = tuple(
+            sorted(
+                name
+                for name in os.environ
+                if name.upper().startswith(_LOGGING_ENV_PREFIX)
+                and name.upper() not in _KNOWN_LOGGING_ENV_NAMES
+            )
+        )
+        if unknown_environment:
+            data = {
+                **data,
+                '__unknown_logging_environment__': ', '.join(
+                    unknown_environment
+                ),
+            }
+        super().__init__(**data)
+
     level: Literal['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'] = Field(
         default='INFO', description='Global logging level'
     )
-
     format: str = Field(
-        default=DEFAULT_FORMAT,
-        description='Log message format',
+        default=DEFAULT_FORMAT, description='Log message format'
     )
-
     log_file: str | None = Field(
-        default=None, description='Path to log file (None = console only)'
+        default=None,
+        description='Path to log file (None = console only)',
+        validation_alias=AliasChoices(
+            'log_file', 'DATAFIN_LOG_FILE', 'DATAFIN_LOG_LOG_FILE'
+        ),
     )
-
-    structured: bool = Field(
-        default=False, description='Enable structured logging (JSON format)'
-    )
-
     detailed_format: bool = Field(
         default=False, description='Include line numbers and function names'
     )
@@ -68,6 +83,8 @@ class LoggingSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix='DATAFIN_LOG_',
         case_sensitive=False,
+        extra='forbid',
+        frozen=True,
     )
 
     @field_validator('level', mode='before')
@@ -80,15 +97,25 @@ class LoggingSettings(BaseSettings):
             return v.upper()
         return v
 
+    @field_validator('log_file', mode='before')
+    @classmethod
+    def validate_log_file(cls, v: Any) -> Any:
+        """Convert Path instances to string."""
+        if isinstance(v, Path):
+            return str(v)
+        return v
 
-# Global settings instance
-_settings = LoggingSettings()
-_logging_configured = False
 
-
-# ============================================================================
-# FORMATTERS & FILTERS
-# ============================================================================
+_LIBRARY_LOGGER_NAME = 'globaldatafinance'
+_MANAGED_HANDLER_ATTR = '_gdf_managed'
+_logging_lock = threading.Lock()
+_package_logger = logging.getLogger(_LIBRARY_LOGGER_NAME)
+if not any(
+    isinstance(handler, logging.NullHandler)
+    for handler in _package_logger.handlers
+):
+    _package_logger.addHandler(logging.NullHandler())
+_package_logger.propagate = False
 
 
 class ContextFilter(logging.Filter):
@@ -101,146 +128,120 @@ class ContextFilter(logging.Filter):
         return True
 
 
-_STANDARD_RECORD_ATTRS: frozenset[str] = frozenset(
-    {
-        'args',
-        'asctime',
-        'created',
-        'exc_info',
-        'exc_text',
-        'extra_data',
-        'filename',
-        'funcName',
-        'levelname',
-        'levelno',
-        'lineno',
-        'module',
-        'msecs',
-        'message',
-        'msg',
-        'name',
-        'pathname',
-        'process',
-        'processName',
-        'relativeCreated',
-        'stack_info',
-        'taskName',
-        'thread',
-        'threadName',
-    }
-)
-
-
 class StructuredFormatter(logging.Formatter):
     """Custom formatter that handles extra data from log calls."""
 
     def format(self, record: logging.LogRecord) -> str:
         """Format log record with extra data if present."""
-        message = super().format(record)
-
-        extra_items: dict[str, Any] = {}
-        extra_data = getattr(record, 'extra_data', None)
-        if isinstance(extra_data, dict):
-            extra_items.update(extra_data)
-
-        for attr, val in record.__dict__.items():
-            if not attr.startswith('_') and attr not in _STANDARD_RECORD_ATTRS:
-                extra_items[attr] = val
-
-        if extra_items:
-            extra_str = ' | '.join(f'{k}={v}' for k, v in extra_items.items())
-            message = f'{message} | {extra_str}'
-
-        return message
-
-
-# ============================================================================
-# CORE FUNCTIONS
-# ============================================================================
+        return format_structured_message(super().format(record), record)
 
 
 def setup_logging(
-    level: str | None = None,
-    log_file: str | None = None,
-    structured: bool = False,
-    use_detailed_format: bool = False,
-) -> None:
+    settings: LoggingSettings | None = None,
+) -> LoggingSettings:
     """Setup logging for Global-Data-Finance library.
 
-    Call this function at application start if you want to see log messages.
-    By default, logging is disabled to keep your application clean.
-
-    This function configures the root logger and can be called multiple times
-    to reconfigure logging (e.g., to change level or add file handler).
+    Configures only loggers under the ``globaldatafinance`` hierarchy, leaving
+    the application-owned root logger and external handlers undisturbed.
+    Can be called multiple times to atomically reconfigure library logging;
+    only library-managed handlers are replaced, while externally attached
+    handlers on the package logger are preserved.
 
     Args:
-        level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL).
-               If None, uses DATAFIN_LOG_LEVEL env var or defaults to INFO.
-        log_file: Path to log file. If None, logs go to console only.
-        structured: Enable structured key-value context logging. JSON output
-                    remains reserved for a future compatibility-reviewed
-                    format change.
-        use_detailed_format: If True, includes line numbers and function names.
+        settings: Immutable LoggingSettings snapshot. If None, instantiates
+            a fresh snapshot from environment variables or defaults.
+
+    Returns:
+        The resolved immutable LoggingSettings snapshot.
 
     Example:
-        >>> from globaldatafinance.core.logging_config import setup_logging
-        >>>
-        >>> # Basic setup
-        >>> setup_logging(level="INFO")
-        >>>
-        >>> # With file output
-        >>> setup_logging(level="DEBUG", log_file="/tmp/datafin.log")
-        >>>
-        >>> # Detailed format for debugging
-        >>> setup_logging(level="DEBUG", use_detailed_format=True)
+        >>> from globaldatafinance.core.logging_config import (
+        ...     LoggingSettings, setup_logging
+        ... )
+        >>> setup_logging(LoggingSettings(level="INFO"))
+        >>> setup_logging(
+        ...     LoggingSettings(level="DEBUG", log_file="/tmp/datafin.log")
+        ... )
     """
-    global _logging_configured, _settings
+    if settings is None:
+        settings = LoggingSettings()
 
-    # Update settings if parameters provided
-    if level:
-        normalized = level.upper() if isinstance(level, str) else level
-        _settings.level = normalized  # type: ignore
-    if log_file:
-        _settings.log_file = log_file
-    if structured:
-        _settings.structured = structured
-    if use_detailed_format:
-        _settings.detailed_format = use_detailed_format
+    candidates = _build_managed_handlers(settings)
+    with _logging_lock:
+        package_logger = logging.getLogger(_LIBRARY_LOGGER_NAME)
+        previous_handlers = list(package_logger.handlers)
+        previous_level = package_logger.level
+        previous_propagate = package_logger.propagate
+        previous_managed = [
+            handler
+            for handler in previous_handlers
+            if getattr(handler, _MANAGED_HANDLER_ATTR, False)
+        ]
+        try:
+            for handler in previous_managed:
+                package_logger.removeHandler(handler)
+            for handler in candidates:
+                package_logger.addHandler(handler)
+            package_logger.setLevel(getattr(logging, settings.level))
+            package_logger.propagate = False
+        except Exception:
+            package_logger.handlers[:] = previous_handlers
+            package_logger.setLevel(previous_level)
+            package_logger.propagate = previous_propagate
+            _close_handlers(candidates)
+            raise
 
-    # Get root logger
-    root_logger = logging.getLogger()
-    root_logger.setLevel(getattr(logging, _settings.level))
+        _close_handlers(previous_managed)
 
-    # Clear any existing handlers to avoid duplicates
-    root_logger.handlers.clear()
+    return settings
 
-    # Choose format
+
+def _build_managed_handlers(
+    settings: LoggingSettings,
+) -> list[logging.Handler]:
+    """Build fully configured handlers without touching the package logger."""
+    level = getattr(logging, settings.level)
     log_format = (
-        DETAILED_FORMAT if _settings.detailed_format else DEFAULT_FORMAT
+        DETAILED_FORMAT if settings.detailed_format else settings.format
     )
-
-    # Console handler (stdout)
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(getattr(logging, _settings.level))
-    console_formatter = StructuredFormatter(log_format, datefmt=DATE_FORMAT)
-    console_handler.setFormatter(console_formatter)
-    console_handler.addFilter(ContextFilter())
-    root_logger.addHandler(console_handler)
-
-    # File handler (if specified)
-    if _settings.log_file:
-        log_file_path = Path(_settings.log_file)
-        log_file_path.parent.mkdir(parents=True, exist_ok=True)
-        file_handler = logging.FileHandler(log_file_path, encoding='utf-8')
-        file_handler.setLevel(getattr(logging, _settings.level))
-        file_formatter = StructuredFormatter(
-            DETAILED_FORMAT, datefmt=DATE_FORMAT
+    candidates: list[logging.Handler] = []
+    try:
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setLevel(level)
+        console_handler.setFormatter(
+            StructuredFormatter(log_format, datefmt=DATE_FORMAT)
         )
-        file_handler.setFormatter(file_formatter)
-        file_handler.addFilter(ContextFilter())
-        root_logger.addHandler(file_handler)
+        console_handler.addFilter(ContextFilter())
+        setattr(console_handler, _MANAGED_HANDLER_ATTR, True)
+        candidates.append(console_handler)
 
-    _logging_configured = True
+        if settings.log_file:
+            log_file_path = Path(settings.log_file)
+            from .utils.path_safety import assert_path_not_sensitive
+
+            assert_path_not_sensitive(
+                log_file_path.expanduser().resolve(), settings.log_file
+            )
+            log_file_path.parent.mkdir(parents=True, exist_ok=True)
+            file_handler = logging.FileHandler(log_file_path, encoding='utf-8')
+            file_handler.setLevel(level)
+            file_handler.setFormatter(
+                StructuredFormatter(log_format, datefmt=DATE_FORMAT)
+            )
+            file_handler.addFilter(ContextFilter())
+            setattr(file_handler, _MANAGED_HANDLER_ATTR, True)
+            candidates.append(file_handler)
+    except Exception:
+        _close_handlers(candidates)
+        raise
+    return candidates
+
+
+def _close_handlers(handlers: list[logging.Handler]) -> None:
+    """Close candidate handlers while retaining the preparation failure."""
+    for handler in handlers:
+        with suppress(Exception):
+            handler.close()
 
 
 def get_logger(name: str) -> logging.Logger:
@@ -248,6 +249,8 @@ def get_logger(name: str) -> logging.Logger:
 
     This is the standard way to get a logger in any module.
     Always use __name__ as the logger name for proper hierarchical naming.
+    Note that ``setup_logging()`` configures only the ``globaldatafinance.*``
+    logger hierarchy, not arbitrary application loggers outside this namespace.
 
     Args:
         name: Logger name (typically __name__ from calling module)
@@ -257,7 +260,6 @@ def get_logger(name: str) -> logging.Logger:
 
     Example:
         >>> from globaldatafinance.core.logging_config import get_logger
-        >>> logger = get_logger(__name__)
         >>> logger.info("Processing file", extra={"file_target": "data.csv"})
         >>> logger.debug("Record count", extra={"count": 1000})
     """
@@ -368,33 +370,21 @@ def log_with_context(
 
 
 def is_logging_configured() -> bool:
-    """Check if logging has been configured.
+    """Check if library logging has been configured with managed handlers.
 
     Returns:
-        True if setup_logging() has been called, False otherwise
+        True if library-managed handlers are attached to the
+        ``globaldatafinance`` logger hierarchy, False otherwise.
 
     Example:
         >>> from globaldatafinance.core.logging_config import (
-        ...     is_logging_configured, setup_logging
+        ...     LoggingSettings, is_logging_configured, setup_logging
         ... )
         >>> if not is_logging_configured():
-        ...     setup_logging(level="INFO")
+        ...     setup_logging(LoggingSettings(level="INFO"))
     """
-    return _logging_configured
-
-
-def get_logging_settings() -> LoggingSettings:
-    """Get current logging settings.
-
-    Returns:
-        Current LoggingSettings instance
-
-    Example:
-        >>> from globaldatafinance.core.logging_config import (
-        ...     get_logging_settings
-        ... )
-        >>>
-        >>> settings = get_logging_settings()
-        >>> print(f"Current log level: {settings.level}")
-    """
-    return _settings
+    package_logger = logging.getLogger(_LIBRARY_LOGGER_NAME)
+    return any(
+        getattr(h, _MANAGED_HANDLER_ATTR, False)
+        for h in package_logger.handlers
+    )

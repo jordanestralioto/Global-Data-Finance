@@ -1,236 +1,211 @@
-from pathlib import Path
-from unittest.mock import MagicMock
+"""Persistent Arrow session regressions for B3 row groups."""
 
-import polars as pl
+from datetime import date
+from decimal import Decimal
+from pathlib import Path
+
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from globaldatafinance.brazil.b3_data.historical_quotes.parquet_writer import (
-    constants,
-    streaming,
+from globaldatafinance.brazil.b3_data.historical_quotes import (
+    parquet_writer,
 )
-from globaldatafinance.macro_exceptions import ParquetWriteError
+from globaldatafinance.macro_exceptions import ExtractionError
 
 pytestmark = pytest.mark.integration
 
-APPEND_TEMP_SUFFIX = constants.APPEND_TEMP_SUFFIX
+
+def _record(index: int) -> dict[str, object]:
+    """Build one canonical B3 data row."""
+    decimal = Decimal(f'{index}.01')
+    return {
+        'data_pregao': date(2024, 1, 2),
+        'codigo_bdi': '02',
+        'ticker': f'T{index:05d}',
+        'tipo_mercado': '010',
+        'nome_resumido': 'TEST',
+        'especificacao_papel': 'ON',
+        'preco_abertura': decimal,
+        'preco_maximo': decimal,
+        'preco_minimo': decimal,
+        'preco_medio': decimal,
+        'preco_fechamento': decimal,
+        'melhor_oferta_compra': decimal,
+        'melhor_oferta_venda': decimal,
+        'numero_negocios': index,
+        'quantidade_total': index,
+        'volume_total': decimal,
+        'data_vencimento': None,
+        'fator_cotacao': 1,
+        'codigo_isin': 'BRTESTE00001',
+        'numero_distribuicao': 1,
+    }
 
 
-def test_cleanup_temp_file_handles_existing_and_missing(
+def test_session_flushes_bounded_row_groups_and_clears_python_records(
     tmp_path: Path,
 ) -> None:
-    temp_file = tmp_path / 'temp.parquet.append_tmp'
-    temp_file.write_text('content')
-    assert temp_file.exists()
-
-    streaming._cleanup_temp_file(temp_file)
-    assert not temp_file.exists()
-
-    # Non-existent file should not raise
-    streaming._cleanup_temp_file(temp_file)
-
-
-def test_create_pyarrow_writer_creates_writer_with_schema(
-    tmp_path: Path,
-) -> None:
-    schema = pa.schema([('col1', pa.int64()), ('col2', pa.string())])
-    out_file = tmp_path / 'test_writer.parquet'
-
-    writer = streaming.create_pyarrow_writer(out_file, schema)
-    try:
-        assert isinstance(writer, pq.ParquetWriter)
-    finally:
-        writer.close()
-
-
-def test_copy_parquet_batches_and_write_table_batches(tmp_path: Path) -> None:
-    schema = pa.schema([('id', pa.int64()), ('val', pa.string())])
-    source_table = pa.table(
-        {'id': [1, 2, 3], 'val': ['a', 'b', 'c']}, schema=schema
+    """No reopen/append cycle is needed to write multiple groups."""
+    output = tmp_path / 'quotes.parquet'
+    session = parquet_writer.B3ParquetWriterSession(row_group_limit=2).open(
+        output, parquet_writer.build_b3_schema()
     )
+    records = [_record(1), _record(2), _record(3)]
 
-    source_path = tmp_path / 'source.parquet'
-    pq.write_table(source_table, str(source_path))
+    session.write_records(records)
+    session.close()
 
-    dest_path = tmp_path / 'dest.parquet'
-    writer = streaming.create_pyarrow_writer(dest_path, schema)
-
-    source_parquet = pq.ParquetFile(str(source_path))
-    copied_rows = streaming.copy_parquet_batches(source_parquet, writer)
-    assert copied_rows == 3
-
-    append_table = pa.table({'id': [4, 5], 'val': ['d', 'e']}, schema=schema)
-    appended_rows = streaming.write_table_batches(append_table, writer)
-    assert appended_rows == 2
-
-    writer.close()
-
-    result_parquet = pq.ParquetFile(str(dest_path))
-    assert result_parquet.metadata.num_rows == 5
+    metadata = pq.ParquetFile(output).metadata
+    assert records == []
+    assert session.rows_written == metadata.num_rows == 3
+    assert [metadata.row_group(index).num_rows for index in range(2)] == [2, 1]
 
 
-def test_cast_table_to_schema_direct_match() -> None:
-    schema = pa.schema([('id', pa.int64()), ('val', pa.float64())])
-    table = pa.table({'id': [1, 2], 'val': [1.5, 2.5]}, schema=schema)
-
-    result = streaming.cast_table_to_schema(table, schema)
-    assert result.schema == schema
-    assert result.num_rows == 2
-
-
-def test_cast_table_to_schema_fallback_column_by_column() -> None:
-    target_schema = pa.schema([('id', pa.int64()), ('val', pa.float64())])
-    table = pa.table({'id': [1, 2], 'val': [10, 20]})
-
-    # Simulate table.cast failing so column-by-column fallback is exercised.
-    mock_table = MagicMock()
-    mock_table.cast.side_effect = pa.ArrowException('Direct cast failed')
-    mock_table.column.side_effect = lambda idx: table.column(idx)
-
-    result = streaming.cast_table_to_schema(mock_table, target_schema)
-    assert result.schema == target_schema
-    assert result.num_rows == 2
-
-
-def test_cast_table_to_schema_incompatible_column_raises() -> None:
-    target_schema = pa.schema([('id', pa.int64()), ('val', pa.int64())])
-    # Non-numeric string cannot be cast to int64
-    table = pa.table({'id': [1, 2], 'val': ['invalid_number', 'another_bad']})
-
-    with pytest.raises(ParquetWriteError) as exc_info:
-        streaming.cast_table_to_schema(table, target_schema)
-
-    assert 'schema_cast' in str(exc_info.value)
-    assert 'Could not cast column' in str(exc_info.value)
-
-
-@pytest.mark.asyncio
-async def test_append_with_streaming_success(tmp_path: Path) -> None:
-    output_path = tmp_path / 'quotes.parquet'
-    initial_table = pa.table({'id': [1, 2], 'name': ['PETR4', 'VALE3']})
-    pq.write_table(initial_table, str(output_path))
-
-    new_df = pl.DataFrame({'id': [3, 4], 'name': ['ITUB4', 'BBDC4']})
-
-    await streaming.append_with_streaming(
-        new_df,
-        output_path,
-        cast_table_to_schema_fn=streaming.cast_table_to_schema,
-        create_pyarrow_writer_fn=streaming.create_pyarrow_writer,
-        copy_parquet_batches_fn=streaming.copy_parquet_batches,
-        write_table_batches_fn=streaming.write_table_batches,
-    )
-
-    result_parquet = pq.ParquetFile(str(output_path))
-    assert result_parquet.metadata.num_rows == 4
-    temp_path = output_path.with_suffix(APPEND_TEMP_SUFFIX)
-    assert not temp_path.exists()
-
-
-@pytest.mark.asyncio
-async def test_append_with_streaming_failure_cleans_up_and_raises(
+def test_session_lifecycle_rejects_reopen_and_keeps_new_close_nonterminal(
     tmp_path: Path,
 ) -> None:
-    output_path = tmp_path / 'quotes_fail.parquet'
-    initial_table = pa.table({'id': [1, 2], 'name': ['PETR4', 'VALE3']})
-    pq.write_table(initial_table, str(output_path))
+    """NEW can recover from its required-open error, CLOSED cannot reopen."""
+    session = parquet_writer.B3ParquetWriterSession()
 
-    new_df = pl.DataFrame({'id': [3, 4], 'name': ['ITUB4', 'BBDC4']})
+    with pytest.raises(RuntimeError, match='has not been opened'):
+        session.close()
+    assert session.state == 'NEW'
 
-    def failing_writer(*_args, **_kwargs):
-        raise RuntimeError('Disk write simulated failure')
+    session.open(tmp_path / 'quotes.parquet', parquet_writer.build_b3_schema())
+    session.close()
 
-    with pytest.raises(ParquetWriteError) as exc_info:
-        await streaming.append_with_streaming(
-            new_df,
-            output_path,
-            cast_table_to_schema_fn=streaming.cast_table_to_schema,
-            create_pyarrow_writer_fn=failing_writer,
-            copy_parquet_batches_fn=streaming.copy_parquet_batches,
-            write_table_batches_fn=streaming.write_table_batches,
+    assert session.state == 'CLOSED'
+    session.close()
+    with pytest.raises(RuntimeError, match='only be opened from NEW'):
+        session.open(
+            tmp_path / 'other.parquet', parquet_writer.build_b3_schema()
         )
 
-    assert 'Streaming append failed' in str(exc_info.value)
-    temp_path = output_path.with_suffix(APPEND_TEMP_SUFFIX)
-    assert not temp_path.exists()
 
-
-@pytest.mark.asyncio
-async def test_merge_parquet_files_streaming_empty_sources(
-    tmp_path: Path,
+def test_failed_open_clears_partial_state_and_can_be_retried(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    output_path = tmp_path / 'merged_empty.parquet'
+    """A constructor failure leaves no half-open session state behind."""
 
-    await streaming.merge_parquet_files_streaming(
-        [],
-        output_path,
-        create_pyarrow_writer_fn=streaming.create_pyarrow_writer,
-        copy_parquet_batches_fn=streaming.copy_parquet_batches,
+    class _FailingParquet:
+        def ParquetWriter(self, *_args: object, **_kwargs: object) -> object:
+            raise OSError('writer construction failed')
+
+    monkeypatch.setattr(
+        parquet_writer.session,
+        '_get_arrow',
+        lambda: (pa, object(), _FailingParquet()),
     )
+    session = parquet_writer.B3ParquetWriterSession()
+    schema = parquet_writer.build_b3_schema()
 
-    assert not output_path.exists()
+    with pytest.raises(OSError, match='writer construction failed'):
+        session.open(tmp_path / 'failed.parquet', schema)
+
+    assert session.state == 'NEW'
+    assert session.path is None
+    assert session.schema is None
+    assert session._writer is None
+    assert not (tmp_path / 'failed.parquet').exists()
+
+    monkeypatch.undo()
+    session.open(tmp_path / 'retry.parquet', schema).close()
+    assert session.state == 'CLOSED'
 
 
-@pytest.mark.asyncio
-async def test_merge_parquet_files_streaming_multiple_sources(
-    tmp_path: Path,
+def test_failed_close_is_terminal_and_clears_pending_batches(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    schema = pa.schema([('id', pa.int64()), ('symbol', pa.string())])
-
-    file1 = tmp_path / 'chunk_1.parquet'
-    file2 = tmp_path / 'chunk_2.parquet'
-    file3 = tmp_path / 'chunk_3.parquet'
-
-    pq.write_table(
-        pa.table({'id': [1, 2], 'symbol': ['A', 'B']}, schema=schema),
-        str(file1),
+    """Validation errors close the resource and forbid a second open."""
+    session = parquet_writer.B3ParquetWriterSession().open(
+        tmp_path / 'quotes.parquet', parquet_writer.build_b3_schema()
     )
-    pq.write_table(
-        pa.table({'id': [3], 'symbol': ['C']}, schema=schema), str(file2)
-    )
-    pq.write_table(
-        pa.table({'id': [4, 5, 6], 'symbol': ['D', 'E', 'F']}, schema=schema),
-        str(file3),
-    )
+    session.write_records([_record(1)])
 
-    output_path = tmp_path / 'final_merged.parquet'
+    def fail_validation() -> None:
+        raise ExtractionError('B3 Parquet', 'injected validation failure')
 
-    await streaming.merge_parquet_files_streaming(
-        [file1, file2, file3],
-        output_path,
-        create_pyarrow_writer_fn=streaming.create_pyarrow_writer,
-        copy_parquet_batches_fn=streaming.copy_parquet_batches,
-    )
+    monkeypatch.setattr(session, 'validate', fail_validation)
+    with pytest.raises(ExtractionError, match='injected validation failure'):
+        session.close()
 
-    assert output_path.exists()
-    result_parquet = pq.ParquetFile(str(output_path))
-    assert result_parquet.metadata.num_rows == 6
-    temp_path = output_path.with_suffix(APPEND_TEMP_SUFFIX)
-    assert not temp_path.exists()
-
-
-@pytest.mark.asyncio
-async def test_merge_parquet_files_streaming_failure_cleans_up_and_raises(
-    tmp_path: Path,
-) -> None:
-    schema = pa.schema([('id', pa.int64())])
-    file1 = tmp_path / 'chunk_1.parquet'
-    pq.write_table(pa.table({'id': [1, 2]}, schema=schema), str(file1))
-
-    output_path = tmp_path / 'final_merged_fail.parquet'
-
-    def failing_copy(*_args, **_kwargs):
-        raise RuntimeError('Simulated read failure during batch copy')
-
-    with pytest.raises(ParquetWriteError) as exc_info:
-        await streaming.merge_parquet_files_streaming(
-            [file1],
-            output_path,
-            create_pyarrow_writer_fn=streaming.create_pyarrow_writer,
-            copy_parquet_batches_fn=failing_copy,
+    assert session.state == 'CLOSED'
+    assert session._writer is None
+    assert session._pending_batches == []
+    with pytest.raises(RuntimeError, match='only be opened from NEW'):
+        session.open(
+            tmp_path / 'other.parquet', parquet_writer.build_b3_schema()
         )
 
-    assert 'Streaming merge failed' in str(exc_info.value)
-    temp_path = output_path.with_suffix(APPEND_TEMP_SUFFIX)
-    assert not temp_path.exists()
+
+def test_session_rejects_batches_with_a_different_schema(
+    tmp_path: Path,
+) -> None:
+    """A source schema mismatch stops the merge before publication."""
+    session = parquet_writer.B3ParquetWriterSession().open(
+        tmp_path / 'quotes.parquet', parquet_writer.build_b3_schema()
+    )
+    invalid = pa.record_batch({'wrong': [1]})
+
+    with pytest.raises(ExtractionError, match='schema is incompatible'):
+        session.write_batches([invalid])
+
+    session.close()
+
+
+def test_session_preserves_empty_optional_strings_as_empty_strings(
+    tmp_path: Path,
+) -> None:
+    """Empty B3 text fields are distinct from absent nullable values."""
+    output = tmp_path / 'quotes.parquet'
+    record = _record(1)
+    record.update(
+        {
+            'codigo_bdi': '',
+            'nome_resumido': '',
+            'especificacao_papel': '',
+            'codigo_isin': '',
+        }
+    )
+    session = parquet_writer.B3ParquetWriterSession().open(
+        output, parquet_writer.build_b3_schema()
+    )
+
+    session.write_records([record])
+    session.close()
+
+    row = pq.read_table(output).to_pylist()[0]
+    assert row['codigo_bdi'] == ''
+    assert row['nome_resumido'] == ''
+    assert row['especificacao_papel'] == ''
+    assert row['codigo_isin'] == ''
+    assert row['data_vencimento'] is None
+
+
+def test_public_record_and_canonical_row_reject_reserved_null_sentinel(
+    tmp_path: Path,
+) -> None:
+    """The private null marker cannot be smuggled in as real B3 data."""
+    reserved = '__GLOBALDATAFINANCE_NULL__'
+    schema = parquet_writer.build_b3_schema()
+
+    record_output = tmp_path / 'record.parquet'
+    record_session = parquet_writer.B3ParquetWriterSession().open(
+        record_output, schema
+    )
+    record = _record(1)
+    record['ticker'] = reserved
+    with pytest.raises(ExtractionError, match='column='):
+        record_session.write_records([record])
+    record_session.close()
+
+    row_output = tmp_path / 'row.parquet'
+    row_session = parquet_writer.B3ParquetWriterSession().open(
+        row_output, schema
+    )
+    row = [''] * len(schema.names)
+    row[schema.get_field_index('ticker')] = reserved
+    with pytest.raises(ExtractionError, match='row=1; column='):
+        row_session.write_csv_rows([tuple(row)])
+    row_session.close()

@@ -24,6 +24,7 @@ brazil/cvm/fundamental_stocks_data/
 ├── extract.py                # ParquetExtractorAdapterCVM (limite de extração)
 ├── transaction.py            # staging, backup e commit recuperável em lote
 ├── errors.py                 # InvalidDocumentName, InvalidFirstYear, InvalidLastYear, MissingDownloadUrlError, etc.
+├── download_paths.py         # validação de basenames derivados de URLs
 ├── download_validation.py    # Validação de ZIPs e Parquets gerados (integridade estrutural e de dados)
 └── download_extraction.py    # Delegação de extração e rastreamento de artefatos para rollback
 ```
@@ -136,7 +137,7 @@ Exceções definidas em `globaldatafinance.brazil.cvm.fundamental_stocks_data.er
 - `MissingDownloadUrlError`: não foi possível gerar uma URL para o documento/ano solicitado.
 - `InvalidDocumentName`: tipo de documento não reconhecido.
 - `InvalidFirstYear` / `InvalidLastYear`: ano inválido ou fora do range suportado.
-- `SecurityError` (de `macro_exceptions`): tentativa de escrita em path sensível (`/etc`, `/sys`, `/proc`, `/dev`, `/boot`, `/root`) — defesa em `VerifyPathsUseCasesCVM`.
+- `SecurityError` (de `macro_exceptions`): tentativa de escrita em path sensível ou nome de arquivo derivado de URL que não é portátil — defesa em `VerifyPathsUseCasesCVM` e `download_paths.py`.
 
 > Nota: A integridade da tipagem dos adaptadores é checada estaticamente via ferramentas como `mypy` e verificação de contratos de métodos (duck typing), promovendo a adoção direta e limpa do adapter concreto (`AsyncDownloadAdapterCVM`).
 

@@ -12,10 +12,15 @@ Enable professional centralized logging for pipeline tracing and diagnostics:
 
 ```python
 from globaldatafinance import FundamentalStocksDataCVM
-from globaldatafinance.core import setup_logging, get_logger, log_execution_time
+from globaldatafinance.core.logging_config import (
+    LoggingSettings,
+    get_logger,
+    log_execution_time,
+    setup_logging,
+)
 
 # Configure system-wide logging
-setup_logging(level="INFO", log_file="app.log")
+setup_logging(LoggingSettings(level="INFO", log_file="app.log"))
 
 # Retrieve module-specific logger instance
 logger = get_logger(__name__)
@@ -39,6 +44,13 @@ with log_execution_time(logger, "CVM Filing Ingestion", total=5):
 
 [View comprehensive logging documentation →](logging-system.md)
 
+The `globaldatafinance` logger starts quiet with a `NullHandler` and
+`propagate=False`; `setup_logging()` does not alter the application root
+logger. Reconfiguration replaces only library-managed handlers. If preparation
+or the swap fails, the previous configuration is restored. `LoggingSettings`
+rejects extra fields and unknown `DATAFIN_LOG_*` variables, including the
+removed `structured` field.
+
 ### Global Configuration Tuning
 
 Customize underlying network timeout and retry behavior via environment variables:
@@ -61,11 +73,18 @@ export DATAFINANCE_NETWORK_RETRY_BACKOFF=3.0
 ```
 
 ```python
-from globaldatafinance.core.config import settings
+from globaldatafinance import FundamentalStocksDataCVM, HistoricalQuotesB3
+from globaldatafinance.core.config import NetworkSettings, Settings
 
-# Verify active runtime network configurations
+# Immutable snapshot from current environment
+settings = Settings()
 print(f"Active network timeout: {settings.network.timeout}s")
 print(f"Max configured retries: {settings.network.max_retries}")
+
+# Explicit configuration injected into public facades
+custom_settings = Settings(network=NetworkSettings(timeout=300))
+cvm = FundamentalStocksDataCVM(settings=custom_settings)
+b3 = HistoricalQuotesB3(settings=custom_settings)
 ```
 
 ### ZIP limits and UNC destinations
@@ -93,6 +112,11 @@ administrative shares ending in `$` remain forbidden. This policy reduces
 accidental writing to sensitive destinations; it does not constrain a caller
 that already has the process's privileges.
 
+ZIP limits live in the canonical `Settings.archive` namespace; do not use the
+removed `Settings.archive_safety` name. The CRC helper distinguishes
+`infos=None` (validate the central directory) from `infos=[]` (an already
+validated empty selection).
+
 ### Resource Monitoring Engine
 
 Autonomously evaluate system telemetry to dynamically constrain concurrency patterns:
@@ -117,6 +141,11 @@ monitor.wait_for_resources(timeout_seconds=120)
 ```
 
 [View resource monitoring documentation →](resource-monitoring.md)
+
+`ResourceMonitor` retains its singleton contract; the B3 path uses an
+isolated instance when it needs source-specific limits, without replacing the
+global singleton. The private cache for PyArrow modules is also lazy and is
+populated only when the Parquet operation is actually used.
 
 ### Custom Retry Strategies
 
@@ -365,6 +394,9 @@ parquet_file = pq.ParquetFile("cotahist.parquet")
 for batch in parquet_file.iter_batches(batch_size=100000):
     process_chunk(batch)
 ```
+
+The PyArrow modules used for writing remain lazily imported and privately
+cached; the dependency is loaded only when the Parquet path runs.
 
 ______________________________________________________________________
 

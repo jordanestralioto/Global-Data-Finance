@@ -60,6 +60,7 @@ globaldatafinance/
 │   │           ├── extract.py                 # ParquetExtractorAdapterCVM
 │   │           ├── transaction.py             # failure-atomic CVM batch commit
 │   │           ├── csv_pipeline/              # global CSV inference + Arrow writer
+│   │           ├── download_paths.py           # safe URL-derived basenames
 │   │           ├── download_validation.py     # validate_downloaded_file, validate_parquet_files, find_parquet_files
 │   │           ├── download_extraction.py     # extract_downloaded_file (orchestrates extraction + validation)
 │   │           └── errors.py                  # source-specific exception definitions
@@ -97,7 +98,7 @@ match them.
 | Extraction / Parquet writer  | `csv_pipeline/` + `transaction.py`                 | `parquet_writer/` + `extraction_service/`                                               |
 | Format schema parser         | —                                                  | `cotahist_parser.py`                                                                   |
 | Input catalog                | —                                                  | `catalog.py`                                                                           |
-| Validation helpers           | `download_validation.py`, `download_extraction.py` | Embedded inside `filesystem.py` / `client.py`                                          |
+| Validation helpers           | `download_paths.py`, `download_validation.py`, `download_extraction.py` | Embedded inside `filesystem.py` / `client.py`                                          |
 | Exception definitions        | `errors.py`                                        | `errors.py`                                                                            |
 
 ### Shared safety and source commits
@@ -106,7 +107,10 @@ match them.
 configurable limits, central-directory validation, and a count of bytes
 actually decompressed. `core/utils/path_safety.py` validates a caller-provided
 destination before directories are created. Naming rules remain in their
-owners: CSV in CVM and COTAHIST in B3.
+owners: CSV and URL-derived names in CVM and COTAHIST in B3. `core/archive_names.py`
+exposes a neutral portable-basename validator used by both the ZIP boundary and
+the CVM URL flow; each owner translates its `ValueError` into its own diagnostic
+exception.
 
 `macro_infra/transactional_publication/` is shared infrastructure and does
 not know source schema or rules. It owns same-filesystem staging, a durable

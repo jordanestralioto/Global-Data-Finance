@@ -442,6 +442,11 @@ O filtro TPMERC é aplicado antes da conversão dos demais campos. Portanto,
 registros fora do filtro são contabilizados como filtrados, enquanto um registro
 selecionado inválido nunca produz um valor financeiro padrão.
 
+O texto literal `__GLOBALDATAFINANCE_NULL__` é reservado pelo writer interno e é
+rejeitado como dado de entrada em registros e linhas canônicas. Use `None` para
+valor nulo. A session interna tem estados `NEW`, `OPEN` e `CLOSED`; após fechar,
+inclusive depois de falha de validação, ela não pode ser reaberta.
+
 ______________________________________________________________________
 
 ## Estrutura do Arquivo Parquet Gerado

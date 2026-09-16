@@ -1,20 +1,25 @@
 import asyncio
 import logging
 import string
+import zipfile
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
 
 from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
     AsyncDownloadAdapterCVM,
     DownloadResultCVM,
+    download_paths,
 )
-from globaldatafinance.core.archive_safety import get_archive_safety_limits
+from globaldatafinance.core.config import ArchiveSafetySettings
 from globaldatafinance.macro_exceptions import (
     DiskFullError,
     ExtractionError,
     NetworkError,
+    SecurityError,
     TimeoutError,
 )
 
@@ -125,7 +130,29 @@ class TestHttpxAsyncDownloadAdapterInitialization:
 
 @pytest.mark.unit
 class TestHttpxAsyncDownloadAdapterHelpers:
-    pass
+    def test_download_target_uses_a_safe_url_basename(self, tmp_path):
+        target = download_paths.build_download_target_path(
+            'https://example.com/files/COTAHIST_A2023.ZIP?download=1#file',
+            str(tmp_path),
+        )
+
+        assert target == tmp_path / 'COTAHIST_A2023.ZIP'
+
+    @pytest.mark.parametrize(
+        'url',
+        [
+            'https://example.com/files/%2e%2e%2fescape.zip',
+            'https://example.com/files/%2fetc%2fpasswd',
+            'https://example.com/files/C%3A%5CWindows%5Csystem32',
+            'https://example.com/files/sub\\escape.zip',
+            'https://example.com/files/%00.zip',
+        ],
+    )
+    def test_download_target_rejects_encoded_or_windows_path_components(
+        self, tmp_path, url
+    ):
+        with pytest.raises(SecurityError):
+            download_paths.build_download_target_path(url, str(tmp_path))
 
 
 @pytest.mark.asyncio
@@ -401,7 +428,7 @@ class TestHttpxAsyncDownloadAdapterStreamDownload:
             url='https://example.com/file.zip',
             output_path='test-data/file.zip',
             chunk_size=8192,
-            max_bytes=get_archive_safety_limits().max_archive_bytes,
+            max_bytes=ArchiveSafetySettings().max_archive_bytes,
         )
 
     async def test_stream_download_uses_custom_chunk_size(self):
@@ -421,7 +448,7 @@ class TestHttpxAsyncDownloadAdapterStreamDownload:
             url='https://example.com/file.zip',
             output_path='test-data/file.zip',
             chunk_size=16384,
-            max_bytes=get_archive_safety_limits().max_archive_bytes,
+            max_bytes=ArchiveSafetySettings().max_archive_bytes,
         )
 
 
@@ -433,8 +460,6 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
     async def test_download_and_extract_without_automatic_extractor(
         self, _mock_remove, tmp_path
     ):
-        import zipfile
-
         output_dir = tmp_path / 'output'
         output_dir.mkdir()
         zip_path = output_dir / 'file.zip'
@@ -484,10 +509,6 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
     async def test_download_and_extract_with_automatic_extractor(
         self, mock_remove, tmp_path
     ):
-        import zipfile
-
-        import polars as pl
-
         output_dir = tmp_path / 'output'
         output_dir.mkdir()
 
@@ -498,16 +519,20 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
             zf.writestr('test.txt', random_data)
             zf.writestr('data.csv', 'col1,col2\n1,2\n')
 
-        df1 = pl.DataFrame({'col1': [1, 2, 3], 'col2': ['a', 'b', 'c']})
-        df2 = pl.DataFrame({'col3': [4, 5, 6], 'col4': ['d', 'e', 'f']})
-        df1.write_parquet(output_dir / 'file1.parquet')
-        df2.write_parquet(output_dir / 'file2.parquet')
+        pq.write_table(
+            pa.table({'col1': [1, 2, 3], 'col2': ['a', 'b', 'c']}),
+            output_dir / 'file1.parquet',
+        )
+        pq.write_table(
+            pa.table({'col3': [4, 5, 6], 'col4': ['d', 'e', 'f']}),
+            output_dir / 'file2.parquet',
+        )
 
         mock_extractor = MagicMock()
 
         def create_current_parquet(_source_path, _destination_path):
-            pl.DataFrame({'col': [1]}).write_parquet(
-                output_dir / 'current.parquet'
+            pq.write_table(
+                pa.table({'col': [1]}), output_dir / 'current.parquet'
             )
 
         mock_extractor.extract.side_effect = create_current_parquet
@@ -550,10 +575,6 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
     async def test_download_and_extract_ignores_old_parquets_when_empty(
         self, mock_remove, tmp_path
     ):
-        import zipfile
-
-        import polars as pl
-
         output_dir = tmp_path / 'output'
         output_dir.mkdir()
 
@@ -563,7 +584,7 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
             zf.writestr('payload.txt', random_data)
             zf.writestr('data.csv', 'col1,col2\n1,2\n')
 
-        pl.DataFrame({'old': [1]}).write_parquet(output_dir / 'old.parquet')
+        pq.write_table(pa.table({'old': [1]}), output_dir / 'old.parquet')
 
         mock_extractor = MagicMock()
         adapter = AsyncDownloadAdapterCVM(
@@ -603,8 +624,6 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
     async def test_download_and_extract_no_parquet_files_keeps_zip(
         self, mock_remove, tmp_path
     ):
-        import zipfile
-
         output_dir = tmp_path / 'output'
         output_dir.mkdir()
 
@@ -658,8 +677,6 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
     async def test_download_and_extract_extraction_error(
         self, _mock_remove, tmp_path
     ):
-        import zipfile
-
         output_dir = tmp_path / 'output'
         output_dir.mkdir()
 
@@ -712,8 +729,6 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
     async def test_download_and_extract_disk_full_error(
         self, mock_remove, tmp_path
     ):
-        import zipfile
-
         output_dir = tmp_path / 'output'
         output_dir.mkdir()
 
@@ -756,7 +771,8 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
 
         assert result.error_count_downloads == 1
         assert 'DiskFull' in result.failed_downloads['DRE_2023']
-        assert mock_remove.called
+        assert not mock_remove.called
+        assert zip_path.exists()
 
     @patch(
         'globaldatafinance.brazil.cvm.fundamental_stocks_data.http.remove_file'
@@ -764,8 +780,6 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
     async def test_download_and_extract_unexpected_extraction_error(
         self, _mock_remove, tmp_path
     ):
-        import zipfile
-
         output_dir = tmp_path / 'output'
         output_dir.mkdir()
 

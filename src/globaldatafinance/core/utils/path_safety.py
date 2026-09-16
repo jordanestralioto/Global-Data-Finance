@@ -12,7 +12,7 @@ from collections.abc import Sequence
 from pathlib import Path, PureWindowsPath
 
 from ...macro_exceptions import SecurityError
-from ..config import settings
+from ..config import PathSafetySettings
 
 _SENSITIVE_SYSTEM_DIRS: tuple[Path, ...] = (
     Path('/etc'),
@@ -254,10 +254,8 @@ def _assert_windows_path_not_sensitive(
             'Administrative UNC shares are denied for caller destinations',
             path=candidate_str,
         )
-    configured_roots = (
+    configured_roots = PathSafetySettings.resolve_allowed_unc_roots(
         allowed_unc_roots
-        if allowed_unc_roots is not None
-        else settings.path_safety.allowed_unc_roots
     )
     if not _is_allowed_unc_destination(windows_path, configured_roots):
         raise SecurityError(

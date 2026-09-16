@@ -25,8 +25,8 @@ brazil/b3_data/historical_quotes/
 ├── years.py               # Lógica e validação de anos
 ├── client.py              # ExtractHistoricalQuotesUseCaseB3 (stateful), CreateDocsToExtractUseCaseB3, GetAvailableAssetsUseCaseB3, etc.
 ├── cotahist_parser.py     # Parsing posicional COTAHIST (preservado — complexidade legítima)
-├── parquet_writer/        # Subpacote de escrita Parquet (writer, schema, streaming, disk, constants)
-├── extraction_service/    # Subpacote de orquestração (service, batch_parser, zip_processor, buffered_writer, resource_policy, temp_parquet_merge, types)
+├── parquet_writer/        # Subpacote de escrita Parquet (writer, schema, session, disk, constants)
+├── extraction_service/    # Subpacote de orquestração (service, zip_processor, resource_policy, retry, temp_parquet_merge, types)
 ├── catalog.py              # Catálogo estrito e precedência dos inputs COTAHIST
 ├── zip_reader.py          # Leitura streaming de ZIP ou TXT
 └── errors.py              # InvalidFirstYear, InvalidLastYear, InvalidAssetsName, EmptyAssetListError, InvalidProcessingMode, etc.
@@ -42,18 +42,18 @@ mantém precedência ZIP quando ZIP e TXT coexistem para o mesmo ano.
 
 ### Componentes Chave
 
-| Módulo                | Componente                         | Tipo                  | Responsabilidade                                                                                                                                                     |
-| --------------------- | ---------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `client.py`           | `ExtractHistoricalQuotesUseCaseB3` | Orquestrador (classe) | Conecta parser, leitor e escritor. Mantém estado entre chamadas.                                                                                                     |
-| `client.py`           | `CreateDocsToExtractUseCaseB3`     | Use case              | Constrói `DocsToExtractorB3` validado a partir dos parâmetros públicos do facade.                                                                                    |
-| `models.py`           | `DocsToExtractorB3`                | Data object           | Representa a configuração de extração já preparada; não executa validação ao ser construído diretamente.                                                             |
-| `filesystem.py`       | `FileSystemServiceB3`              | Service               | Valida paths (`SecurityError`/`PathPermissionError` antes de I/O) e resolve regex de arquivos oficiais.                                                              |
-| `assets.py`           | `AvailableAssetsServiceB3`         | Service               | Fornece aliases de classes de ativos e valida os nomes dessas classes (não códigos de negociação individuais como PETR4).                                            |
-| `processing.py`       | `ExtractionConfigServiceB3`        | Service               | Valida modo de processamento (`fast`, `slow`) e sanitiza/formata `output_filename`.                                                                                  |
-| `years.py`            | `YearValidationServiceB3`          | Service               | Implementa validação e lógica de limite temporal para o `range_years`.                                                                                               |
-| `cotahist_parser.py`  | `CotahistParserB3`                 | Parser concreto       | Traduz linhas de texto posicional em dicionários Python estruturados.                                                                                                |
-| `parquet_writer/`     | `ParquetWriterB3`                  | Writer concreto       | Escrita Parquet com compressão (zstd) e statistics. Subpacote (`writer`, `schema`, `streaming`, `disk`, `constants`).                                                |
-| `extraction_service/` | `ExtractionServiceB3`              | Service concreto      | Streaming/threadpool/flush por memória. Subpacote (`service`, `batch_parser`, `zip_processor`, `buffered_writer`, `resource_policy`, `temp_parquet_merge`, `types`). |
+| Módulo                | Componente                         | Tipo                  | Responsabilidade                                                                                                                                                                     |
+| --------------------- | ---------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `client.py`           | `ExtractHistoricalQuotesUseCaseB3` | Orquestrador (classe) | Conecta parser, leitor e escritor. Mantém estado entre chamadas.                                                                                                                     |
+| `client.py`           | `CreateDocsToExtractUseCaseB3`     | Use case              | Constrói `DocsToExtractorB3` validado a partir dos parâmetros públicos do facade.                                                                                                    |
+| `models.py`           | `DocsToExtractorB3`                | Data object           | Representa a configuração de extração já preparada; não executa validação ao ser construído diretamente.                                                                             |
+| `filesystem.py`       | `FileSystemServiceB3`              | Service               | Valida paths (`SecurityError`/`PathPermissionError` antes de I/O) e resolve regex de arquivos oficiais.                                                                              |
+| `assets.py`           | `AvailableAssetsServiceB3`         | Service               | Fornece aliases de classes de ativos e valida os nomes dessas classes (não códigos de negociação individuais como PETR4).                                                            |
+| `processing.py`       | `ExtractionConfigServiceB3`        | Service               | Valida modo de processamento (`fast`, `slow`) e sanitiza/formata `output_filename`.                                                                                                  |
+| `years.py`            | `YearValidationServiceB3`          | Service               | Implementa validação e lógica de limite temporal para o `range_years`.                                                                                                               |
+| `cotahist_parser.py`  | `CotahistParserB3`                 | Parser concreto       | Traduz linhas de texto posicional em dicionários Python estruturados.                                                                                                                |
+| `parquet_writer/`     | `ParquetWriterB3`                  | Writer concreto       | Escrita Parquet com schema Arrow explícito, compressão zstd, statistics e sessões persistentes limitadas. Subpacote (`writer`, `schema`, `session`, `disk`, `constants`).            |
+| `extraction_service/` | `ExtractionServiceB3`              | Service concreto      | Scheduler limitado, workers síncronos, retry de I/O transitório e merge ordenado. Subpacote (`service`, `zip_processor`, `resource_policy`, `retry`, `temp_parquet_merge`, `types`). |
 
 ## 🚀 Guia de Uso
 

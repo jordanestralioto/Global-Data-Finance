@@ -12,7 +12,7 @@ import pytest
 from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
     AsyncDownloadAdapterCVM,
 )
-from globaldatafinance.core.archive_safety import get_archive_safety_limits
+from globaldatafinance.core.config import ArchiveSafetySettings
 from tests.support.fake_http import FakeResponse, install_fake_http_client
 
 pytestmark = pytest.mark.unit
@@ -119,7 +119,7 @@ class TestCvmStagedDownloadFlow:
         target = tmp_path / 'file.zip'
         old_bytes = b'previous archive'
         target.write_bytes(old_bytes)
-        limit = get_archive_safety_limits().max_archive_bytes
+        limit = ArchiveSafetySettings().max_archive_bytes
         response = FakeResponse(
             'https://example.com/file.zip',
             [b'oversized response'],

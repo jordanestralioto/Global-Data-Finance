@@ -206,7 +206,9 @@ class TestCreateDocsToExtractUseCaseExecute:
             destination_path='/output',
         )
         use_case.execute()
-        mock_verify_instance.execute.assert_called_once_with('/output')
+        mock_verify_instance.execute.assert_called_once_with(
+            '/output', allowed_unc_roots=()
+        )
 
     @patch(
         'globaldatafinance.brazil.b3_data.historical_quotes.client.CreateSetAssetsUseCaseB3'
@@ -241,7 +243,7 @@ class TestCreateDocsToExtractUseCaseExecute:
         )
         use_case.execute()
         mock_set_download.execute.assert_called_once_with(
-            year_range, '/path/to/docs'
+            year_range, '/path/to/docs', allowed_unc_roots=()
         )
 
     @patch(

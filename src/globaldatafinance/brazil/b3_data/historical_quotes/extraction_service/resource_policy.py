@@ -1,113 +1,118 @@
-"""Resource-aware batch sizing and throttling for B3 extraction."""
+"""Admission control for bounded B3 source workers."""
+
+from __future__ import annotations
 
 import asyncio
 import gc
+import importlib
+import os
 import time
+from collections.abc import Callable
+from typing import Protocol, cast
 
-from .....core import ResourceMonitor, ResourceState, get_logger
+from .....core import (
+    ResourceLimits,
+    ResourceMonitor,
+    ResourceState,
+    get_logger,
+)
 from ..processing import ProcessingModeEnumB3
 
 logger = get_logger(__name__)
 
+_MEBIBYTE = 1024**2
+_MEMORY_PER_FAST_WORKER_MIB = 256
+
+
+class _VirtualMemory(Protocol):
+    """Minimum psutil memory snapshot contract used by this policy."""
+
+    available: int
+
+
+class _PsutilModule(Protocol):
+    """Lazy psutil surface required for B3 worker admission."""
+
+    def virtual_memory(self) -> _VirtualMemory:
+        """Return one available-memory snapshot."""
+
 
 class ResourcePolicyB3:
-    """Own resource-aware sizing and throttling for B3 extraction."""
+    """Own B3 admission control without collecting garbage in hot parsing."""
 
-    FLUSH_BATCH_SIZE = 500_000
-    PARSE_BATCH_SIZE = 50_000
-
-    MIN_FLUSH_BATCH = 50_000
-    MIN_PARSE_BATCH = 10_000
-
-    def __init__(self, processing_mode: ProcessingModeEnumB3) -> None:
-        """Initialize limits from the selected processing mode."""
+    def __init__(
+        self,
+        processing_mode: ProcessingModeEnumB3,
+        resource_monitor: ResourceMonitor | None = None,
+        available_memory_mib: Callable[[], int] | None = None,
+    ) -> None:
+        """Store the selected mode and a monitor with warning GC disabled."""
         self.processing_mode = processing_mode
-        self.resource_monitor = ResourceMonitor()
+        self.resource_monitor = (
+            resource_monitor
+            or ResourceMonitor.create_isolated(
+                ResourceLimits(
+                    auto_gc_on_warning=False,
+                    cpu_warning_threshold=101.0,
+                    cpu_critical_threshold=101.0,
+                )
+            )
+        )
+        self._available_memory_mib = (
+            available_memory_mib or self._read_available_memory_mib
+        )
 
-        desired_concurrent_files = processing_mode.desired_concurrent_files
-        desired_workers = processing_mode.desired_workers
-        self.use_parallel_parsing = processing_mode.use_parallel_parsing
+    @staticmethod
+    def _read_available_memory_mib() -> int:
+        """Return available RAM in MiB without retaining a large snapshot."""
+        try:
+            psutil_module = cast(
+                _PsutilModule, importlib.import_module('psutil')
+            )
+            return int(psutil_module.virtual_memory().available // _MEBIBYTE)
+        except (ImportError, OSError):
+            return _MEMORY_PER_FAST_WORKER_MIB
 
-        self.max_concurrent_files = min(
-            desired_concurrent_files,
-            self.resource_monitor.get_safe_worker_count(
-                desired_concurrent_files
+    def worker_limit(self, file_count: int) -> int:
+        """Calculate the exact fast/slow worker limit for this request."""
+        if file_count <= 0:
+            return 1
+        if self.processing_mode is ProcessingModeEnumB3.SLOW:
+            return 1
+        memory_bound = (
+            self._available_memory_mib() * 0.5 // _MEMORY_PER_FAST_WORKER_MIB
+        )
+        return max(
+            1,
+            min(
+                4,
+                file_count,
+                os.cpu_count() or 1,
+                int(memory_bound),
             ),
         )
 
-        if self.use_parallel_parsing:
-            self.max_workers = self.resource_monitor.get_safe_worker_count(
-                desired_workers
-            )
-        else:
-            self.max_workers = 1
-
-        self.flush_batch_size = self.FLUSH_BATCH_SIZE
-        self.parse_batch_size = self.PARSE_BATCH_SIZE
-
-    async def check_and_wait_for_resources(self) -> None:
-        """Wait for resource recovery when the monitor reports pressure."""
-        resource_state = self.resource_monitor.check_resources()
-
-        if resource_state == ResourceState.CRITICAL:
-            await asyncio.sleep(0.1)
-            gc.collect()
-        elif resource_state == ResourceState.EXHAUSTED:
-            logger.warning('Resources exhausted, waiting for recovery...')
-            if not await self.wait_for_resources(timeout_seconds=30):
-                raise MemoryError('Unable to recover from resource exhaustion')
-
-    def adjust_batch_sizes(self) -> None:
-        """Adjust batch sizes based on current memory state."""
-        memory_state = self.resource_monitor.check_resources()
-
-        base_flush_size = self.FLUSH_BATCH_SIZE
-        new_flush_size = self.resource_monitor.get_safe_batch_size(
-            base_flush_size
-        )
-
-        if new_flush_size != self.flush_batch_size:
-            logger.info(
-                f'Adjusted flush batch size: {self.flush_batch_size} -> '
-                f'{new_flush_size} '
-                f'(memory state: {memory_state.value})'
-            )
-            self.flush_batch_size = max(new_flush_size, self.MIN_FLUSH_BATCH)
-
-        ratio = self.PARSE_BATCH_SIZE / base_flush_size
-        new_parse_size = int(self.flush_batch_size * ratio)
-        if new_parse_size != self.parse_batch_size:
-            self.parse_batch_size = max(new_parse_size, self.MIN_PARSE_BATCH)
-
-    def should_flush_by_memory(self) -> bool:
-        """Return True if process memory usage exceeds mode threshold."""
-        process_memory_mb = self.resource_monitor.get_process_memory_mb()
-        threshold_mb = self.processing_mode.memory_threshold_mb
-
-        should_flush = process_memory_mb >= threshold_mb
-
-        if should_flush:
-            logger.info(
-                'Memory threshold reached for flush',
-                extra={
-                    'process_memory_mb': f'{process_memory_mb:.2f}',
-                    'threshold_mb': threshold_mb,
-                    'mode': str(self.processing_mode),
-                },
-            )
-
-        return should_flush
-
-    async def wait_for_resources(self, timeout_seconds: int = 30) -> bool:
-        """Wait asynchronously for resources to become available."""
+    async def await_admission(self, timeout_seconds: int = 30) -> bool:
+        """Wait while critical and fail safely when resources are exhausted."""
         deadline = time.monotonic() + timeout_seconds
-        while time.monotonic() < deadline:
+        while True:
             state = self.resource_monitor.check_resources()
             if state in (ResourceState.HEALTHY, ResourceState.WARNING):
+                if state is ResourceState.WARNING:
+                    logger.warning(
+                        'B3 extraction continues under memory warning'
+                    )
                 return True
-            await asyncio.sleep(1)
+            if state is ResourceState.EXHAUSTED:
+                return False
+            if time.monotonic() >= deadline:
+                return False
+            logger.warning(
+                'B3 extraction pauses admission under critical memory'
+            )
+            await asyncio.sleep(0.25)
 
-        logger.warning(
-            'Resource wait timeout after %s seconds', timeout_seconds
-        )
-        return False
+    def collect_after_critical_flush(self) -> None:
+        """Collect once only after a completed worker flush under pressure."""
+        if self.resource_monitor.check_resources() is ResourceState.CRITICAL:
+            gc.collect()

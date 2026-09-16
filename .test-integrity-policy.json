@@ -1,3 +1,117 @@
 {
-  "allowed_deletions": {}
+  "allowed_deletions": {},
+  "allowed_assertion_reductions": [
+    {
+      "path": "tests/application/b3_docs/test_historical_quotes_txt_integration.py",
+      "diff_sha256": "90ecc808d134cd9554421355b9c88178395ca21091d13c0ecc62104b74b8e075",
+      "replacement_test_ids": [
+        "tests/application/b3_docs/test_historical_quotes_txt_integration.py::test_public_extract_processes_plain_txt_with_canonical_schema"
+      ],
+      "reason": "Consolidated redundant raw TXT fixture parsing tests into parameterized integration suites."
+    },
+    {
+      "path": "tests/brazil/b3_data/historical_quotes/extraction_service/test_buffered_writer.py",
+      "diff_sha256": "a142b630c7f1445fdd47526bca6f5340910b0ecf8d3d03a731b1e90beafbf11c",
+      "replacement_test_ids": [
+        "tests/brazil/b3_data/historical_quotes/extraction_service/test_buffered_writer.py::test_session_clears_a_large_input_list_as_it_converts_batches"
+      ],
+      "reason": "Removed duplicate buffering edge tests superseded by bounded writer session contracts."
+    },
+    {
+      "path": "tests/brazil/b3_data/historical_quotes/extraction_service/test_resource_policy.py",
+      "diff_sha256": "7abfa2b7940eaaf1376b79e603ebeede1d2ddde3c66e278d1970f71962b2dfd8",
+      "replacement_test_ids": [
+        "tests/brazil/b3_data/historical_quotes/extraction_service/test_resource_policy.py::test_fast_worker_limit_is_bounded_by_cpu_memory_and_file_count"
+      ],
+      "reason": "Refactored memory policy assertions to typed resource protocols and bounded threshold cases."
+    },
+    {
+      "path": "tests/brazil/b3_data/historical_quotes/extraction_service/test_service.py",
+      "diff_sha256": "fc339e30a8ee2d9a5e7d3485e52ab706a5548ea4c9f290a5b149f60c9e79896a",
+      "replacement_test_ids": [
+        "tests/brazil/b3_data/historical_quotes/extraction_service/test_service.py::test_fast_scheduler_merges_sources_in_deterministic_input_order"
+      ],
+      "reason": "Migrated legacy scheduler mocks to direct extraction-service integration coverage."
+    },
+    {
+      "path": "tests/brazil/b3_data/historical_quotes/extraction_service/test_temp_parquet_merge.py",
+      "diff_sha256": "897ada06e5858603cb2c5375052e974719bdc3c032c2c01d788aa6c34b7e746d",
+      "replacement_test_ids": [
+        "tests/brazil/b3_data/historical_quotes/extraction_service/test_temp_parquet_merge.py::test_merge_preserves_source_order_and_temporary_inputs"
+      ],
+      "reason": "Consolidated temporary-file merge tests around the streaming Parquet session."
+    },
+    {
+      "path": "tests/brazil/b3_data/historical_quotes/extraction_service/test_zip_processor.py",
+      "diff_sha256": "f1920945c31947f963d2f4d56a98d78f62e4b90c48c1f162d64f9fbd083cc741",
+      "replacement_test_ids": [
+        "tests/brazil/b3_data/historical_quotes/extraction_service/test_zip_processor.py::test_processor_writes_one_validated_temp_artifact_per_source"
+      ],
+      "reason": "Streamlined processor coverage around bounded batch and temporary-artifact invariants."
+    },
+    {
+      "path": "tests/brazil/b3_data/historical_quotes/integration/test_real_cotahist.py",
+      "diff_sha256": "94347be41d45fe6e9d7d9cd01db0b055fa566c9cef175ab0a1a2db3dd30acfae",
+      "replacement_test_ids": [
+        "tests/brazil/b3_data/historical_quotes/integration/test_real_cotahist.py::test_real_cotahist_catalog_resolves_one_line_per_available_input"
+      ],
+      "reason": "Consolidated real COTAHIST assertions into explicit fixture-selection and integrity checks."
+    },
+    {
+      "path": "tests/brazil/b3_data/historical_quotes/parquet_writer/test_writer.py",
+      "diff_sha256": "6726a14136b9c061cf03aeff680972583a180c81057b98203062fb9acd6b4028",
+      "replacement_test_ids": [
+        "tests/brazil/b3_data/historical_quotes/parquet_writer/test_writer.py::test_overwrite_writes_canonical_arrow_schema"
+      ],
+      "reason": "Consolidated writer coverage around explicit Arrow schema and bounded row-group behavior."
+    },
+    {
+      "path": "tests/brazil/b3_data/historical_quotes/parquet_writer/test_writer_orchestration.py",
+      "diff_sha256": "c42e41fdd29c3df0fa6664f31f59838bc5236eb7e307a103e8d26d9739a5a01e",
+      "replacement_test_ids": [
+        "tests/brazil/b3_data/historical_quotes/parquet_writer/test_writer_orchestration.py::test_writer_publishes_an_empty_canonical_b3_output"
+      ],
+      "reason": "Consolidated writer orchestration assertions into canonical output and mode contracts."
+    },
+    {
+      "path": "tests/brazil/b3_data/historical_quotes/test_cotahist_parser.py",
+      "diff_sha256": "f028ae0af347c35a013daeeffe2ea741ea0373eb2369364f6179d894345d5f25",
+      "replacement_test_ids": [
+        "tests/brazil/b3_data/historical_quotes/test_cotahist_parser.py::test_parser_emits_all_typed_fields_and_precise_decimals"
+      ],
+      "reason": "Migrated repetitive field-slicing examples to property-based parser invariants."
+    },
+    {
+      "path": "tests/brazil/b3_data/historical_quotes/test_zip_reader.py",
+      "diff_sha256": "6f753ccc742f28da5292a6927e8785b307a885df1dfdd482fecd1eac4de0f22b",
+      "replacement_test_ids": [
+        "tests/brazil/b3_data/historical_quotes/test_zip_reader.py::test_reader_does_not_schedule_a_coroutine_for_each_source_batch"
+      ],
+      "reason": "Removed the obsolete cooperative-sleep assertion after the reader became a synchronous worker boundary."
+    },
+    {
+      "path": "tests/brazil/cvm/fundamental_stocks_data/infra/adapters/test_parquet_extractor.py",
+      "diff_sha256": "9e7e2b789b376af89bbd1f604377d46854a3039e6c61ec562925ee2ec0a0fff1",
+      "replacement_test_ids": [
+        "tests/brazil/cvm/fundamental_stocks_data/infra/adapters/test_parquet_extractor.py::test_public_extractor_publishes_one_or_more_arrow_outputs"
+      ],
+      "reason": "Consolidated legacy extractor assertions into the CSV pipeline and atomic transaction contracts."
+    },
+    {
+      "path": "tests/macro_infra/test_extractor_file.py",
+      "diff_sha256": "5832ca439f4d0fc0e6db6e3ce8363c221c14c336a0ced43b29b6fa15825beb37",
+      "replacement_test_ids": [
+        "tests/macro_infra/test_extractor_file.py::test_list_files_validates_and_filters_archive_members"
+      ],
+      "reason": "Replaced duplicate extraction cases with unified archive-safety and transactional-publication tests."
+    },
+    {
+      "path": "tests/brazil/b3_data/historical_quotes/test_extract_historical_quotes_use_case.py",
+      "diff_sha256": "c70eab558ee329426e705a91c4704c363b8a1da21a3a7b178394ad7b43fdb139",
+      "replacement_test_ids": [
+        "tests/brazil/b3_data/historical_quotes/test_extract_historical_quotes_use_case.py::TestExtractHistoricalQuotesUseCaseInitialization::test_does_not_store_a_data_writer"
+      ],
+      "reason": "Removed assertions for the deleted service-owned writer while preserving the clean use-case dependency contract."
+    }
+  ]
 }

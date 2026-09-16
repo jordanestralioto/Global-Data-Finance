@@ -1,5 +1,8 @@
+"""Ordered, non-destructive merge tests for B3 transaction artifacts."""
+
+from datetime import date
+from decimal import Decimal
 from pathlib import Path
-from unittest.mock import AsyncMock
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -7,242 +10,118 @@ import pytest
 
 from globaldatafinance.brazil.b3_data.historical_quotes import (
     extraction_service,
+    parquet_writer,
 )
-from globaldatafinance.macro_exceptions import (
-    ExtractionError,
-    ParquetWriteError,
-)
+from globaldatafinance.macro_exceptions import ExtractionError
 
 pytestmark = pytest.mark.integration
 
-temp_parquet_merge = extraction_service.temp_parquet_merge
+
+def _record(ticker: str) -> dict[str, object]:
+    """Build a complete typed record accepted by the canonical B3 schema."""
+    decimal = Decimal('1.23')
+    return {
+        'data_pregao': date(2024, 1, 2),
+        'codigo_bdi': '02',
+        'ticker': ticker,
+        'tipo_mercado': '010',
+        'nome_resumido': ticker,
+        'especificacao_papel': 'ON',
+        'preco_abertura': decimal,
+        'preco_maximo': decimal,
+        'preco_minimo': decimal,
+        'preco_medio': decimal,
+        'preco_fechamento': decimal,
+        'melhor_oferta_compra': decimal,
+        'melhor_oferta_venda': decimal,
+        'numero_negocios': 1,
+        'quantidade_total': 2,
+        'volume_total': decimal,
+        'data_vencimento': None,
+        'fator_cotacao': 1,
+        'codigo_isin': 'BRTESTE00001',
+        'numero_distribuicao': 1,
+    }
 
 
-def test_count_parquet_rows_success(tmp_path: Path) -> None:
-    parquet_path = tmp_path / 'test.parquet'
-    table = pa.table({'col': [1, 2, 3, 4, 5]})
-    pq.write_table(table, str(parquet_path))
-
-    rows = temp_parquet_merge.count_parquet_rows(parquet_path)
-    assert rows == 5
-
-
-def test_count_parquet_rows_raises_on_invalid_file(tmp_path: Path) -> None:
-    bad_file = tmp_path / 'bad.parquet'
-    bad_file.write_text('not a parquet file')
-
-    with pytest.raises(ExtractionError) as exc_info:
-        temp_parquet_merge.count_parquet_rows(bad_file)
-
-    assert 'Failed to read rows count' in str(exc_info.value)
-
-
-@pytest.mark.asyncio
-async def test_merge_temp_files_streaming_empty_list(tmp_path: Path) -> None:
-    output_path = tmp_path / 'out.parquet'
-    check_resources = AsyncMock()
-
-    total = await temp_parquet_merge.merge_temp_files_streaming(
-        [], output_path, check_resources=check_resources
+def _write(path: Path, ticker: str) -> None:
+    """Create one source temporary artifact through its persistent session."""
+    session = parquet_writer.B3ParquetWriterSession().open(
+        path, parquet_writer.build_b3_schema()
     )
-
-    assert total == 0
-    assert not output_path.exists()
-    check_resources.assert_not_called()
-
-
-@pytest.mark.asyncio
-async def test_merge_temp_files_streaming_single_file(tmp_path: Path) -> None:
-    temp_file = tmp_path / 'single.parquet'
-    table = pa.table({'col': [10, 20, 30]})
-    pq.write_table(table, str(temp_file))
-
-    final_output = tmp_path / 'merged_single.parquet'
-    check_resources = AsyncMock()
-
-    total = await temp_parquet_merge.merge_temp_files_streaming(
-        [temp_file], final_output, check_resources=check_resources
-    )
-
-    assert total == 3
-    assert final_output.exists()
-    assert not temp_file.exists()
-    check_resources.assert_not_called()
+    records = [_record(ticker)]
+    session.write_records(records)
+    session.close()
 
 
-@pytest.mark.asyncio
-async def test_merge_temp_files_streaming_multiple_files(
+def test_merge_preserves_source_order_and_temporary_inputs(
     tmp_path: Path,
 ) -> None:
-    schema = pa.schema([('id', pa.int64()), ('val', pa.string())])
-    temp1 = tmp_path / 'temp_1.parquet'
-    temp2 = tmp_path / 'temp_2.parquet'
-    temp3 = tmp_path / 'temp_3.parquet'
+    """A merge copies batches in caller order and cleans up only at commit."""
+    first = tmp_path / 'first.parquet'
+    second = tmp_path / 'second.parquet'
+    output = tmp_path / 'merged.parquet'
+    _write(first, 'PETR4')
+    _write(second, 'VALE3')
 
-    pq.write_table(
-        pa.table({'id': [1, 2], 'val': ['a', 'b']}, schema=schema), str(temp1)
-    )
-    pq.write_table(
-        pa.table({'id': [3], 'val': ['c']}, schema=schema), str(temp2)
-    )
-    pq.write_table(
-        pa.table(
-            {'id': [4, 5, 6, 7], 'val': ['d', 'e', 'f', 'g']}, schema=schema
-        ),
-        str(temp3),
+    rows = extraction_service.merge_temp_files_streaming(
+        [first, second], output, parquet_writer.build_b3_schema()
     )
 
-    final_output = tmp_path / 'merged_multi.parquet'
-    check_resources = AsyncMock()
-
-    total = await temp_parquet_merge.merge_temp_files_streaming(
-        [temp1, temp2, temp3], final_output, check_resources=check_resources
-    )
-
-    assert total == 7
-    assert final_output.exists()
-    assert not temp1.exists()
-    assert not temp2.exists()
-    assert not temp3.exists()
-
-    result_parquet = pq.ParquetFile(str(final_output))
-    assert result_parquet.metadata.num_rows == 7
+    assert rows == 2
+    assert first.exists() and second.exists()
+    assert pq.ParquetFile(output).read()['ticker'].to_pylist() == [
+        'PETR4',
+        'VALE3',
+    ]
 
 
-@pytest.mark.asyncio
-async def test_merge_temp_files_logs_cleanup_failure_and_continues(
+def test_merge_writes_a_valid_empty_schema_when_no_source_has_matches(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    caplog: pytest.LogCaptureFixture,
 ) -> None:
-    temp1 = tmp_path / 'protected.parquet'
-    temp2 = tmp_path / 'removable.parquet'
-    pq.write_table(pa.table({'id': [1]}), str(temp1))
-    pq.write_table(pa.table({'id': [2]}), str(temp2))
-    final_output = tmp_path / 'merged.parquet'
-    original_unlink = Path.unlink
+    """An all-filtered request still produces a valid empty B3 Parquet."""
+    output = tmp_path / 'empty.parquet'
+    schema = parquet_writer.build_b3_schema()
 
-    def guarded_unlink(path: Path, *args, **kwargs) -> None:
-        if path == temp1:
-            raise PermissionError('cleanup denied')
-        original_unlink(path, *args, **kwargs)
+    rows = extraction_service.merge_temp_files_streaming([], output, schema)
 
-    monkeypatch.setattr(Path, 'unlink', guarded_unlink)
+    parquet = pq.ParquetFile(output)
+    assert rows == parquet.metadata.num_rows == 0
+    assert parquet.schema_arrow == schema
 
-    with caplog.at_level('WARNING'):
-        total = await temp_parquet_merge.merge_temp_files_streaming(
-            [temp1, temp2],
-            final_output,
-            check_resources=AsyncMock(),
+
+def test_merge_rejects_schema_mismatch_without_deleting_source_artifacts(
+    tmp_path: Path,
+) -> None:
+    """Invalid temporary schema cannot be promoted or destroy diagnostics."""
+    invalid = tmp_path / 'invalid.parquet'
+    pq.write_table(pa.table({'wrong': [1]}), invalid)
+    output = tmp_path / 'merged.parquet'
+
+    with pytest.raises(ExtractionError, match='schema is incompatible'):
+        extraction_service.merge_temp_files_streaming(
+            [invalid], output, parquet_writer.build_b3_schema()
         )
 
-    assert total == 2
-    assert final_output.exists()
-    assert temp1.exists()
-    assert not temp2.exists()
-    assert any(
-        record.exc_info is not None
-        and 'Failed to delete temp file' in record.message
-        for record in caplog.records
-    )
+    assert invalid.exists()
+    assert output.exists() is False
 
 
-@pytest.mark.asyncio
-async def test_merge_temp_files_streaming_triggers_resource_check(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+def test_merge_rejects_a_temporary_row_count_mismatch(
+    tmp_path: Path,
 ) -> None:
-    schema = pa.schema([('id', pa.int64())])
-    temp1 = tmp_path / 't1.parquet'
-    temp2 = tmp_path / 't2.parquet'
+    """A valid schema is insufficient when source row metrics disagree."""
+    source = tmp_path / 'source.parquet'
+    output = tmp_path / 'merged.parquet'
+    _write(source, 'PETR4')
 
-    pq.write_table(pa.table({'id': [1, 2]}, schema=schema), str(temp1))
-    pq.write_table(pa.table({'id': [3, 4]}, schema=schema), str(temp2))
-
-    final_output = tmp_path / 'merged_resource_check.parquet'
-    check_resources = AsyncMock()
-
-    # Exercise the resource check at the 500,000-row boundary.
-    # We can create two files of 2 rows and mock total_rows modulo check
-    class MockParquetFile(pq.ParquetFile):
-        def iter_batches(self, batch_size=200_000):
-            _ = batch_size
-            # Yield a batch with num_rows = 500_000
-            batch = pa.record_batch({'id': pa.array(list(range(500_000)))})
-            yield batch
-
-    monkeypatch.setattr(pq, 'ParquetFile', MockParquetFile)
-
-    total = await temp_parquet_merge.merge_temp_files_streaming(
-        [temp1, temp2], final_output, check_resources=check_resources
-    )
-
-    assert total == 1_000_000
-    assert check_resources.call_count == 2
-
-
-@pytest.mark.asyncio
-async def test_merge_temp_files_streaming_failure_cleans_up_and_raises(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    schema = pa.schema([('id', pa.int64())])
-    temp1 = tmp_path / 'fail_t1.parquet'
-    temp2 = tmp_path / 'fail_t2.parquet'
-
-    pq.write_table(pa.table({'id': [1]}, schema=schema), str(temp1))
-    pq.write_table(pa.table({'id': [2]}, schema=schema), str(temp2))
-
-    final_output = tmp_path / 'fail_merged.parquet'
-    check_resources = AsyncMock()
-
-    # Cause an error during write_batch
-    class FailingWriter:
-        def __init__(self, *args, **kwargs):
-            pass
-
-        def write_batch(self, batch):
-            _ = batch
-            raise OSError('Disk write failure simulated')
-
-        def close(self):
-            pass
-
-    monkeypatch.setattr(pq, 'ParquetWriter', FailingWriter)
-
-    with pytest.raises(ParquetWriteError) as exc_info:
-        await temp_parquet_merge.merge_temp_files_streaming(
-            [temp1, temp2], final_output, check_resources=check_resources
+    with pytest.raises(ExtractionError, match='row count is incompatible'):
+        extraction_service.merge_temp_files_streaming(
+            [source],
+            output,
+            parquet_writer.build_b3_schema(),
+            expected_rows=[2],
         )
 
-    assert 'Merge operation failed' in str(exc_info.value)
-    # Temporary files should be cleaned up
-    assert not temp1.exists()
-    assert not temp2.exists()
-    temp_merge = final_output.with_suffix('.parquet.merge_tmp')
-    assert not temp_merge.exists()
-
-
-@pytest.mark.asyncio
-async def test_merge_single_temp_file_replaces_existing_output(
-    monkeypatch, tmp_path: Path
-) -> None:
-    temp_file = tmp_path / 'temp.parquet'
-    final_output = tmp_path / 'final.parquet'
-    temp_file.write_text('new content')
-    final_output.write_text('old content')
-
-    monkeypatch.setattr(
-        temp_parquet_merge,
-        'count_parquet_rows',
-        lambda _path: 42,
-    )
-
-    async def fail_if_called() -> None:
-        raise AssertionError('single-file merge should not check resources')
-
-    rows = await temp_parquet_merge.merge_temp_files_streaming(
-        [temp_file], final_output, check_resources=fail_if_called
-    )
-
-    assert rows == 42
-    assert final_output.read_text() == 'new content'
-    assert not temp_file.exists()
+    assert source.exists()
+    assert output.exists() is False

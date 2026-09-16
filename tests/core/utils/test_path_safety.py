@@ -100,3 +100,21 @@ def test_path_policy_allows_only_descendants_of_configured_unc_roots() -> None:
             r'\\fileserver\finance\trusted\..\outside',
             allowed_unc_roots=[trusted_root],
         )
+
+
+def test_path_policy_uses_fresh_settings_when_allowed_unc_roots_omitted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When allowed_unc_roots is omitted, fresh PathSafetySettings is used."""
+    monkeypatch.setenv(
+        'DATAFINANCE_PATH_SAFETY_ALLOWED_UNC_ROOTS',
+        '["\\\\\\\\fileserver\\\\finance\\\\trusted"]',
+    )
+    assert _path_policy_allows(
+        Path('safe-output/unc'),
+        r'\\fileserver\finance\trusted\reports',
+    )
+    assert not _path_policy_allows(
+        Path('safe-output/unc'),
+        r'\\fileserver\finance\untrusted\reports',
+    )

@@ -22,8 +22,8 @@ pytestmark = pytest.mark.unit
 @pytest.mark.parametrize(
     ('failure', 'result_marker', 'cleanup_expected'),
     [
-        (DiskFullError('/output'), 'DiskFull:', True),
-        (CorruptedZipError('/input.zip', 'invalid'), 'CorruptedZIP:', True),
+        (DiskFullError('/output'), 'DiskFull:', False),
+        (CorruptedZipError('/input.zip', 'invalid'), 'CorruptedZIP:', False),
         (ExtractionError('/input.zip', 'failed'), 'ExtractionFailed:', False),
     ],
 )

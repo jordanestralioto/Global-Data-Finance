@@ -9,11 +9,13 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-import polars as pl
+import pyarrow.compute as pc
 import pyarrow.parquet as pq
-from polars.testing import assert_frame_equal
 
 from globaldatafinance import HistoricalQuotesB3
+from globaldatafinance.brazil.b3_data.historical_quotes import (
+    parquet_writer,
+)
 from globaldatafinance.brazil.b3_data.historical_quotes.catalog import (
     validate_cotahist_input,
 )
@@ -22,26 +24,7 @@ from .real_validation_types import ValidationCase
 from .real_validation_utils import failed_details, temporary_paths
 
 B3_SCHEMA = {
-    'data_pregao': pl.Date,
-    'codigo_bdi': pl.String,
-    'ticker': pl.String,
-    'tipo_mercado': pl.String,
-    'nome_resumido': pl.String,
-    'especificacao_papel': pl.String,
-    'preco_abertura': pl.Decimal(precision=38, scale=2),
-    'preco_maximo': pl.Decimal(precision=38, scale=2),
-    'preco_minimo': pl.Decimal(precision=38, scale=2),
-    'preco_medio': pl.Decimal(precision=38, scale=2),
-    'preco_fechamento': pl.Decimal(precision=38, scale=2),
-    'melhor_oferta_compra': pl.Decimal(precision=38, scale=2),
-    'melhor_oferta_venda': pl.Decimal(precision=38, scale=2),
-    'numero_negocios': pl.Int64,
-    'quantidade_total': pl.Int64,
-    'volume_total': pl.Decimal(precision=38, scale=2),
-    'data_vencimento': pl.Date,
-    'fator_cotacao': pl.Int64,
-    'codigo_isin': pl.String,
-    'numero_distribuicao': pl.Int64,
+    field.name: str(field.type) for field in parquet_writer.build_b3_schema()
 }
 _SORT_COLUMNS = list(B3_SCHEMA)
 _FRAME_COMPARE_LIMIT = 256 * 1024 * 1024
@@ -205,28 +188,43 @@ def _validate_frame(
 ) -> str | None:
     """Validate schema, content counters, dates, tickers, and markets."""
     try:
-        scan = pl.scan_parquet(output_path)
-        if scan.collect_schema() != B3_SCHEMA:
+        parquet = pq.ParquetFile(output_path)
+        if parquet.schema_arrow != parquet_writer.build_b3_schema():
             return 'B3 schema mismatch'
-        observed = scan.select(
-            pl.len().alias('row_count'),
-            pl.col('data_pregao').min().alias('first_date'),
-            pl.col('data_pregao').max().alias('last_date'),
-            pl.col('ticker').str.len_chars().min().alias('shortest_ticker'),
-            pl.col('tipo_mercado')
-            .is_in(['010', '020'])
-            .sum()
-            .alias('markets'),
-        ).collect(engine='streaming')
-        if observed['row_count'][0] != result['total_records']:
+        row_count = 0
+        first_date = None
+        last_date = None
+        shortest_ticker: int | None = None
+        markets = 0
+        for batch in parquet.iter_batches(batch_size=_DIGEST_BATCH_SIZE):
+            dates = batch.column('data_pregao').to_pylist()
+            tickers = batch.column('ticker').to_pylist()
+            market_codes = batch.column('tipo_mercado').to_pylist()
+            row_count += batch.num_rows
+            batch_first = min(dates)
+            batch_last = max(dates)
+            first_date = (
+                batch_first
+                if first_date is None
+                else min(first_date, batch_first)
+            )
+            last_date = (
+                batch_last if last_date is None else max(last_date, batch_last)
+            )
+            batch_ticker_length = min(len(str(ticker)) for ticker in tickers)
+            shortest_ticker = (
+                batch_ticker_length
+                if shortest_ticker is None
+                else min(shortest_ticker, batch_ticker_length)
+            )
+            markets += sum(code in {'010', '020'} for code in market_codes)
+        if row_count != result['total_records']:
             return 'B3 row count mismatch'
-        first_date = observed['first_date'][0]
-        last_date = observed['last_date'][0]
         if first_date is None or last_date is None:
             return 'B3 date range is empty'
         if first_date.year != year or last_date.year != year:
             return 'B3 dates have wrong year'
-        if observed['shortest_ticker'][0] <= 0 or observed['markets'][0] <= 0:
+        if shortest_ticker is None or shortest_ticker <= 0 or markets <= 0:
             return 'B3 ticker or market validation failed'
     except (OSError, RuntimeError, ValueError, TypeError) as error:
         return f'B3 artifact validation failed: {error}'
@@ -246,16 +244,19 @@ def _validate_metadata(output_path: Path) -> str | None:
 
 def _date_range(output_path: Path) -> tuple[str, str]:
     """Return the complete output date range in a report-safe form."""
-    observed = (
-        pl.scan_parquet(output_path)
-        .select(
-            pl.col('data_pregao').min().alias('first_date'),
-            pl.col('data_pregao').max().alias('last_date'),
+    first_date = None
+    last_date = None
+    parquet = pq.ParquetFile(output_path)
+    for batch in parquet.iter_batches(batch_size=_DIGEST_BATCH_SIZE):
+        dates = batch.column('data_pregao').to_pylist()
+        batch_first = min(dates)
+        batch_last = max(dates)
+        first_date = (
+            batch_first if first_date is None else min(first_date, batch_first)
         )
-        .collect(engine='streaming')
-    )
-    first_date = observed['first_date'][0]
-    last_date = observed['last_date'][0]
+        last_date = (
+            batch_last if last_date is None else max(last_date, batch_last)
+        )
     if first_date is None or last_date is None:
         raise ValueError('B3 date range is empty')
     return first_date.isoformat(), last_date.isoformat()
@@ -281,21 +282,24 @@ def _compare_content(fast_path: Path, slow_path: Path) -> str:
     if max(fast_path.stat().st_size, slow_path.stat().st_size) <= (
         _FRAME_COMPARE_LIMIT
     ):
-        assert_frame_equal(
-            _canonical_frame(fast_path),
-            _canonical_frame(slow_path),
-            check_dtypes=True,
-        )
+        if not _canonical_table(fast_path).equals(
+            _canonical_table(slow_path), check_metadata=False
+        ):
+            raise AssertionError('canonical table mismatch')
         return 'full_frame'
     if _canonical_digest(fast_path) != _canonical_digest(slow_path):
         raise AssertionError('canonical content digest mismatch')
     return 'order_independent_batch_digest'
 
 
-def _canonical_frame(path: Path) -> pl.DataFrame:
-    return (
-        pl.scan_parquet(path).sort(_SORT_COLUMNS).collect(engine='streaming')
+def _canonical_table(path: Path) -> Any:
+    """Read and sort a bounded-size table for a full logical comparison."""
+    table = pq.read_table(path)
+    indices = pc.sort_indices(
+        table,
+        sort_keys=[(column, 'ascending') for column in _SORT_COLUMNS],
     )
+    return table.take(indices)
 
 
 def _canonical_digest(path: Path) -> str:

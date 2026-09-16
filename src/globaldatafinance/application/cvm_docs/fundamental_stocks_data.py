@@ -34,11 +34,12 @@ from ...brazil.cvm.fundamental_stocks_data import (
     AvailableYearsInfoCVM,
     DownloadDocumentsUseCaseCVM,
     DownloadResultCVM,
-    ParquetExtractorAdapterCVM,
     get_available_docs,
     get_available_years,
 )
-from ...core import get_logger, settings
+from ...core.archive_safety import ArchiveSafetyLimits
+from ...core.config import Settings
+from ...core.logging_config import get_logger
 from .download_result_formatter import DownloadResultFormatter
 
 logger = get_logger(__name__)
@@ -79,22 +80,36 @@ class FundamentalStocksDataCVM:
         ...     print(f"Some downloads failed: {result.failed_downloads}")
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, settings: Settings | None = None) -> None:
         """Initialize the FundamentalStocksDataCVM client.
 
-        The automatic_extractor option can be passed per download call.
-        See download() method for details.
+        Args:
+            settings: Immutable runtime settings snapshot. When omitted,
+                a fresh :class:`~globaldatafinance.core.config.Settings`
+                instance
+                is constructed from current environment variables.
         """
-        network_settings = settings.network
+        if settings is None:
+            settings = Settings()
+        self._settings = settings
+        network_settings = self._settings.network
+        archive_limits = ArchiveSafetyLimits.from_settings(
+            self._settings.archive
+        )
+        allowed_unc_roots = self._settings.path_safety.allowed_unc_roots
+
         self.download_adapter = AsyncDownloadAdapterCVM(
-            file_extractor_repository=ParquetExtractorAdapterCVM(),
+            file_extractor_repository=None,
             timeout=network_settings.timeout,
             max_retries=network_settings.max_retries,
             backoff_multiplier=network_settings.retry_backoff,
             user_agent=network_settings.user_agent,
+            archive_limits=archive_limits,
+            allowed_unc_roots=allowed_unc_roots,
         )
         self.__download_use_case = DownloadDocumentsUseCaseCVM(
-            self.download_adapter
+            self.download_adapter,
+            allowed_unc_roots=allowed_unc_roots,
         )
         self.__result_formatter = DownloadResultFormatter(use_colors=True)
 
@@ -103,6 +118,11 @@ class FundamentalStocksDataCVM:
             'AsyncDownloadAdapterCVM '
             '(automatic_extractor can be set per download call)'
         )
+
+    @property
+    def settings(self) -> Settings:
+        """Return the immutable configuration snapshot used by this client."""
+        return self._settings
 
     def download(
         self,

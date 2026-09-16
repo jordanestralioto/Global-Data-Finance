@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-# allow-assertion-reduction: Remove assertions for the intentionally deleted
-# runtime version contract.
 import importlib
 import runpy
 import sys
 from pathlib import Path
 
 import pytest
+
+from scripts.process_runner import run_process
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 SOURCE_ROOT = REPOSITORY_ROOT / 'src'
@@ -56,7 +56,7 @@ def _load_settings_from_directory(
 
         importlib.import_module('globaldatafinance')
         config = importlib.import_module('globaldatafinance.core.config')
-        settings = config.settings
+        settings = config.Settings()
         return settings.network.timeout, settings.debug
     finally:
         for name in list(sys.modules):
@@ -144,3 +144,88 @@ def test_star_import_exposes_only_declared_names(
         if not name.startswith('__') or name in module.__all__
     }
     assert imported_names == set(module.__all__)
+
+
+def test_removed_singleton_and_accessor_symbols_absent() -> None:
+    """Settings and logging singletons/accessors must be completely removed."""
+    core = importlib.import_module('globaldatafinance.core')
+    config = importlib.import_module('globaldatafinance.core.config')
+    logging_config = importlib.import_module(
+        'globaldatafinance.core.logging_config'
+    )
+
+    assert 'settings' not in core.__all__
+    assert 'get_logging_settings' not in core.__all__
+    assert not hasattr(core, 'settings')
+    assert not hasattr(core, 'get_logging_settings')
+    assert not hasattr(core, 'Settings')
+    assert not hasattr(core, 'LoggingSettings')
+
+    assert not hasattr(config, '__all__')
+    assert not hasattr(config, 'settings')
+
+    assert not hasattr(logging_config, '__all__')
+    assert not hasattr(logging_config, 'get_logging_settings')
+
+
+def test_root_import_succeeds_in_fresh_process_with_invalid_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Root package import succeeds even with malformed settings in env."""
+    monkeypatch.setenv('DATAFINANCE_NETWORK_TIMEOUT', 'invalid-int')
+    monkeypatch.setenv('DATAFINANCE_ARCHIVE_MAX_MEMBERS', '-999')
+    monkeypatch.setenv('DATAFINANCE_PATH_SAFETY_ALLOWED_UNC_ROOTS', 'bad-json')
+    monkeypatch.setenv('DATAFIN_LOG_LEVEL', 'INVALID_LEVEL')
+
+    import_cmd = (
+        'import sys; '
+        'sys.path.insert(0, "src"); '
+        'import globaldatafinance as gdf; '
+        'from globaldatafinance import '
+        'FundamentalStocksDataCVM, HistoricalQuotesB3'
+    )
+    result = run_process(
+        ['python', '-c', import_cmd],
+        cwd=REPOSITORY_ROOT,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+    settings_cmd = (
+        'import sys; '
+        'sys.path.insert(0, "src"); '
+        'from globaldatafinance.core.config import Settings; '
+        'Settings()'
+    )
+    result_settings = run_process(
+        ['python', '-c', settings_cmd],
+        cwd=REPOSITORY_ROOT,
+        check=False,
+    )
+    assert result_settings.returncode != 0
+
+    cvm_cmd = (
+        'import sys; '
+        'sys.path.insert(0, "src"); '
+        'from globaldatafinance import FundamentalStocksDataCVM; '
+        'FundamentalStocksDataCVM()'
+    )
+    result_cvm = run_process(
+        ['python', '-c', cvm_cmd],
+        cwd=REPOSITORY_ROOT,
+        check=False,
+    )
+    assert result_cvm.returncode != 0
+
+    b3_cmd = (
+        'import sys; '
+        'sys.path.insert(0, "src"); '
+        'from globaldatafinance import HistoricalQuotesB3; '
+        'HistoricalQuotesB3()'
+    )
+    result_b3 = run_process(
+        ['python', '-c', b3_cmd],
+        cwd=REPOSITORY_ROOT,
+        check=False,
+    )
+    assert result_b3.returncode != 0

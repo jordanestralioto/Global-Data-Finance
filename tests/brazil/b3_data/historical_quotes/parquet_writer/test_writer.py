@@ -1,208 +1,132 @@
-"""Real-engine integration tests for B3 Parquet persistence semantics."""
-
-from __future__ import annotations
+"""Public B3 writer compatibility tests using Arrow runtime facilities."""
 
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
-from types import SimpleNamespace
 
-import polars as pl
+import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from globaldatafinance.brazil.b3_data.historical_quotes.parquet_writer import (
-    ParquetWriterB3,
+from globaldatafinance.brazil.b3_data.historical_quotes import (
+    parquet_writer,
 )
 from globaldatafinance.brazil.b3_data.historical_quotes.parquet_writer import (
-    disk as parquet_writer_disk,
+    session as b3_session,
 )
-from globaldatafinance.brazil.b3_data.historical_quotes.parquet_writer import (
-    writer as writer_module,
-)
-from globaldatafinance.core import ResourceState
-from globaldatafinance.macro_exceptions import DiskFullError
+from globaldatafinance.macro_exceptions import ParquetWriteError
 
 pytestmark = pytest.mark.integration
 
 
-class _ResourceMonitor:
-    """Small fake used only to select writer resource states."""
+def _record(ticker: str) -> dict[str, object]:
+    """Build one B3 record accepted by the stable public writer."""
+    decimal = Decimal('123.45')
+    return {
+        'data_pregao': date(2024, 1, 2),
+        'codigo_bdi': '02',
+        'ticker': ticker,
+        'tipo_mercado': '010',
+        'nome_resumido': ticker,
+        'especificacao_papel': 'ON',
+        'preco_abertura': decimal,
+        'preco_maximo': decimal,
+        'preco_minimo': decimal,
+        'preco_medio': decimal,
+        'preco_fechamento': decimal,
+        'melhor_oferta_compra': decimal,
+        'melhor_oferta_venda': decimal,
+        'numero_negocios': 1,
+        'quantidade_total': 2,
+        'volume_total': decimal,
+        'data_vencimento': None,
+        'fator_cotacao': 1,
+        'codigo_isin': 'BRTESTE00001',
+        'numero_distribuicao': 1,
+    }
 
-    def __init__(self, states: list[ResourceState]) -> None:
-        self._states = states
-        self._index = 0
 
-    def check_resources(self) -> ResourceState:
-        """Return deterministic resource states without replacing engines."""
-        index = min(self._index, len(self._states) - 1)
-        self._index += 1
-        return self._states[index]
+@pytest.mark.asyncio
+async def test_overwrite_writes_canonical_arrow_schema(tmp_path: Path) -> None:
+    """Overwrite validates Arrow values and publishes only the final file."""
+    output = tmp_path / 'quotes.parquet'
+
+    await parquet_writer.ParquetWriterB3().write_to_parquet(
+        [_record('PETR4')], output
+    )
+
+    parquet = pq.ParquetFile(output)
+    assert parquet.schema_arrow == parquet_writer.build_b3_schema()
+    assert parquet.read()['ticker'].to_pylist() == ['PETR4']
+    assert output.with_suffix('.parquet.tmp').exists() is False
 
 
-def _records(*identifiers: int) -> list[dict[str, object]]:
-    """Build B3-shaped rows covering decimals, dates, strings, and ints."""
-    return [
-        {
-            'data_pregao': date(2024, 1, identifier),
-            'codigo_bdi': '02',
-            'ticker': f'TEST{identifier}',
-            'tipo_mercado': '010',
-            'nome_resumido': 'TESTE',
-            'especificacao_papel': 'ON',
-            'preco_abertura': Decimal('10.10'),
-            'preco_maximo': Decimal('11.10'),
-            'preco_minimo': Decimal('9.10'),
-            'preco_medio': Decimal('10.20'),
-            'preco_fechamento': Decimal('10.30'),
-            'melhor_oferta_compra': Decimal('10.00'),
-            'melhor_oferta_venda': Decimal('10.40'),
-            'numero_negocios': identifier,
-            'quantidade_total': identifier * 100,
-            'volume_total': Decimal('1000.00'),
-            'data_vencimento': date(2024, 12, 31),
-            'fator_cotacao': 1,
-            'codigo_isin': 'BRTESTACNPR0',
-            'numero_distribuicao': identifier,
-        }
-        for identifier in identifiers
+@pytest.mark.asyncio
+async def test_append_copies_existing_batches_once_then_appends(
+    tmp_path: Path,
+) -> None:
+    """The public append operation replaces a validated temporary artifact."""
+    output = tmp_path / 'quotes.parquet'
+    writer = parquet_writer.ParquetWriterB3()
+    await writer.write_to_parquet([_record('PETR4')], output)
+
+    await writer.write_to_parquet([_record('VALE3')], output, mode='append')
+
+    assert pq.ParquetFile(output).read()['ticker'].to_pylist() == [
+        'PETR4',
+        'VALE3',
     ]
 
 
 @pytest.mark.asyncio
-async def test_writer_creates_readable_real_parquet_with_full_schema(
+async def test_append_rejects_an_existing_noncanonical_schema(
     tmp_path: Path,
 ) -> None:
-    """Polars and PyArrow read the same ordered rows and physical artifact."""
-    output_path = tmp_path / 'quotes.parquet'
-    await ParquetWriterB3(
-        resource_monitor=_ResourceMonitor([ResourceState.HEALTHY])
-    ).write_to_parquet(_records(1, 2), output_path)
+    """Append cannot silently cast an unrelated Parquet contract."""
+    output = tmp_path / 'quotes.parquet'
+    pq.write_table(pa.table({'wrong': [1]}), output)
 
-    raw_bytes = output_path.read_bytes()
-    polars_frame = pl.read_parquet(output_path)
-    arrow_file = pq.ParquetFile(output_path)
-    metadata = arrow_file.metadata
+    with pytest.raises(ParquetWriteError, match='schema is incompatible'):
+        await parquet_writer.ParquetWriterB3().write_to_parquet(
+            [_record('PETR4')], output, mode='append'
+        )
 
-    assert raw_bytes[:4] == b'PAR1'
-    assert raw_bytes[-4:] == b'PAR1'
-    assert metadata is not None
-    assert metadata.num_rows == 2
-    assert polars_frame['ticker'].to_list() == ['TEST1', 'TEST2']
-    assert polars_frame.schema['data_pregao'] == pl.Date
-    assert polars_frame.schema['preco_fechamento'] == pl.Decimal(38, 2)
-    assert polars_frame.schema['numero_negocios'] == pl.Int64
-    assert polars_frame['preco_fechamento'].to_list() == [
-        Decimal('10.30'),
-        Decimal('10.30'),
+    assert pq.ParquetFile(output).schema_arrow.names == ['wrong']
+
+
+def test_public_writer_allocates_distinct_same_directory_temporary_paths(
+    tmp_path: Path,
+) -> None:
+    """Concurrent public writes cannot share a temporary artifact name."""
+    output = tmp_path / 'quotes.parquet'
+
+    first = parquet_writer.ParquetWriterB3._create_temporary_path(output)
+    second = parquet_writer.ParquetWriterB3._create_temporary_path(output)
+    try:
+        assert first != second
+        assert first.parent == second.parent == tmp_path
+        assert first.name.endswith('.parquet.tmp')
+        assert second.name.endswith('.parquet.tmp')
+    finally:
+        first.unlink(missing_ok=True)
+        second.unlink(missing_ok=True)
+
+
+@pytest.mark.asyncio
+async def test_public_writer_preserves_a_large_caller_list_in_bounded_slices(
+    tmp_path: Path,
+) -> None:
+    """The compatibility writer preserves its list with bounded slices."""
+    record_count = b3_session.RECORD_BATCH_LIMIT + 1
+    records = [_record(f'GD{index:010d}') for index in range(record_count)]
+    output = tmp_path / 'quotes.parquet'
+
+    await parquet_writer.ParquetWriterB3().write_to_parquet(records, output)
+
+    table = pq.read_table(output, columns=['ticker'])
+    assert len(records) == record_count
+    assert records[0]['ticker'] == 'GD0000000000'
+    assert records[-1]['ticker'] == f'GD{record_count - 1:010d}'
+    assert table['ticker'].to_pylist() == [
+        f'GD{index:010d}' for index in range(record_count)
     ]
-    assert arrow_file.read().num_rows == polars_frame.height
-    column = metadata.row_group(0).column(0)
-    assert column.compression == 'ZSTD'
-    assert column.statistics is not None
-
-
-@pytest.mark.asyncio
-async def test_writer_append_preserves_existing_rows_and_order(
-    tmp_path: Path,
-) -> None:
-    """Append streams the original Parquet then adds rows without loss."""
-    output_path = tmp_path / 'append.parquet'
-    writer = ParquetWriterB3(
-        resource_monitor=_ResourceMonitor([ResourceState.HEALTHY])
-    )
-    await writer.write_to_parquet(_records(1, 2), output_path)
-    await writer.write_to_parquet(_records(3), output_path, mode='append')
-
-    frame = pl.read_parquet(output_path)
-
-    assert frame['ticker'].to_list() == ['TEST1', 'TEST2', 'TEST3']
-    assert pq.ParquetFile(output_path).metadata.num_rows == 3
-    assert not output_path.with_suffix('.parquet.tmp').exists()
-
-
-@pytest.mark.asyncio
-async def test_writer_overwrite_replaces_data_without_duplication(
-    tmp_path: Path,
-) -> None:
-    """Overwrite atomically replaces an old valid file with only new rows."""
-    output_path = tmp_path / 'overwrite.parquet'
-    writer = ParquetWriterB3(
-        resource_monitor=_ResourceMonitor([ResourceState.HEALTHY])
-    )
-    await writer.write_to_parquet(_records(1, 2), output_path)
-    await writer.write_to_parquet(_records(3), output_path, mode='overwrite')
-
-    frame = pl.read_parquet(output_path)
-
-    assert frame['ticker'].to_list() == ['TEST3']
-    assert pq.ParquetFile(output_path).metadata.num_rows == 1
-    assert not output_path.with_suffix('.parquet.tmp').exists()
-
-
-@pytest.mark.asyncio
-async def test_writer_merges_real_chunks_without_temporary_residue(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Chunk mode uses real temporary Parquets and leaves a clean directory."""
-    monkeypatch.setattr(writer_module, 'MEMORY_SPLIT_RECORD_THRESHOLD', 2)
-    monkeypatch.setattr(writer_module, 'CHUNK_RECORD_COUNT', 2)
-    output_path = tmp_path / 'chunked.parquet'
-    writer = ParquetWriterB3(
-        resource_monitor=_ResourceMonitor([ResourceState.CRITICAL])
-    )
-
-    await writer.write_to_parquet(_records(1, 2, 3, 4, 5), output_path)
-
-    frame = pl.read_parquet(output_path)
-    assert frame['ticker'].to_list() == [
-        'TEST1',
-        'TEST2',
-        'TEST3',
-        'TEST4',
-        'TEST5',
-    ]
-    assert pq.ParquetFile(output_path).metadata.num_rows == 5
-    assert list(tmp_path.glob('*_chunks')) == []
-    assert not output_path.with_suffix('.parquet.tmp').exists()
-
-
-@pytest.mark.asyncio
-async def test_writer_disk_failure_keeps_no_partial_parquet(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """A failed low-level write cleans temp output before DiskFullError."""
-    output_path = tmp_path / 'disk-full.parquet'
-    writer = ParquetWriterB3(
-        resource_monitor=_ResourceMonitor([ResourceState.HEALTHY])
-    )
-
-    def write_partial_then_fail(_df: pl.DataFrame, target: Path) -> None:
-        target.write_bytes(b'not a valid parquet')
-        raise OSError('No space left on device')
-
-    monkeypatch.setattr(writer, '_write_dataframe', write_partial_then_fail)
-
-    with pytest.raises(DiskFullError):
-        await writer.write_to_parquet(_records(1), output_path)
-
-    assert not output_path.exists()
-    assert not output_path.with_suffix('.parquet.tmp').exists()
-
-
-def test_writer_check_disk_space_translates_insufficient_capacity(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """The disk seam translates a low-capacity filesystem error."""
-    free_space = (ParquetWriterB3.MIN_FREE_SPACE_MB - 10) * 1024 * 1024
-    monkeypatch.setattr(
-        parquet_writer_disk.shutil,
-        'disk_usage',
-        lambda _path: SimpleNamespace(free=free_space),
-    )
-
-    with pytest.raises(DiskFullError):
-        ParquetWriterB3._check_disk_space(tmp_path / 'file.parquet')

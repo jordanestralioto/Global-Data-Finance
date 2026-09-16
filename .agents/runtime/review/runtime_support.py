@@ -787,12 +787,14 @@ def detect_packs(changed_files: list[str], security_touch: str) -> list[str]:
         if any(
             token in lower
             for token in (
+                'scripts/',
                 'src/',
                 'service',
                 'core',
                 'domain',
                 'runtime',
                 'worker',
+                'lock',
             )
         ):
             matched.add('behavior')

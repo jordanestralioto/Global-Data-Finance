@@ -149,6 +149,7 @@ def suppress_execution_time_logging(monkeypatch):
     monkeypatch.setattr(
         'globaldatafinance.brazil.b3_data.historical_quotes.extraction_service.service.log_execution_time',
         noop,
+        raising=False,
     )
 
 

@@ -7,12 +7,16 @@ from decimal import Decimal
 from os import sep
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Literal, cast
+from typing import Literal
 
-import polars as pl
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
 
 import scripts.real_validation_b3 as b3
+from globaldatafinance.brazil.b3_data.historical_quotes import (
+    parquet_writer,
+)
 from scripts.real_validation_b3 import B3_SCHEMA
 from scripts.real_validation_types import ValidationCase
 
@@ -56,7 +60,10 @@ def _write_b3_parquet(
             values[name] = [1] * rows
         else:
             values[name] = [Decimal('1.00')] * rows
-    pl.DataFrame(values, schema=cast(Any, B3_SCHEMA)).write_parquet(path)
+    table = pa.Table.from_pydict(
+        values, schema=parquet_writer.build_b3_schema()
+    )
+    pq.write_table(table, path)
 
 
 def _b3_result(output_path: Path, *, records: int = 1) -> dict[str, object]:
@@ -361,7 +368,7 @@ def test_validate_result_rejects_wrong_schema_and_output_inventory(
     output_directory = tmp_path / 'output'
     output_directory.mkdir()
     output_path = output_directory / 'cotahist.parquet'
-    pl.DataFrame({'wrong': [1]}).write_parquet(output_path)
+    pq.write_table(pa.table({'wrong': [1]}), output_path)
     extra = output_directory / 'extra.parquet'
     extra.write_bytes(output_path.read_bytes())
 
@@ -401,7 +408,9 @@ def test_validate_metadata_and_date_range_report_empty_or_unreadable_outputs(
     assert b3._validate_metadata(output) is None
 
     empty = tmp_path / 'empty.parquet'
-    pl.DataFrame({'data_pregao': [None]}).write_parquet(empty)
+    pq.write_table(
+        pa.table({'data_pregao': pa.array([None], type=pa.date32())}), empty
+    )
     with pytest.raises(ValueError, match='date range is empty'):
         b3._date_range(empty)
 

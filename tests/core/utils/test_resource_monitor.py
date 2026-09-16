@@ -187,13 +187,23 @@ class TestResourceMonitor:
             )
         assert result is False
 
-    @patch('globaldatafinance.core.utils.resource_monitor.psutil', None)
-    def test_no_psutil_fallback(self):
+    @patch('globaldatafinance.core.utils.resource_monitor.psutil')
+    def test_telemetry_failure_is_not_reported_as_healthy(self, mock_psutil):
         ResourceMonitor._instance = None
-        monitor = ResourceMonitor()
 
-        state = monitor.check_resources()
-        assert state == ResourceState.HEALTHY
+        mock_memory = Mock()
+        mock_memory.total = 8 * 1024**3
+        mock_memory.available = 2 * 1024**3
+        mock_memory.percent = 50.0
+        mock_psutil.virtual_memory.return_value = mock_memory
+        mock_psutil.cpu_percent.return_value = 30.0
+
+        monitor = ResourceMonitor()
+        mock_psutil.virtual_memory.side_effect = OSError(
+            'resource telemetry unavailable'
+        )
+
+        assert monitor.check_resources() == ResourceState.CRITICAL
 
     @patch('globaldatafinance.core.utils.resource_monitor.psutil')
     def test_minimum_free_memory_threshold(self, mock_psutil):

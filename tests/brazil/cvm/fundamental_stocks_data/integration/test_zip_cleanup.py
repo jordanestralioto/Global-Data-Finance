@@ -2,7 +2,7 @@ import zipfile
 from pathlib import Path
 from unittest.mock import Mock
 
-import pandas as pd  # type: ignore
+import pandas as pd
 import pytest
 
 from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
@@ -65,7 +65,7 @@ class TestZipCleanup:
         assert not archive_path.exists()
 
     @pytest.mark.parametrize('failure_kind', ['disk_full', 'corrupted_zip'])
-    def test_cleanup_failures_update_result_and_remove_zip(
+    def test_cleanup_failures_update_result_and_keep_source_zip(
         self, tmp_path, failure_kind
     ):
         archive_path = tmp_path / f'{failure_kind}.zip'
@@ -97,8 +97,8 @@ class TestZipCleanup:
             failure_kind.split('_')[0].capitalize()
             in (result.failed_downloads['DFP_2023'])
         )
-        cleanup.assert_called_once_with(str(archive_path))
-        assert not archive_path.exists()
+        cleanup.assert_not_called()
+        assert archive_path.exists()
 
     @pytest.mark.parametrize('error_kind', ['extraction', 'unexpected'])
     def test_non_cleanup_failures_keep_zip_for_investigation(

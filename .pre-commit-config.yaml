@@ -216,7 +216,12 @@ repos:
     rev: 68e8b45440415753fff70a312ece8da92ba85b4a  # pragma: allowlist secret
     hooks:
       - id: detect-secrets
-        args: ["--baseline", ".secrets.baseline"]
+        args:
+          - "--baseline"
+          - ".secrets.baseline"
+          # SHA-256 patch bindings are integrity metadata, not credentials.
+          - "--exclude-lines"
+          - '"diff_sha256":\s*"[0-9a-f]{64}"'
         exclude: ^(package\.lock|\.secrets\.baseline)
 
   # Secret Detection: gitleaks (provider-specific token patterns)

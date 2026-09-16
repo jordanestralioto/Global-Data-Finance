@@ -45,7 +45,6 @@ SHELL_SYNTAX = REPOSITORY_ROOT / 'scripts' / 'check-shell-syntax.py'
 
 
 pytestmark = pytest.mark.unit
-# allow-assertion-reduction: Retired validate-agent-protocols pre-commit hook.
 
 
 def run_git(repo: Path, *args: str) -> ProcessResult:
@@ -67,6 +66,33 @@ def run_gate(script: Path, repo: Path, *arguments: str) -> ProcessResult:
         cwd=repo,
         check=False,
     )
+
+
+def staged_test_patch_hash(repo: Path) -> str:
+    """Return the checker-authored hash for the staged test patch."""
+    result = run_gate(TEST_INTEGRITY, repo, '--print-hash')
+    assert result.returncode == 0, result.stderr
+    lines = result.stdout.strip().splitlines()
+    assert len(lines) == 1
+    return lines[0].rsplit(maxsplit=1)[1]
+
+
+def stage_assertion_reduction_policy(
+    repo: Path,
+    *,
+    entries: object,
+    alias: object | None = None,
+) -> None:
+    """Stage a policy document for an isolated integrity-gate repository."""
+    policy: dict[str, object] = {
+        'allowed_deletions': {},
+        'allowed_assertion_reductions': entries,
+    }
+    if alias is not None:
+        policy['allowed_reductions'] = alias
+    policy_path = repo / '.test-integrity-policy.json'
+    policy_path.write_text(json.dumps(policy), encoding='utf-8')
+    run_git(repo, 'add', '--', '.test-integrity-policy.json')
 
 
 def hook_block(content: str, hook_id: str) -> str:
@@ -832,3 +858,70 @@ def test_gates_skip_when_no_relevant_staged_change(
     result = run_gate(script, tmp_path)
 
     assert result.returncode == 0
+
+
+def test_test_integrity_policy_not_read_from_disk_for_range(
+    tmp_path: Path,
+) -> None:
+    """Policy present only on disk must not authorize changes in a range."""
+    initialize_git_repository(tmp_path)
+    test_file = tmp_path / 'tests' / 'test_guarded.py'
+    test_file.parent.mkdir()
+    test_file.write_text(
+        'def test_guarded() -> None:\n    assert True\n', encoding='utf-8'
+    )
+    run_git(tmp_path, 'add', '--', 'tests/test_guarded.py')
+    run_git(tmp_path, 'commit', '--quiet', '-m', 'baseline')
+
+    test_file.unlink()
+    run_git(tmp_path, 'add', '--update')
+    run_git(tmp_path, 'commit', '--quiet', '-m', 'remove test')
+
+    policy = {
+        'allowed_deletions': {
+            'tests/test_guarded.py': 'Superseded by new suite.',
+        },
+    }
+    (tmp_path / '.test-integrity-policy.json').write_text(
+        json.dumps(policy), encoding='utf-8'
+    )
+
+    result = run_gate(TEST_INTEGRITY, tmp_path, '--range', 'HEAD~1...HEAD')
+
+    assert result.returncode == 1, (
+        'policy on disk must not authorize deletions in a committed range'
+    )
+    assert '[TEST_DELETION]' in result.stderr
+
+
+def test_test_integrity_policy_not_read_from_disk_for_staged(
+    tmp_path: Path,
+) -> None:
+    """Policy present only on disk must not authorize staged changes."""
+    initialize_git_repository(tmp_path)
+    test_file = tmp_path / 'tests' / 'test_staged.py'
+    test_file.parent.mkdir()
+    test_file.write_text(
+        'def test_staged() -> None:\n    assert True\n', encoding='utf-8'
+    )
+    run_git(tmp_path, 'add', '--', 'tests/test_staged.py')
+    run_git(tmp_path, 'commit', '--quiet', '-m', 'baseline')
+
+    test_file.unlink()
+    run_git(tmp_path, 'add', '--update')
+
+    policy = {
+        'allowed_deletions': {
+            'tests/test_staged.py': 'Superseded by new suite.',
+        },
+    }
+    (tmp_path / '.test-integrity-policy.json').write_text(
+        json.dumps(policy), encoding='utf-8'
+    )
+
+    result = run_gate(TEST_INTEGRITY, tmp_path)
+
+    assert result.returncode == 1, (
+        'policy on disk must not authorize deletions in the staged index'
+    )
+    assert '[TEST_DELETION]' in result.stderr

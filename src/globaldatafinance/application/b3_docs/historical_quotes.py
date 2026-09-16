@@ -7,10 +7,8 @@ usage. Quick start::
 
     b3 = HistoricalQuotesB3()
     result = b3.extract(
-        path_of_docs="/path/to/cotahist_zips",
-        assets_list=["ações", "etf"],
-        initial_year=2020,
-        last_year=2023,
+        path_of_docs="/path/to/cotahist_zips", assets_list=["ações", "etf"],
+        initial_year=2020, last_year=2023,
     )
 """
 
@@ -26,7 +24,9 @@ from ...brazil.b3_data.historical_quotes import (
     GetAvailableYearsUseCaseB3,
     ValidateExtractionConfigUseCaseB3,
 )
-from ...core import get_logger
+from ...core.archive_safety import ArchiveSafetyLimits
+from ...core.config import Settings
+from ...core.logging_config import get_logger
 from .extraction_result_formatter import ExtractionResultFormatter
 from .result_formatters import HistoricalQuotesResultFormatter
 from .types import ExtractionResultB3
@@ -47,11 +47,6 @@ class HistoricalQuotesB3:
     Supported asset classes:
     - 'ações': Stocks (cash and fractional market)
     - 'etf': Exchange Traded Funds
-    - 'opções': Options (call and put)
-    - 'termo': Term market
-    - 'exercicio_opcoes': Options exercise
-    - 'forward': Forward market
-    - 'leilao': Auction market
 
     Attributes:
         None - all dependencies are managed internally
@@ -68,18 +63,39 @@ class HistoricalQuotesB3:
         ...     print(f"Extraction had errors: {result['message']}")
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, settings: Settings | None = None) -> None:
         """Initialize the HistoricalQuotesB3 client.
 
-        Sets up the extraction use case and result formatter with defaults.
+        Args:
+            settings: Immutable runtime settings snapshot. When omitted,
+                a fresh :class:`~globaldatafinance.core.config.Settings`
+                instance
+                is constructed from current environment variables.
         """
-        self._extract_use_case = ExtractHistoricalQuotesUseCaseB3()
+        if settings is None:
+            settings = Settings()
+        self._settings = settings
+        archive_limits = ArchiveSafetyLimits.from_settings(
+            self._settings.archive
+        )
+        allowed_unc_roots = self._settings.path_safety.allowed_unc_roots
+
+        self._extract_use_case = ExtractHistoricalQuotesUseCaseB3(
+            limits=archive_limits,
+            allowed_unc_roots=allowed_unc_roots,
+        )
         self._available_assets_use_case = GetAvailableAssetsUseCaseB3()
         self._available_years_use_case = GetAvailableYearsUseCaseB3()
         self._validate_config_use_case = ValidateExtractionConfigUseCaseB3()
         self._result_formatter = ExtractionResultFormatter(use_colors=True)
+        self._allowed_unc_roots = allowed_unc_roots
 
         logger.info('HistoricalQuotesB3 client initialized')
+
+    @property
+    def settings(self) -> Settings:
+        """Return the immutable configuration snapshot used by this client."""
+        return self._settings
 
     def extract(
         self,
@@ -254,6 +270,7 @@ class HistoricalQuotesB3:
             initial_year=initial_year,
             last_year=last_year,
             destination_path=destination_path,
+            allowed_unc_roots=self._allowed_unc_roots,
         ).execute()
 
         logger.info(

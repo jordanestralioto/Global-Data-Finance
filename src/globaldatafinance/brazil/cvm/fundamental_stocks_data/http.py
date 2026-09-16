@@ -1,7 +1,9 @@
 """Async HTTP download adapter for CVM ZIP files."""
 
 import asyncio
+from collections.abc import Sequence
 from pathlib import Path
+from typing import Protocol
 
 import httpx
 
@@ -11,19 +13,28 @@ from ....core import (
     get_logger,
     remove_file,
 )
-from ....core.archive_safety import get_archive_safety_limits
+from ....core.archive_safety import ArchiveSafetyLimits
+from ....core.config import PathSafetySettings
 from ....macro_exceptions import NetworkError
 from ....macro_exceptions import TimeoutError as MacroTimeoutError
 from ....macro_infra import RequestsAdapter
 from .core import DownloadResultCVM
 from .download_extraction import extract_downloaded_file
+from .download_paths import build_download_target_path
 from .download_validation import validate_downloaded_file
-from .extract import ParquetExtractorAdapterCVM
 
 logger = get_logger(__name__)
 
 DownloadTaskCVM = tuple[str, str, str, str]
-DownloadAttemptResultCVM = tuple[bool, str | None]
+_TIMEOUT_ERRORS = (httpx.TimeoutException, TimeoutError, asyncio.TimeoutError)
+_NETWORK_ERRORS = (httpx.RequestError, httpx.HTTPStatusError, ConnectionError)
+
+
+class _ParquetExtractor(Protocol):
+    """Defer construction of the Arrow-backed CVM extractor until needed."""
+
+    def extract(self, source_path: str, destination_path: str) -> None:
+        """Extract one downloaded source archive."""
 
 
 class AsyncDownloadAdapterCVM:
@@ -31,7 +42,7 @@ class AsyncDownloadAdapterCVM:
 
     def __init__(
         self,
-        file_extractor_repository: ParquetExtractorAdapterCVM,
+        file_extractor_repository: _ParquetExtractor | None,
         max_concurrent: int = 10,
         chunk_size: int = 8192,
         timeout: float = 180.0,
@@ -43,6 +54,8 @@ class AsyncDownloadAdapterCVM:
         automatic_extractor: bool = False,
         user_agent: str | None = None,
         follow_redirects: bool = True,
+        archive_limits: ArchiveSafetyLimits | None = None,
+        allowed_unc_roots: Sequence[str] | None = None,
     ):
         """Initialize the adapter and preserve httpx defaults."""
         self.file_extractor_repository = file_extractor_repository
@@ -50,27 +63,25 @@ class AsyncDownloadAdapterCVM:
         self.chunk_size = chunk_size
         self.max_retries = max_retries
         self.automatic_extractor = automatic_extractor
+        if archive_limits is None:
+            archive_limits = ArchiveSafetyLimits.from_environment()
+        self.archive_limits = archive_limits
+        self.allowed_unc_roots = PathSafetySettings.resolve_allowed_unc_roots(
+            allowed_unc_roots
+        )
+        headers = None if user_agent is None else {'User-Agent': user_agent}
         self.requests_adapter = RequestsAdapter(
             timeout=timeout,
             http2=http2,
             verify=True,
             max_redirects=5,
             follow_redirects=follow_redirects,
-            default_headers=None
-            if user_agent is None
-            else {'User-Agent': user_agent},
+            default_headers=headers,
         )
         self.retry_strategy = RetryStrategy(
             initial_backoff=initial_backoff,
             max_backoff=max_backoff,
             multiplier=backoff_multiplier,
-        )
-        logger.debug(
-            'AsyncDownloadAdapterCVM initialized with max_concurrent=%d, '
-            'http2=%s, timeout=%s',
-            max_concurrent,
-            http2,
-            timeout,
         )
 
     def download_docs(
@@ -82,8 +93,7 @@ class AsyncDownloadAdapterCVM:
         """Synchronously download documents using an owned event loop."""
         return asyncio.run(
             self.async_download_docs(
-                tasks,
-                automatic_extractor=automatic_extractor,
+                tasks, automatic_extractor=automatic_extractor
             )
         )
 
@@ -94,14 +104,10 @@ class AsyncDownloadAdapterCVM:
         automatic_extractor: bool | None = None,
     ) -> DownloadResultCVM:
         """Asynchronously download documents in the current event loop."""
-        effective_extractor = (
-            automatic_extractor
-            if automatic_extractor is not None
-            else self.automatic_extractor
-        )
+        if automatic_extractor is None:
+            automatic_extractor = self.automatic_extractor
 
-        result = DownloadResultCVM()
-        total_files = len(tasks)
+        result, total_files = DownloadResultCVM(), len(tasks)
 
         if total_files == 0:
             logger.warning('No files to download')
@@ -114,9 +120,7 @@ class AsyncDownloadAdapterCVM:
         )
 
         await self._run_downloads(
-            tasks,
-            result,
-            automatic_extractor=effective_extractor,
+            tasks, result, automatic_extractor=automatic_extractor
         )
 
         logger.info(
@@ -171,17 +175,22 @@ class AsyncDownloadAdapterCVM:
         automatic_extractor: bool = False,
     ) -> None:
         """Download a file and extract its contents."""
-        filename = url.split('/')[-1].split('?')[0] or 'download'
-        filepath = str(Path(dest_path) / filename)
+        filepath = str(
+            build_download_target_path(
+                url,
+                dest_path,
+                allowed_unc_roots=self.allowed_unc_roots,
+            )
+        )
 
         try:
             await self._process_downloaded_file(
-                url=url,
-                filepath=filepath,
-                dest_path=dest_path,
-                doc_name=doc_name,
-                year=year,
-                result=result,
+                url,
+                filepath,
+                dest_path,
+                doc_name,
+                year,
+                result,
                 automatic_extractor=automatic_extractor,
             )
         finally:
@@ -241,9 +250,8 @@ class AsyncDownloadAdapterCVM:
                 )
                 result.add_error_downloads(
                     document_key,
-                    'Downloaded file promotion failed: '
-                    f'{type(promotion_error).__name__}: '
-                    f'{promotion_error}',
+                    f'Downloaded file promotion failed: '
+                    f'{type(promotion_error).__name__}: {promotion_error}',
                 )
                 return
 
@@ -255,11 +263,7 @@ class AsyncDownloadAdapterCVM:
 
         if automatic_extractor:
             self._extract_downloaded_file(
-                filepath=filepath,
-                dest_path=dest_path,
-                doc_name=doc_name,
-                year=year,
-                result=result,
+                filepath, dest_path, doc_name, year, result
             )
             return
 
@@ -275,7 +279,7 @@ class AsyncDownloadAdapterCVM:
         result: DownloadResultCVM,
     ) -> None:
         extract_downloaded_file(
-            file_extractor_repository=self.file_extractor_repository,
+            file_extractor_repository=self._get_file_extractor(),
             filepath=filepath,
             dest_path=dest_path,
             doc_name=doc_name,
@@ -284,13 +288,24 @@ class AsyncDownloadAdapterCVM:
             cleanup_file=lambda path: remove_file(path, log_on_error=True),
         )
 
+    def _get_file_extractor(self) -> _ParquetExtractor:
+        """Instantiate the Arrow extraction path only for requested work."""
+        if self.file_extractor_repository is None:
+            from .extract import ParquetExtractorAdapterCVM
+
+            self.file_extractor_repository = ParquetExtractorAdapterCVM(
+                archive_limits=self.archive_limits,
+                allowed_unc_roots=self.allowed_unc_roots,
+            )
+        return self.file_extractor_repository
+
     async def _download_with_retry(
         self,
         url: str,
         filepath: str,
         doc_name: str,
         year: str,
-    ) -> DownloadAttemptResultCVM:
+    ) -> tuple[bool, str | None]:
         last_exception: Exception | None = None
 
         for attempt in range(self.max_retries + 1):
@@ -309,29 +324,16 @@ class AsyncDownloadAdapterCVM:
                     )
                     await asyncio.sleep(backoff)
 
-                logger.debug('Downloading %s_%s (async)', doc_name, year)
-
                 staging_path = await self._stream_download(url, filepath)
-                logger.info('Successfully downloaded %s_%s', doc_name, year)
                 return True, (
                     str(staging_path) if staging_path is not None else None
                 )
 
             except Exception as e:
-                timeouts = (
-                    httpx.TimeoutException,
-                    TimeoutError,
-                    asyncio.TimeoutError,
-                )
-                net_errs = (
-                    httpx.RequestError,
-                    httpx.HTTPStatusError,
-                    ConnectionError,
-                )
                 key = f'{doc_name}_{year}'
-                if isinstance(e, timeouts):
+                if isinstance(e, _TIMEOUT_ERRORS):
                     e = MacroTimeoutError(key, self.requests_adapter.timeout)
-                elif isinstance(e, net_errs):
+                elif isinstance(e, _NETWORK_ERRORS):
                     e = NetworkError(key, f'{type(e).__name__}: {e}')
 
                 last_exception = e
@@ -367,7 +369,7 @@ class AsyncDownloadAdapterCVM:
             url=url,
             output_path=filepath,
             chunk_size=self.chunk_size,
-            max_bytes=get_archive_safety_limits().max_archive_bytes,
+            max_bytes=self.archive_limits.max_archive_bytes,
         )
 
     async def _get_content_length(self, url: str) -> int | None:
@@ -384,7 +386,6 @@ class AsyncDownloadAdapterCVM:
                 return size_bytes
             logger.debug('No Content-Length header for %s', url)
             return None
-
         except Exception:
             logger.warning(
                 'Failed to get Content-Length for %s', url, exc_info=True
@@ -394,4 +395,6 @@ class AsyncDownloadAdapterCVM:
     def _validate_downloaded_file(
         self, filepath: str, expected_size: int | None = None
     ) -> bool:
-        return validate_downloaded_file(filepath, expected_size)
+        return validate_downloaded_file(
+            filepath, expected_size, limits=self.archive_limits
+        )

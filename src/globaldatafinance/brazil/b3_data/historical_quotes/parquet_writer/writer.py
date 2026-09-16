@@ -1,63 +1,31 @@
-"""High-level Parquet writer for B3 historical quote records."""
+"""Atomic public B3 Parquet writing built on persistent Arrow sessions."""
+
+from __future__ import annotations
 
 import contextlib
-import gc
+import os
 import tempfile
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any
 
-import polars as pl
-
-from .....core import ResourceMonitor, ResourceState, get_logger
 from .....macro_exceptions import DiskFullError, ParquetWriteError
-from .constants import (
-    APPEND_TEMP_SUFFIX,
-    CHUNK_RECORD_COUNT,
-    MEMORY_SPLIT_RECORD_THRESHOLD,
-    PARQUET_COMPRESSION,
-    PARQUET_COMPRESSION_LEVEL,
-)
 from .disk import check_disk_space
-from .schema import get_schema_overrides
-from .streaming import (
-    append_with_streaming,
-    cast_table_to_schema,
-    copy_parquet_batches,
-    create_pyarrow_writer,
-    merge_parquet_files_streaming,
-    write_table_batches,
+from .schema import build_b3_schema
+from .session import (
+    RECORD_BATCH_LIMIT,
+    ROW_GROUP_LIMIT,
+    B3ParquetWriterSession,
 )
-
-logger = get_logger(__name__)
-
-
-class _ResourceMonitorLike(Protocol):
-    """Structural dependency used by the writer's resource policy."""
-
-    def check_resources(self) -> ResourceState:
-        """Return the current resource state before a write phase."""
 
 
 class ParquetWriterB3:
-    """Writer for saving B3 historical quotes in Parquet format."""
+    """Write B3 records with overwrite and append compatibility semantics."""
 
     MIN_FREE_SPACE_MB = 100
 
-    def __init__(
-        self, resource_monitor: _ResourceMonitorLike | None = None
-    ) -> None:
-        """Initialize the writer with an optional resource monitor."""
-        self.resource_monitor = resource_monitor or ResourceMonitor()
-        logger.debug(
-            'ParquetWriterB3 initialized with memory-safe optimizations'
-        )
-
-    @staticmethod
-    def _get_schema_overrides() -> dict[str, Any]:
-        return get_schema_overrides(pl)
-
     @staticmethod
     def _check_disk_space(path: Path, estimated_size_mb: float = 0) -> None:
+        """Check the caller destination before creating a temporary output."""
         check_disk_space(
             path=path,
             estimated_size_mb=estimated_size_mb,
@@ -70,256 +38,78 @@ class ParquetWriterB3:
         output_path: Path,
         mode: str = 'overwrite',
     ) -> None:
-        """Write records using overwrite or append semantics as requested."""
-        if not data:
-            logger.warning('No data to write to Parquet')
-            return
-
-        logger.info(
-            'Writing data to Parquet',
-            extra={
-                'record_count': len(data),
-                'output_path': str(output_path),
-                'mode': mode,
-            },
+        """Write or append data through a validated same-filesystem temp."""
+        if mode not in {'overwrite', 'append'}:
+            raise ValueError(f'Unsupported Parquet write mode: {mode!r}')
+        output_path = Path(output_path)
+        self._check_disk_space(
+            output_path, estimated_size_mb=max(len(data) * 0.001, 0.01)
         )
-
+        temporary: Path | None = None
         try:
-            memory_state = self.resource_monitor.check_resources()
-            if (
-                memory_state
-                in (ResourceState.CRITICAL, ResourceState.EXHAUSTED)
-                and len(data) > MEMORY_SPLIT_RECORD_THRESHOLD
-            ):
-                logger.warning(
-                    'Memory %s with %s records - splitting write',
-                    memory_state.value,
-                    len(data),
-                )
-                await self._write_in_chunks(data, output_path, mode)
-                return
-
-            memory_state = self.resource_monitor.check_resources()
-            if memory_state == ResourceState.EXHAUSTED:
-                logger.warning(
-                    'Memory exhausted before DataFrame creation; '
-                    'attempting recovery'
-                )
-                gc.collect()
-
-                memory_state = self.resource_monitor.check_resources()
-                if memory_state == ResourceState.EXHAUSTED:
-                    estimated_memory_needed_mb = (
-                        self._estimate_memory_needed_mb(len(data))
-                    )
-                    logger.error(
-                        'Insufficient memory after cleanup attempt',
-                        extra={
-                            'records': len(data),
-                            'estimated_memory_mb': (
-                                f'{estimated_memory_needed_mb:.2f}'
-                            ),
-                            'memory_state': memory_state.value,
-                        },
-                    )
-                    raise MemoryError(
-                        'Insufficient memory to create DataFrame with '
-                        f'{len(data)} records. Estimated memory needed: '
-                        f'{estimated_memory_needed_mb:.2f}MB'
-                    )
-
-            df = self._create_dataframe(data)
-            await self._persist_dataframe(df, output_path, mode)
-
-            file_size_mb = output_path.stat().st_size / 1024 / 1024
-            logger.info(
-                'Successfully wrote Parquet file',
-                extra={
-                    'output_path': str(output_path),
-                    'file_size_mb': f'{file_size_mb:.2f}',
-                    'records': df.height,
-                    'mode': mode,
-                },
-            )
-        except OSError as exc:
-            if 'No space left on device' in str(exc):
-                logger.error(
-                    'Insufficient disk space',
-                    extra={'output_path': str(output_path)},
-                    exc_info=True,
-                )
-                raise DiskFullError(str(output_path)) from exc
-
-            logger.error(
-                'Failed to write Parquet file',
-                extra={
-                    'output_path': str(output_path),
-                    'error': str(exc),
-                },
-                exc_info=True,
-            )
-            raise ParquetWriteError(str(output_path), str(exc)) from exc
-        except MemoryError:
-            raise
-        except Exception as exc:
-            logger.error(
-                'Unexpected error writing Parquet file',
-                extra={
-                    'output_path': str(output_path),
-                    'error': str(exc),
-                },
-                exc_info=True,
-            )
-            raise
-
-    def _write_dataframe(self, df: 'pl.DataFrame', output_path: Path) -> None:
-        df.write_parquet(
-            str(output_path),
-            compression=PARQUET_COMPRESSION,
-            compression_level=PARQUET_COMPRESSION_LEVEL,
-            statistics=True,
-            use_pyarrow=False,
-        )
-
-    async def _write_in_chunks(
-        self,
-        data: list[dict[str, Any]],
-        output_path: Path,
-        mode: str = 'overwrite',
-    ) -> None:
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        total_chunks = (
-            len(data) + CHUNK_RECORD_COUNT - 1
-        ) // CHUNK_RECORD_COUNT
-
-        logger.info(
-            'Writing %s records in %s chunks of %s',
-            len(data),
-            total_chunks,
-            CHUNK_RECORD_COUNT,
-        )
-
-        with tempfile.TemporaryDirectory(
-            prefix=f'{output_path.stem}_',
-            suffix='_chunks',
-            dir=output_path.parent,
-        ) as temp_dir:
-            temp_paths: list[Path] = []
-
-            for start in range(0, len(data), CHUNK_RECORD_COUNT):
-                chunk = data[start : start + CHUNK_RECORD_COUNT]
-                chunk_num = (start // CHUNK_RECORD_COUNT) + 1
-                chunk_path = Path(temp_dir) / f'part-{chunk_num:05d}.parquet'
-
-                logger.debug('Writing chunk %s/%s', chunk_num, total_chunks)
-
-                try:
-                    df = self._create_dataframe(chunk)
-                    await self._persist_dataframe(
-                        df, chunk_path, mode='overwrite'
-                    )
-                    temp_paths.append(chunk_path)
-
-                    del df
-                    del chunk
-                    gc.collect()
-                except Exception as exc:
-                    logger.error(
-                        'Failed to write chunk %s/%s: %s',
-                        chunk_num,
-                        total_chunks,
-                        exc,
-                        exc_info=True,
-                    )
-                    raise
-
+            temporary = self._create_temporary_path(output_path)
+            schema = build_b3_schema()
+            session = B3ParquetWriterSession().open(temporary, schema)
             if mode == 'append' and output_path.exists():
-                sources = [output_path, *temp_paths]
-                await self._merge_parquet_files_streaming(sources, output_path)
-            elif len(temp_paths) == 1:
-                temp_paths[0].replace(output_path)
-            else:
-                await self._merge_parquet_files_streaming(
-                    temp_paths, output_path
-                )
-
-        logger.info('Successfully wrote all %s chunks', total_chunks)
-
-    def _create_dataframe(self, data: list[dict[str, Any]]) -> 'pl.DataFrame':
-        df = pl.DataFrame(data, schema_overrides=self._get_schema_overrides())
-        estimated_size_mb = df.estimated_size() / 1024 / 1024
-
-        logger.debug(
-            'Created Polars DataFrame',
-            extra={
-                'rows': df.height,
-                'columns': df.width,
-                'memory_mb': f'{estimated_size_mb:.2f}',
-            },
-        )
-        return df
-
-    async def _persist_dataframe(
-        self,
-        df: 'pl.DataFrame',
-        output_path: Path,
-        mode: str,
-    ) -> None:
-        estimated_size_mb = df.estimated_size() / 1024 / 1024
-        self._check_disk_space(output_path, estimated_size_mb)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-
-        if mode == 'append' and output_path.exists():
-            logger.debug('Appending to existing Parquet file: %s', output_path)
-            await self._append_with_streaming(df, output_path)
-            return
-
-        temporary_output = output_path.with_suffix(APPEND_TEMP_SUFFIX)
-        try:
-            self._write_dataframe(df, temporary_output)
-            temporary_output.replace(output_path)
+                self._copy_existing(output_path, session, schema)
+            self._write_public_records(session, data)
+            session.close()
+            temporary.replace(output_path)
+        except OSError as error:
+            if getattr(error, 'errno', None) == 28 or 'No space left' in str(
+                error
+            ):
+                raise DiskFullError(str(output_path)) from error
+            raise ParquetWriteError(str(output_path), str(error)) from error
         finally:
+            if temporary is not None:
+                with contextlib.suppress(OSError):
+                    temporary.unlink(missing_ok=True)
+
+    @staticmethod
+    def _write_public_records(
+        session: B3ParquetWriterSession, data: list[dict[str, Any]]
+    ) -> None:
+        """Preserve the caller's list while copying only bounded slices."""
+        for offset in range(0, len(data), RECORD_BATCH_LIMIT):
+            session.write_records(data[offset : offset + RECORD_BATCH_LIMIT])
+
+    @staticmethod
+    def _create_temporary_path(output_path: Path) -> Path:
+        """Reserve a unique same-directory path for one public write.
+
+        A fixed ``*.parquet.tmp`` name lets concurrent callers truncate or
+        remove one another's in-flight artifacts.  ``mkstemp`` gives each
+        operation an exclusive path on the destination filesystem while the
+        final ``replace`` below remains the only publication operation.
+        """
+        descriptor, name = tempfile.mkstemp(
+            prefix=f'.{output_path.name}.',
+            suffix='.parquet.tmp',
+            dir=output_path.parent,
+        )
+        try:
+            os.close(descriptor)
+        except BaseException:
             with contextlib.suppress(OSError):
-                temporary_output.unlink(missing_ok=True)
+                Path(name).unlink(missing_ok=True)
+            raise
+        return Path(name)
 
     @staticmethod
-    def _estimate_memory_needed_mb(record_count: int) -> float:
-        return record_count * 0.001
-
-    async def _append_with_streaming(
-        self, new_df: 'pl.DataFrame', output_path: Path
+    def _copy_existing(
+        output_path: Path,
+        session: B3ParquetWriterSession,
+        expected_schema: object,
     ) -> None:
-        await append_with_streaming(
-            new_df,
-            output_path,
-            cast_table_to_schema_fn=self._cast_table_to_schema,
-            create_pyarrow_writer_fn=self._create_pyarrow_writer,
-            copy_parquet_batches_fn=self._copy_parquet_batches,
-            write_table_batches_fn=self._write_table_batches,
+        """Copy old batches once after validating the canonical B3 schema."""
+        import pyarrow.parquet as pq
+
+        existing = pq.ParquetFile(output_path)
+        if existing.schema_arrow != expected_schema:
+            raise ParquetWriteError(
+                str(output_path), 'Existing Parquet schema is incompatible'
+            )
+        session.write_batches(
+            existing.iter_batches(batch_size=ROW_GROUP_LIMIT)
         )
-
-    async def _merge_parquet_files_streaming(
-        self, source_paths: list[Path], output_path: Path
-    ) -> None:
-        await merge_parquet_files_streaming(
-            source_paths,
-            output_path,
-            create_pyarrow_writer_fn=self._create_pyarrow_writer,
-            copy_parquet_batches_fn=self._copy_parquet_batches,
-        )
-
-    @staticmethod
-    def _create_pyarrow_writer(path: Path, schema: Any) -> Any:
-        return create_pyarrow_writer(path, schema)
-
-    @staticmethod
-    def _copy_parquet_batches(parquet_file: Any, writer: Any) -> int:
-        return copy_parquet_batches(parquet_file, writer)
-
-    @staticmethod
-    def _write_table_batches(table: Any, writer: Any) -> int:
-        return write_table_batches(table, writer)
-
-    @staticmethod
-    def _cast_table_to_schema(table: Any, schema: Any) -> Any:
-        return cast_table_to_schema(table, schema)

@@ -87,15 +87,17 @@ def test_validate_parquet_files_corrupted_file(tmp_path: Path) -> None:
     )
 
 
-def test_validate_parquet_files_never_accepts_missing_validation_engine(
+def test_validate_parquet_files_rejects_validation_engine_read_failure(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(download_validation, 'pq', None)
+    def fail_parquet_open(*_args: object, **_kwargs: object) -> object:
+        raise OSError('validation engine unavailable')
+
+    monkeypatch.setattr(pq, 'ParquetFile', fail_parquet_open)
     file = tmp_path / 'dummy.parquet'
     file.touch()
 
-    # A supported installation imports PyArrow directly; a broken runtime
-    # must not turn validation into a positive result.
+    # A local lazy import must not turn an Arrow read failure into success.
     assert (
         download_validation.validate_parquet_files([file], 'dfp', '2023')
         is False
@@ -182,7 +184,7 @@ def test_validate_parquet_files_uses_footer_metadata_not_full_table_read(
     def fail_table_read(*_args: object, **_kwargs: object) -> object:
         raise AssertionError('full table reads are not part of validation')
 
-    monkeypatch.setattr(download_validation.pq, 'read_table', fail_table_read)
+    monkeypatch.setattr(pq, 'read_table', fail_table_read)
 
     assert (
         download_validation.validate_parquet_files(

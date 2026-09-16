@@ -11,9 +11,12 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any, cast
 
-import polars as pl
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
 
+import scripts.real_validation as cli
+import scripts.real_validation_runner as runner
 from globaldatafinance.macro_exceptions import SecurityError
 from scripts.real_validation import (
     _filter_cases,
@@ -432,14 +435,8 @@ def test_cotahist_digest_is_order_independent(tmp_path: Path) -> None:
     """The bounded fallback digest ignores incidental processing order."""
     first = tmp_path / 'first.parquet'
     second = tmp_path / 'second.parquet'
-    rows = pl.DataFrame(
-        {
-            'ticker': ['B', 'A'],
-            'value': [2, 1],
-        }
-    )
-    rows.write_parquet(first)
-    rows.reverse().write_parquet(second)
+    pq.write_table(pa.table({'ticker': ['B', 'A'], 'value': [2, 1]}), first)
+    pq.write_table(pa.table({'ticker': ['A', 'B'], 'value': [1, 2]}), second)
 
     assert _canonical_digest(first) == _canonical_digest(second)
 
@@ -582,8 +579,6 @@ def test_resume_accepts_identical_hashes_and_hashes_shared_input_once(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Matching evidence permits resume and deduplicates shared hashing."""
-    import scripts.real_validation_runner as runner
-
     archive = write_cotahist_zip(
         tmp_path,
         year=2024,
@@ -682,8 +677,6 @@ def test_cli_resume_rejects_drift_before_running_campaign(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """CLI resume stops before the runner can execute or rewrite evidence."""
-    import scripts.real_validation as cli
-
     archive = write_cotahist_zip(
         tmp_path,
         year=2024,
@@ -758,8 +751,6 @@ def test_cli_builds_manifest_only_after_validating_external_output(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A valid initial request writes its manifest and delegates execution."""
-    import scripts.real_validation as cli
-
     report_path = tmp_path / 'report'
     output_path = tmp_path / 'cvm-output'
     calls: list[tuple[Path, list[ValidationCase], float]] = []
@@ -805,8 +796,6 @@ def test_cli_resume_validates_manifest_output_before_delegating(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Resume validates the persisted campaign destination before running."""
-    import scripts.real_validation as cli
-
     report_path = tmp_path / 'report'
     report_path.mkdir()
     output_path = tmp_path / 'cvm-output'
@@ -851,8 +840,6 @@ def test_cli_resume_rejects_tampered_cvm_output_root_before_running(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """CLI resume rejects a case destination changed after the campaign."""
-    import scripts.real_validation as cli
-
     report_path = tmp_path / 'report'
     report_path.mkdir()
     trusted_output = tmp_path / 'trusted-output'

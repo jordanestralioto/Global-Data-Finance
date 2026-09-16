@@ -12,8 +12,6 @@ from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
     client,
 )
 
-# allow-assertion-reduction: Repository/result checks replace duplicates.
-
 
 class MockRepository:
     def __init__(self):

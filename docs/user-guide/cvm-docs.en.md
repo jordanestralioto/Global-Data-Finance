@@ -153,6 +153,10 @@ cvm.download(
 )
 ```
 
+### Security of URL-derived filenames
+See the [CVM API reference](../reference/cvm-api.en.md) for the `SecurityError`
+rules applied before downloading.
+
 ______________________________________________________________________
 
 ### `get_available_docs()`

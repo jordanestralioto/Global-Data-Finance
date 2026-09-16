@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-import polars as pl
 import pyarrow as pa
 
 from globaldatafinance.brazil.b3_data.historical_quotes.errors import (
@@ -76,7 +75,6 @@ _CASE_FAILURES = (
     MacroTimeoutError,
     httpx.HTTPError,
     pa.ArrowException,
-    pl.exceptions.PolarsError,
 )
 
 

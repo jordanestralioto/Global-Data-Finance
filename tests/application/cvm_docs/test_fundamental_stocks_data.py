@@ -1,4 +1,3 @@
-from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
@@ -10,10 +9,9 @@ from globaldatafinance.application.cvm_docs import (
 from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
     AvailableYearsInfoCVM,
 )
-from globaldatafinance.core.config import NetworkSettings
+from globaldatafinance.core.config import NetworkSettings, Settings
 
 pytestmark = pytest.mark.unit
-# allow-assertion-reduction: Public formatter checks replace private checks.
 
 
 class TestFundamentalStocksData:
@@ -27,22 +25,19 @@ class TestFundamentalStocksData:
         assert cvm.download_adapter is not None
         assert hasattr(cvm.download_adapter, 'automatic_extractor')
 
-    def test_initialization_propagates_network_settings(self, monkeypatch):
+    def test_initialization_propagates_network_settings(self):
         controlled_network = NetworkSettings(
             timeout=321,
             max_retries=4,
             retry_backoff=1.7,
             user_agent='controlled-client/1.0',
         )
-        monkeypatch.setattr(
-            facade_module,
-            'settings',
-            SimpleNamespace(network=controlled_network),
-        )
+        custom_settings = Settings(network=controlled_network)
 
-        cvm = FundamentalStocksDataCVM()
+        cvm = FundamentalStocksDataCVM(settings=custom_settings)
         adapter = cvm.download_adapter
 
+        assert cvm.settings == custom_settings
         assert adapter.requests_adapter.timeout == 321
         assert adapter.max_retries == 4
         assert adapter.retry_strategy.multiplier == 1.7
@@ -312,7 +307,9 @@ class TestFundamentalStocksData:
         ):
             cvm = FundamentalStocksDataCVM()
 
-        mock_download_use_case.assert_called_once_with(cvm.download_adapter)
+        mock_download_use_case.assert_called_once_with(
+            cvm.download_adapter, allowed_unc_roots=()
+        )
         mock_formatter.assert_called_once_with(use_colors=True)
 
     @patch(

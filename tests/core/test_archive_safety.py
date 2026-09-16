@@ -10,13 +10,30 @@ from typing import cast
 
 import pytest
 
+from globaldatafinance.core.archive_names import validate_portable_basename
 from globaldatafinance.core.archive_safety import (
     ArchiveSafetyLimits,
     open_limited_zip_member,
     validate_zip_archive,
+    validate_zip_crc_with_limits,
 )
 from globaldatafinance.macro_exceptions import CorruptedZipError
 from tests.support.builders import write_zip
+
+_RESERVED_WIN32_BASENAMES = (
+    'CON.zip',
+    'aux.txt',
+    'COM1.csv',
+    'COM¹.csv',
+    'COM².csv',
+    'COM³.csv',
+    'LPT1.csv',
+    'LPT¹.csv',
+    'LPT².csv',
+    'LPT³.csv',
+    'CONIN$.csv',
+    'CONOUT$.csv',
+)
 
 
 def _limits(
@@ -117,6 +134,7 @@ def test_zip_metadata_policy_rejects_unsafe_archives_before_consumption(
         'dir/COM9.csv',
         'dir/LPT1.csv',
         'dir/LPT9.csv',
+        *[f'dir/{name}' for name in _RESERVED_WIN32_BASENAMES],
         'dir/file.csv.',
         'dir/file.csv ',
         'dir/file<bad.csv',
@@ -141,6 +159,26 @@ def test_zip_metadata_policy_rejects_win32_namespace_names(
         pytest.raises(CorruptedZipError, match='unsafe Windows ZIP member'),
     ):
         validate_zip_archive(archive_path, archive, limits=_limits())
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    'name',
+    [
+        *_RESERVED_WIN32_BASENAMES,
+        'report?.csv',
+        'report<.csv',
+        'report|.csv',
+        'report.',
+        'report ',
+    ],
+)
+def test_portable_basename_validator_rejects_win32_namespace_names(
+    name: str,
+) -> None:
+    """Shared basename rules cover names before source-specific translation."""
+    with pytest.raises(ValueError):
+        validate_portable_basename(name)
 
 
 @pytest.mark.unit
@@ -216,6 +254,29 @@ def test_real_byte_counter_rejects_a_stream_larger_than_its_metadata(
         member.read()
 
 
+@pytest.mark.unit
+def test_crc_validation_respects_an_explicit_empty_info_list(
+    tmp_path: Path,
+) -> None:
+    """An already-filtered archive does not re-read its central directory."""
+    archive_path = tmp_path / 'empty-selection.zip'
+    archive_path.write_bytes(b'placeholder')
+
+    class _UnexpectedInfolist:
+        def infolist(self) -> list[zipfile.ZipInfo]:
+            raise AssertionError('infolist must not be called')
+
+    assert (
+        validate_zip_crc_with_limits(
+            archive_path,
+            cast(zipfile.ZipFile, _UnexpectedInfolist()),
+            limits=_limits(),
+            infos=[],
+        )
+        is None
+    )
+
+
 class _MetadataOnlyZip:
     """Minimal central-directory collaborator for pure validation branches."""
 
@@ -247,3 +308,25 @@ class _StreamingZip:
         assert info is self._info
         assert mode == 'r'
         return io.BytesIO(self._data)
+
+
+@pytest.mark.integration
+def test_archive_safety_uses_fresh_local_default_when_limits_omitted(
+    tmp_path: Path,
+) -> None:
+    """Functions use fresh local default limits without a global singleton."""
+    import globaldatafinance.core.archive_safety as archive_safety_mod
+
+    assert not hasattr(archive_safety_mod, 'get_archive_safety_limits')
+
+    archive_path = write_zip(
+        tmp_path / 'valid.zip', {'data.csv': 'col1;col2\nval1;val2\n'}
+    )
+    with zipfile.ZipFile(archive_path, 'r') as archive:
+        infos = validate_zip_archive(archive_path, archive, limits=None)
+        assert len(infos) == 1
+        with open_limited_zip_member(
+            archive, 'data.csv', archive_path=archive_path, limits=None
+        ) as member:
+            content = member.read()
+            assert b'val1;val2' in content

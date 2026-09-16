@@ -5,15 +5,17 @@ Parquet datasets with automatic error handling and filesystem rollback support.
 """
 
 import zipfile
+from collections.abc import Sequence
 
 from ....core import get_logger
+from ....core.archive_safety import ArchiveSafetyLimits
+from ....core.config import PathSafetySettings
 from ....macro_exceptions import (
     CorruptedZipError,
     DiskFullError,
     ExtractionError,
     SecurityError,
 )
-from ....macro_infra import ExtractorAdapter
 from .transaction import CvmFailureAtomicBatchCommit
 
 logger = get_logger(__name__)
@@ -22,9 +24,19 @@ logger = get_logger(__name__)
 class ParquetExtractorAdapterCVM:
     """Extracts ZIP files containing CSVs and converts to Parquet format."""
 
-    def __init__(self) -> None:
-        """Initialize the generic archive extraction adapter."""
-        self.extractor_adapter = ExtractorAdapter()
+    def __init__(
+        self,
+        *,
+        archive_limits: ArchiveSafetyLimits | None = None,
+        allowed_unc_roots: Sequence[str] | None = None,
+    ) -> None:
+        """Initialize extractor with safety limits and trusted UNC roots."""
+        if archive_limits is None:
+            archive_limits = ArchiveSafetyLimits.from_environment()
+        self.archive_limits = archive_limits
+        self.allowed_unc_roots = PathSafetySettings.resolve_allowed_unc_roots(
+            allowed_unc_roots
+        )
 
     def extract(self, source_path: str, destination_path: str) -> None:
         """Extract ZIP to Parquet with a failure-atomic batch commit."""
@@ -35,7 +47,8 @@ class ParquetExtractorAdapterCVM:
                 transaction = CvmFailureAtomicBatchCommit(
                     source_path=source_path,
                     destination_path=destination_path,
-                    extractor_adapter=self.extractor_adapter,
+                    archive_limits=self.archive_limits,
+                    allowed_unc_roots=self.allowed_unc_roots,
                 )
                 transaction.execute(zip_file)
 

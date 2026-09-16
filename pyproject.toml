@@ -99,7 +99,7 @@ disallow_untyped_defs = true
 ignore_missing_imports = false
 
 [[tool.mypy.overrides]]
-module = ["pandas", "pyarrow", "pyarrow.*"]
+module = ["pandas", "pyarrow", "pyarrow.*", "psutil"]
 ignore_missing_imports = true
 
 # ---------------------------------------------------------------------------

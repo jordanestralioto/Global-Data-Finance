@@ -3,10 +3,9 @@
 import zipfile
 from pathlib import Path
 
-import pyarrow.parquet as pq
-
 from ....core import get_logger
 from ....core.archive_safety import (
+    ArchiveSafetyLimits,
     validate_zip_archive,
     validate_zip_crc_with_limits,
 )
@@ -16,7 +15,10 @@ logger = get_logger(__name__)
 
 
 def validate_downloaded_file(
-    filepath: str, expected_size: int | None = None
+    filepath: str,
+    expected_size: int | None = None,
+    *,
+    limits: ArchiveSafetyLimits | None = None,
 ) -> bool:
     """Validate that a downloaded ZIP is present, complete, and readable."""
     try:
@@ -31,7 +33,7 @@ def validate_downloaded_file(
         ):
             return False
 
-        return _has_valid_zip_contents(filepath)
+        return _has_valid_zip_contents(filepath, limits=limits)
 
     except Exception as e:
         logger.error(
@@ -49,6 +51,8 @@ def validate_parquet_files(
     parquet_files: list[Path], doc_name: str, year: str
 ) -> bool:
     """Validate that parquet files are readable and contain data."""
+    import pyarrow.parquet as pq
+
     if not parquet_files:
         logger.error(
             'No parquet files were provided for %s_%s', doc_name, year
@@ -150,15 +154,19 @@ def _has_valid_size(path: Path, expected_size: int) -> bool:
     return True
 
 
-def _has_valid_zip_contents(filepath: str) -> bool:
+def _has_valid_zip_contents(
+    filepath: str, *, limits: ArchiveSafetyLimits | None = None
+) -> bool:
     try:
         with zipfile.ZipFile(filepath, 'r') as zip_file:
-            infos = validate_zip_archive(filepath, zip_file)
+            infos = validate_zip_archive(filepath, zip_file, limits=limits)
             if not infos:
                 logger.error('Empty ZIP file: %s', filepath)
                 return False
 
-            validate_zip_crc_with_limits(filepath, zip_file, infos=infos)
+            validate_zip_crc_with_limits(
+                filepath, zip_file, limits=limits, infos=infos
+            )
 
             csv_files = [
                 info.filename

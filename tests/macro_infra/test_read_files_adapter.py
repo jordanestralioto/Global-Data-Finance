@@ -14,7 +14,6 @@ from globaldatafinance.macro_infra import ReadFilesAdapter
 from tests.support.builders import csv_bytes, write_zip
 
 pytestmark = pytest.mark.integration
-# allow-assertion-reduction: Codec cases are consolidated.
 
 
 @pytest.mark.parametrize(

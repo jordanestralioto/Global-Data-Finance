@@ -1,247 +1,239 @@
-"""Process individual B3 COTAHIST inputs with resource-aware parsing."""
+"""Synchronous, bounded processing of one B3 COTAHIST input."""
 
-import asyncio
+from __future__ import annotations
+
 import contextlib
-import gc
-from collections.abc import AsyncIterator
-from concurrent.futures import ThreadPoolExecutor
+from collections.abc import Callable, Iterator
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, cast
 
 from .....core import get_logger
-from .batch_parser import parse_lines_batch
-from .buffered_writer import BufferedParquetWriterB3
-from .resource_policy import ResourcePolicyB3
-from .types import ParsedRecord, ZipProcessingResult
+from .....macro_exceptions import ExtractionError
+from ..cotahist_parser import B3ParserMetrics, CotahistParserB3, CsvRow
+from ..integrity import B3RecordContext
+from ..parquet_writer.schema import build_b3_schema, schema_fingerprint
+from ..parquet_writer.session import RECORD_BATCH_LIMIT, B3ParquetWriterSession
+from .types import SourceExtractionResult
 
 logger = get_logger(__name__)
 
 
 class _LineReader(Protocol):
-    def read_lines_from_zip(self, zip_path: str) -> AsyncIterator[str]: ...
+    """Source reader contract required by one synchronous worker."""
+
+    def iter_lines(
+        self, source_path: str
+    ) -> Iterator[tuple[str, B3RecordContext]]: ...
 
 
 class _LineParser(Protocol):
+    """Strict source-local parser contract."""
+
+    metrics: B3ParserMetrics
+
     def parse_line(
-        self, line: str, target_codes: set[str]
-    ) -> ParsedRecord | None: ...
+        self,
+        line: str,
+        target_codes: set[str],
+        context: B3RecordContext | None = None,
+    ) -> dict[str, object] | None: ...
 
 
 class ZipProcessorB3:
-    """Process one COTAHIST ZIP or TXT input into temporary Parquet."""
-
-    SEQUENTIAL_FLUSH_CHECK_INTERVAL = 10_000
-    SEQUENTIAL_RESOURCE_CHECK_INTERVAL = 5_000
+    """Write at most one private Arrow artifact for one source file."""
 
     def __init__(
         self,
         zip_reader: _LineReader,
-        parser: _LineParser,
-        buffered_writer: BufferedParquetWriterB3,
-        resource_policy: ResourcePolicyB3,
+        parser_factory: Callable[[], _LineParser] = CotahistParserB3,
+        *,
+        python_record_limit: int = RECORD_BATCH_LIMIT,
     ) -> None:
-        """Initialize processing collaborators and the optional worker pool."""
+        """Store factories; each worker receives an isolated parser state."""
+        if python_record_limit <= 0:
+            raise ValueError('python_record_limit must be positive')
         self.zip_reader = zip_reader
-        self.parser = parser
-        self.buffered_writer = buffered_writer
-        self.resource_policy = resource_policy
+        self.parser_factory = parser_factory
+        self.python_record_limit = python_record_limit
 
-        self.executor_pool = None
-        if self.resource_policy.use_parallel_parsing:
-            self.executor_pool = ThreadPoolExecutor(
-                max_workers=self.resource_policy.max_workers
-            )
-
-    def close(self) -> None:
-        """Shutdown the parser worker pool if parallel parsing is enabled."""
-        if self.executor_pool is not None:
-            executor_pool = self.executor_pool
-            self.executor_pool = None
-            with contextlib.suppress(Exception):
-                executor_pool.shutdown(wait=True, cancel_futures=False)
-
-    async def process(
+    def process(
         self,
-        zip_file: str,
+        source_path: str | Path,
         target_tpmerc_codes: set[str],
-        output_path: Path,
-    ) -> ZipProcessingResult:
-        """Process one COTAHIST input into a unique temporary Parquet file."""
-        input_name = Path(zip_file).name
-        temp_output = (
-            output_path.parent
-            / f'{output_path.stem}_{input_name}_temp.parquet'
-        )
-
-        logger.debug(
-            f'Processing COTAHIST input: {zip_file}',
-            extra={
-                'target_codes': len(target_tpmerc_codes),
-                'parallel_parsing': self.resource_policy.use_parallel_parsing,
-                'temp_output': str(temp_output),
-            },
-        )
-
-        buffer: list[ParsedRecord] = []
-        total_written = 0
-        is_first_write_to_temp = True
+        temp_output: Path,
+    ) -> SourceExtractionResult:
+        """Parse one source, keeping only a bounded list of Python records."""
+        source = Path(source_path)
+        parser = self.parser_factory()
+        session: B3ParquetWriterSession | None = None
 
         try:
-            if self.resource_policy.use_parallel_parsing:
-                (
-                    records_written,
-                    is_first_write_to_temp,
-                ) = await self._process_parallel(
-                    zip_file,
-                    target_tpmerc_codes,
-                    temp_output,
-                    buffer,
-                    is_first_write_to_temp,
-                )
-                total_written += records_written
-            else:
-                (
-                    records_written,
-                    is_first_write_to_temp,
-                ) = await self._process_sequential(
-                    zip_file,
-                    target_tpmerc_codes,
-                    temp_output,
-                    buffer,
-                    is_first_write_to_temp,
-                )
-                total_written += records_written
-
-            if buffer:
-                (
-                    records_written,
-                    is_first_write_to_temp,
-                ) = await self.buffered_writer.flush_to_disk(
-                    buffer,
-                    temp_output,
-                    is_first_write=is_first_write_to_temp,
-                    collect_garbage=False,
-                )
-                total_written += records_written
-
-            logger.debug(
-                f'Completed COTAHIST input: {zip_file}',
-                extra={
-                    'records_extracted': total_written,
-                    'temp_file': str(temp_output),
-                },
-            )
-
-            return {'records': total_written, 'temp_file': str(temp_output)}
-
-        except Exception as e:
-            logger.error(
-                f'Error processing COTAHIST input: {zip_file}',
-                extra={
-                    'error': str(e),
-                    'records_written_so_far': total_written,
-                },
-                exc_info=True,
-            )
-
-            buffer.clear()
-            gc.collect()
-
-            if temp_output.exists():
-                with contextlib.suppress(Exception):
-                    temp_output.unlink()
-                    logger.debug(
-                        f'Cleaned up temp file after error: {temp_output}'
+            if type(parser) is CotahistParserB3:
+                session, member, schema_fingerprint_value = (
+                    self._process_strict_rows(
+                        cast(CotahistParserB3, parser),
+                        source,
+                        target_tpmerc_codes,
+                        temp_output,
                     )
+                )
+            else:
+                session, member, schema_fingerprint_value = (
+                    self._process_generic_records(
+                        parser,
+                        source,
+                        target_tpmerc_codes,
+                        temp_output,
+                    )
+                )
+            if session is not None:
+                session.close()
+                written = session.rows_written
+            else:
+                written = 0
 
+            if (
+                parser.metrics.selected_records
+                != parser.metrics.parsed_records
+                or parser.metrics.parsed_records != written
+            ):
+                raise ExtractionError(
+                    str(source),
+                    'B3 parser/write row-count invariant was violated',
+                )
+            return SourceExtractionResult(
+                source_path=source,
+                zip_member=member,
+                temp_path=temp_output if session is not None else None,
+                selected_records=parser.metrics.selected_records,
+                parsed_records=parser.metrics.parsed_records,
+                written_records=written,
+                metrics=parser.metrics,
+                schema_fingerprint=schema_fingerprint_value,
+            )
+        except Exception:
+            if session is not None:
+                with contextlib.suppress(Exception):
+                    session.close()
+            with contextlib.suppress(OSError):
+                temp_output.unlink(missing_ok=True)
+            logger.exception('B3 source processing failed: %s', source)
             raise
 
-    async def _process_parallel(
+    def _process_strict_rows(
         self,
-        zip_file: str,
+        parser: CotahistParserB3,
+        source: Path,
         target_tpmerc_codes: set[str],
         temp_output: Path,
-        buffer: list[ParsedRecord],
-        is_first_write_to_temp: bool,
-    ) -> tuple[int, bool]:
-        line_buffer: list[str] = []
-        total_written = 0
-
-        async for line in self.zip_reader.read_lines_from_zip(zip_file):
-            line_buffer.append(line)
-
-            if len(line_buffer) >= self.resource_policy.parse_batch_size:
-                batch_records = await self._parse_lines_batch_parallel(
-                    line_buffer, target_tpmerc_codes
+    ) -> tuple[B3ParquetWriterSession | None, str, str]:
+        """Buffer canonical CSV rows for the production strict parser."""
+        rows: list[CsvRow] = []
+        session: B3ParquetWriterSession | None = None
+        member = source.name
+        fingerprint = ''
+        try:
+            for line, context in self.zip_reader.iter_lines(str(source)):
+                member = context.zip_member or member
+                row = parser.parse_line_to_csv_row(
+                    line, target_tpmerc_codes, context=context
                 )
-                buffer.extend(batch_records)
-                line_buffer.clear()
-
-                (
-                    records_written,
-                    is_first_write_to_temp,
-                ) = await self.buffered_writer.flush_if_needed(
-                    buffer,
-                    temp_output,
-                    is_first_write=is_first_write_to_temp,
+                if row is None:
+                    continue
+                rows.append(row)
+                if len(rows) >= self.python_record_limit:
+                    session, fingerprint = self._write_csv_rows(
+                        session, rows, temp_output
+                    )
+            if rows:
+                session, fingerprint = self._write_csv_rows(
+                    session, rows, temp_output
                 )
-                total_written += records_written
+            return session, member, fingerprint
+        except Exception:
+            if session is not None:
+                with contextlib.suppress(Exception):
+                    session.close()
+            raise
+        finally:
+            rows.clear()
 
-                if total_written % 250_000 == 0 and total_written > 0:
-                    await self.resource_policy.check_and_wait_for_resources()
-
-        if line_buffer:
-            batch_records = await self._parse_lines_batch_parallel(
-                line_buffer, target_tpmerc_codes
-            )
-            buffer.extend(batch_records)
-            line_buffer.clear()
-
-        return total_written, is_first_write_to_temp
-
-    async def _process_sequential(
+    def _process_generic_records(
         self,
-        zip_file: str,
+        parser: _LineParser,
+        source: Path,
         target_tpmerc_codes: set[str],
         temp_output: Path,
-        buffer: list[ParsedRecord],
-        is_first_write_to_temp: bool,
-    ) -> tuple[int, bool]:
-        line_count = 0
-        total_written = 0
-
-        async for line in self.zip_reader.read_lines_from_zip(zip_file):
-            parsed = self.parser.parse_line(line, target_tpmerc_codes)
-            if parsed:
-                buffer.append(parsed)
-
-            line_count += 1
-            if line_count % self.SEQUENTIAL_FLUSH_CHECK_INTERVAL == 0:
-                (
-                    records_written,
-                    is_first_write_to_temp,
-                ) = await self.buffered_writer.flush_if_needed(
-                    buffer,
-                    temp_output,
-                    is_first_write=is_first_write_to_temp,
+    ) -> tuple[B3ParquetWriterSession | None, str, str]:
+        """Retain a bounded fallback for custom parser collaborators."""
+        records: list[dict[str, object]] = []
+        session: B3ParquetWriterSession | None = None
+        member = source.name
+        fingerprint = ''
+        try:
+            for line, context in self.zip_reader.iter_lines(str(source)):
+                member = context.zip_member or member
+                parsed = parser.parse_line(
+                    line, target_tpmerc_codes, context=context
                 )
-                total_written += records_written
+                if parsed is None:
+                    continue
+                records.append(parsed)
+                if len(records) >= self.python_record_limit:
+                    session, fingerprint = self._write_records(
+                        session, records, temp_output
+                    )
+            if records:
+                session, fingerprint = self._write_records(
+                    session, records, temp_output
+                )
+            return session, member, fingerprint
+        except Exception:
+            if session is not None:
+                with contextlib.suppress(Exception):
+                    session.close()
+            raise
+        finally:
+            records.clear()
 
-            if line_count % self.SEQUENTIAL_RESOURCE_CHECK_INTERVAL == 0:
-                await self.resource_policy.check_and_wait_for_resources()
-
-        return total_written, is_first_write_to_temp
-
-    async def _parse_lines_batch_parallel(
-        self, lines: list[str], target_tpmerc_codes: set[str]
-    ) -> list[ParsedRecord]:
-        """Parse a batch of lines in parallel using ThreadPoolExecutor."""
-        loop = asyncio.get_running_loop()
-        future = loop.run_in_executor(
-            self.executor_pool,
-            parse_lines_batch,
-            lines,
-            target_tpmerc_codes,
+    @staticmethod
+    def _write_records(
+        session: B3ParquetWriterSession | None,
+        records: list[dict[str, object]],
+        temp_output: Path,
+    ) -> tuple[B3ParquetWriterSession, str]:
+        """Open the lazy Arrow writer on first data and empty the buffer."""
+        session, fingerprint = ZipProcessorB3._session_for_write(
+            session, temp_output
         )
-        parsed_batch = await future
-        return [record for record in parsed_batch if record is not None]
+        session.write_records(records)
+        return session, fingerprint
+
+    @staticmethod
+    def _write_csv_rows(
+        session: B3ParquetWriterSession | None,
+        rows: list[CsvRow],
+        temp_output: Path,
+    ) -> tuple[B3ParquetWriterSession, str]:
+        """Write strict parser rows without a typed-dictionary round trip."""
+        session, fingerprint = ZipProcessorB3._session_for_write(
+            session, temp_output
+        )
+        session.write_csv_rows(rows)
+        return session, fingerprint
+
+    @staticmethod
+    def _session_for_write(
+        session: B3ParquetWriterSession | None,
+        temp_output: Path,
+    ) -> tuple[B3ParquetWriterSession, str]:
+        """Create or validate the one lazy Arrow session for a source."""
+        if session is None:
+            schema = build_b3_schema()
+            session = B3ParquetWriterSession().open(temp_output, schema)
+            fingerprint = schema_fingerprint(schema)
+        else:
+            if session.schema is None:
+                raise RuntimeError('B3 writer session lost its schema')
+            fingerprint = schema_fingerprint(session.schema)
+        return session, fingerprint

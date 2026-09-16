@@ -431,6 +431,11 @@ TPMERC filtering happens before conversion of the remaining fields. Records
 outside the filter are counted as filtered, while an invalid selected record
 never yields a default financial value.
 
+The literal `__GLOBALDATAFINANCE_NULL__` is reserved by the internal writer and
+is rejected as input data in both records and canonical rows. Use `None` for a
+null value. The internal session has `NEW`, `OPEN`, and `CLOSED` states; after
+closing, including after a validation failure, it cannot be reopened.
+
 ## Extracted Parquet Schema
 
 ### Consolidated Column Architecture

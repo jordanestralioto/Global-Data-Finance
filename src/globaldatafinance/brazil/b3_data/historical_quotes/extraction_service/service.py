@@ -1,299 +1,343 @@
-"""Orchestrate incremental parsing and writing of B3 COTAHIST inputs."""
+"""Transactional, bounded orchestration for B3 COTAHIST extraction."""
+
+from __future__ import annotations
 
 import asyncio
+from collections.abc import Collection, Sequence
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from .....core import SimpleProgressBar, get_logger, log_execution_time
+from .....core import get_logger
+from .....core.config import PathSafetySettings
+from .....macro_exceptions import ExtractionError
+from .....macro_infra.transactional_publication import TransactionalPublisher
 from ..cotahist_parser import CotahistParserB3
-from ..parquet_writer import ParquetWriterB3
+from ..parquet_writer.schema import build_b3_schema, schema_fingerprint
 from ..processing import ProcessingModeEnumB3
 from ..zip_reader import ZipFileReaderB3
-from .buffered_writer import BufferedParquetWriterB3
 from .resource_policy import ResourcePolicyB3
-from .temp_parquet_merge import merge_temp_files_streaming
-from .types import ExtractionSummary, ProcessSingleFileResult
+from .retry import retry_unpublished_io
+from .temp_parquet_merge import (
+    merge_temp_files_streaming,
+    validate_one_temp_file,
+)
+from .types import SourceExtractionResult
 from .zip_processor import ZipProcessorB3
+
+if TYPE_CHECKING:
+    from pyarrow import Schema
 
 logger = get_logger(__name__)
 
 
 @dataclass
 class _ExtractionState:
-    """Accumulate observable results across one extraction request."""
+    """Keep private source results until they can all be committed."""
 
-    total_records: int = 0
-    success_count: int = 0
-    error_count: int = 0
+    results: dict[int, SourceExtractionResult] = field(default_factory=dict)
     errors: dict[str, str] = field(default_factory=dict)
-    temp_files: list[Path] = field(default_factory=list)
 
 
 class ExtractionServiceB3:
-    """Extract COTAHIST ZIP or TXT data with bounded incremental flushing."""
+    """Extract ordered COTAHIST sources with a bounded worker scheduler."""
 
     def __init__(
         self,
         zip_reader: ZipFileReaderB3,
         parser: CotahistParserB3,
-        data_writer: ParquetWriterB3,
         processing_mode: ProcessingModeEnumB3,
-    ):
-        """Initialize collaborators and extraction policy."""
+        *,
+        allowed_unc_roots: Sequence[str] | None = None,
+    ) -> None:
+        """Store stable collaborators and source-local worker factories."""
         self.zip_reader = zip_reader
         self.parser = parser
-        self.data_writer = data_writer
         self.processing_mode = processing_mode
-
-        self.resource_policy = ResourcePolicyB3(processing_mode)
-        self.buffered_writer = BufferedParquetWriterB3(
-            data_writer=data_writer,
-            resource_policy=self.resource_policy,
+        self.allowed_unc_roots = PathSafetySettings.resolve_allowed_unc_roots(
+            allowed_unc_roots
         )
+        self.resource_policy = ResourcePolicyB3(processing_mode)
         self.zip_processor = ZipProcessorB3(
             zip_reader=zip_reader,
-            parser=parser,
-            buffered_writer=self.buffered_writer,
-            resource_policy=self.resource_policy,
-        )
-        self._closed = False
-
-        self._log_initialization()
-
-    def _log_initialization(self) -> None:
-        rp = self.resource_policy
-        estimated_memory_per_file_mb = rp.flush_batch_size * 3 // 1024
-        logger.info(
-            'ExtractionServiceB3 initialized',
-            extra={
-                'processing_mode': str(self.processing_mode),
-                'max_concurrent_files': rp.max_concurrent_files,
-                'use_parallel_parsing': rp.use_parallel_parsing,
-                'max_workers': rp.max_workers,
-                'flush_batch_size': rp.flush_batch_size,
-                'parse_batch_size': rp.parse_batch_size,
-                'estimated_memory_per_file_mb': estimated_memory_per_file_mb,
-                'estimated_total_memory_mb': (
-                    estimated_memory_per_file_mb * rp.max_concurrent_files
-                ),
-                'executor_type': (
-                    'ThreadPoolExecutor'
-                    if rp.use_parallel_parsing
-                    else 'Sequential'
-                ),
-            },
-        )
-
-    def close(self) -> None:
-        """Release parser workers owned by this extraction service."""
-        if getattr(self, '_closed', False):
-            return
-
-        zip_processor = getattr(self, 'zip_processor', None)
-        if zip_processor is not None:
-            zip_processor.close()
-        self._closed = True
-
-    def __del__(self) -> None:
-        """Fallback cleanup when callers forget to close the service."""
-        self.close()
-
-    async def _run_single_file(
-        self,
-        zip_file: str,
-        target_tpmerc_codes: set[str],
-        output_path: Path,
-    ) -> ProcessSingleFileResult:
-        """Process one input and translate failures into a partial result."""
-        try:
-            result_data = await self.zip_processor.process(
-                zip_file=zip_file,
-                target_tpmerc_codes=target_tpmerc_codes,
-                output_path=output_path,
-            )
-        except Exception as error:
-            logger.exception('Error processing %s', zip_file)
-            return zip_file, error
-
-        logger.info(
-            f'Completed {zip_file}',
-            extra={
-                'records_extracted': result_data['records'],
-                'temp_file': result_data['temp_file'],
-            },
-        )
-        return zip_file, result_data
-
-    async def _process_single_file(
-        self,
-        zip_file: str,
-        target_tpmerc_codes: set[str],
-        output_path: Path,
-        semaphore: asyncio.Semaphore,
-        progress_bar: SimpleProgressBar,
-    ) -> ProcessSingleFileResult:
-        """Wait for capacity and update progress once for one input."""
-        try:
-            resources_available = (
-                await self.resource_policy.wait_for_resources(
-                    timeout_seconds=30
-                )
-            )
-            if not resources_available:
-                error_message = 'Resources exhausted'
-                logger.error('Skipping %s - %s', zip_file, error_message)
-                return zip_file, Exception(error_message)
-
-            async with semaphore:
-                return await self._run_single_file(
-                    zip_file, target_tpmerc_codes, output_path
-                )
-        finally:
-            progress_bar.update(1)
-
-    @staticmethod
-    def _accumulate_result(
-        result: ProcessSingleFileResult | BaseException,
-        state: _ExtractionState,
-    ) -> None:
-        """Fold one gathered input result into the extraction state."""
-        if isinstance(result, BaseException):
-            state.error_count += 1
-            return
-        try:
-            zip_file, result_data = result
-        except (TypeError, ValueError):
-            state.error_count += 1
-            return
-
-        if isinstance(result_data, Exception):
-            state.error_count += 1
-            state.errors[zip_file] = str(result_data)
-            return
-
-        if result_data['records'] == 0:
-            state.error_count += 1
-            state.errors[zip_file] = (
-                'No COTAHIST records matched the requested assets'
-            )
-            return
-
-        temp_file = Path(result_data['temp_file'])
-        if not temp_file.exists():
-            state.error_count += 1
-            state.errors[zip_file] = (
-                f'COTAHIST temporary Parquet was not created: {temp_file}'
-            )
-            return
-
-        state.success_count += 1
-        state.total_records += result_data['records']
-        state.temp_files.append(temp_file)
-
-    async def _merge_temp_files(
-        self, state: _ExtractionState, output_path: Path
-    ) -> None:
-        """Merge successful temporary outputs into the final artifact."""
-        if not state.temp_files:
-            return
-        logger.info(
-            f'Starting merge of {len(state.temp_files)} temporary files...',
-            extra={'temp_files': [path.name for path in state.temp_files]},
-        )
-        try:
-            final_record_count = await merge_temp_files_streaming(
-                temp_files=state.temp_files,
-                final_output=output_path,
-                check_resources=self.resource_policy.check_and_wait_for_resources,
-            )
-        except Exception as error:
-            logger.exception('Failed to merge temporary files')
-            state.error_count += 1
-            state.errors['MERGE'] = str(error)
-            return
-
-        state.total_records = final_record_count
-        logger.info(
-            'Final merge completed',
-            extra={
-                'total_records': f'{final_record_count:,}',
-                'output_file': str(output_path),
-            },
+            parser_factory=type(parser),
+            python_record_limit=(
+                25_000
+                if processing_mode is ProcessingModeEnumB3.FAST
+                else 10_000
+            ),
         )
 
     @staticmethod
-    def _build_summary(
-        zip_files: set[str],
-        output_path: Path,
-        state: _ExtractionState,
-    ) -> ExtractionSummary:
-        """Build the stable aggregate result mapping for callers."""
-        return {
-            'total_files': len(zip_files),
-            'success_count': state.success_count,
-            'error_count': state.error_count,
-            'total_records': state.total_records,
-            'errors': state.errors,
-            'output_file': str(output_path) if output_path.exists() else '',
-        }
+    def _source_sort_key(source: str) -> tuple[str, str]:
+        """Preserve a deterministic merge order independent of completion."""
+        path = Path(source)
+        digits = ''.join(
+            character for character in path.stem if character.isdigit()
+        )
+        return path.name.casefold(), digits
 
     async def extract_from_zip_files(
         self,
-        zip_files: set[str],
+        zip_files: Collection[str],
         target_tpmerc_codes: set[str],
         output_path: Path,
     ) -> dict[str, Any]:
-        """Extract COTAHIST input files into Parquet and return statistics."""
-        self.resource_policy.adjust_batch_sizes()
+        """Produce one recoverably published output or a rollback summary."""
+        sources = sorted(zip_files, key=self._source_sort_key)
+        if not sources:
+            return self._summary(0, 0, 0, {}, None)
 
-        logger.info(
-            'Starting extraction with incremental flush',
-            extra={
-                'total_files': len(zip_files),
-                'target_codes_count': len(target_tpmerc_codes),
-                'output_path': str(output_path),
-                'processing_mode': str(self.processing_mode),
-                'flush_batch_size': self.resource_policy.flush_batch_size,
-                'parse_batch_size': self.resource_policy.parse_batch_size,
-            },
+        publisher = TransactionalPublisher(
+            output_path.parent,
+            owner='b3',
+            source_path=str(output_path),
+            allowed_unc_roots=self.allowed_unc_roots,
+        )
+        publication = None
+        try:
+            required_bytes = sum(
+                Path(source).stat().st_size
+                for source in sources
+                if Path(source).is_file()
+            )
+            publication = publisher.begin(
+                source_descriptors=[
+                    {'source': Path(source).name} for source in sources
+                ],
+                required_bytes=required_bytes,
+            )
+            expected_schema = build_b3_schema()
+            expected_fingerprint = schema_fingerprint(expected_schema)
+            state = await self._run_sources(
+                sources,
+                target_tpmerc_codes,
+                publication.staging_dir,
+            )
+            if state.errors:
+                try:
+                    publication.abort()
+                except (ExtractionError, OSError) as cleanup_error:
+                    state.errors['transaction'] = (
+                        'B3 source failure was followed by incomplete '
+                        'transaction cleanup: '
+                        f'{type(cleanup_error).__name__}: '
+                        f'{cleanup_error}'
+                    )
+                return self._summary(
+                    len(sources), 0, len(state.errors), state.errors, None
+                )
+
+            ordered_results = [
+                state.results[index] for index in range(len(sources))
+            ]
+            self._validate_source_results(
+                ordered_results, expected_fingerprint
+            )
+            expected_rows = sum(
+                result.written_records for result in ordered_results
+            )
+            merged_staged, merged_rows = self._prepare_staged_output(
+                ordered_results,
+                publication.stage_path(output_path.name),
+                expected_schema,
+            )
+            if merged_rows != expected_rows:
+                raise RuntimeError(
+                    'B3 merge row-count invariant was violated: '
+                    f'{merged_rows} != {expected_rows}'
+                )
+            publication.add_artifact(
+                final_path=output_path,
+                staged_path=merged_staged,
+                expected_rows=merged_rows,
+                schema_fingerprint=expected_fingerprint,
+            )
+            publication.mark_validated()
+            publication.commit()
+            return self._summary(
+                len(sources), len(sources), 0, {}, output_path, merged_rows
+            )
+        except Exception as error:
+            logger.exception('B3 extraction failed before publication')
+            cleanup_detail = ''
+            if publication is not None:
+                try:
+                    publication.abort()
+                except (ExtractionError, OSError) as cleanup_error:
+                    cleanup_detail = (
+                        '; transaction cleanup failed: '
+                        f'{type(cleanup_error).__name__}: {cleanup_error}'
+                    )
+            return self._summary(
+                len(sources),
+                0,
+                1,
+                {
+                    'transaction': (
+                        f'{type(error).__name__}: {error}{cleanup_detail}'
+                    )
+                },
+                None,
+            )
+
+    async def _run_sources(
+        self,
+        sources: list[str],
+        target_tpmerc_codes: set[str],
+        staging_dir: Path,
+    ) -> _ExtractionState:
+        """Schedule at most the current worker limit without eager tasks."""
+        state = _ExtractionState()
+        worker_limit = self.resource_policy.worker_limit(len(sources))
+        active: dict[Future[SourceExtractionResult], tuple[int, str]] = {}
+        next_index = 0
+        admission_stopped = False
+
+        with ThreadPoolExecutor(max_workers=worker_limit) as executor:
+            while active or next_index < len(sources):
+                while (
+                    not admission_stopped
+                    and next_index < len(sources)
+                    and len(active) < worker_limit
+                ):
+                    if not await self.resource_policy.await_admission():
+                        state.errors['resources'] = (
+                            'B3 extraction stopped because resources did not '
+                            'recover'
+                        )
+                        admission_stopped = True
+                        break
+                    source = sources[next_index]
+                    temp_output = (
+                        staging_dir / 'sources' / f'{next_index:05d}.parquet'
+                    )
+                    future = executor.submit(
+                        self._process_source_with_retry,
+                        source,
+                        target_tpmerc_codes,
+                        temp_output,
+                    )
+                    active[future] = (next_index, source)
+                    next_index += 1
+
+                if not active:
+                    break
+
+                completed = [task for task in active if task.done()]
+                if not completed:
+                    await asyncio.sleep(0.01)
+                    continue
+                for task in completed:
+                    index, source = active.pop(task)
+                    try:
+                        state.results[index] = task.result()
+                        self.resource_policy.collect_after_critical_flush()
+                    except Exception as error:
+                        logger.exception('B3 source failed: %s', source)
+                        state.errors[Path(source).name] = (
+                            f'{type(error).__name__}: {error}'
+                        )
+                        admission_stopped = True
+
+        return state
+
+    def _process_source_with_retry(
+        self,
+        source: str,
+        target_tpmerc_codes: set[str],
+        temp_output: Path,
+    ) -> SourceExtractionResult:
+        """Retry only a transient unpublished source worker operation."""
+        return retry_unpublished_io(
+            lambda: self.zip_processor.process(
+                source, target_tpmerc_codes, temp_output
+            )
         )
 
-        with log_execution_time(
-            logger,
-            'Extract from all COTAHIST input files',
-            total_files=len(zip_files),
-        ):
-            state = _ExtractionState()
-            progress_bar = SimpleProgressBar(
-                total=len(zip_files), desc='Extracting (async)'
-            )
-            semaphore = asyncio.Semaphore(
-                self.resource_policy.max_concurrent_files
-            )
-
-            try:
-                results = await asyncio.gather(
-                    *[
-                        self._process_single_file(
-                            zip_file,
-                            target_tpmerc_codes,
-                            output_path,
-                            semaphore,
-                            progress_bar,
-                        )
-                        for zip_file in zip_files
-                    ],
-                    return_exceptions=True,
+    @staticmethod
+    def _validate_source_results(
+        results: list[SourceExtractionResult], expected_fingerprint: str
+    ) -> None:
+        """Prove all workers honored parser, writer, and schema invariants."""
+        for result in results:
+            if (
+                result.selected_records != result.parsed_records
+                or result.parsed_records != result.written_records
+            ):
+                raise RuntimeError(
+                    f'B3 source invariant failed for {result.source_path.name}'
                 )
-            finally:
-                progress_bar.close()
+            if (
+                result.temp_path is not None
+                and result.schema_fingerprint != expected_fingerprint
+            ):
+                raise RuntimeError(
+                    f'B3 source schema mismatch for {result.source_path.name}'
+                )
 
-            for result in results:
-                self._accumulate_result(result, state)
+    @staticmethod
+    def _prepare_staged_output(
+        results: list[SourceExtractionResult],
+        merge_output: Path,
+        expected_schema: Schema,
+    ) -> tuple[Path, int]:
+        """Reuse one validated source artifact or merge ordered artifacts.
 
-            await self._merge_temp_files(state, output_path)
-            result_summary = self._build_summary(zip_files, output_path, state)
-            logger.info('Extraction completed', extra=result_summary)
+        A one-source request has already produced a closed, schema-validated
+        Parquet artifact in transaction staging.  Publishing that artifact
+        directly preserves the same validation boundary as a merge and avoids
+        a costly duplicate read/write cycle.  Empty and multi-source requests
+        retain the canonical merge path.
+        """
+        temporary_results = [
+            result for result in results if result.temp_path is not None
+        ]
+        if len(temporary_results) == 1 and len(results) == 1:
+            source = temporary_results[0]
+            temp_path = source.temp_path
+            if temp_path is None:
+                raise RuntimeError('B3 source temporary artifact is missing')
+            rows = retry_unpublished_io(
+                lambda: validate_one_temp_file(
+                    temp_path,
+                    expected_schema,
+                    source.written_records,
+                )
+            )
+            return temp_path, rows
 
-            return dict(result_summary)
+        temp_files: list[Path] = []
+        for result in temporary_results:
+            if result.temp_path is None:
+                raise RuntimeError('B3 source temporary artifact is missing')
+            temp_files.append(result.temp_path)
+        expected_rows = [
+            result.written_records for result in temporary_results
+        ]
+        rows = retry_unpublished_io(
+            lambda: merge_temp_files_streaming(
+                temp_files, merge_output, expected_schema, expected_rows
+            )
+        )
+        return merge_output, rows
+
+    @staticmethod
+    def _summary(
+        total_files: int,
+        success_count: int,
+        error_count: int,
+        errors: dict[str, str],
+        output_path: Path | None,
+        total_records: int = 0,
+    ) -> dict[str, Any]:
+        """Build the established public B3 aggregate shape."""
+        return {
+            'total_files': total_files,
+            'success_count': success_count,
+            'error_count': error_count,
+            'total_records': total_records,
+            'errors': errors,
+            'output_file': str(output_path) if output_path is not None else '',
+        }

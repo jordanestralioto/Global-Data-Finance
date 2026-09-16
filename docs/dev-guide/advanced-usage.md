@@ -12,10 +12,15 @@ Habilite logging profissional para rastreamento e debugging:
 
 ```python
 from globaldatafinance import FundamentalStocksDataCVM
-from globaldatafinance.core import setup_logging, get_logger, log_execution_time
+from globaldatafinance.core.logging_config import (
+    LoggingSettings,
+    get_logger,
+    log_execution_time,
+    setup_logging,
+)
 
 # Configurar logging
-setup_logging(level="INFO", log_file="app.log")
+setup_logging(LoggingSettings(level="INFO", log_file="app.log"))
 
 # Obter logger
 logger = get_logger(__name__)
@@ -38,6 +43,13 @@ with log_execution_time(logger, "Download CVM", total=5):
 ```
 
 [Ver documentação completa →](logging-system.md)
+
+O logger `globaldatafinance` começa silencioso com `NullHandler` e
+`propagate=False`; `setup_logging()` não altera o root logger da aplicação.
+Reconfigurações substituem apenas handlers gerenciados. Se a preparação ou a
+troca falhar, a configuração anterior é restaurada. `LoggingSettings` rejeita
+campos extras e variáveis `DATAFIN_LOG_*` desconhecidas, incluindo o removido
+`structured`.
 
 ### Configuração Global
 
@@ -62,11 +74,18 @@ export DATAFINANCE_NETWORK_RETRY_BACKOFF=3.0
 ```
 
 ```python
-from globaldatafinance.core.config import settings
+from globaldatafinance import FundamentalStocksDataCVM, HistoricalQuotesB3
+from globaldatafinance.core.config import NetworkSettings, Settings
 
-# Verificar configurações atuais
+# Snapshot imutável a partir do ambiente atual
+settings = Settings()
 print(f"Timeout: {settings.network.timeout}s")
 print(f"Max retries: {settings.network.max_retries}")
+
+# Configuração explícita injetada nas fachadas públicas
+custom_settings = Settings(network=NetworkSettings(timeout=300))
+cvm = FundamentalStocksDataCVM(settings=custom_settings)
+b3 = HistoricalQuotesB3(settings=custom_settings)
 ```
 
 ### Limites de ZIP e destinos UNC
@@ -94,6 +113,11 @@ allowlist, shares administrativos terminados em `$` continuam proibidos. Essa
 política reduz escrita acidental em destinos sensíveis; não limita um chamador
 que já possui os privilégios do processo.
 
+Os limites de ZIP vivem no namespace canônico `Settings.archive`; não use o
+nome removido `Settings.archive_safety`. O helper de CRC diferencia
+`infos=None` (validar o diretório central) de `infos=[]` (seleção vazia já
+validada).
+
 ### Resource Monitoring
 
 Monitore e gerencie recursos automaticamente:
@@ -118,6 +142,11 @@ monitor.wait_for_resources(timeout_seconds=120)
 ```
 
 [Ver documentação completa →](resource-monitoring.md)
+
+`ResourceMonitor` mantém seu contrato singleton; o caminho B3 usa uma
+instância isolada quando precisa de limites próprios, sem substituir o
+singleton global. O cache privado dos módulos PyArrow também é lazy e só é
+preenchido quando a operação Parquet é realmente usada.
 
 ### Retry Strategy
 
@@ -366,6 +395,10 @@ parquet_file = pq.ParquetFile("cotahist.parquet")
 for batch in parquet_file.iter_batches(batch_size=100000):
     process_chunk(batch)
 ```
+
+O import dos módulos PyArrow usados pela escrita permanece lazy e cacheado
+privadamente: a dependência só é carregada quando o caminho Parquet é
+executado.
 
 ______________________________________________________________________
 
