@@ -1,5 +1,6 @@
 """Transactional B3 scheduler integration tests."""
 
+import asyncio
 from pathlib import Path
 
 import pyarrow.parquet as pq
@@ -147,3 +148,49 @@ async def test_source_failure_keeps_previous_final_output_and_all_inputs(
     assert output.read_bytes() == before
     assert valid.exists() and malformed.exists()
     assert list(tmp_path.glob('.globaldatafinance-transaction-*')) == []
+
+
+@pytest.mark.asyncio
+async def test_cancellation_aborts_transaction_and_preserves_cancellation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Cancelled extraction leaves no lock and permits a later retry."""
+    source = write_cotahist_txt(
+        tmp_path,
+        year=2024,
+        records=[build_cotahist_record(ticker='PETR4')],
+    )
+    output = tmp_path / 'quotes.parquet'
+    output.write_bytes(b'previous output')
+    previous_output = output.read_bytes()
+    service = _service(ProcessingModeEnumB3.SLOW)
+    entered = asyncio.Event()
+    blocked = asyncio.Event()
+
+    async def block_source_run(*_args: object, **_kwargs: object) -> None:
+        entered.set()
+        await blocked.wait()
+
+    monkeypatch.setattr(service, '_run_sources', block_source_run)
+    extraction = asyncio.create_task(
+        service.extract_from_zip_files({str(source)}, {'010'}, output)
+    )
+
+    await asyncio.wait_for(entered.wait(), timeout=1)
+    extraction.cancel()
+
+    with pytest.raises(asyncio.CancelledError):
+        await extraction
+
+    assert list(tmp_path.glob('.globaldatafinance-transaction-*')) == []
+    assert not (tmp_path / '.globaldatafinance-transaction.lock').exists()
+    assert source.exists()
+    assert output.read_bytes() == previous_output
+
+    result = await _service(ProcessingModeEnumB3.SLOW).extract_from_zip_files(
+        {str(source)}, {'010'}, output
+    )
+
+    assert result['success_count'] == 1
+    assert result['error_count'] == 0
+    assert output.exists()

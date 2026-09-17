@@ -9,7 +9,11 @@ import pytest
 from globaldatafinance.brazil.b3_data.historical_quotes import (
     extraction_service,
 )
-from globaldatafinance.macro_exceptions import DiskFullError, ExtractionError
+from globaldatafinance.macro_exceptions import (
+    DiskFullError,
+    ExtractionError,
+    ParquetWriteError,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -54,3 +58,29 @@ def test_transient_operation_gets_three_total_attempts(
     assert retry.retry_unpublished_io(operation) == 'complete'
     assert attempts == 3
     assert delays == [0.25, 0.5]
+
+
+@pytest.mark.parametrize(
+    'error',
+    [
+        ValueError('invalid unpublished operation'),
+        MemoryError('memory pressure is not transient I/O'),
+        OSError(errno.ENOSPC, 'no space left on device'),
+        ParquetWriteError('output.parquet', 'permanent write failure'),
+    ],
+)
+def test_permanent_operation_failure_is_attempted_once(
+    error: Exception,
+) -> None:
+    """Permanent failures are re-raised without a duplicate write attempt."""
+    attempts = 0
+
+    def operation() -> str:
+        nonlocal attempts
+        attempts += 1
+        raise error
+
+    with pytest.raises(type(error)):
+        retry.retry_unpublished_io(operation)
+
+    assert attempts == 1

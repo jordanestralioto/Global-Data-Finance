@@ -7,7 +7,34 @@ machine or dataset.
 
 ## 1. Real-Scale Baseline — B3
 
-### 1.1. Baseline v2 — Full 25 Years (2026-09-02, Revision `703d9ab`)
+### 1.1. Baseline v3 — Full 27 Years (2026-09-16, Revision `f1a2f47`)
+
+**Environment:** Python 3.13.7 · Linux x86_64 (kernel 6.8) · 8 CPUs · 7.55 GB
+total memory. No network calls; local extraction of official ZIPs only.
+
+- **Dataset:** 27 official ZIP files (2000–2026), 666.00 MB compressed.
+- **Asset scope:** all currently supported asset categories (`ações`, `etf`, `opções`, `termo`, `exercicio_opcoes`, `forward`, `leilao`).
+- **Errors:** 0 (all 27 files processed successfully).
+- **Consolidated Parquet output:** 481.86 MB per mode (505,265,249 bytes).
+
+| Mode   | Written rows | Elapsed time (API) | Elapsed time (end-to-end) |    Peak RSS |      Throughput |
+| ------ | -----------: | -----------------: | ------------------------: | ----------: | --------------: |
+| `fast` |   22,303,577 |           649.99 s |                  650.50 s |   429.88 MB | 34,313.8 rows/s |
+| `slow` |   22,303,577 |           749.45 s |                  750.10 s |   331.11 MB | 29,759.9 rows/s |
+
+> **Note:** The `slow` mode peaked at only 331.11 MB (~0.32 GiB) RSS (a ~23%
+> memory reduction compared to `fast` mode), preserving 100% schema and data
+> parity across all 22,303,577 records of the 27-year series. The modest ~98 MB
+> memory difference between `fast` and `slow` stems from bounded per-worker
+> limits (`python_record_limit` of 25,000 vs 10,000 rows) and chunked flushes
+> (`ROW_GROUP_LIMIT = 100,000`), keeping memory complexity $O(1)$ relative to
+> the time span. The moderate ~15% speed advantage of `fast` mode reflects
+> CPython GIL contention in `ThreadPoolExecutor` during the CPU-intensive
+> positional string parsing loop, alongside the single-threaded final disk
+> merge stage. Compared to historical baseline v2 (~4.4 GB), the columnar
+> streaming architecture reduced peak memory by over 90%.
+
+### 1.2. Historical Baseline v2 — Full 25 Years (2026-09-02, Revision `703d9ab`)
 
 **Environment:** Python 3.13.7 · Linux x86_64 (kernel 6.8) · 8 CPUs · 7.55 GB
 total memory. No network calls; local extraction of official ZIPs only.
@@ -26,7 +53,7 @@ total memory. No network calls; local extraction of official ZIPs only.
 > memory reduction compared to `fast` mode), preserving 100% schema and data
 > parity across all 16,460,458 records of the 25-year series.
 
-### 1.2. Historical Baseline v1 — 17 Years (2026-08-06, Revision `7ee1843`)
+### 1.3. Historical Baseline v1 — 17 Years (2026-08-06, Revision `7ee1843`)
 
 **Environment:** Python 3.13.7 · Linux x86_64 (kernel 6.8) · 8 CPUs · 7.55 GB
 total memory. No network calls; local extraction of official ZIPs only.

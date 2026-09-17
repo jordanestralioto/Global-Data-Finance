@@ -83,6 +83,10 @@ when data presence is required.
 If valid inputs contain no records after asset filtering, extraction still
 succeeds and publishes an empty B3 Parquet with the explicit schema.
 
+For asynchronous cancellation before commit, the service aborts publication,
+cleans temporary state, and re-raises `asyncio.CancelledError`; a pre-existing
+final artifact remains intact.
+
 **Raised Exceptions**:
 
 - `EmptyAssetListError`: Empty array supplied for `assets_list` parameter.

@@ -35,9 +35,9 @@ def validate_downloaded_file(
 
         return _has_valid_zip_contents(filepath, limits=limits)
 
-    except Exception as e:
+    except OSError as error:
         logger.error(
-            'Error validating file %s: %s', filepath, e, exc_info=True
+            'Error validating file %s: %s', filepath, error, exc_info=True
         )
         return False
 
@@ -50,81 +50,86 @@ def find_parquet_files(dest_path: str) -> list[Path]:
 def validate_parquet_files(
     parquet_files: list[Path], doc_name: str, year: str
 ) -> bool:
-    """Validate that parquet files are readable and contain data."""
+    """Validate that Parquet files are readable and contain data."""
     import pyarrow.parquet as pq
 
-    if not parquet_files:
+    try:
+        files = list(parquet_files)
+    except (OSError, RuntimeError, TypeError) as error:
+        logger.error(
+            'Unable to enumerate parquet files for %s_%s: %s',
+            doc_name,
+            year,
+            error,
+            exc_info=True,
+        )
+        return False
+
+    if not files:
         logger.error(
             'No parquet files were provided for %s_%s', doc_name, year
         )
         return False
 
-    try:
-        valid_files = 0
-        for parquet_file in parquet_files:
-            try:
-                file_size = parquet_file.stat().st_size
-                if file_size == 0:
-                    logger.error(
-                        'Empty parquet file (0 bytes): %s for %s_%s',
-                        parquet_file,
-                        doc_name,
-                        year,
-                    )
-                    return False
-
-                parquet_metadata = pq.ParquetFile(parquet_file).metadata
-                if parquet_metadata is None:
-                    logger.error(
-                        'Parquet metadata is unavailable: %s for %s_%s',
-                        parquet_file,
-                        doc_name,
-                        year,
-                    )
-                    return False
-
-                if parquet_metadata.num_columns == 0:
-                    logger.error(
-                        'Parquet file has no columns: %s for %s_%s',
-                        parquet_file,
-                        doc_name,
-                        year,
-                    )
-                    return False
-
-                valid_files += 1
-                logger.debug(
-                    'Parquet validated: %s (%d rows, %d bytes)',
-                    parquet_file.name,
-                    parquet_metadata.num_rows,
-                    file_size,
-                )
-
-            except Exception as e:
+    valid_files = 0
+    for parquet_file in files:
+        try:
+            file_size = parquet_file.stat().st_size
+            if file_size == 0:
                 logger.error(
-                    'Invalid parquet %s for %s_%s: %s: %s',
+                    'Empty parquet file (0 bytes): %s for %s_%s',
                     parquet_file,
                     doc_name,
                     year,
-                    type(e).__name__,
-                    e,
-                    exc_info=True,
                 )
                 return False
 
-        logger.info(
-            'All %d parquet files validated for %s_%s',
-            valid_files,
-            doc_name,
-            year,
-        )
-        return True
+            parquet_metadata = pq.ParquetFile(parquet_file).metadata
+            if parquet_metadata is None:
+                logger.error(
+                    'Parquet metadata is unavailable: %s for %s_%s',
+                    parquet_file,
+                    doc_name,
+                    year,
+                )
+                return False
 
-    except Exception as e:
-        logger.error(
-            'Unexpected error validating parquets: %s', e, exc_info=True
-        )
-        return False
+            if parquet_metadata.num_columns == 0:
+                logger.error(
+                    'Parquet file has no columns: %s for %s_%s',
+                    parquet_file,
+                    doc_name,
+                    year,
+                )
+                return False
+
+            valid_files += 1
+            logger.debug(
+                'Parquet validated: %s (%d rows, %d bytes)',
+                parquet_file.name,
+                parquet_metadata.num_rows,
+                file_size,
+            )
+
+        except (OSError, ValueError) as error:
+            logger.error(
+                'Invalid parquet %s for %s_%s: %s: %s',
+                parquet_file,
+                doc_name,
+                year,
+                type(error).__name__,
+                error,
+                exc_info=True,
+            )
+            return False
+
+    logger.info(
+        'All %d parquet files validated for %s_%s',
+        valid_files,
+        doc_name,
+        year,
+    )
+    return True
 
 
 def _has_valid_size(path: Path, expected_size: int) -> bool:

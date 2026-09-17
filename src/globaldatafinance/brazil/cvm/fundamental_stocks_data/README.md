@@ -1,56 +1,67 @@
-# Módulo de Dados Fundamentais (CVM)
+# Fundamental Data Module (CVM)
 
-> [!NOTE]
-> Este módulo integra a suíte `Global-Data-Finance` e fornece uma interface robusta para automação de downloads de documentos regulatórios da CVM (Comissão de Valores Mobiliários).
+> [!NOTE] This module is part of the `Global-Data-Finance` suite and provides a
+> robust interface for automating downloads of regulatory documents from the
+> Brazilian Securities and Exchange Commission (CVM - Comissão de Valores
+> Mobiliários).
 
-O módulo `fundamental_stocks_data` foi projetado para simplificar a aquisição de dados públicos de companhias abertas brasileiras. Ele gerencia a complexidade de URLs dinâmicas, estrutura de diretórios e resiliência de rede, tudo encapsulado em uma arquitetura limpa e extensível.
+The `fundamental_stocks_data` module is designed to simplify the acquisition of
+public data from Brazilian publicly traded companies. It manages the complexity
+of dynamic URLs, directory structures, and network resilience, all encapsulated
+within a clean and extensible architecture.
 
-## 🎯 Objetivos e Valor
+## 🎯 Goals and Value
 
-- **Automação Confiável**: Elimina o trabalho manual de buscar arquivos no site da CVM.
-- **Gestão de Falhas**: Sistema robusto de retentativas e relatório detalhado de erros.
-- **Organização Automática**: Estrutura os arquivos baixados por tipo e ano, facilitando o consumo posterior.
-- **Extensibilidade**: adapter HTTP concreto (`AsyncDownloadAdapterCVM`) construído diretamente. Quando uma segunda implementação aparecer (ex.: `WgetDownloadAdapter`), extrair um `Protocol` é trivial.
+- **Reliable Automation**: Eliminates manual work to fetch files from the CVM
+  portal.
+- **Failure Management**: Robust retry system and detailed error reporting.
+- **Automatic Organization**: Structures downloaded files by document type and
+  year, facilitating downstream consumption.
+- **Extensibility**: Concrete HTTP adapter (`AsyncDownloadAdapterCVM`)
+  constructed directly. When a second implementation emerges (e.g.,
+  `WgetDownloadAdapter`), extracting a `Protocol` is straightforward.
 
-## 🏗️ Arquitetura
+## 🏗️ Architecture
 
-Layout plano de módulos focados:
+Focused module and subpackage layout:
 
 ```text
 brazil/cvm/fundamental_stocks_data/
 ├── core.py                   # AvailableDocsCVM, AvailableYearsCVM, DictZipsToDownloadCVM, DownloadResultCVM, UrlDocsCVM
-├── client.py                 # consultas públicas, orquestração e validação de paths
+├── client.py                 # Public queries, orchestration, and path validation
 ├── http.py                   # AsyncDownloadAdapterCVM (httpx async + retry/back-off + integrity check)
-├── extract.py                # ParquetExtractorAdapterCVM (limite de extração)
-├── transaction.py            # staging, backup e commit recuperável em lote
+├── extract.py                # ParquetExtractorAdapterCVM (extraction boundary)
+├── transaction.py            # Staging, backup, and recoverable batch commit
+├── csv_pipeline/             # PyArrow chunked CSV parsing and Parquet conversion subpackage
 ├── errors.py                 # InvalidDocumentName, InvalidFirstYear, InvalidLastYear, MissingDownloadUrlError, etc.
-├── download_paths.py         # validação de basenames derivados de URLs
-├── download_validation.py    # Validação de ZIPs e Parquets gerados (integridade estrutural e de dados)
-└── download_extraction.py    # Delegação de extração e rastreamento de artefatos para rollback
+├── download_paths.py         # Validation of URL-derived basenames
+├── download_validation.py    # Validation of generated ZIPs and Parquets (structural and data integrity)
+└── download_extraction.py    # Extraction delegation and artifact tracking for rollback
 ```
 
-`DownloadDocumentsUseCaseCVM` orquestra a geração de URLs, a validação de
-paths (`VerifyPathsUseCasesCVM` — `SecurityError` para destinos sensíveis) e o
-download via `AsyncDownloadAdapterCVM` injetado.
+`DownloadDocumentsUseCaseCVM` orchestrates URL generation, path validation
+(`VerifyPathsUseCasesCVM` — raising `SecurityError` for sensitive destinations),
+and downloading via the injected `AsyncDownloadAdapterCVM`.
 
-### Componentes Chave
+### Key Components
 
-| Módulo                   | Componente                    | Tipo                  | Responsabilidade                                                                    |
-| ------------------------ | ----------------------------- | --------------------- | ----------------------------------------------------------------------------------- |
-| `client.py`              | `DownloadDocumentsUseCaseCVM` | Orquestrador (classe) | Coordena geração de URLs, validação de paths e execução de download. Stateful.      |
-| `client.py`              | `generate_urls`               | Função de aplicação   | Constrói URLs de download a partir de `DictZipsToDownloadCVM`.                      |
-| `client.py`              | `VerifyPathsUseCasesCVM`      | Use case              | Cria estrutura de diretórios de destino. Raise `SecurityError` em paths sensíveis.  |
-| `core.py`                | `DownloadResultCVM`           | Result object         | Resultado agregado contendo sucessos, falhas e contadores (`elapsed_time` incluso). |
-| `core.py`                | `DictZipsToDownloadCVM`       | Value object          | Mapeamento documento → URLs por ano.                                                |
-| `http.py`                | `AsyncDownloadAdapterCVM`     | Adapter concreto      | Downloads assíncronos com retry/back‑off e delegação de extração.                   |
-| `extract.py`             | `ParquetExtractorAdapterCVM`  | Adapter concreto      | Abre o ZIP e delega o commit recuperável da conversão.                              |
-| `transaction.py`         | `CvmFailureAtomicBatchCommit` | Detalhe de extração   | Faz staging, validação, backup e restauração determinística por lote.               |
-| `download_extraction.py` | `extract_downloaded_file`     | Helper / Use case     | Rastreia os artefatos publicados e valida o resultado do download.                  |
-| `download_validation.py` | `validate_downloaded_file`    | Helper                | Valida integridade e completude de ZIPs e arquivos Parquet extraídos.               |
+| Module                   | Component                     | Type                  | Responsibility                                                                                                 |
+| ------------------------ | ----------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `client.py`              | `DownloadDocumentsUseCaseCVM` | Orchestrator (class)  | Coordinates URL generation, path validation, and download execution (`execute` and `execute_async`). Stateful. |
+| `client.py`              | `generate_urls`               | Application function  | Constructs download URLs from `DictZipsToDownloadCVM`.                                                         |
+| `client.py`              | `VerifyPathsUseCasesCVM`      | Use case              | Creates destination directory structure. Raises `SecurityError` on sensitive paths.                            |
+| `core.py`                | `DownloadResultCVM`           | Result object         | Aggregated result containing successes, failures, and counters (including `elapsed_time`).                     |
+| `core.py`                | `DictZipsToDownloadCVM`       | Value object          | Document to URLs per year mapping.                                                                             |
+| `http.py`                | `AsyncDownloadAdapterCVM`     | Concrete adapter      | Asynchronous downloads with retry/back-off and extraction delegation.                                          |
+| `extract.py`             | `ParquetExtractorAdapterCVM`  | Concrete adapter      | Opens ZIP files and delegates recoverable conversion commit.                                                   |
+| `transaction.py`         | `CvmFailureAtomicBatchCommit` | Extraction detail     | Performs staging, validation, backup, and deterministic restoration per batch.                                 |
+| `csv_pipeline/`          | `CsvToParquetPipelineCVM`     | Conversion subpackage | PyArrow streaming CSV ingestion and typed Parquet writing in bounded memory chunks (`chunk_size`).             |
+| `download_extraction.py` | `extract_downloaded_file`     | Helper / Use case     | Tracks published artifacts and validates download outcome.                                                     |
+| `download_validation.py` | `validate_downloaded_file`    | Helper                | Validates integrity and completeness of ZIPs and extracted Parquet files.                                      |
 
-## 🚀 Guia de Uso
+## 🚀 Usage Guide
 
-### Exemplo Completo
+### Complete Example
 
 ```python
 from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
@@ -60,123 +71,147 @@ from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
 )
 
 
-def baixar_dados_cvm():
-    # 1. Adapter HTTP concreto (httpx async + retry + integrity check)
+def download_cvm_data():
+    # 1. Concrete HTTP adapter (httpx async + retry + integrity check)
     repository = AsyncDownloadAdapterCVM(
         file_extractor_repository=ParquetExtractorAdapterCVM()
     )
 
-    # 2. Orquestrador
+    # 2. Orchestrator
     downloader = DownloadDocumentsUseCaseCVM(repository=repository)
 
-    print('Iniciando downloads...')
+    print('Starting downloads...')
 
-    # 3. Execução
+    # 3. Execution (sync or async via execute_async)
     try:
         resultado = downloader.execute(
-            destination_path='./dados_cvm',  # Diretório raiz para salvar
-            list_docs=['DFP', 'ITR', 'FRE'],  # Tipos de documentos
-            initial_year=2022,  # Ano inicial
-            last_year=2023,  # Ano final
+            destination_path='./cvm_data',  # Root directory for storage
+            list_docs=['DFP', 'ITR', 'FRE'],  # Document types
+            initial_year=2022,  # Start year
+            last_year=2023,  # End year
+            automatic_extractor=True,  # Automatically extract CSVs to Parquet
         )
 
-        # 4. Análise dos Resultados
-        print(f'\nResumo da Operação:')
-        print(f'✅ Sucessos: {resultado.success_count_downloads}')
-        print(f'❌ Falhas: {resultado.error_count_downloads}')
+        # 4. Result Analysis
+        print('\nOperation Summary:')
+        print(f'⏱️ Elapsed Time: {resultado.elapsed_time:.2f}s')
+        print(f'✅ Successes: {resultado.success_count_downloads}')
+        print(f'❌ Failures: {resultado.error_count_downloads}')
 
         if resultado.failed_downloads:
-            print('\nDetalhes das falhas:')
+            print('\nFailure details:')
             for doc, erro in resultado.failed_downloads.items():
                 print(f' - {doc}: {erro}')
 
     except Exception as e:
-        print(f'Erro crítico na execução: {e}')
+        print(f'Critical error during execution: {e}')
 
 
 if __name__ == '__main__':
-    baixar_dados_cvm()
+    download_cvm_data()
 ```
 
-## ⚙️ Referência da API
+## ⚙️ API Reference
 
 ### `DownloadDocumentsUseCaseCVM.execute`
 
-| Parâmetro          | Tipo        | Obrigatório | Descrição                                                                                                                             |
-| ------------------ | ----------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `destination_path` | `str`       | Sim         | Caminho base onde as pastas por documento serão criadas.                                                                              |
-| `list_docs`        | `list[str]` | Não         | Lista de códigos de documentos que serão baixados. Valores válidos: `DFP`, `ITR`, `FRE`, `FCA`, `CGVN`, `IPE`, `VLMO`. Padrão: todos. |
-| `initial_year`     | `int`       | Não         | Ano de início da coleta.                                                                                                              |
-| `last_year`        | `int`       | Não         | Ano final da coleta.                                                                                                                  |
+Also available as `execute_async(...)` when running inside an existing event
+loop.
 
-#### Tipos de Documentos Disponíveis
+| Parameter             | Type        | Required | Description                                                                                                        |
+| --------------------- | ----------- | -------- | ------------------------------------------------------------------------------------------------------------------ |
+| `destination_path`    | `str`       | Yes      | Base path where per-document directories will be created.                                                          |
+| `list_docs`           | `list[str]` | No       | List of document codes to download. Valid values: `DFP`, `ITR`, `FRE`, `FCA`, `CGVN`, `IPE`, `VLMO`. Default: all. |
+| `initial_year`        | `int`       | No       | Start year for data collection.                                                                                    |
+| `last_year`           | `int`       | No       | End year for data collection.                                                                                      |
+| `automatic_extractor` | `bool`      | No       | Whether to extract and convert CSVs into Parquet files automatically via batch commit. Default: `False`.           |
 
-| Código | Nome                                   | Descrição                      |
-| ------ | -------------------------------------- | ------------------------------ |
-| `DFP`  | Demonstrações Financeiras Padronizadas | Balanço, DRE, DFC, DVA (anual) |
-| `ITR`  | Informações Trimestrais                | Demonstrações trimestrais      |
-| `FRE`  | Formulário de Referência               | Informações corporativas       |
-| `FCA`  | Formulário Cadastral                   | Dados cadastrais               |
-| `CGVN` | Código de Governança                   | Governança corporativa         |
-| `IPE`  | Informações Eventuais                  | Atas, fatos relevantes         |
-| `VLMO` | Valores Mobiliários                    | Títulos negociados             |
+#### Available Document Types
 
-### `DownloadResultCVM` (Retorno)
+| Code   | Name                              | Description                           |
+| ------ | --------------------------------- | ------------------------------------- |
+| `DFP`  | Standardized Financial Statements | Balance sheet, DRE, DFC, DVA (annual) |
+| `ITR`  | Quarterly Information             | Quarterly financial statements        |
+| `FRE`  | Reference Form                    | Corporate governance and filings      |
+| `FCA`  | Registration Form                 | Registration details                  |
+| `CGVN` | Governance Code                   | Corporate governance                  |
+| `IPE`  | Sporadic Information              | Minutes, material facts               |
+| `VLMO` | Securities                        | Traded securities                     |
 
-Objeto retornado pelo método `execute`, contendo:
+### `DownloadResultCVM` (Return Value)
 
-- `successful_downloads` (`list[str]`): Lista de identificadores lógicos concluídos no formato `{DOC}_{YEAR}` (ex.: `DFP_2023`), não caminhos de arquivo.
-- `failed_downloads` (`dict[str, str]`): Dicionário que mapeia identificadores `{DOC}_{YEAR}` para mensagens de erro.
-- `success_count_downloads` (`int`): Contagem total de sucessos.
-- `error_count_downloads` (`int`): Contagem total de erros.
+Object returned by the `execute` and `execute_async` methods, containing:
 
-### Tratamento de Erros
+- `successful_downloads` (`list[str]`): List of completed logical identifiers in
+  `{DOC}_{YEAR}` format (e.g., `DFP_2023`), not file paths.
+- `failed_downloads` (`dict[str, str]`): Dictionary mapping `{DOC}_{YEAR}`
+  identifiers to error messages.
+- `elapsed_time` (`float`): Total execution time of the download run in seconds.
+- `success_count_downloads` (`int` property): Total count of successful
+  downloads.
+- `error_count_downloads` (`int` property): Total count of errors.
+- `has_errors()` (`bool` method): Returns `True` if any download failed
+  (`error_count_downloads > 0`).
 
-Exceções definidas em `globaldatafinance.brazil.cvm.fundamental_stocks_data.errors` (re-exportadas pelo `__init__.py` da fonte):
+### Error Handling
 
-- `MissingDownloadUrlError`: não foi possível gerar uma URL para o documento/ano solicitado.
-- `InvalidDocumentName`: tipo de documento não reconhecido.
-- `InvalidFirstYear` / `InvalidLastYear`: ano inválido ou fora do range suportado.
-- `SecurityError` (de `macro_exceptions`): tentativa de escrita em path sensível ou nome de arquivo derivado de URL que não é portátil — defesa em `VerifyPathsUseCasesCVM` e `download_paths.py`.
+Exceptions defined in
+`globaldatafinance.brazil.cvm.fundamental_stocks_data.errors` (re-exported by
+the source `__init__.py`):
 
-> Nota: A integridade da tipagem dos adaptadores é checada estaticamente via ferramentas como `mypy` e verificação de contratos de métodos (duck typing), promovendo a adoção direta e limpa do adapter concreto (`AsyncDownloadAdapterCVM`).
+- `MissingDownloadUrlError`: could not generate a URL for the requested
+  document/year.
+- `InvalidDocumentName`: unrecognized document type.
+- `InvalidFirstYear` / `InvalidLastYear`: invalid year or year outside supported
+  range.
+- `SecurityError` (from `macro_exceptions`): attempt to write to a sensitive
+  path or URL-derived filename that is not portable — defense in
+  `VerifyPathsUseCasesCVM` and `download_paths.py`.
+
+> Note: Adapter typing integrity is checked statically via tools such as `mypy`
+> and method contract verification (duck typing), promoting clean and direct
+> adoption of the concrete adapter (`AsyncDownloadAdapterCVM`).
 
 ## 🔧 Troubleshooting
 
-> [!CAUTION]
-> **Bloqueio de IP**
-> O site da CVM pode bloquear IPs que realizam muitas requisições em curto período. O adaptador de infraestrutura deve implementar "backoff" ou pausas entre requisições.
+> [!CAUTION] **IP Throttling / Blocking** The CVM website may block IPs that
+> issue high volumes of requests in short periods. The infrastructure adapter
+> implements backoff pauses between requests.
 
-> [!TIP]
-> **Estrutura de Pastas**
-> O sistema cria automaticamente subpastas para cada tipo de documento dentro de `destination_path`. Não é necessário criá-las manualmente.
+> [!TIP] **Directory Structure** The system automatically creates subfolders for
+> each document type inside `destination_path`. It is not necessary to create
+> them manually.
 
-## 🔎 Como funciona a extração dos arquivos da CVM
+## 🔎 How CVM File Extraction Works
 
-A extração é orquestrada por **`download_extraction.py`**, iniciada pelo
-**`ParquetExtractorAdapterCVM`** em `extract.py`, e concretizada por
-`transaction.py` quando `automatic_extractor=True`. O fluxo completo é:
+Extraction is orchestrated by **`download_extraction.py`**, initiated by
+**`ParquetExtractorAdapterCVM`** in `extract.py`, powered by the
+**`csv_pipeline/`** subpackage, and realized through `transaction.py` when
+`automatic_extractor=True`. The complete flow is:
 
-1. **Validação do ZIP e dos membros CSV** antes de qualquer escrita: limites,
-   integridade, nomes e colisões de basename são rejeitados.
-2. **Conversão em staging no mesmo filesystem**: cada CSV vira Parquet em um
-   diretório oculto; nenhum destino final muda nesta fase.
-3. **Validação dos Parquets staged**: todos precisam ter conteúdo e footer
-   válido antes do commit.
-4. **Backup e substituição determinística**: alvos existentes são preservados
-   e os Parquets staged são publicados em ordem estável.
-5. **Restauração recuperável em caso de falha**: os alvos já modificados são
-   restaurados em ordem reversa. Se a restauração também falhar, o diretório de
-   recovery é mantido e informado para intervenção manual.
-6. **Rastreamento e validação pós-extração** em `download_extraction.py`:
-   apenas os artefatos publicados entram no resultado do download.
+1. **Validation of ZIP and CSV members** before any write: resource limits,
+   integrity, names, and basename collisions are rejected.
+2. **Staging conversion on the same filesystem**: each CSV becomes Parquet in a
+   hidden directory; no final destination changes during this phase.
+3. **Validation of staged Parquets**: all must have valid content and footers
+   before commit.
+4. **Deterministic backup and replacement**: existing targets are preserved, and
+   staged Parquets are published in stable order.
+5. **Recoverable rollback upon failure**: already-modified targets are restored
+   in reverse order. If rollback also encounters issues, the recovery directory
+   is preserved and reported for manual recovery.
+6. **Post-extraction tracking and validation** in `download_extraction.py`: only
+   successfully published artifacts are recorded in the download result.
 
-### Por que essa abordagem?
+### Why this approach?
 
-- **Commit recuperável por lote**: protege os alvos existentes contra uma
-  falha parcial; não promete visibilidade instantaneamente atômica para todos
-  os leitores concorrentes.
-- **Escalabilidade**: o processamento em chunks (`chunk_size`) permite lidar com arquivos CSV de grande porte sem esgotar a memória.
-- **Resiliência**: back‑off e retries são implementados no adaptador de download; na extração, falhas são capturadas e revertidas de forma controlada.
+- **Batch recoverable commit**: protects existing targets against partial
+  failures; does not claim instant atomic visibility for all concurrent readers.
+- **Scalability**: chunked processing (`chunk_size`) allows processing large CSV
+  files without exhausting system memory.
+- **Resilience**: backoff and retries are implemented in the download adapter;
+  in extraction, failures are captured and rolled back in a controlled manner.
 
-> **Nota**: Caso deseje desabilitar a extração automática (por exemplo, para apenas baixar os ZIPs), basta configurar o cliente `FundamentalStocksDataCVM` com `automatic_extractor=False`.
+> **Note**: To disable automatic extraction (e.g., to only download ZIP files),
+> configure `automatic_extractor=False` on `downloader.execute(...)` or on the
+> public `FundamentalStocksDataCVM` facade.

@@ -117,6 +117,10 @@ memory_mb = monitor.get_process_memory_mb()
 print(f"Active process consuming: {memory_mb:.2f} MB")
 ```
 
+`get_process_memory_mb()` uses `0.0` as a sentinel when `psutil` cannot read
+telemetry; it is not a real zero-usage measurement. A known telemetry failure
+in `check_resources()` produces `ResourceState.CRITICAL`.
+
 ______________________________________________________________________
 
 ## Source-Specific Policy

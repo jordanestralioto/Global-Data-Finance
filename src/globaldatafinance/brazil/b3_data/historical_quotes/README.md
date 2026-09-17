@@ -1,74 +1,67 @@
-# Módulo de Cotações Históricas (B3)
+# Historical Quotes Module (B3)
 
 > [!NOTE]
-> Este módulo faz parte da suíte `Global-Data-Finance` e é especializado na extração de alta performance de dados históricos da B3.
+> This module is part of the `Global-Data-Finance` suite and specializes in high-performance historical market data extraction from B3.
 
-O módulo `historical_quotes` implementa uma solução robusta para processar arquivos da série histórica (COTAHIST) da B3. Ele abstrai a complexidade do layout posicional de arquivos legados, oferecendo uma interface moderna e tipada para extração de dados financeiros. Internamente combina módulos focados por responsabilidade com subpacotes especializados para orquestração do streaming e escrita em Parquet, sem reproduzir camadas genéricas `domain`/`application`/`infra`.
+The `historical_quotes` module provides a robust solution for processing historical series files (COTAHIST) from B3. It abstracts the complexity of the legacy positional file layout, offering a modern and typed interface for financial data extraction. Internally, it combines focused single-responsibility modules with specialized subpackages for streaming orchestration and Parquet writing, without reproducing generic `domain`/`application`/`infra` layers.
 
-## 🎯 Objetivos e Valor
+## 🎯 Goals and Value
 
-- **Abstração de Layout**: Remove a necessidade de conhecer o layout posicional (bytes/offsets) dos arquivos da B3.
-- **Performance**: Utiliza estratégias de leitura otimizada e escrita em formato colunar (Parquet).
-- **Integridade**: Validação estrita de parâmetros de entrada e tratamento de erros específico de domínio.
-- **Filtragem por Classe de Ativo**: Capacidade de filtrar a extração por classes de ativos (ações, ETF, opções, etc.).
+- **Layout Abstraction**: Eliminates the need to know the positional layout (bytes/offsets) of B3 files.
+- **Performance**: Employs optimized read strategies and columnar output writing (Parquet).
+- **Integrity**: Strict input parameter validation and domain-specific error handling with contextual record diagnostics.
+- **Asset Class Filtering**: Ability to filter extraction by asset classes (`ações`, `etf`, `opções`, etc.).
 
-## 🏗️ Arquitetura
+## 🏗️ Architecture
 
-Módulos focados e subpacotes especializados:
+Focused modules and specialized subpackages:
 
 ```text
 brazil/b3_data/historical_quotes/
 ├── models.py              # DocsToExtractorB3 (data object)
-├── filesystem.py          # FileSystemServiceB3 (validação de caminhos e arquivos COTAHIST)
-├── assets.py              # AvailableAssetsServiceB3
+├── filesystem.py          # FileSystemServiceB3 (path validation and COTAHIST files)
+├── assets.py              # AvailableAssetsServiceB3 (asset classes & TPMERC mapping)
 ├── processing.py          # ExtractionConfigServiceB3, ProcessingModeEnumB3
-├── years.py               # Lógica e validação de anos
-├── client.py              # ExtractHistoricalQuotesUseCaseB3 (stateful), CreateDocsToExtractUseCaseB3, GetAvailableAssetsUseCaseB3, etc.
-├── cotahist_parser.py     # Parsing posicional COTAHIST (preservado — complexidade legítima)
-├── parquet_writer/        # Subpacote de escrita Parquet (writer, schema, session, disk, constants)
-├── extraction_service/    # Subpacote de orquestração (service, zip_processor, resource_policy, retry, temp_parquet_merge, types)
-├── catalog.py              # Catálogo estrito e precedência dos inputs COTAHIST
-├── zip_reader.py          # Leitura streaming de ZIP ou TXT
+├── years.py               # Year validation and logic
+├── client.py              # ExtractHistoricalQuotesUseCaseB3, CreateDocsToExtractUseCaseB3, etc.
+├── cotahist_parser.py     # Positional COTAHIST parser (preserved — legitimate complexity)
+├── integrity.py           # B3RecordContext (bounded contextual diagnostics for records)
+├── member_resolver.py     # resolve_cotahist_member (ZIP member resolution and year matching)
+├── parquet_writer/        # Parquet writing subpackage (writer, schema, session, disk, constants)
+├── extraction_service/    # Orchestration subpackage (service, zip_processor, resource_policy, retry, temp_parquet_merge, types)
+├── catalog.py              # Strict catalog and precedence of COTAHIST inputs
+├── zip_reader.py          # Streaming reader for ZIP or TXT
 └── errors.py              # InvalidFirstYear, InvalidLastYear, InvalidAssetsName, EmptyAssetListError, InvalidProcessingMode, etc.
 ```
 
-`ExtractHistoricalQuotesUseCaseB3` permanece como classe (D3) porque mantém estado: `zip_reader + parser + writer + processing_mode` são reutilizados entre chamadas.
+`ExtractHistoricalQuotesUseCaseB3` remains a class because it maintains state: `zip_reader + parser + writer + processing_mode` are reused across calls. It provides both async `execute()` and synchronous `execute_sync()`.
 
-`catalog.py` pertence ao owner B3 e é usado por validações opt-in que precisam
-auditar um diretório caller-owned antes de processar dados reais. Ele aceita
-somente os nomes externos `COTAHIST_A{ANO}.ZIP` e `COTAHIST_A{ANO}.TXT`, valida
-metadados/CRC e o membro interno root, rejeita conflitos no mesmo formato e
-mantém precedência ZIP quando ZIP e TXT coexistem para o mesmo ano.
+`catalog.py` belongs to the B3 owner and is used by opt-in validations that need to audit a caller-owned directory before processing real data. It accepts only the external names `COTAHIST_A{YEAR}.ZIP` and `COTAHIST_A{YEAR}.TXT`, validates metadata/CRC and the internal root member, rejects conflicts in the same format, and maintains ZIP precedence when both ZIP and TXT coexist for the same year.
 
-### Componentes Chave
+### Key Components
 
-| Módulo                | Componente                         | Tipo                  | Responsabilidade                                                                                                                                                                     |
-| --------------------- | ---------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `client.py`           | `ExtractHistoricalQuotesUseCaseB3` | Orquestrador (classe) | Conecta parser, leitor e escritor. Mantém estado entre chamadas.                                                                                                                     |
-| `client.py`           | `CreateDocsToExtractUseCaseB3`     | Use case              | Constrói `DocsToExtractorB3` validado a partir dos parâmetros públicos do facade.                                                                                                    |
-| `models.py`           | `DocsToExtractorB3`                | Data object           | Representa a configuração de extração já preparada; não executa validação ao ser construído diretamente.                                                                             |
-| `filesystem.py`       | `FileSystemServiceB3`              | Service               | Valida paths (`SecurityError`/`PathPermissionError` antes de I/O) e resolve regex de arquivos oficiais.                                                                              |
-| `assets.py`           | `AvailableAssetsServiceB3`         | Service               | Fornece aliases de classes de ativos e valida os nomes dessas classes (não códigos de negociação individuais como PETR4).                                                            |
-| `processing.py`       | `ExtractionConfigServiceB3`        | Service               | Valida modo de processamento (`fast`, `slow`) e sanitiza/formata `output_filename`.                                                                                                  |
-| `years.py`            | `YearValidationServiceB3`          | Service               | Implementa validação e lógica de limite temporal para o `range_years`.                                                                                                               |
-| `cotahist_parser.py`  | `CotahistParserB3`                 | Parser concreto       | Traduz linhas de texto posicional em dicionários Python estruturados.                                                                                                                |
-| `parquet_writer/`     | `ParquetWriterB3`                  | Writer concreto       | Escrita Parquet com schema Arrow explícito, compressão zstd, statistics e sessões persistentes limitadas. Subpacote (`writer`, `schema`, `session`, `disk`, `constants`).            |
-| `extraction_service/` | `ExtractionServiceB3`              | Service concreto      | Scheduler limitado, workers síncronos, retry de I/O transitório e merge ordenado. Subpacote (`service`, `zip_processor`, `resource_policy`, `retry`, `temp_parquet_merge`, `types`). |
+| Module                | Component                          | Type                 | Responsibility                                                                                                                                                                      |
+| --------------------- | ---------------------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `client.py`           | `ExtractHistoricalQuotesUseCaseB3` | Orchestrator (class) | Connects parser, reader, and writer. Maintains state across calls. Offers `execute()` and `execute_sync()`. Configurable with safety limits and allowed UNC roots.                  |
+| `client.py`           | `CreateDocsToExtractUseCaseB3`     | Use case             | Validates input parameters and constructs the prepared `DocsToExtractorB3` configuration, resolving inputs to absolute paths.                                                       |
+| `models.py`           | `DocsToExtractorB3`                | Data object          | Represents the prepared extraction configuration; it is a data object and does not validate direct construction.                                                                    |
+| `filesystem.py`       | `FileSystemServiceB3`              | Service              | Validates paths (`SecurityError`/`PathPermissionError` before I/O) and resolves official file regex patterns.                                                                       |
+| `assets.py`           | `AvailableAssetsServiceB3`         | Service              | Provides asset class aliases and validates asset class names (not individual trading codes like PETR4).                                                                             |
+| `processing.py`       | `ExtractionConfigServiceB3`        | Service              | Validates processing mode (`fast`, `slow`) and sanitizes/formats `output_filename`.                                                                                                 |
+| `years.py`            | `YearValidationServiceB3`          | Service              | Implements validation and time boundary logic for `range_years`.                                                                                                                    |
+| `cotahist_parser.py`  | `CotahistParserB3`                 | Concrete parser      | Translates positional text lines into structured Python dictionaries.                                                                                                               |
+| `integrity.py`        | `B3RecordContext`                  | Diagnostic model     | Tracks coordinates (physical line, logical record, field) for safe, non-truncating contextual diagnostics upon parsing failures.                                                    |
+| `member_resolver.py`  | `resolve_cotahist_member`          | Resolver function    | Resolves supported root member from ZIP metadata (`COTAHIST_A{YEAR}.TXT`, `COTAHIST.A{YEAR}`, `COTAHIST_A{YEAR}`) and ensures year compatibility.                                   |
+| `parquet_writer/`     | `ParquetWriterB3`                  | Concrete writer      | Parquet writing with explicit Arrow schema, zstd compression, statistics, and bounded persistent sessions. Subpackage (`writer`, `schema`, `session`, `disk`, `constants`).         |
+| `extraction_service/` | `ExtractionServiceB3`              | Concrete service     | Bounded scheduler, synchronous workers, transient I/O retry, and ordered merge. Subpackage (`service`, `zip_processor`, `resource_policy`, `retry`, `temp_parquet_merge`, `types`). |
 
-## 🚀 Guia de Uso
+## 🚀 Usage Guide
 
-### Pré-requisitos
+### Prerequisites
 
-Certifique-se de ter os arquivos `COTAHIST_A{ANO}.ZIP` baixados, ou os
-respectivos arquivos `COTAHIST_A{ANO}.TXT` descompactados, em um diretório
-acessível. Se os dois formatos do mesmo ano estiverem presentes, o ZIP terá
-precedência determinística. Em ZIPs, o membro interno pode ser o moderno
-`COTAHIST_A{ANO}.TXT`, o histórico `COTAHIST.A{ANO}` ou o histórico sem
-extensão `COTAHIST_A{ANO}`; deve haver exatamente um membro compatível com o
-ano externo. Registros de cotação `01` têm largura exata de 245 caracteres, e
-ZIPs estruturalmente inseguros são rejeitados antes do streaming.
+Ensure you have downloaded `COTAHIST_A{YEAR}.ZIP` files, or their uncompressed `COTAHIST_A{YEAR}.TXT` counterparts, in an accessible directory. If both formats for the same year coexist, ZIP takes deterministic precedence. In ZIPs, the internal member can be the modern `COTAHIST_A{YEAR}.TXT`, the historical `COTAHIST.A{YEAR}`, or the historical extensionless `COTAHIST_A{YEAR}`; there must be exactly one member compatible with the external year. Quotation records `01` have an exact width of 245 characters, and structurally unsafe ZIPs are rejected before streaming.
 
-### Exemplo Completo
+### Complete Example
 
 ```python
 import asyncio
@@ -79,69 +72,86 @@ from globaldatafinance.brazil.b3_data.historical_quotes import (
 
 
 async def run_extraction():
-    # 1. Validar a entrada e preparar a configuração
-    # O use case valida os parâmetros e resolve os inputs para caminhos absolutos.
+    # 1. Validate inputs and prepare configuration
+    # The use case validates parameters and resolves inputs to absolute paths.
     config = CreateDocsToExtractUseCaseB3(
-        path_of_docs='/dados/brutos/b3',  # Onde estão os inputs ZIP/TXT
-        destination_path='/dados/processados',
+        path_of_docs='/raw/data/b3',  # Where ZIP/TXT inputs are located
+        destination_path='/processed/data',
         assets_list=['ações', 'etf'],
         initial_year=2023,
         last_year=2023,
     ).execute()
 
-    # 2. Execução
+    # 2. Execution (async or execute_sync)
     use_case = ExtractHistoricalQuotesUseCaseB3()
 
     try:
         result = await use_case.execute(
             docs_to_extract=config,
-            processing_mode='fast',  # 'fast' (memória) ou 'slow' (iterativo)
+            processing_mode='fast',  # 'fast' (in-memory) or 'slow' (iterative)
             output_filename='b3_quotes_2023.parquet',
         )
 
-        print(f'Sucesso! {result["total_records"]} registros processados.')
+        print(f'Success! {result["total_records"]} records processed.')
+        print(f'Output Parquet file: {result["output_file"]}')
 
     except Exception as e:
-        print(f'Erro durante a extração: {e}')
+        print(f'Error during extraction: {e}')
 
 
 if __name__ == '__main__':
     asyncio.run(run_extraction())
 ```
 
-## ⚙️ Referência da API
+## ⚙️ API Reference
 
-### `DocsToExtractorB3` (Configuração preparada)
+### `DocsToExtractorB3` (Prepared configuration)
 
-`DocsToExtractorB3` é um objeto de dados e não valida a construção direta. Use
-`CreateDocsToExtractUseCaseB3` para validar os parâmetros públicos e preencher
-`documents_to_download` com os caminhos absolutos encontrados no diretório.
+`DocsToExtractorB3` is a data object and does not validate direct construction. Use `CreateDocsToExtractUseCaseB3` to validate public parameters and construct the configuration, populating `documents_to_download` with resolved absolute paths found in the directory.
 
-| Campo                   | Tipo       | Descrição                                                                                                                                                                                       |
-| ----------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `path_of_docs`          | `str`      | Caminho absoluto para o diretório contendo arquivos COTAHIST ZIP ou TXT.                                                                                                                        |
-| `destination_path`      | `str`      | Caminho absoluto onde o arquivo Parquet será salvo.                                                                                                                                             |
-| `range_years`           | `range`    | Intervalo de anos para validação (ex: `range(2020, 2024)`).                                                                                                                                     |
-| `set_assets`            | `set[str]` | Conjunto de tipos de ativos para filtrar (ex: `{"ações", "etf", "opções"}`). Valores válidos: `ações`, `etf`, `opções`, `termo`, `exercicio_opcoes`, `forward`, `leilao`.                       |
-| `documents_to_download` | `set[str]` | Caminhos absolutos dos arquivos COTAHIST ZIP/TXT selecionados pelo `FileSystemServiceB3`; o `CreateDocsToExtractUseCaseB3` preenche este campo. Construção direta exige caminhos já resolvidos. |
+| Field                   | Type       | Description                                                                                                                                                                                                        |
+| ----------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `path_of_docs`          | `str`      | Absolute path to the directory containing COTAHIST ZIP or TXT files.                                                                                                                                               |
+| `destination_path`      | `str`      | Absolute path where the Parquet file will be saved.                                                                                                                                                                |
+| `range_years`           | `range`    | Year interval for validation (e.g., `range(2020, 2024)`).                                                                                                                                                          |
+| `set_assets`            | `set[str]` | Set of asset class types to filter (e.g., `{"ações", "etf", "opções"}`). Valid values: `ações`, `etf`, `opções`, `termo`, `exercicio_opcoes`, `forward`, `leilao`.                                                 |
+| `documents_to_download` | `set[str]` | Absolute paths of COTAHIST ZIP/TXT files selected by `FileSystemServiceB3`; `CreateDocsToExtractUseCaseB3` populates this field with resolved absolute paths. Direct construction requires already resolved paths. |
 
-### Tratamento de Erros
+### `ExtractHistoricalQuotesUseCaseB3` (Execution & Return Value)
 
-O módulo expõe exceções específicas em `globaldatafinance.brazil.b3_data.historical_quotes.errors` (re-exportadas pelo `__init__.py` da fonte):
+Methods:
 
-- `InvalidFirstYear` / `InvalidLastYear`: erros de validação de intervalo temporal.
-- `InvalidAssetsName`: alias de classe de ativo não é reconhecido.
-- `EmptyAssetListError`: tentativa de processamento com lista de ativos inválida.
-- `InvalidProcessingMode`: `processing_mode` fora de `{'fast', 'slow'}`.
-- `InvalidOutputFilename`: tentativa de uso de nome de arquivo de saída inválido (vazio/somente espaços).
-- `SecurityError` / `PathPermissionError` (de `macro_exceptions`): tentativa de escrita em path sensível (`/etc`, `/sys`, etc.) ou sem permissões suficientes — defesa em `FileSystemServiceB3` (`filesystem.py`).
+- `execute(docs_to_extract, processing_mode='fast', output_filename='cotahist_extracted.parquet')`: Asynchronous entrypoint returning the execution result dictionary.
+- `execute_sync(docs_to_extract, processing_mode='fast', output_filename='cotahist_extracted.parquet')`: Synchronous wrapper around `execute()`.
+
+Result dictionary schema:
+
+| Key             | Type             | Description                                                      |
+| --------------- | ---------------- | ---------------------------------------------------------------- |
+| `total_files`   | `int`            | Total number of COTAHIST files inspected for extraction.         |
+| `success_count` | `int`            | Count of files processed successfully.                           |
+| `error_count`   | `int`            | Count of files that failed processing.                           |
+| `total_records` | `int`            | Total number of quotation records written to the Parquet file.   |
+| `errors`        | `dict[str, str]` | Map of failed file paths to their respective error descriptions. |
+| `output_file`   | `str`            | Resolved absolute path to the generated output Parquet file.     |
+
+### Error Handling
+
+The module exposes specific exceptions in `globaldatafinance.brazil.b3_data.historical_quotes.errors` (re-exported by the source `__init__.py`):
+
+- `InvalidFirstYear` / `InvalidLastYear`: temporal range validation errors.
+- `InvalidAssetsName`: asset class alias is not recognized.
+- `EmptyAssetListError`: attempted processing with an invalid or empty asset list.
+- `InvalidProcessingMode`: `processing_mode` outside `{'fast', 'slow'}`.
+- `InvalidOutputFilename`: attempted use of an invalid output filename (empty/whitespace-only).
+- `SecurityError` / `PathPermissionError` (from `macro_exceptions`): attempted writes to sensitive paths (`/etc`, `/sys`, etc.) or insufficient permissions — defense in `FileSystemServiceB3` (`filesystem.py`).
 
 ## 🔧 Troubleshooting
 
 > [!WARNING]
-> **Erro: Arquivo não encontrado**
-> Verifique se cada caminho absoluto em `documents_to_download` aponta para um arquivo COTAHIST existente; para obter essa configuração com segurança, use `CreateDocsToExtractUseCaseB3`.
+> **Error: File not found**
+> Verify that each absolute path in `documents_to_download` points to an existing COTAHIST file; to obtain this configuration safely, use `CreateDocsToExtractUseCaseB3`.
 
 > [!TIP]
 > **Performance**
-> Para grandes volumes de dados (todos os ativos de vários anos), prefira processar ano a ano ou utilizar máquinas com mais memória RAM se usar o modo `fast`.
+> For large data volumes (all assets over multiple years), prefer processing year by year or use machines with more RAM if utilizing `fast` mode.

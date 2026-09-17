@@ -30,8 +30,10 @@ NULL_TOKENS = frozenset(
 )
 CP1252_UNDEFINED = frozenset({0x81, 0x8D, 0x8F, 0x90, 0x9D})
 CP1252_DEFINED_RANGE = frozenset(range(0x80, 0xA0)) - CP1252_UNDEFINED
-INTEGER = re.compile(r'^[+-]?\d+$')
-FLOAT = re.compile(r'^[+-]?(?:\d+\.\d*|\d*\.\d+|\d+)(?:[eE][+-]?\d+)?$')
+INTEGER = re.compile(r'^-?\d+$')
+FLOAT = re.compile(
+    r'^[+-]?(?:(?:\d+\.\d*|\d*\.\d+)(?:[eE][+-]?\d+)?|\d+[eE][+-]?\d+)$'
+)
 ROW_GROUP_SIZE = 50_000
 TRUE_VALUES = tuple(
     ''.join(characters)

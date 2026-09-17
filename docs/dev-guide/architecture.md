@@ -228,6 +228,10 @@ simples sem complexidade adicional (ver "Testes" mais abaixo). A verificação
 por checksum MD5 é uma capacidade planejada e não faz parte do contrato atual
 de download.
 
+Na validação de download da CVM, falhas conhecidas de I/O ou formato tornam o
+arquivo inválido; falhas ao enumerar a coleção também falham fechadas. Erros
+internos inesperados são propagados para diagnóstico.
+
 ______________________________________________________________________
 
 ## Padrões de design

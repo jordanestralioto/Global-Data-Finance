@@ -7,7 +7,34 @@ fixo para qualquer hardware.
 
 ## 1. Linha de Base em Escala Real — B3
 
-### 1.1. Linha de Base v2 — 25 Anos Completos (2026-09-02, Revisão `703d9ab`)
+### 1.1. Linha de Base v3 — 27 Anos Completos (2026-09-16, Revisão `f1a2f47`)
+
+**Ambiente:** Python 3.13.7 · Linux x86_64 (kernel 6.8) · 8 CPUs · 7,55 GB de
+memória total. Sem chamadas de rede; apenas extração local dos ZIPs oficiais.
+
+- **Dataset:** 27 arquivos ZIP oficiais (2000–2026), 666,00 MB comprimido.
+- **Escopo de ativos:** todas as categorias atualmente suportadas (`ações`, `etf`, `opções`, `termo`, `exercicio_opcoes`, `forward`, `leilao`).
+- **Erros:** 0 (todos os 27 arquivos processados com sucesso).
+- **Saída Parquet consolidada:** 481,86 MB por modo (505.265.249 bytes).
+
+| Modo   | Linhas gravadas | Tempo decorrido (API) | Tempo decorrido (ponta a ponta) |    Pico RSS |      Throughput |
+| ------ | --------------: | --------------------: | ------------------------------: | ----------: | --------------: |
+| `fast` |      22.303.577 |              649,99 s |                        650,50 s |   429,88 MB | 34.313,8 reg/s  |
+| `slow` |      22.303.577 |              749,45 s |                        750,10 s |   331,11 MB | 29.759,9 reg/s  |
+
+> **Observação:** O modo `slow` utilizou apenas 331,11 MB (~0,32 GiB) de pico
+> RSS (uma redução de ~23% de memória em relação ao modo `fast`), mantendo 100%
+> de paridade de esquema e dados em todos os 22.303.577 registros dos 27 anos.
+> A diferença de memória de apenas ~98 MB entre `fast` e `slow` deve-se ao
+> limite delimitado por worker (`python_record_limit` de 25.000 vs 10.000 linhas)
+> e descarte em chunks (`ROW_GROUP_LIMIT = 100.000`), mantendo complexidade de
+> memória $O(1)$ em relação ao período temporal. O ganho de tempo moderado do
+> `fast` (~15%) reflete a contenção do GIL do CPython em `ThreadPoolExecutor` no
+> loop intensivo em CPU de parsing posicional de strings, além da etapa final
+> sequencial de merge em disco. Em relação à linha de base histórica v2 (~4,4 GB),
+> a arquitetura com streaming colunar PyArrow reduziu o pico de memória em mais de 90%.
+
+### 1.2. Linha de Base Histórica v2 — 25 Anos Completos (2026-09-02, Revisão `703d9ab`)
 
 **Ambiente:** Python 3.13.7 · Linux x86_64 (kernel 6.8) · 8 CPUs · 7,55 GB de
 memória total. Sem chamadas de rede; apenas extração local dos ZIPs oficiais.
@@ -26,7 +53,7 @@ memória total. Sem chamadas de rede; apenas extração local dos ZIPs oficiais.
 > RSS (uma redução de ~65% de memória em relação ao modo `fast`), mantendo 100%
 > de paridade de esquema e dados em todos os 16.460.458 registros dos 25 anos.
 
-### 1.2. Linha de Base Histórica v1 — 17 Anos (2026-08-06, Revisão `7ee1843`)
+### 1.3. Linha de Base Histórica v1 — 17 Anos (2026-08-06, Revisão `7ee1843`)
 
 **Ambiente:** Python 3.13.7 · Linux x86_64 (kernel 6.8) · 8 CPUs · 7,55 GB de
 memória total. Sem chamadas de rede; apenas extração local dos ZIPs oficiais.

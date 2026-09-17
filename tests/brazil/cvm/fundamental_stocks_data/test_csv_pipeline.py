@@ -220,3 +220,38 @@ def test_arbitrary_width_integer_is_preserved_as_text_without_python_int_limit(
     parquet = pq.ParquetFile(output)
     assert parquet.schema_arrow == pa.schema([pa.field('value', pa.string())])
     assert pq.read_table(output).to_pylist() == [{'value': oversized}]
+
+
+def test_leading_plus_integer_like_value_is_preserved_as_string(
+    tmp_path: Path,
+) -> None:
+    """Leading plus integer-like text stays lossless string for Arrow."""
+    output, _ = _convert(tmp_path, b'ddd\n11\n+31\n21\n\n')
+
+    parquet = pq.ParquetFile(output)
+    assert parquet.schema_arrow == pa.schema([pa.field('ddd', pa.string())])
+    assert pq.read_table(output).to_pylist() == [
+        {'ddd': '11'},
+        {'ddd': '+31'},
+        {'ddd': '21'},
+        {'ddd': None},
+    ]
+
+
+def test_float_inference_supports_scientific_notation_and_signed_decimals(
+    tmp_path: Path,
+) -> None:
+    """Signed decimals and scientific notation are inferred as float64."""
+    output, _ = _convert(
+        tmp_path,
+        b'value\n+1.5\n-2.5\n1e5\n-3.2e-2\n',
+    )
+
+    parquet = pq.ParquetFile(output)
+    assert parquet.schema_arrow == pa.schema([pa.field('value', pa.float64())])
+    assert pq.read_table(output).to_pylist() == [
+        {'value': 1.5},
+        {'value': -2.5},
+        {'value': 100000.0},
+        {'value': -0.032},
+    ]

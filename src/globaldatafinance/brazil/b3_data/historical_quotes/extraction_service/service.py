@@ -12,7 +12,10 @@ from typing import TYPE_CHECKING, Any
 from .....core import get_logger
 from .....core.config import PathSafetySettings
 from .....macro_exceptions import ExtractionError
-from .....macro_infra.transactional_publication import TransactionalPublisher
+from .....macro_infra.transactional_publication import (
+    TransactionalPublication,
+    TransactionalPublisher,
+)
 from ..cotahist_parser import CotahistParserB3
 from ..parquet_writer.schema import build_b3_schema, schema_fingerprint
 from ..processing import ProcessingModeEnumB3
@@ -77,6 +80,20 @@ class ExtractionServiceB3:
             character for character in path.stem if character.isdigit()
         )
         return path.name.casefold(), digits
+
+    @staticmethod
+    def _abort_after_cancellation(
+        publication: TransactionalPublication | None,
+    ) -> None:
+        """Abort unpublished state without replacing cancellation."""
+        if publication is None:
+            return
+        try:
+            publication.abort()
+        except Exception:
+            logger.exception(
+                'B3 transaction cleanup failed during cancellation'
+            )
 
     async def extract_from_zip_files(
         self,
@@ -159,6 +176,9 @@ class ExtractionServiceB3:
             return self._summary(
                 len(sources), len(sources), 0, {}, output_path, merged_rows
             )
+        except asyncio.CancelledError:
+            self._abort_after_cancellation(publication)
+            raise
         except Exception as error:
             logger.exception('B3 extraction failed before publication')
             cleanup_detail = ''

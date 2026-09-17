@@ -87,6 +87,23 @@ def test_validate_parquet_files_corrupted_file(tmp_path: Path) -> None:
     )
 
 
+def test_validate_parquet_files_propagates_unexpected_validation_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Internal validator defects are not reported as corrupt Parquet files."""
+    file = tmp_path / 'unexpected.parquet'
+    file.write_bytes(b'not empty')
+
+    def fail_parquet_open(*_args: object, **_kwargs: object) -> object:
+        raise RuntimeError('unexpected validator failure')
+
+    monkeypatch.setattr(pq, 'ParquetFile', fail_parquet_open)
+
+    with pytest.raises(RuntimeError, match='unexpected validator failure'):
+        download_validation.validate_parquet_files([file], 'dfp', '2023')
+
+
 def test_validate_parquet_files_rejects_validation_engine_read_failure(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -201,6 +218,25 @@ def test_validate_downloaded_file_nonexistent() -> None:
         )
         is False
     )
+
+
+def test_validate_downloaded_file_propagates_unexpected_validation_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Unexpected validation defects must remain visible to the caller."""
+    archive = tmp_path / 'unexpected.zip'
+    archive.write_bytes(b'not empty')
+
+    def fail_zip_validation(*_args: object, **_kwargs: object) -> bool:
+        raise RuntimeError('unexpected validator failure')
+
+    monkeypatch.setattr(
+        download_validation, '_has_valid_zip_contents', fail_zip_validation
+    )
+
+    with pytest.raises(RuntimeError, match='unexpected validator failure'):
+        download_validation.validate_downloaded_file(str(archive))
 
 
 def test_validate_downloaded_file_size_check_fail(tmp_path: Path) -> None:

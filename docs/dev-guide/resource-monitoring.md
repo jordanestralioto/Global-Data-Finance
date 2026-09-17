@@ -117,6 +117,10 @@ memory_mb = monitor.get_process_memory_mb()
 print(f"Processo usando {memory_mb:.2f} MB")
 ```
 
+`get_process_memory_mb()` usa `0.0` como sentinela quando o `psutil` não pode
+ler a telemetria; não é uma medição real de consumo zero. Uma falha conhecida
+de telemetria em `check_resources()` produz `ResourceState.CRITICAL`.
+
 ______________________________________________________________________
 
 ## Política por Fonte

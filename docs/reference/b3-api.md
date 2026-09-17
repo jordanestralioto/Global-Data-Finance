@@ -85,6 +85,10 @@ obrigatória.
 Se arquivos válidos não tiverem registros após o filtro de ativos, a extração
 continua bem-sucedida e publica Parquet B3 vazio com schema explícito.
 
+Em um cancelamento assíncrono antes do commit, o serviço aborta a publicação,
+limpa o estado temporário e relança `asyncio.CancelledError`; um artefato final
+anterior permanece intacto.
+
 **Exceções**:
 
 - `EmptyAssetListError`: Lista de ativos vazia ou não fornecida.

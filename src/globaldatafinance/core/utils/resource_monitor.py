@@ -15,6 +15,8 @@ from ..logging_config import get_logger
 
 logger = get_logger(__name__)
 
+_RESOURCE_TELEMETRY_ERRORS = (OSError, psutil.Error)
+
 
 class ResourceState(Enum):
     """Represents the current state of system resources."""
@@ -143,8 +145,8 @@ class ResourceMonitor:
                 return ResourceState.WARNING
             return ResourceState.HEALTHY
 
-        except Exception as e:
-            logger.error(f'Error checking resources: {e}', exc_info=True)
+        except _RESOURCE_TELEMETRY_ERRORS as error:
+            logger.error('Error checking resources: %s', error, exc_info=True)
             return ResourceState.CRITICAL
 
     def _check_memory(self) -> ResourceState:
@@ -301,12 +303,15 @@ class ResourceMonitor:
         """Get memory used by current process in MB.
 
         Returns:
-            Memory used by the current process in MB
+            Memory used by the current process in MB, or ``0.0`` when the
+            process telemetry is unavailable.
         """
         try:
             return float(psutil.Process().memory_info().rss / (1024**2))
-        except Exception as e:
-            logger.error(f'Error getting process memory: {e}', exc_info=True)
+        except _RESOURCE_TELEMETRY_ERRORS as error:
+            logger.error(
+                'Error getting process memory: %s', error, exc_info=True
+            )
             return 0.0
 
     def wait_for_resources(

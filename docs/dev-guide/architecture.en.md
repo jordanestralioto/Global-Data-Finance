@@ -229,6 +229,10 @@ duck-typed stubs without unnecessary mock framework overhead (see "Testing
 Patterns" below). MD5 checksum verification is a planned capability and is not
 part of the current download contract.
 
+CVM download validation marks known I/O and format failures as invalid, while
+collection-enumeration failures also fail closed. Unexpected internal errors
+propagate for diagnosis.
+
 ______________________________________________________________________
 
 ## Foundational Design Patterns

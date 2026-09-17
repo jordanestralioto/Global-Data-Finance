@@ -62,7 +62,7 @@ class ColumnInference:
     def _observe_integer(self, value: str) -> None:
         """Classify arbitrary-width integer text without numeric parsing."""
         negative = value.startswith('-')
-        magnitude = value.lstrip('+-').lstrip('0') or '0'
+        magnitude = value.lstrip('-').lstrip('0') or '0'
         if negative:
             if _greater_than(magnitude, _MIN_INT64_MAGNITUDE_TEXT):
                 self.has_signed_overflow = True
