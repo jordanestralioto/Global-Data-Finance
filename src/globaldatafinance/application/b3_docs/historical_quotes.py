@@ -13,6 +13,7 @@ usage. Quick start::
 """
 
 import asyncio
+import os
 import time
 from typing import Any
 
@@ -69,33 +70,39 @@ class HistoricalQuotesB3:
         Args:
             settings: Immutable runtime settings snapshot. When omitted,
                 a fresh :class:`~globaldatafinance.core.config.Settings`
-                instance
-                is constructed from current environment variables.
+                instance is constructed from current environment variables.
         """
-        if settings is None:
-            settings = Settings()
-        self._settings = settings
-        archive_limits = ArchiveSafetyLimits.from_settings(
-            self._settings.archive
-        )
-        allowed_unc_roots = self._settings.path_safety.allowed_unc_roots
+        backend = os.environ.get('GDF_B3_EXECUTOR_BACKEND', 'thread')
+        if backend not in ('thread', 'process'):
+            raise ValueError(
+                f'Invalid executor_backend: {backend!r}. '
+                "Must be 'thread' or 'process'."
+            )
+        self._settings = settings if settings is not None else Settings()
+        limits = ArchiveSafetyLimits.from_settings(self._settings.archive)
+        self._allowed_unc_roots = self._settings.path_safety.allowed_unc_roots
 
         self._extract_use_case = ExtractHistoricalQuotesUseCaseB3(
-            limits=archive_limits,
-            allowed_unc_roots=allowed_unc_roots,
+            limits=limits,
+            allowed_unc_roots=self._allowed_unc_roots,
+            executor_backend=backend,
         )
         self._available_assets_use_case = GetAvailableAssetsUseCaseB3()
         self._available_years_use_case = GetAvailableYearsUseCaseB3()
         self._validate_config_use_case = ValidateExtractionConfigUseCaseB3()
         self._result_formatter = ExtractionResultFormatter(use_colors=True)
-        self._allowed_unc_roots = allowed_unc_roots
 
-        logger.info('HistoricalQuotesB3 client initialized')
+        logger.info('HistoricalQuotesB3 initialized (backend=%s)', backend)
 
     @property
     def settings(self) -> Settings:
         """Return the immutable configuration snapshot used by this client."""
         return self._settings
+
+    @property
+    def _last_phase_timings(self) -> dict[str, Any]:
+        """Return private benchmark telemetry from the last extraction run."""
+        return self._extract_use_case.last_phase_timings
 
     def extract(
         self,
@@ -294,9 +301,7 @@ class HistoricalQuotesB3:
         result['processing_mode'] = processing_mode
         result['elapsed_time'] = elapsed_time
 
-        enriched: ExtractionResultB3 = (
-            HistoricalQuotesResultFormatter.enrich_result(result)
-        )
+        enriched = HistoricalQuotesResultFormatter.enrich_result(result)
 
         logger.info(
             f'Extraction completed: {result["success_count"]} successful, '
@@ -332,8 +337,7 @@ class HistoricalQuotesB3:
             True
         """
         logger.debug('Retrieving available asset classes')
-        result: list[str] = self._available_assets_use_case.execute()
-        return result
+        return self._available_assets_use_case.execute()
 
     def get_available_years(self) -> dict[str, int]:
         """Get information about available years for B3 historical data.
@@ -363,35 +367,17 @@ class HistoricalQuotesB3:
         return 'HistoricalQuotesB3()'
 
     def _resolve_initial_year(self, initial_year: int | None) -> int:
-        """Resolve initial_year to a valid value, using minimum year if None.
-
-        Args:
-            initial_year: User-provided initial year or None
-
-        Returns:
-            Valid initial year value
-        """
+        """Resolve initial_year, falling back to minimal year if omitted."""
         if initial_year is None:
-            resolved: int = self._available_years_use_case.get_minimal_year()
-            logger.debug(
-                f'initial_year not provided, using minimal year: {resolved}'
-            )
+            resolved = self._available_years_use_case.get_minimal_year()
+            logger.debug('initial_year omitted, using min: %s', resolved)
             return resolved
         return initial_year
 
     def _resolve_last_year(self, last_year: int | None) -> int:
-        """Resolve last_year to a valid value, using current year if None.
-
-        Args:
-            last_year: User-provided last year or None
-
-        Returns:
-            Valid last year value
-        """
+        """Resolve last_year, falling back to current year if omitted."""
         if last_year is None:
-            resolved: int = self._available_years_use_case.get_current_year()
-            logger.debug(
-                f'last_year not provided, using current year: {resolved}'
-            )
+            resolved = self._available_years_use_case.get_current_year()
+            logger.debug('last_year omitted, using current: %s', resolved)
             return resolved
         return last_year

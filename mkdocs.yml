@@ -104,7 +104,9 @@ plugins:
             Documentos CVM: CVM Documents
             Cotações Históricas B3: B3 Historical Quotes
             Exemplos Práticos: Practical Examples
+            Boas práticas B3: B3 Operational Practices
             Migração major: Major Migration
+            Migração de infraestrutura: Infrastructure Clean Cut Migration
             Arquitetura: Architecture
             Referência da API: API Reference
             Como Contribuir: Contributing
@@ -119,6 +121,9 @@ plugins:
             Limites ZIP e Destinos UNC: ZIP Limits and UNC Destinations
             Commit CVM Tolerante a Falhas: Failure-Atomic CVM Batch Commit
             Cutover PyArrow e Integridade: PyArrow and Integrity Cutover
+            ? >-
+              Corte limpo da infraestrutura compartilhada
+            : Shared Infrastructure Clean Cut
             API CVM: CVM API
             API B3: B3 API
             Exceções: Exceptions
@@ -163,9 +168,11 @@ nav:
       - Início Rápido: user-guide/quickstart.md
       - Documentos CVM: user-guide/cvm-docs.md
       - Cotações Históricas B3: user-guide/b3-docs.md
+      - Boas práticas B3: user-guide/b3-operations.md
       - Exemplos Práticos: user-guide/examples.md
       - FAQ: user-guide/faq.md
       - Migração major: user-guide/migration-pyarrow-integrity.md
+      - Migração de infraestrutura: user-guide/migration-infrastructure-clean-cut.md
   - Guia do Desenvolvedor:
       - Arquitetura: dev-guide/architecture.md
       - Referência da API: dev-guide/api-reference.md
@@ -178,6 +185,7 @@ nav:
           - Limites ZIP e Destinos UNC: decisions/archive-safety-and-unc.md
           - Commit CVM Tolerante a Falhas: decisions/cvm-failure-atomic-batch-commit.md
           - Cutover PyArrow e Integridade: decisions/pyarrow-ingestion-integrity-cutover.md
+          - Corte limpo da infraestrutura compartilhada: decisions/shared-infrastructure-clean-cut.md
       - Uso Avançado: dev-guide/advanced-usage.md
       - Sistema de Logging: dev-guide/logging-system.md
       - Monitoramento de Recursos: dev-guide/resource-monitoring.md

@@ -15,6 +15,9 @@ from globaldatafinance.brazil.b3_data.historical_quotes.parquet_writer import (
     session as b3_session,
 )
 from globaldatafinance.macro_exceptions import ParquetWriteError
+from globaldatafinance.macro_infra.temporary_files import (
+    reserve_temporary_path,
+)
 
 pytestmark = pytest.mark.integration
 
@@ -100,8 +103,8 @@ def test_public_writer_allocates_distinct_same_directory_temporary_paths(
     """Concurrent public writes cannot share a temporary artifact name."""
     output = tmp_path / 'quotes.parquet'
 
-    first = parquet_writer.ParquetWriterB3._create_temporary_path(output)
-    second = parquet_writer.ParquetWriterB3._create_temporary_path(output)
+    first = reserve_temporary_path(output, suffix='.parquet.tmp')
+    second = reserve_temporary_path(output, suffix='.parquet.tmp')
     try:
         assert first != second
         assert first.parent == second.parent == tmp_path

@@ -1,7 +1,11 @@
 """Domain exceptions raised while validating B3 historical quote inputs."""
 
 
-class InvalidFirstYear(Exception):
+class B3Error(Exception):
+    """Base class for all B3 domain exceptions."""
+
+
+class InvalidFirstYear(B3Error):
     """Raised when the first requested year is outside the supported range."""
 
     def __init__(self, minimal_first_year: int, current_year: int):
@@ -13,7 +17,7 @@ class InvalidFirstYear(Exception):
         )
 
 
-class InvalidLastYear(Exception):
+class InvalidLastYear(B3Error):
     """Raised when the last requested year is outside the supported range."""
 
     def __init__(self, first_year: int, current_year: int):
@@ -25,7 +29,7 @@ class InvalidLastYear(Exception):
         )
 
 
-class InvalidAssetsName(Exception):
+class InvalidAssetsName(B3Error):
     """Raised when an asset selection contains unsupported names."""
 
     def __init__(
@@ -38,7 +42,7 @@ class InvalidAssetsName(Exception):
         )
 
 
-class EmptyAssetListError(Exception):
+class EmptyAssetListError(B3Error):
     """Raised when extraction receives no asset classes."""
 
     def __init__(self, message: str = 'Asset list cannot be empty.'):
@@ -46,7 +50,7 @@ class EmptyAssetListError(Exception):
         super().__init__(message)
 
 
-class InvalidProcessingMode(Exception):
+class InvalidProcessingMode(B3Error):
     """Raised when the extraction mode is not ``fast`` or ``slow``."""
 
     def __init__(self, mode: str, valid_modes: list[str]):
@@ -56,7 +60,7 @@ class InvalidProcessingMode(Exception):
         )
 
 
-class InvalidOutputFilename(Exception):
+class InvalidOutputFilename(B3Error):
     """Raised when the output name is not a safe Parquet basename."""
 
     def __init__(self, message: str):

@@ -55,7 +55,7 @@ _PROCESSING_MODE_CONFIGS: Mapping[
     ),
     ProcessingModeEnumB3.SLOW: _ProcessingModeConfig(
         desired_concurrent_files=3,
-        desired_workers=2,
+        desired_workers=1,
         use_parallel_parsing=False,
         memory_threshold_mb=1000,
     ),

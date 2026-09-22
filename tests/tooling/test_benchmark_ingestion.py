@@ -2,14 +2,21 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
+import zipfile
+from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
+import globaldatafinance
 from globaldatafinance.brazil.b3_data import historical_quotes
 from globaldatafinance.macro_exceptions import ExtractionError
 from scripts import benchmark_corpus, benchmark_ingestion, benchmark_runtime
@@ -44,6 +51,10 @@ def test_synthetic_cvm_benchmark_emits_a_fresh_child_median(
             'successful_repeats': 1,
             'elapsed_seconds_median': records[0]['elapsed_seconds'],
             'rss_peak_mib_median': records[0]['rss_peak_mib'],
+            'parent_rss_peak_mib_median': records[0]['parent_rss_peak_mib'],
+            'aggregate_rss_peak_mib_median': records[0][
+                'aggregate_rss_peak_mib'
+            ],
             'output_bytes_median': records[0]['output_bytes'],
         }
     ]
@@ -74,6 +85,86 @@ def test_synthetic_cvm_text_benchmark_emits_a_fresh_child_median(
     assert records[0]['logical_equivalence'] is True
     assert medians[0]['scenario'] == 'cvm_text'
     assert medians[0]['successful_repeats'] == 1
+
+
+@pytest.mark.integration
+def test_b3_benchmark_applies_source_and_worker_controls(
+    tmp_path: Path,
+) -> None:
+    """A process request with one worker records the real thread fallback."""
+    source = benchmark_corpus.prepare_input(
+        'b3_multi_4x25k',
+        tmp_path,
+        100,
+        None,
+        backend='process',
+        source_count=2,
+        worker_limit=1,
+    )
+
+    records = benchmark_runtime.run_parent_scenario(
+        source, repeats=1, root=tmp_path, git_sha='test-sha'
+    )
+
+    record = records[0]
+    assert record['status'] == 'passed'
+    assert record['requested_source_count'] == 2
+    assert record['effective_source_count'] == 2
+    assert record['requested_worker_limit'] == 1
+    assert record['effective_worker_limit'] == 1
+    assert record['effective_backend'] == 'thread'
+    assert record['child_process_count_peak'] == 0
+
+
+@pytest.mark.unit
+def test_b3_runtime_scopes_executor_environment_and_restores_it(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Benchmark-only overrides neither need nor leak a facade argument."""
+    observed: dict[str, str] = {}
+
+    class FakeB3:
+        """Minimal public-facade double that observes runtime configuration."""
+
+        def __init__(self) -> None:
+            """Capture the variables observed by facade construction."""
+            observed['backend'] = os.environ['GDF_B3_EXECUTOR_BACKEND']
+            observed['workers'] = os.environ['GDF_B3_WORKER_LIMIT']
+            self._last_phase_timings: dict[str, Any] = {}
+
+        def extract(self, **_kwargs: object) -> dict[str, object]:
+            """Return the minimum successful facade result."""
+            return {'success': True, 'output_file': str(tmp_path / 'quotes')}
+
+    source = benchmark_corpus.ScenarioInput(
+        'b3_multi_4x25k',
+        tmp_path,
+        2,
+        '',
+        executor_backend='process',
+        source_count=2,
+        worker_limit=2,
+    )
+    monkeypatch.setattr(globaldatafinance, 'HistoricalQuotesB3', FakeB3)
+    monkeypatch.setattr(
+        benchmark_runtime,
+        'validate_b3_output',
+        lambda _path, _source: (2, 'schema', True, 10, 'digest'),
+    )
+    monkeypatch.setattr(benchmark_runtime, '_last_b3_phase_timings', {})
+    monkeypatch.setenv('GDF_B3_EXECUTOR_BACKEND', 'thread')
+    monkeypatch.setenv('GDF_B3_WORKER_LIMIT', '7')
+
+    benchmark_runtime.run_b3(
+        source,
+        tmp_path / 'output',
+        executor_backend='process',
+    )
+
+    assert observed == {'backend': 'process', 'workers': '2'}
+    assert os.environ['GDF_B3_EXECUTOR_BACKEND'] == 'thread'
+    assert os.environ['GDF_B3_WORKER_LIMIT'] == '7'
 
 
 @pytest.mark.unit
@@ -130,6 +221,9 @@ def test_non_equivalent_child_output_cannot_report_pass(
 
     assert payload['logical_equivalence'] is False
     assert payload['status'] == 'failed'
+    assert payload['reason'] == (
+        'output not logically equivalent to benchmark expectation'
+    )
 
 
 @pytest.mark.unit
@@ -211,6 +305,60 @@ def test_b3_middle_row_mutation_fails_logical_validation(
     )
 
     assert equivalent is False
+
+
+@pytest.mark.integration
+def test_annual_b3_output_without_trusted_digest_cannot_report_equivalence(
+    tmp_path: Path,
+) -> None:
+    """Annual output needs a full digest before it can pass validation."""
+    rows = [benchmark_corpus._expected_b3_record(index) for index in range(3)]
+    rows[1]['preco_abertura'] = Decimal('9999.99')
+    output = tmp_path / 'annual_quotes.parquet'
+    pq.write_table(
+        pa.Table.from_pylist(
+            rows, schema=historical_quotes.parquet_writer.build_b3_schema()
+        ),
+        output,
+    )
+    source = benchmark_corpus.ScenarioInput(
+        scenario='b3_annual',
+        path=None,
+        row_count=0,
+        input_sha256='',
+    )
+
+    _, _, equivalent, _, digest = benchmark_runtime.validate_b3_output(
+        output, source
+    )
+
+    assert digest
+    assert equivalent is False
+
+
+@pytest.mark.integration
+def test_annual_corpus_builds_a_full_typed_digest_and_actual_source_count(
+    tmp_path: Path,
+) -> None:
+    """The annual manifest covers all rows, not only ticker boundaries."""
+    for index, year in enumerate(benchmark_corpus._ANNUAL_B3_YEARS):
+        source = tmp_path / f'COTAHIST_A{year}.ZIP'
+        payload = (
+            '00COTAHIST BENCHMARK\n'
+            f'{benchmark_corpus.b3_record(index)}\n'
+            '99COTAHIST BENCHMARK\n'
+        )
+        with zipfile.ZipFile(source, 'w') as archive:
+            archive.writestr(f'COTAHIST_A{year}.TXT', payload)
+
+    prepared = benchmark_corpus.prepare_input(
+        'b3_annual', tmp_path, None, tmp_path
+    )
+
+    assert prepared.source_count == len(benchmark_corpus._ANNUAL_B3_YEARS)
+    assert prepared.expected_digest == benchmark_corpus.expected_b3_digest(
+        len(benchmark_corpus._ANNUAL_B3_YEARS)
+    )
 
 
 @pytest.mark.unit
@@ -339,6 +487,8 @@ def test_median_records_aggregates_multiple_scenarios_in_single_pass() -> None:
             'successful_repeats': 3,
             'elapsed_seconds_median': 2.0,
             'rss_peak_mib_median': 20.0,
+            'parent_rss_peak_mib_median': 20.0,
+            'aggregate_rss_peak_mib_median': 20.0,
             'output_bytes_median': 200,
         },
         {
@@ -346,6 +496,8 @@ def test_median_records_aggregates_multiple_scenarios_in_single_pass() -> None:
             'successful_repeats': 1,
             'elapsed_seconds_median': 5.0,
             'rss_peak_mib_median': 50.0,
+            'parent_rss_peak_mib_median': 50.0,
+            'aggregate_rss_peak_mib_median': 50.0,
             'output_bytes_median': 500,
         },
     ]
@@ -357,18 +509,32 @@ def test_benchmark_record_exact_keys_for_passed_failed_and_skipped(
 ) -> None:
     """Benchmark output JSON files contain the exact expected schema keys."""
     expected_passed_keys = {
+        'aggregate_rss_peak_mib',
+        'artifact_sha256',
         'available_memory_mib',
+        'child_process_count_peak',
         'cpu_count',
+        'effective_backend',
+        'effective_source_count',
+        'effective_worker_limit',
         'elapsed_seconds',
+        'executor_backend',
         'git_sha',
         'input_sha256',
         'logical_digest',
         'logical_equivalence',
         'output_bytes',
+        'parent_rss_after_mib',
+        'parent_rss_before_mib',
+        'parent_rss_peak_mib',
         'phase_seconds',
         'platform',
+        'processing_mode',
         'python_version',
         'repeat_index',
+        'requested_backend',
+        'requested_source_count',
+        'requested_worker_limit',
         'row_count',
         'rss_after_mib',
         'rss_before_mib',
@@ -376,8 +542,12 @@ def test_benchmark_record_exact_keys_for_passed_failed_and_skipped(
         'scenario',
         'schema_fingerprint',
         'schema_version',
+        'source_count',
         'status',
         'timestamp',
+        'worker_limit',
+        'worker_pids_observed',
+        'worktree_sha256',
     }
     expected_unmeasured_keys = expected_passed_keys | {'reason'}
 
@@ -458,3 +628,207 @@ def test_benchmark_cli_returns_zero_when_scenarios_pass_or_skip(
 
     exit_code = benchmark_ingestion.main()
     assert exit_code == 0
+
+
+@pytest.mark.unit
+def test_b3_multi_corpus_remainder_distribution(tmp_path: Path) -> None:
+    """Rows remainder is cleanly distributed across the requested files."""
+    source = benchmark_corpus.prepare_input(
+        'b3_multi_4x25k',
+        tmp_path,
+        10,
+        None,
+        source_count=3,
+        worker_limit=2,
+    )
+    assert source.row_count == 10
+    assert source.source_count == 3
+    assert source.worker_limit == 2
+    files = sorted(tmp_path.glob('b3_multi_4x25k/COTAHIST_A*.TXT'))
+    assert len(files) == 3
+    # Header (1) + data + trailer (1)
+    line_counts = [
+        len(f.read_text(encoding='latin1').splitlines()) - 2 for f in files
+    ]
+    assert line_counts == [4, 3, 3]
+    assert sum(line_counts) == 10
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ('source_count', 'worker_limit'),
+    [(0, 1), (-1, 1), (1, 0), (1, -2)],
+)
+def test_b3_multi_corpus_invalid_counts_raise(
+    tmp_path: Path, source_count: int, worker_limit: int
+) -> None:
+    """Non-positive source count or worker limit raises ValueError."""
+    with pytest.raises(ValueError, match='must be at least 1'):
+        benchmark_corpus.prepare_input(
+            'b3_multi_4x25k',
+            tmp_path,
+            10,
+            None,
+            source_count=source_count,
+            worker_limit=worker_limit,
+        )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ('arg_flag', 'val'),
+    [('--source-count', '0'), ('--worker-limit', '0')],
+)
+def test_benchmark_cli_validates_positive_counts(
+    monkeypatch: pytest.MonkeyPatch, arg_flag: str, val: str
+) -> None:
+    """CLI rejects non-positive source-count and worker-limit."""
+    monkeypatch.setattr(
+        'sys.argv',
+        ['benchmark_ingestion.py', '--scenario', 'import_root', arg_flag, val],
+    )
+    with pytest.raises(SystemExit, match='must be at least one'):
+        benchmark_ingestion.main()
+
+
+@pytest.mark.unit
+def test_b3_multi_corpus_source_count_greater_than_rows_raises(
+    tmp_path: Path,
+) -> None:
+    """prepare_input rejects source_count greater than rows."""
+    with pytest.raises(ValueError, match='cannot be greater than rows'):
+        benchmark_corpus.prepare_input(
+            'b3_multi_4x25k',
+            tmp_path,
+            2,
+            None,
+            source_count=5,
+        )
+
+
+@pytest.mark.unit
+def test_b3_multi_corpus_source_count_exceeds_max_years_raises(
+    tmp_path: Path,
+) -> None:
+    """prepare_input rejects source_count exceeding available years."""
+    with pytest.raises(ValueError, match='exceeds maximum allowed years'):
+        benchmark_corpus.prepare_input(
+            'b3_multi_4x25k',
+            tmp_path,
+            100,
+            None,
+            source_count=99,
+        )
+
+
+@pytest.mark.unit
+def test_benchmark_cli_validates_source_count_not_greater_than_rows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """CLI rejects --source-count greater than --rows."""
+    monkeypatch.setattr(
+        'sys.argv',
+        [
+            'benchmark_ingestion.py',
+            '--scenario',
+            'b3_multi_4x25k',
+            '--rows',
+            '2',
+            '--source-count',
+            '5',
+        ],
+    )
+    with pytest.raises(SystemExit, match='cannot be greater than --rows'):
+        benchmark_ingestion.main()
+
+
+@pytest.mark.unit
+def test_benchmark_cli_converts_dynamic_source_count_limit_to_clean_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The synthetic-year bound is a CLI error, never an uncaught traceback."""
+    source_count = datetime.now(UTC).year - 2020 + 1
+    monkeypatch.setattr(
+        'sys.argv',
+        [
+            'benchmark_ingestion.py',
+            '--scenario',
+            'b3_multi_4x25k',
+            '--rows',
+            str(source_count),
+            '--source-count',
+            str(source_count),
+        ],
+    )
+
+    with pytest.raises(SystemExit, match='exceeds maximum allowed years'):
+        benchmark_ingestion.main()
+
+
+@pytest.mark.unit
+def test_annual_corpus_rejects_source_count_override(tmp_path: Path) -> None:
+    """Annual runs must expose the fixed source count they actually process."""
+    with pytest.raises(ValueError, match='not supported for b3_annual'):
+        benchmark_corpus.prepare_input(
+            'b3_annual', tmp_path, None, tmp_path, source_count=99
+        )
+
+
+@pytest.mark.unit
+def test_benchmark_cli_rejects_annual_source_count_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The command-line form rejects an annual override before measurement."""
+    monkeypatch.setattr(
+        'sys.argv',
+        [
+            'benchmark_ingestion.py',
+            '--scenario',
+            'b3_annual',
+            '--source-count',
+            '27',
+        ],
+    )
+
+    with pytest.raises(SystemExit, match='only supported by b3_multi_4x25k'):
+        benchmark_ingestion.main()
+
+
+@pytest.mark.unit
+def test_dirty_git_provenance_includes_diff_and_untracked_content(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A dirty benchmark record identifies the exact uncommitted content."""
+    untracked = tmp_path / 'new_module.py'
+    untracked.write_text('value = 1\n', encoding='utf-8')
+    status = ' M tracked.py\n?? new_module.py\n'
+    diff = 'diff --git a/tracked.py b/tracked.py\n'
+
+    def fake_run_process(
+        command: list[str], **_kwargs: object
+    ) -> SimpleNamespace:
+        if command[1:3] == ['rev-parse', 'HEAD']:
+            return SimpleNamespace(stdout='abc123\n')
+        if command[1:3] == ['status', '--porcelain']:
+            return SimpleNamespace(stdout=status)
+        if command[1:3] == ['diff', '--no-ext-diff']:
+            return SimpleNamespace(stdout=diff)
+        if command[1:3] == ['ls-files', '--others']:
+            return SimpleNamespace(stdout='new_module.py\n')
+        raise AssertionError(command)
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(benchmark_ingestion, 'run_process', fake_run_process)
+    monkeypatch.setattr(
+        benchmark_ingestion, '_sha256_file', lambda _path: 'content-digest'
+    )
+
+    git_sha, worktree_sha256 = benchmark_ingestion._current_git_provenance()
+
+    expected = hashlib.sha256()
+    expected.update(status.encode('utf-8'))
+    expected.update(diff.encode('utf-8'))
+    expected.update(b'new_module.py')
+    expected.update(b'content-digest')
+    assert git_sha == 'abc123-dirty'
+    assert worktree_sha256 == expected.hexdigest()

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -40,6 +41,33 @@ def test_initialization_and_reference_queries_have_public_contract() -> None:
     assert repr(b3) == 'HistoricalQuotesB3()'
     assert {'ações', 'etf'}.issubset(b3.get_available_assets())
     assert b3.get_available_years()['minimal_year'] == 1986
+
+
+def test_executor_backend_is_environment_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The experimental backend leaves the facade signature unchanged."""
+    monkeypatch.setenv('GDF_B3_EXECUTOR_BACKEND', 'process')
+
+    client = HistoricalQuotesB3()
+
+    assert tuple(inspect.signature(HistoricalQuotesB3).parameters) == (
+        'settings',
+    )
+    assert client._extract_use_case.executor_backend == 'process'
+
+
+def test_invalid_executor_backend_environment_fails_at_construction(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An invalid opt-in backend is rejected before any extraction starts."""
+    monkeypatch.setenv('GDF_B3_EXECUTOR_BACKEND', 'invalid')
+
+    with pytest.raises(
+        ValueError,
+        match="Invalid executor_backend: 'invalid'",
+    ):
+        HistoricalQuotesB3()
 
 
 @patch.object(facade_module, 'CreateDocsToExtractUseCaseB3')

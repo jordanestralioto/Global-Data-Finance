@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ...macro_exceptions import ExtractionError
+from .durability import sync_directory, sync_file
 from .paths import require_strict_descendant
 from .types import ArtifactIntent, PublicationManifest
 
@@ -183,11 +184,11 @@ class TransactionalPublication:
             backup = backup_dir / f'{index:04d}-{item.final_path.name}'
             try:
                 self._publisher.operations.link(item.final_path, backup)
-                self._publisher._sync_directory(backup_dir)
+                sync_directory(self._publisher.operations, backup_dir)
             except OSError:
                 self._publisher.operations.copy2(item.final_path, backup)
-                self._publisher._sync_file(backup)
-                self._publisher._sync_directory(backup_dir)
+                sync_file(self._publisher.operations, backup)
+                sync_directory(self._publisher.operations, backup_dir)
             item.existed_before = True
             item.backup_path = backup
             self._publisher._write_manifest(self.manifest, self.manifest_path)
@@ -199,7 +200,9 @@ class TransactionalPublication:
             self._publisher.operations.replace(
                 item.staged_path, item.final_path
             )
-            self._publisher._sync_directory(self._publisher.destination_dir)
+            sync_directory(
+                self._publisher.operations, self._publisher.destination_dir
+            )
             item.publishing = False
             item.published = True
             self._publisher._write_manifest(self.manifest, self.manifest_path)
@@ -249,8 +252,8 @@ class TransactionalPublication:
                     )
                 elif item.final_path.exists():
                     self._publisher.operations.unlink(item.final_path)
-                self._publisher._sync_directory(
-                    self._publisher.destination_dir
+                sync_directory(
+                    self._publisher.operations, self._publisher.destination_dir
                 )
                 item.publishing = False
                 item.published = False

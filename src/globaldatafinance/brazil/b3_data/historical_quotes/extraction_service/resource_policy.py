@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import gc
 import importlib
 import os
@@ -82,10 +83,14 @@ class ResourcePolicyB3:
         memory_bound = (
             self._available_memory_mib() * 0.5 // _MEMORY_PER_FAST_WORKER_MIB
         )
+        max_cap = 4
+        if (env_limit := os.environ.get('GDF_B3_WORKER_LIMIT')) is not None:
+            with contextlib.suppress(ValueError):
+                max_cap = max(1, int(env_limit))
         return max(
             1,
             min(
-                4,
+                max_cap,
                 file_count,
                 os.cpu_count() or 1,
                 int(memory_bound),

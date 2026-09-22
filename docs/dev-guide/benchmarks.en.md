@@ -19,19 +19,21 @@ total memory. No network calls; local extraction of official ZIPs only.
 
 | Mode   | Written rows | Elapsed time (API) | Elapsed time (end-to-end) |    Peak RSS |      Throughput |
 | ------ | -----------: | -----------------: | ------------------------: | ----------: | --------------: |
-| `fast` |   22,303,577 |           649.99 s |                  650.50 s |   429.88 MB | 34,313.8 rows/s |
-| `slow` |   22,303,577 |           749.45 s |                  750.10 s |   331.11 MB | 29,759.9 rows/s |
+| `fast` |   22,303,577 |           649.99 s |                  650.50 s |  429.88 MiB | 34,313.8 rows/s |
+| `slow` |   22,303,577 |           749.45 s |                  750.10 s |  331.11 MiB | 29,759.9 rows/s |
 
-> **Note:** The `slow` mode peaked at only 331.11 MB (~0.32 GiB) RSS (a ~23%
+> **Note:** The `slow` mode peaked at only 331.11 MiB (~0.32 GiB) RSS (a ~23%
 > memory reduction compared to `fast` mode), preserving 100% schema and data
-> parity across all 22,303,577 records of the 27-year series. The modest ~98 MB
+> parity across all 22,303,577 records of the 27-year series. The modest ~98 MiB
 > memory difference between `fast` and `slow` stems from bounded per-worker
 > limits (`python_record_limit` of 25,000 vs 10,000 rows) and chunked flushes
-> (`ROW_GROUP_LIMIT = 100,000`), keeping memory complexity $O(1)$ relative to
-> the time span. The moderate ~15% speed advantage of `fast` mode reflects
-> CPython GIL contention in `ThreadPoolExecutor` during the CPU-intensive
-> positional string parsing loop, alongside the single-threaded final disk
-> merge stage. Compared to historical baseline v2 (~4.4 GB), the columnar
+> (`ROW_GROUP_LIMIT = 200,000`), keeping memory complexity $O(1)$ relative to
+> the time span. The moderate ~15% speed advantage of `fast` mode reflects the
+> plausible hypothesis of CPython GIL contention in `ThreadPoolExecutor` during
+> the CPU-intensive positional string parsing loop and batch building in Python,
+> alongside the sequential disk merge stage (while zlib decompression and C++
+> PyArrow writes release the GIL, Python positional slicing and row validation
+> retain the lock). Compared to historical baseline v2 (~4.4 GB), the columnar
 > streaming architecture reduced peak memory by over 90%.
 
 ### 1.2. Historical Baseline v2 — Full 25 Years (2026-09-02, Revision `703d9ab`)
@@ -209,13 +211,22 @@ ______________________________________________________________________
 
 ## 5. Fresh-process ingestion runner
 
-`scripts/benchmark_ingestion.py` measures root import, CVM, long-text CVM, B3
-at 100k and 250k records, runtime footprint, and, when available, the annual B3
-corpus. It generates deterministic corpus data in a temporary directory,
-repeats each scenario three times by default, runs the operation in a fresh
-Python process, and samples child RSS every 10 ms. Before recording a result it
-validates row count, order, schema, boundary values, and the logical Parquet
-artifact.
+`scripts/benchmark_ingestion.py` measures root import, CVM, CVM text, B3
+at 100k and 250k records, the multi-file scenario `b3_multi_4x25k` (four
+25k-row files by default), runtime footprint, and, when available, the annual
+B3 corpus. It generates
+deterministic corpus data in a temporary directory, repeats each scenario three
+times by default, runs the operation in a fresh Python process, and samples child
+RSS every 10 ms. It supports comparative evaluation via `--backend thread|process`
+and `--processing-mode fast|slow`. Before recording a result it validates row count,
+order, schema, boundary values, and the logical Parquet artifact.
+For the annual corpus, the runner derives a typed digest of every selected row from
+the 27 official ZIPs before measurement and compares every repeat with that digest.
+`--source-count` is exclusive to the synthetic `b3_multi_4x25k` corpus and
+partitions the requested rows across the exact number of sources; the annual
+corpus always uses its 27 sources. `--worker-limit` applies a cap in the fresh
+measurement process through `GDF_B3_WORKER_LIMIT`; JSON records both requested
+and effective values after resource policy and backend fallback.
 
 ```bash
 # Small measurement to verify the JSON protocol
@@ -225,22 +236,42 @@ uv run --locked --no-sync python scripts/benchmark_ingestion.py \
 # Full synthetic corpora, three repetitions, and a persisted report
 uv run --locked --no-sync python scripts/benchmark_ingestion.py \
   --scenario cvm --scenario cvm_text --scenario b3_100k \
-  --scenario b3_250k --repeats 3 --output benchmark.json
+  --scenario b3_250k --scenario b3_multi_4x25k --repeats 3 --output benchmark.json
 
-# The annual corpus runs only with all 17 ZIPs; otherwise it is skipped
+# Explicit comparison of execution backend and processing mode
+uv run --locked --no-sync python scripts/benchmark_ingestion.py \
+  --scenario b3_multi_4x25k --backend process --processing-mode fast --repeats 3
+
+# Fallback proof: two sources, but only one effective worker
+uv run --locked --no-sync python scripts/benchmark_ingestion.py \
+  --scenario b3_multi_4x25k --rows 100 --source-count 2 --worker-limit 1 \
+  --backend process --processing-mode fast
+
+# The annual corpus runs only with all 27 ZIPs (2000–2026); otherwise it is skipped
 uv run --locked --no-sync python scripts/benchmark_ingestion.py \
   --scenario b3_annual --cotahist-path /path/to/COTAHIST --output annual.json
 ```
 
 Each JSON result contains schema version, revision, environment, input checksum,
 row count, schema fingerprint, logical equivalence, a typed logical digest,
-operation time, operation/validation phases, initial/peak/final RSS, output
-bytes, and `status`. Equivalence compares every typed row (including nulls,
-ordering, and decimal tuples), not only boundary values. The child verifies the
-checksum before measuring, so a changed source fails instead of producing an
-invalid comparison. An annual run without all 17 required ZIPs reports
-`skipped` with `external corpus unavailable`; release reports must not turn that
-into success.
+physical artifact SHA-256 (`artifact_sha256`), operation time,
+operation/validation phases, processing mode, execution backend, requested and
+effective source/worker counts, initial/peak/final parent RSS (`rss_peak_mib`, preserving
+comparison with historical baseline v1), aggregate tree peak RSS
+(`aggregate_rss_peak_mib`), observed child process count, output bytes, `status`, and
+`worktree_sha256`. RSS is resident memory per process, not heap. `aggregate_rss_peak_mib`
+is the sum of parent and descendant RSS in the same sample; shared pages can be
+counted more than once, so it is not unique physical memory, host-wide memory, or
+cgroup memory use. Equivalence compares every typed row (including nulls, ordering,
+and decimal tuples), not only boundary values. The child verifies the checksum before
+measuring, so a changed source fails instead of producing an invalid comparison. An
+annual run without all 27 required ZIPs reports `skipped` with `external corpus unavailable`;
+release reports must not turn that into success.
+
+When `git_sha` ends in `-dirty`, `worktree_sha256` identifies the tracked diff and
+the contents of non-ignored untracked files present when measurement began. Results
+under `.benchmarks/` are deliberately local and ignored; for a reviewable claim,
+preserve the emitted JSON in a tracked review artifact and cite both provenance fields.
 
 Reference gates for this change are compared only on the same baseline/candidate
 machine: root import ≤50 MiB and ≤0.50 s; CVM 269,181 rows ≤60% of baseline

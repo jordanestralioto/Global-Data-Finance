@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from collections.abc import Collection, Sequence
-from concurrent.futures import Future, ThreadPoolExecutor
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -22,6 +21,7 @@ from ..processing import ProcessingModeEnumB3
 from ..zip_reader import ZipFileReaderB3
 from .resource_policy import ResourcePolicyB3
 from .retry import retry_unpublished_io
+from .scheduler import ExtractionSchedulerB3, ExtractionState
 from .temp_parquet_merge import (
     merge_temp_files_streaming,
     validate_one_temp_file,
@@ -35,14 +35,6 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 
-@dataclass
-class _ExtractionState:
-    """Keep private source results until they can all be committed."""
-
-    results: dict[int, SourceExtractionResult] = field(default_factory=dict)
-    errors: dict[str, str] = field(default_factory=dict)
-
-
 class ExtractionServiceB3:
     """Extract ordered COTAHIST sources with a bounded worker scheduler."""
 
@@ -53,11 +45,18 @@ class ExtractionServiceB3:
         processing_mode: ProcessingModeEnumB3,
         *,
         allowed_unc_roots: Sequence[str] | None = None,
+        executor_backend: str = 'thread',
     ) -> None:
         """Store stable collaborators and source-local worker factories."""
+        if executor_backend not in ('thread', 'process'):
+            raise ValueError(
+                f'Invalid executor_backend: {executor_backend!r}. '
+                "Must be 'thread' or 'process'."
+            )
         self.zip_reader = zip_reader
         self.parser = parser
         self.processing_mode = processing_mode
+        self.executor_backend = executor_backend
         self.allowed_unc_roots = PathSafetySettings.resolve_allowed_unc_roots(
             allowed_unc_roots
         )
@@ -71,6 +70,7 @@ class ExtractionServiceB3:
                 else 10_000
             ),
         )
+        self.last_phase_timings: dict[str, Any] = {}
 
     @staticmethod
     def _source_sort_key(source: str) -> tuple[str, str]:
@@ -127,11 +127,15 @@ class ExtractionServiceB3:
             )
             expected_schema = build_b3_schema()
             expected_fingerprint = schema_fingerprint(expected_schema)
+
+            source_started = time.perf_counter()
             state = await self._run_sources(
                 sources,
                 target_tpmerc_codes,
                 publication.staging_dir,
             )
+            source_wall = time.perf_counter() - source_started
+
             if state.errors:
                 try:
                     publication.abort()
@@ -155,16 +159,24 @@ class ExtractionServiceB3:
             expected_rows = sum(
                 result.written_records for result in ordered_results
             )
-            merged_staged, merged_rows = self._prepare_staged_output(
-                ordered_results,
-                publication.stage_path(output_path.name),
-                expected_schema,
+
+            merge_started = time.perf_counter()
+            merged_staged, merged_rows, merge_bypassed = (
+                self._prepare_staged_output(
+                    ordered_results,
+                    publication.stage_path(output_path.name),
+                    expected_schema,
+                )
             )
+            merge_wall = time.perf_counter() - merge_started
+
             if merged_rows != expected_rows:
                 raise RuntimeError(
                     'B3 merge row-count invariant was violated: '
                     f'{merged_rows} != {expected_rows}'
                 )
+
+            validation_started = time.perf_counter()
             publication.add_artifact(
                 final_path=output_path,
                 staged_path=merged_staged,
@@ -173,6 +185,17 @@ class ExtractionServiceB3:
             )
             publication.mark_validated()
             publication.commit()
+            validation_wall = time.perf_counter() - validation_started
+
+            self.last_phase_timings = {
+                'source_wall_seconds': source_wall,
+                'merge_wall_seconds': None if merge_bypassed else merge_wall,
+                'merge_status': 'bypassed' if merge_bypassed else 'completed',
+                'validation_wall_seconds': validation_wall,
+                'effective_backend': state.effective_backend,
+                'effective_worker_limit': state.effective_worker_limit,
+            }
+
             return self._summary(
                 len(sources), len(sources), 0, {}, output_path, merged_rows
             )
@@ -207,73 +230,17 @@ class ExtractionServiceB3:
         sources: list[str],
         target_tpmerc_codes: set[str],
         staging_dir: Path,
-    ) -> _ExtractionState:
+    ) -> ExtractionState:
         """Schedule at most the current worker limit without eager tasks."""
-        state = _ExtractionState()
-        worker_limit = self.resource_policy.worker_limit(len(sources))
-        active: dict[Future[SourceExtractionResult], tuple[int, str]] = {}
-        next_index = 0
-        admission_stopped = False
-
-        with ThreadPoolExecutor(max_workers=worker_limit) as executor:
-            while active or next_index < len(sources):
-                while (
-                    not admission_stopped
-                    and next_index < len(sources)
-                    and len(active) < worker_limit
-                ):
-                    if not await self.resource_policy.await_admission():
-                        state.errors['resources'] = (
-                            'B3 extraction stopped because resources did not '
-                            'recover'
-                        )
-                        admission_stopped = True
-                        break
-                    source = sources[next_index]
-                    temp_output = (
-                        staging_dir / 'sources' / f'{next_index:05d}.parquet'
-                    )
-                    future = executor.submit(
-                        self._process_source_with_retry,
-                        source,
-                        target_tpmerc_codes,
-                        temp_output,
-                    )
-                    active[future] = (next_index, source)
-                    next_index += 1
-
-                if not active:
-                    break
-
-                completed = [task for task in active if task.done()]
-                if not completed:
-                    await asyncio.sleep(0.01)
-                    continue
-                for task in completed:
-                    index, source = active.pop(task)
-                    try:
-                        state.results[index] = task.result()
-                        self.resource_policy.collect_after_critical_flush()
-                    except Exception as error:
-                        logger.exception('B3 source failed: %s', source)
-                        state.errors[Path(source).name] = (
-                            f'{type(error).__name__}: {error}'
-                        )
-                        admission_stopped = True
-
-        return state
-
-    def _process_source_with_retry(
-        self,
-        source: str,
-        target_tpmerc_codes: set[str],
-        temp_output: Path,
-    ) -> SourceExtractionResult:
-        """Retry only a transient unpublished source worker operation."""
-        return retry_unpublished_io(
-            lambda: self.zip_processor.process(
-                source, target_tpmerc_codes, temp_output
-            )
+        scheduler = ExtractionSchedulerB3(
+            zip_processor=self.zip_processor,
+            zip_reader=self.zip_reader,
+            resource_policy=self.resource_policy,
+            processing_mode=self.processing_mode,
+            executor_backend=self.executor_backend,
+        )
+        return await scheduler.run_sources(
+            sources, target_tpmerc_codes, staging_dir
         )
 
     @staticmethod
@@ -302,7 +269,7 @@ class ExtractionServiceB3:
         results: list[SourceExtractionResult],
         merge_output: Path,
         expected_schema: Schema,
-    ) -> tuple[Path, int]:
+    ) -> tuple[Path, int, bool]:
         """Reuse one validated source artifact or merge ordered artifacts.
 
         A one-source request has already produced a closed, schema-validated
@@ -326,7 +293,7 @@ class ExtractionServiceB3:
                     source.written_records,
                 )
             )
-            return temp_path, rows
+            return temp_path, rows, True
 
         temp_files: list[Path] = []
         for result in temporary_results:
@@ -341,7 +308,7 @@ class ExtractionServiceB3:
                 temp_files, merge_output, expected_schema, expected_rows
             )
         )
-        return merge_output, rows
+        return merge_output, rows, False
 
     @staticmethod
     def _summary(

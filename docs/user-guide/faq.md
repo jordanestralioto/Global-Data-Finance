@@ -261,25 +261,25 @@ ______________________________________________________________________
 
 ### Como ler os arquivos Parquet gerados?
 
-Use Pandas ou PyArrow:
+Use PyArrow por padrão. Se preferir DataFrames, instale Pandas separadamente
+com `python -m pip install pandas`:
 
 ```python
-# Com Pandas
-import pandas as pd
-df = pd.read_parquet("cotahist_extracted.parquet")
-
-# Com PyArrow em batches
 import pyarrow.parquet as pq
 for batch in pq.ParquetFile("cotahist_extracted.parquet").iter_batches():
     print(batch)
+
+# Opcional: depois de instalar Pandas no ambiente consumidor
+import pandas as pd
+df = pd.read_parquet("cotahist_extracted.parquet")
 ```
 
 ### Qual biblioteca é usada pela extração?
 
 - **PyArrow**: engine produtivo de leitura/escrita e opção de batches para
   volumes grandes.
-- **Pandas**: compatível com os Parquets gerados e mantido pelo adaptador CSV
-  legado.
+- **Pandas**: leitor downstream opcional compatível com os Parquets gerados;
+  não é instalado pela biblioteca.
 
 Polars não é instalado pelo pacote, mas pode ser adicionado pelo consumidor como
 um leitor downstream opcional.

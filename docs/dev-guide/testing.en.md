@@ -248,9 +248,9 @@ assert result.success_count_downloads == 2
 
 ### Required engines and real proofs
 
-PyArrow is the required production read/write engine. Pandas remains a
-compatibility dependency for the legacy `ReadFilesAdapter`, while Polars is not
-part of runtime dependencies. Unit tests may use fakes for project-owned
+PyArrow is the required production read/write engine. Pandas is not installed
+by the library and, when needed for downstream analysis, must be an explicit
+consumer dependency. Polars is also not part of runtime dependencies. Unit tests may use fakes for project-owned
 collaborators such as a resource monitor, parser, or filesystem seam. They do
 not replace tests of a component that reads or writes Parquet: that component
 also needs integration tests with real PyArrow, artifact reads, schema and type

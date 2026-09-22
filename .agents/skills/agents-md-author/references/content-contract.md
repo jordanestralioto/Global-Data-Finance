@@ -21,34 +21,14 @@ Use os headings de nível 2 abaixo, exatamente nesta ordem:
 7. `## Execution Policy`
 8. `## Related Documentation`
 
-O título é `# AGENTS.md`. O cabeçalho contém, nesta ordem:
-
-1. `Owner`
-2. `Last reviewed`
-3. `Status`
-4. `Knowledge class`
-
 `Configuration & Runtime` contém `### Commands`. `Execution Policy` contém, na
-ordem: `### Precedence`, `### Hard Blocks`, `### Secrets`,
+ordem: `### Precedence`, `### Secrets`,
 `### Repo Alignment`, `### Autonomy`, `### Validation`,
 `### Execution Safety` e `### Failure Handling`.
 
 Não renomeie `Pipeline Architecture` em projetos que não sejam pipelines: a
 estrutura é fixa. Nesse caso, descreva o fluxo real de request, runtime, build,
 eventos ou processamento e diga claramente qual modelo se aplica.
-
-## Metadados e fallbacks
-
-| Campo             | Fonte preferida                             | Fallback permitido | Efeito do fallback                |
-| ----------------- | ------------------------------------------- | ------------------ | --------------------------------- |
-| `Owner`           | governança, CODEOWNERS ou decisão explícita | `Unassigned`       | documento permanece `Draft`       |
-| `Last reviewed`   | data real da inspeção atual                 | nenhum             | use `YYYY-MM-DD` real             |
-| `Status`          | vocabulário de governança confirmado        | `Draft`            | modo estrito deve falhar          |
-| `Knowledge class` | taxonomia documentada                       | `Agent policy`     | classificação base deste artefato |
-
-O nome do diretório, autor de commit ou mantenedor de pacote não prova
-ownership. Não converta `Draft` para `Canonical`, `Accepted` ou equivalente sem
-a aprovação exigida pelo repositório.
 
 ## Classes de conteúdo
 

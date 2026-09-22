@@ -157,16 +157,7 @@ alcançável por uma rota owner clara.
     fornece a rota de leitura por pergunta. Um agente não deve precisar varrer o
     repositório inteiro para descobrir o próximo documento.
 
-06. Resolva os metadados sem transformar ausência em certeza.
-
-    - `Owner`: use governança, CODEOWNERS ou decisão do usuário; caso contrário,
-      use `Unassigned` e mantenha `Status: Draft`.
-    - `Last reviewed`: use a data real da inspeção no formato `YYYY-MM-DD`.
-    - `Status`: preserve status confirmado; sem vocabulário ou aprovação, use
-      `Draft`.
-    - `Knowledge class`: use a taxonomia documentada; sem ela, use `Agent policy`.
-
-07. Materialize o template e preencha cada contrato.
+06. Materialize o template e preencha cada contrato.
 
     Para arquivo novo, gere o scaffold sem sobrescrever destino existente:
 
@@ -177,7 +168,7 @@ alcançável por uma rota owner clara.
     Para arquivo existente, não rode o scaffolder. Edite o documento preservando
     as regras válidas. Em ambos os casos:
 
-    - mantenha os headings, metadados, tabelas e política completa do template;
+    - mantenha os headings, tabelas e política completa do template;
     - remova todo comentário `AGENTS_AUTHOR` após resolver a instrução;
     - escreva missão, boundaries, entradas, saídas, consumidores e invariantes;
     - inclua somente métricas adotadas; sem metas, use `Not documented` e Draft;
@@ -194,7 +185,7 @@ alcançável por uma rota owner clara.
       pequenas e decisórias de formatter ou linter, sem reproduzir o manifest;
     - ordene a documentação por progressive disclosure e por autoridade.
 
-08. Componha `Mandatory Rules` como política de desenvolvimento forte.
+07. Componha `Mandatory Rules` como política de desenvolvimento forte.
 
     Preserve todas as regras gerais preenchidas no template. Depois acrescente
     diretivas concretas, com fonte, para:
@@ -212,9 +203,9 @@ alcançável por uma rota owner clara.
     Não transforme detalhes efêmeros de módulos em regras globais; a política
     deve orientar decisões repetidas e apontar para o documento owner dos detalhes.
 
-09. Preserve `Execution Policy` próxima ao baseline completo.
+08. Preserve `Execution Policy` próxima ao baseline completo.
 
-    - Mantenha os oito subtítulos e todos os controles concretos do template.
+    - Mantenha os sete subtítulos e todos os controles concretos do template.
     - Customize nomes de boundary (`repository`/`workspace`) somente para refletir
       o escopo real.
     - Uma política superior pode fortalecer ou substituir uma regra, mas registre
@@ -224,7 +215,7 @@ alcançável por uma rota owner clara.
       autorizar bypass de permissões, exposição de segredos ou ação destrutiva sem
       consentimento exato.
 
-10. Trate conflitos e lacunas proporcionalmente.
+09. Trate conflitos e lacunas proporcionalmente.
 
     - Um fato ausente não bloqueia tudo: use fallback explícito, `Status: Draft`
       e reporte a decisão pendente.
@@ -235,7 +226,7 @@ alcançável por uma rota owner clara.
     - Não declare `Canonical` enquanto houver `Unassigned`, `Not documented`,
       conflito material ou política essencial não aprovada.
 
-11. Valide estrutura, política e fidelidade.
+10. Valide estrutura, política e fidelidade.
 
     ```bash
     python3 <skill-directory>/scripts/validate_agents_md.py --file <path/to/AGENTS.md>
@@ -251,7 +242,7 @@ alcançável por uma rota owner clara.
     concreto do runtime, a rota de extensão ou o gate/configuração canônica que
     evita descoberta ou implementação no owner errado.
 
-12. Entregue relatório auditável.
+11. Entregue relatório auditável.
 
     ```markdown
     Action: CREATED|UPDATED|REVIEWED|BLOCKED
@@ -336,7 +327,7 @@ Assertions:
 - [ ] separa `USER_PREFERENCE` de `REPO_FACT`;
 - [ ] nomeia idiomas, manager, framework e comando oficial sem frases genéricas;
 - [ ] `Mandatory Rules` contém regras concretas para os quatro itens;
-- [ ] `Execution Policy` preserva os oito subtítulos e os hard blocks concretos;
+- [ ] `Execution Policy` preserva os sete subtítulos com todos os controles concretos;
 - [ ] o mapa de navegação aponta apenas para caminhos existentes;
 - [ ] o validador normal termina com código 0.
 

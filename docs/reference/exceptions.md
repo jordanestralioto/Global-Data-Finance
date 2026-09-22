@@ -70,6 +70,11 @@ class ParquetWriteError(OSError):
 
 - **Herança**: `OSError`
 
+Na escrita staged de Parquet CVM, falhas de filesystem diferentes de
+`ENOSPC` são reportadas como `ParquetWriteError` e preservam a causa original;
+`ENOSPC` continua sendo `DiskFullError`. A agregação de downloads registra
+`ParquetWrite: ...` e mantém o ZIP para diagnóstico.
+
 #### `DiskFullError`
 
 ```python
@@ -115,20 +120,20 @@ class SecurityError(Exception):
 
 ### Rede e HTTP de Baixo Nível
 
-#### `NetworkError` e `TimeoutError`
+#### `NetworkError` e `DownloadTimeoutError`
 
 ```python
 class NetworkError(Exception):
     """Falha de conectividade traduzida durante downloads CVM."""
 
 
-class TimeoutError(Exception):
+class DownloadTimeoutError(Exception):
     """Tempo limite de requisição excedido durante downloads CVM."""
 ```
 
 - **Origem e Tradução no Pipeline**:
   1. O adapter HTTP de baixo nível (`RequestsAdapter.async_download_file`) executa o streaming via `httpx` e pode propagar exceções de transporte (`httpx.RequestError`, `httpx.HTTPStatusError`, `httpx.TimeoutException`, `ConnectionError`) ou erros de escrita em disco.
-  2. O adapter CVM (`AsyncDownloadAdapterCVM._download_with_retry`) intercepta essas exceções de transporte e as traduz para as exceções de domínio `NetworkError` e `TimeoutError`.
+  2. O adapter CVM (`AsyncDownloadAdapterCVM._download_with_retry`) intercepta essas exceções de transporte e as traduz para as exceções de domínio `NetworkError` e `DownloadTimeoutError`.
   3. A camada `RetryStrategy` aplica tentativas automáticas com recuo exponencial (*exponential backoff*).
   4. Falhas persistentes após o esgotamento dos retries são consolidadas no dicionário `result.failed_downloads` do `DownloadResultCVM`, sem abortar downloads concorrentes de outros anos ou documentos.
 
@@ -186,16 +191,21 @@ ______________________________________________________________________
 
 ## Exceções B3 (`historical_quotes.errors`)
 
-Exceções do domínio de cotações históricas da B3.
+Exceções do domínio de cotações históricas da B3. Todas as classes concretas
+herdam de `B3Error`, que é a fronteira de captura específica da fonte.
 
 ### `InvalidAssetsName` e `EmptyAssetListError`
 
 ```python
-class InvalidAssetsName(Exception):
+class B3Error(Exception):
+    """Base das exceções do domínio B3."""
+
+
+class InvalidAssetsName(B3Error):
     """Classe de ativo não suportada pela B3."""
 
 
-class EmptyAssetListError(Exception):
+class EmptyAssetListError(B3Error):
     """Lista de classes de ativos vazia."""
 ```
 
@@ -204,14 +214,14 @@ class EmptyAssetListError(Exception):
 ### `InvalidProcessingMode`
 
 ```python
-class InvalidProcessingMode(Exception):
+class InvalidProcessingMode(B3Error):
     """Modo de processamento inválido (deve ser 'fast' ou 'slow')."""
 ```
 
 ### `InvalidOutputFilename`
 
 ```python
-class InvalidOutputFilename(Exception):
+class InvalidOutputFilename(B3Error):
     """Nome de arquivo de saída inválido (deve ser apenas basename sem caminhos)."""
 ```
 
@@ -220,11 +230,11 @@ class InvalidOutputFilename(Exception):
 ### `InvalidFirstYear` e `InvalidLastYear` (B3)
 
 ```python
-class InvalidFirstYear(Exception):
+class InvalidFirstYear(B3Error):
     """Ano inicial inferior a 1986 ou superior ao ano atual."""
 
 
-class InvalidLastYear(Exception):
+class InvalidLastYear(B3Error):
     """Ano final inferior ao ano inicial ou superior ao ano atual."""
 ```
 
@@ -237,7 +247,7 @@ Exception
 ├── macro_exceptions
 │   ├── EmptyDirectoryError
 │   ├── NetworkError
-│   ├── TimeoutError
+│   ├── DownloadTimeoutError
 │   ├── ExtractionError
 │   │   └── CorruptedZipError
 │   └── SecurityError
@@ -248,7 +258,7 @@ Exception
 │   ├── InvalidLastYear
 │   ├── EmptyDocumentListError
 │   └── MissingDownloadUrlError
-└── B3 Exceptions
+└── B3Error
     ├── InvalidAssetsName
     ├── EmptyAssetListError
     ├── InvalidProcessingMode

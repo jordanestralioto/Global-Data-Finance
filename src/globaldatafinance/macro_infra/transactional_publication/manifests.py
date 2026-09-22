@@ -3,17 +3,14 @@
 from __future__ import annotations
 
 import contextlib
-import errno
 import json
 from dataclasses import asdict
 from pathlib import Path
 
-from ...core import get_logger
 from ...macro_exceptions import ExtractionError
+from .durability import sync_directory, sync_file
 from .paths import relative_to, require_descendant, require_strict_descendant
 from .types import PHASES, ArtifactIntent, FileOperations, PublicationManifest
-
-logger = get_logger(__name__)
 
 
 class ManifestStore:
@@ -197,27 +194,10 @@ class ManifestStore:
         encoded = (json.dumps(payload, sort_keys=True) + '\n').encode('utf-8')
         try:
             self.operations.write_bytes(temporary, encoded)
-            self._sync_file(temporary)
+            sync_file(self.operations, temporary)
             self.operations.replace(temporary, path)
-            self._sync_directory(path.parent)
+            sync_directory(self.operations, path.parent)
         finally:
             if temporary.exists():
                 with contextlib.suppress(OSError):
                     self.operations.unlink(temporary)
-
-    def _sync_file(self, path: Path) -> None:
-        self.operations.fsync_file(path)
-
-    def _sync_directory(self, path: Path) -> None:
-        try:
-            self.operations.fsync_directory(path)
-        except OSError as error:
-            if error.errno not in {
-                errno.EINVAL,
-                errno.ENOTSUP,
-                getattr(errno, 'EOPNOTSUPP', errno.ENOTSUP),
-            }:
-                raise
-            logger.warning(
-                'Directory fsync is unsupported for %s: %s', path, error
-            )

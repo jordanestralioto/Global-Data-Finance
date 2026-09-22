@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import zipfile
 from pathlib import Path
@@ -17,6 +18,7 @@ from globaldatafinance.macro_exceptions import (
     CorruptedZipError,
     DiskFullError,
     ExtractionError,
+    ParquetWriteError,
     SecurityError,
 )
 
@@ -106,6 +108,90 @@ def test_disk_full_during_conversion_preserves_input_and_existing_output(
     with pytest.raises(DiskFullError):
         ParquetExtractorAdapterCVM().extract(str(source), str(destination))
 
+    assert existing.read_bytes() == b'old version'
+    assert source.exists()
+    assert _transaction_state(destination) == []
+
+
+def test_staged_filesystem_write_error_preserves_old_output_and_cause(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Non-space staged write failures use the typed Parquet boundary."""
+    destination = tmp_path / 'output'
+    destination.mkdir()
+    existing = destination / 'data.parquet'
+    existing.write_bytes(b'old version')
+    source = _write_archive(
+        tmp_path / 'documents.zip', {'data.csv': b'value\nnew\n'}
+    )
+    original = PermissionError('staged output denied')
+
+    def fail_writer(*_args: object, **_kwargs: object) -> object:
+        raise original
+
+    monkeypatch.setattr(pq, 'ParquetWriter', fail_writer)
+
+    with pytest.raises(ParquetWriteError) as exc_info:
+        ParquetExtractorAdapterCVM().extract(str(source), str(destination))
+
+    assert exc_info.value.__cause__ is original
+    assert existing.read_bytes() == b'old version'
+    assert source.exists()
+    assert _transaction_state(destination) == []
+
+
+def test_staged_enospc_remains_disk_full_and_preserves_old_output(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ENOSPC keeps its specific error boundary and rollback behavior."""
+    destination = tmp_path / 'output'
+    destination.mkdir()
+    existing = destination / 'data.parquet'
+    existing.write_bytes(b'old version')
+    source = _write_archive(
+        tmp_path / 'documents.zip', {'data.csv': b'value\nnew\n'}
+    )
+    original = OSError(errno.ENOSPC, 'no space left on device')
+
+    def fail_writer(*_args: object, **_kwargs: object) -> object:
+        raise original
+
+    monkeypatch.setattr(pq, 'ParquetWriter', fail_writer)
+
+    with pytest.raises(DiskFullError) as exc_info:
+        ParquetExtractorAdapterCVM().extract(str(source), str(destination))
+
+    assert exc_info.value.__cause__ is original
+    assert existing.read_bytes() == b'old version'
+    assert source.exists()
+    assert _transaction_state(destination) == []
+
+
+def test_staged_reopen_error_uses_parquet_write_boundary(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A filesystem reopen failure aborts before replacing an old artifact."""
+    destination = tmp_path / 'output'
+    destination.mkdir()
+    existing = destination / 'data.parquet'
+    existing.write_bytes(b'old version')
+    source = _write_archive(
+        tmp_path / 'documents.zip', {'data.csv': b'value\nnew\n'}
+    )
+    original = OSError('staged output cannot be reopened')
+
+    def fail_reopen(*_args: object, **_kwargs: object) -> object:
+        raise original
+
+    monkeypatch.setattr(pq, 'ParquetFile', fail_reopen)
+
+    with pytest.raises(ParquetWriteError) as exc_info:
+        ParquetExtractorAdapterCVM().extract(str(source), str(destination))
+
+    assert exc_info.value.__cause__ is original
     assert existing.read_bytes() == b'old version'
     assert source.exists()
     assert _transaction_state(destination) == []

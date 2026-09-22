@@ -14,6 +14,9 @@ from ....macro_exceptions import (
     CorruptedZipError,
     DiskFullError,
     ExtractionError,
+    ParquetWriteError,
+    PathIsNotDirectoryError,
+    PathPermissionError,
     SecurityError,
 )
 from .transaction import CvmFailureAtomicBatchCommit
@@ -63,6 +66,9 @@ class ParquetExtractorAdapterCVM:
             ExtractionError,
             CorruptedZipError,
             DiskFullError,
+            ParquetWriteError,
+            PathIsNotDirectoryError,
+            PathPermissionError,
             SecurityError,
         ):
             raise

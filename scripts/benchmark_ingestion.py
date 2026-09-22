@@ -7,6 +7,7 @@ measurement in a new process, validates logical output, and emits JSON.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 import tempfile
@@ -33,15 +34,46 @@ _median_records = _runtime.median_records
 _write_json = _support.write_json
 
 
-def _current_git_sha() -> str:
-    """Read the current revision through the approved process boundary."""
+def _current_git_provenance() -> tuple[str, str]:
+    """Return revision and a content digest when the worktree is dirty."""
     try:
         result = run_process(
             ['git', 'rev-parse', 'HEAD'], cwd=Path.cwd(), check=True
         )
+        sha = result.stdout.strip() or 'unknown'
+        status = run_process(
+            ['git', 'status', '--porcelain'], cwd=Path.cwd(), check=True
+        )
+        if not status.stdout.strip():
+            return sha, ''
+        diff = run_process(
+            ['git', 'diff', '--no-ext-diff', '--binary', 'HEAD'],
+            cwd=Path.cwd(),
+            check=True,
+        )
+        untracked = run_process(
+            ['git', 'ls-files', '--others', '--exclude-standard'],
+            cwd=Path.cwd(),
+            check=True,
+        )
     except ProcessRunnerError:
-        return 'unknown'
-    return result.stdout.strip() or 'unknown'
+        return 'unknown', ''
+
+    digest = hashlib.sha256()
+    digest.update(status.stdout.encode('utf-8'))
+    digest.update(diff.stdout.encode('utf-8'))
+    root = Path.cwd().resolve()
+    for relative_path in sorted(untracked.stdout.splitlines()):
+        candidate = root / relative_path
+        digest.update(relative_path.encode('utf-8'))
+        if candidate.is_file() and candidate.resolve().is_relative_to(root):
+            digest.update(_sha256_file(candidate).encode('ascii'))
+    return f'{sha}-dirty', digest.hexdigest()
+
+
+def _current_git_sha() -> str:
+    """Read the current revision through the approved process boundary."""
+    return _current_git_provenance()[0]
 
 
 def _selected_scenarios(values: list[str]) -> tuple[str, ...]:
@@ -72,6 +104,17 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument('--expected-first', default='')
     parser.add_argument('--expected-last', default='')
     parser.add_argument('--expected-digest', default='')
+    parser.add_argument(
+        '--backend', choices=('thread', 'process'), default='thread'
+    )
+    parser.add_argument(
+        '--processing-mode',
+        choices=('fast', 'slow'),
+        default='fast',
+        help='B3 processing mode (fast or slow).',
+    )
+    parser.add_argument('--source-count', type=int, default=None)
+    parser.add_argument('--worker-limit', type=int, default=None)
     parser.add_argument('--repeat-index', type=int, default=0)
     parser.add_argument('--result-path', type=Path)
     return parser
@@ -87,7 +130,63 @@ def _child_source(arguments: argparse.Namespace) -> ScenarioInput:
         expected_first=arguments.expected_first,
         expected_last=arguments.expected_last,
         expected_digest=arguments.expected_digest,
+        executor_backend=arguments.backend,
+        processing_mode=arguments.processing_mode,
+        source_count=arguments.source_count or 1,
+        worker_limit=arguments.worker_limit or 1,
     )
+
+
+def _validate_arguments(
+    arguments: argparse.Namespace, selected: tuple[str, ...]
+) -> None:
+    """Reject unsupported benchmark arguments before starting a measurement."""
+    if arguments.repeats < 1:
+        raise SystemExit('--repeats must be at least one')
+    if arguments.rows is not None and arguments.rows < 1:
+        raise SystemExit('--rows must be at least one')
+    if arguments.source_count is not None and arguments.source_count < 1:
+        raise SystemExit('--source-count must be at least one')
+    if arguments.worker_limit is not None and arguments.worker_limit < 1:
+        raise SystemExit('--worker-limit must be at least one')
+    if (
+        arguments.source_count is not None
+        and arguments.rows is not None
+        and arguments.source_count > arguments.rows
+    ):
+        raise SystemExit('--source-count cannot be greater than --rows')
+    if arguments.child:
+        if arguments.result_path is None or len(selected) != 1:
+            raise SystemExit(
+                'A child requires exactly one scenario and result path'
+            )
+        return
+    if arguments.source_count is not None and 'b3_annual' in selected:
+        raise SystemExit(
+            '--source-count is only supported by b3_multi_4x25k; '
+            'b3_annual always uses all 27 source files'
+        )
+
+
+def _prepare_parent_source(
+    scenario: str,
+    root: Path,
+    arguments: argparse.Namespace,
+) -> ScenarioInput:
+    """Prepare one parent scenario and normalize user-facing input errors."""
+    try:
+        return _prepare_input(
+            scenario,
+            root,
+            arguments.rows,
+            arguments.cotahist_path,
+            backend=arguments.backend,
+            processing_mode=arguments.processing_mode,
+            source_count=arguments.source_count,
+            worker_limit=arguments.worker_limit,
+        )
+    except ValueError as error:
+        raise SystemExit(str(error)) from None
 
 
 def _run_child(
@@ -110,15 +209,8 @@ def main() -> int:
     """Run the parent coordinator or one private child measurement."""
     arguments = _parser().parse_args()
     selected = _selected_scenarios(arguments.scenario or ['import_root'])
-    if arguments.repeats < 1:
-        raise SystemExit('--repeats must be at least one')
-    if arguments.rows is not None and arguments.rows < 1:
-        raise SystemExit('--rows must be at least one')
+    _validate_arguments(arguments, selected)
     if arguments.child:
-        if arguments.result_path is None or len(selected) != 1:
-            raise SystemExit(
-                'A child requires exactly one scenario and result path'
-            )
         _run_child(
             _child_source(arguments),
             arguments.repeat_index,
@@ -126,19 +218,16 @@ def main() -> int:
         )
         return 0
 
-    git_sha = _current_git_sha()
+    git_sha, worktree_sha256 = _current_git_provenance()
     records: list[dict[str, Any]] = []
     with tempfile.TemporaryDirectory(prefix='gdf-benchmark-') as temporary:
         root = Path(temporary)
         for scenario in selected:
-            source = _prepare_input(
-                scenario,
-                root,
-                arguments.rows,
-                arguments.cotahist_path,
-            )
+            source = _prepare_parent_source(scenario, root, arguments)
             records.extend(
-                _run_parent_scenario(source, arguments.repeats, root, git_sha)
+                _run_parent_scenario(
+                    source, arguments.repeats, root, git_sha, worktree_sha256
+                )
             )
     payload = {
         'schema_version': _SCHEMA_VERSION,

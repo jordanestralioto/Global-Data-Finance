@@ -1,8 +1,6 @@
 """Adapt asynchronous HTTP requests and streamed filesystem writes."""
 
 import contextlib
-import os
-import tempfile
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -15,6 +13,7 @@ from ..macro_exceptions import (
     PathPermissionError,
     SecurityError,
 )
+from .temporary_files import reserve_temporary_path
 
 
 class RequestsAdapter:
@@ -165,17 +164,9 @@ class RequestsAdapter:
         target_path = Path(output_path)
         request_headers = self._merge_headers(headers)
         staging_path: Path | None = None
-        staging_fd: int | None = None
 
         try:
-            staging_fd, staging_name = tempfile.mkstemp(
-                prefix=f'.{target_path.name}.',
-                suffix='.part',
-                dir=str(target_path.parent),
-            )
-            staging_path = Path(staging_name)
-            os.close(staging_fd)
-            staging_fd = None
+            staging_path = reserve_temporary_path(target_path, suffix='.part')
 
             async with (
                 httpx.AsyncClient(
@@ -237,9 +228,6 @@ class RequestsAdapter:
             return staging_path
 
         except BaseException:
-            if staging_fd is not None:
-                with contextlib.suppress(OSError):
-                    os.close(staging_fd)
             if staging_path is not None:
                 _remove_staging_file(staging_path)
 

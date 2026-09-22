@@ -264,25 +264,25 @@ ______________________________________________________________________
 
 ### What libraries should I use to analyze generated Parquet datasets?
 
-Use Pandas or PyArrow:
+Use PyArrow by default. If DataFrame workflows are preferred, install Pandas
+separately with `python -m pip install pandas`:
 
 ```python
-# Utilizing traditional Pandas
-import pandas as pd
-df = pd.read_parquet("cotahist_extracted.parquet")
-
-# Reading bounded PyArrow batches
 import pyarrow.parquet as pq
 for batch in pq.ParquetFile("cotahist_extracted.parquet").iter_batches():
     print(batch)
+
+# Optional: after installing Pandas in the consumer environment
+import pandas as pd
+df = pd.read_parquet("cotahist_extracted.parquet")
 ```
 
 ### Which engine does extraction use?
 
 - **PyArrow**: the production read/write engine and a bounded-batch option for
   large inputs.
-- **Pandas**: compatible with generated Parquets and retained by the legacy CSV
-  adapter.
+- **Pandas**: optional downstream reader compatible with generated Parquets;
+  it is not installed by the library.
 
 Polars is not installed by the package, but consumers can add it as an optional
 downstream reader.

@@ -1,19 +1,4 @@
 {
   "version": 1,
-  "entries": [
-    {
-      "path": "docs/user-guide/b3-docs.en.md",
-      "classification": "documentation",
-      "limit": 500,
-      "cap": 543,
-      "action": "split-document"
-    },
-    {
-      "path": "docs/user-guide/b3-docs.md",
-      "classification": "documentation",
-      "limit": 500,
-      "cap": 553,
-      "action": "split-document"
-    }
-  ]
+  "entries": []
 }

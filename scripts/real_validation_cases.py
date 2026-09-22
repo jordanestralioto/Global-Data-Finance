@@ -12,6 +12,7 @@ import httpx
 import pyarrow as pa
 
 from globaldatafinance.brazil.b3_data.historical_quotes.errors import (
+    B3Error,
     EmptyAssetListError,
     InvalidAssetsName,
     InvalidOutputFilename,
@@ -27,12 +28,10 @@ from globaldatafinance.brazil.cvm.fundamental_stocks_data.errors import (
     CvmError,
 )
 from globaldatafinance.macro_exceptions import (
+    DownloadTimeoutError,
     ExtractionError,
     NetworkError,
     SecurityError,
-)
-from globaldatafinance.macro_exceptions import (
-    TimeoutError as MacroTimeoutError,
 )
 
 from .real_validation_b3 import execute_cotahist_case
@@ -49,6 +48,7 @@ _CASE_FAILURES = (
     ArithmeticError,
     AssertionError,
     AttributeError,
+    B3Error,
     CvmError,
     EmptyAssetListError,
     EOFError,
@@ -72,7 +72,7 @@ _CASE_FAILURES = (
     TypeError,
     UnicodeError,
     ValueError,
-    MacroTimeoutError,
+    DownloadTimeoutError,
     httpx.HTTPError,
     pa.ArrowException,
 )

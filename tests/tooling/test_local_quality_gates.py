@@ -247,7 +247,9 @@ def test_agents_hook_validator_rejects_an_invalid_document(
     )
 
     assert result.returncode == 1
-    assert 'first non-empty line' in result.stdout
+    assert (
+        'level-2 headings must match portable contract order' in result.stdout
+    )
 
 
 def test_diff_sanity_rejects_new_debug_artifacts(tmp_path: Path) -> None:

@@ -34,7 +34,7 @@ live in `core/`, `macro_infra/`, and `macro_exceptions/`.
 
 - **🚀 Performance**: Async downloads with `httpx[http2]`, custom exponential retry/backoff (`core/utils/retry_strategy.py`), and adaptive concurrency monitored by CPU/RAM (`psutil`).
 - **🛡️ Robustness**: Downloaded files are checked for expected size and readable ZIP contents; inputs and paths are validated before extraction or writes, with a failure-atomic CVM batch commit during automatic extraction.
-- **💾 Columnar Format**: Canonical output in **Parquet** through `pyarrow`, ready for Pandas or PyArrow consumers.
+- **💾 Columnar Format**: Canonical output in **Parquet** through `pyarrow`, ready for PyArrow or optional Pandas consumers.
 - **🧩 Source Ownership**: CVM and B3 keep source-specific validation, parsing, orchestration, and I/O in their owning directories; shared behavior is centralized only when it is genuinely generic.
 - **✨ Developer Experience**: Complete type hints, structured logging, strict test markers (`unit`, `integration`, `slow`, `asyncio`).
 
@@ -210,20 +210,25 @@ print(f"File saved at: {result['output_file']}")
 
 ### 3. Analyzing Data
 
-Data is saved in **Parquet** format, ideal for analysis with Pandas or PyArrow.
+Data is saved in **Parquet** format, ideal for analysis with PyArrow. Pandas is
+an optional downstream dependency; install it separately if DataFrames are
+needed:
+
+```bash
+python -m pip install pandas
+```
 
 The library no longer installs Polars. Install it independently if it is your
 preferred downstream Parquet reader.
 
 ```python
-import pandas as pd
+import pyarrow.parquet as pq
 
 # Read generated file
-df = pd.read_parquet("./processed_data/cotahist_extracted.parquet")
+table = pq.read_table("./processed_data/cotahist_extracted.parquet")
 
 # Analyze
-print(df.head())
-print(df.groupby("ticker")["preco_fechamento"].mean())
+print(table.slice(0, 5))
 ```
 
 ______________________________________________________________________

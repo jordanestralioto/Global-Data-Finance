@@ -6,12 +6,13 @@ import zipfile
 from importlib import import_module
 from typing import Protocol, cast
 
-import pandas as pd
+import pyarrow.parquet as pq
 import pytest
 
 from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
     ParquetExtractorAdapterCVM,
 )
+from tests.support.builders import csv_bytes
 
 
 class _ProcessMemory(Protocol):
@@ -34,12 +35,10 @@ psutil = cast(_PsutilModule, import_module('psutil'))
 def test_large_cvm_csv_keeps_bounded_process_growth(tmp_path) -> None:
     """Measure the bounded-memory path with a deterministic large archive."""
     row_count = 100_000
-    source_data = pd.DataFrame(
-        {
-            'row_id': range(row_count),
-            'label': [f'row-{index % 1000}' for index in range(row_count)],
-            'value': [index * 1.5 for index in range(row_count)],
-        }
+    rows = ['row_id;label;value']
+    rows.extend(
+        f'{index};row-{index % 1000};{index * 1.5}'
+        for index in range(row_count)
     )
     archive_path = tmp_path / 'large_memory_measurement.zip'
     with zipfile.ZipFile(
@@ -47,7 +46,7 @@ def test_large_cvm_csv_keeps_bounded_process_growth(tmp_path) -> None:
     ) as archive:
         archive.writestr(
             'large_memory_measurement.csv',
-            source_data.to_csv(sep=';', index=False).encode('latin-1'),
+            csv_bytes(rows, encoding='latin-1'),
         )
 
     process = psutil.Process()
@@ -57,8 +56,8 @@ def test_large_cvm_csv_keeps_bounded_process_growth(tmp_path) -> None:
     )
     memory_after = process.memory_info().rss
 
-    result = pd.read_parquet(tmp_path / 'large_memory_measurement.parquet')
+    result = pq.ParquetFile(tmp_path / 'large_memory_measurement.parquet')
     memory_increase_mb = (memory_after - memory_before) / 1024**2
 
-    assert len(result) == row_count
+    assert result.metadata.num_rows == row_count
     assert memory_increase_mb < 150

@@ -7,7 +7,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 from ....core.archive_names import validate_portable_basename
-from ....core.utils import assert_path_not_sensitive
+from ....core.utils import normalize_destination_path
 from ....macro_exceptions import SecurityError
 
 
@@ -19,10 +19,10 @@ def build_download_target_path(
 ) -> Path:
     """Return a validated destination for the URL's final path component."""
     filename = _filename_from_url(url)
-    destination = Path(dest_path).expanduser().resolve()
-    assert_path_not_sensitive(
-        destination,
+    destination = normalize_destination_path(
         dest_path,
+        type_label='Destination path',
+        empty_message='path cannot be empty or whitespace',
         allowed_unc_roots=allowed_unc_roots,
     )
     target = (destination / filename).resolve()

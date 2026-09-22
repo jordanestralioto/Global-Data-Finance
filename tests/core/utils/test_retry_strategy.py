@@ -4,9 +4,9 @@ import requests  # type: ignore
 from globaldatafinance.core.utils import RetryStrategy
 from globaldatafinance.macro_exceptions import (
     DiskFullError,
+    DownloadTimeoutError,
     NetworkError,
     PathPermissionError,
-    TimeoutError,
 )
 
 pytestmark = pytest.mark.unit
@@ -44,7 +44,7 @@ class TestRetryStrategy:
             initial_backoff=1.0, max_backoff=60.0, multiplier=2.0
         )
 
-        error = TimeoutError('Request timed out')
+        error = DownloadTimeoutError('Request timed out')
         assert strategy.is_retryable(error) is True
 
     def test_is_retryable_with_requests_connection_error(self):

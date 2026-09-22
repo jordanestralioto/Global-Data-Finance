@@ -17,10 +17,11 @@ from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
 from globaldatafinance.core.config import ArchiveSafetySettings
 from globaldatafinance.macro_exceptions import (
     DiskFullError,
+    DownloadTimeoutError,
     ExtractionError,
+    InvalidDestinationPathError,
     NetworkError,
     SecurityError,
-    TimeoutError,
 )
 
 pytestmark = pytest.mark.unit
@@ -137,6 +138,16 @@ class TestHttpxAsyncDownloadAdapterHelpers:
         )
 
         assert target == tmp_path / 'COTAHIST_A2023.ZIP'
+
+    @pytest.mark.parametrize('destination', ['', '   '])
+    def test_download_target_rejects_empty_destination(self, destination):
+        with pytest.raises(
+            InvalidDestinationPathError,
+            match='path cannot be empty or whitespace',
+        ):
+            download_paths.build_download_target_path(
+                'https://example.com/files/COTAHIST_A2023.ZIP', destination
+            )
 
     @pytest.mark.parametrize(
         'url',
@@ -282,7 +293,7 @@ class TestHttpxAsyncDownloadAdapterAsyncMethods:
         )
 
         async def mock_stream_download(_url, _filepath):
-            raise TimeoutError('DRE', 30.0)
+            raise DownloadTimeoutError('DRE', 30.0)
 
         adapter._stream_download = mock_stream_download
 
@@ -294,7 +305,7 @@ class TestHttpxAsyncDownloadAdapterAsyncMethods:
         )
 
         assert success is False
-        assert 'TimeoutError' in error_msg
+        assert 'DownloadTimeoutError' in error_msg
 
     @patch(
         'globaldatafinance.brazil.cvm.fundamental_stocks_data.http.remove_file'

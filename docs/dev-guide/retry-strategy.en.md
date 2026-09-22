@@ -24,7 +24,7 @@ ______________________________________________________________________
 ### Always Retryable Exceptions
 
 - `NetworkError` - Connection drops or socket disruptions
-- `TimeoutError` - Remote server query timing failures
+- `DownloadTimeoutError` - CVM download timeout failures
 
 ### Keyword-Based Exception Matchers
 
@@ -183,7 +183,7 @@ The `RetryStrategy` engine evaluates symbols generated from `macro_exceptions`:
 ```python
 from globaldatafinance.macro_exceptions import (
     NetworkError,          # Transient network communication interruptions
-    TimeoutError,          # Request execution timeout events
+    DownloadTimeoutError,  # Download timeout events
     PathPermissionError,   # Filesystem write boundary lockouts
     DiskFullError          # Storage capacity exhaustion errors
 )

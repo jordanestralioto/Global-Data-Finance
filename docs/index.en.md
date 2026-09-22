@@ -170,19 +170,22 @@ print(f"Available years: {years.general_min_year} - {years.current_year}")
 
 ### 💾 Data Analysis Ready
 
+The Pandas examples below treat it as an optional downstream dependency. Install
+it separately (`python -m pip install pandas`) when DataFrames are needed; the
+library's default path uses PyArrow.
+
 ```python
-import pandas as pd
+import pyarrow.parquet as pq
 
 # Read processed data (Parquet format)
-df_quotes = pd.read_parquet("./processed_data/cotahist_extracted.parquet")
+table_quotes = pq.read_table(
+    "./processed_data/cotahist_extracted.parquet"
+)
 
-# Basic dataframe check
-print(df_quotes.head())
-print(df_quotes.info())
+# Basic table inspection
+print(table_quotes.slice(0, 5))
 
-# Mean closing price analysis by asset ticker
-mean_prices = df_quotes.groupby("ticker")["preco_fechamento"].mean()
-print(mean_prices.sort_values(ascending=False).head(10))
+# Use table_quotes.to_batches() for memory-bounded processing.
 ```
 
 ### ⚙️ Advanced Configuration
@@ -227,7 +230,8 @@ ______________________________________________________________________
 - **[Contributing](dev-guide/contributing.md)** - Contribution guidelines and validation practices
 - **[Testing](dev-guide/testing.md)** - Test suites, markers, and coverage gate strategy
 - **[Benchmarks](dev-guide/benchmarks.md)** - Reproducible time, memory, and volume measurements
-- **[Technical Decisions](decisions/test-execution-tiers.md)** - Test execution tiers and local COTAHIST validation contract
+- **[Technical Decisions](decisions/test-execution-tiers.md)** - Execution, ingestion, and infrastructure-boundary contracts
+- **[Shared Infrastructure Clean Cut](decisions/shared-infrastructure-clean-cut.en.md)** - Hard cut of legacy adapters, Pandas, and invariant helpers
 - **[Advanced Usage](dev-guide/advanced-usage.md)** - Optimization patterns and programmatic customization
 - **[Logging System](dev-guide/logging-system.md)** - Structured log formatting and diagnostic setup
 - **[Resource Monitoring](dev-guide/resource-monitoring.md)** - Adaptive memory and CPU resource throttling
@@ -299,6 +303,9 @@ ______________________________________________________________________
 ## 🚀 Common Use Cases
 
 ### 1. Fundamental Financial Analysis
+
+The analytical examples in this section assume the optional Pandas dependency:
+`python -m pip install pandas`.
 
 ```python
 from globaldatafinance import FundamentalStocksDataCVM

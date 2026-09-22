@@ -114,7 +114,6 @@ O Global-Data-Finance possui as seguintes dependências principais:
 | Biblioteca          | Versão  | Descrição                                  |
 | ------------------- | ------- | ------------------------------------------ |
 | `httpx`             | ≥0.28.1 | Cliente HTTP assíncrono com suporte HTTP/2 |
-| `pandas`            | ≥2.3.3  | Compatibilidade do adaptador CSV legado    |
 | `pyarrow`           | ≥23.0.1,<24.0.0 | Engine produtivo de CSV e Apache Parquet   |
 | `pydantic-settings` | ≥2.11.0 | Configuração e validação de dados          |
 | `psutil`            | ≥5.9.0  | Utilitários de sistema e processos         |
@@ -137,6 +136,10 @@ Instaladas automaticamente apenas em modo desenvolvimento:
 `polars` não é uma dependência de runtime do Global-Data-Finance. Consumidores
 que queiram usar Polars para analisar os Parquets podem instalá-lo separadamente;
 o pacote produz arquivos Apache Parquet independentes do leitor escolhido.
+
+Pandas também não é instalado automaticamente. Consumidores que preferirem
+DataFrames devem instalar `pandas` separadamente; os caminhos produtivos da
+biblioteca usam PyArrow diretamente.
 
 ______________________________________________________________________
 

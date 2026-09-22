@@ -123,7 +123,13 @@ ______________________________________________________________________
 
 ## Example 4: Analytical Exploration with Pandas
 
-Load and evaluate extracted historical exchange quotes using traditional Pandas dataframes.
+Load and evaluate extracted historical exchange quotes using traditional Pandas
+dataframes. Pandas is an optional downstream dependency and must be installed
+separately:
+
+```bash
+python -m pip install pandas
+```
 
 ```python
 import pandas as pd
@@ -281,10 +287,11 @@ Harnessing Global-Data-Finance inside interactive Jupyter notebook sessions to g
 
 !!! note "Optional Dependencies"
 
-    Visualization libraries used in this example (`matplotlib`, `seaborn`) are optional external packages:
+    Pandas and the visualization libraries used in this example
+    (`matplotlib`, `seaborn`) are optional external packages:
 
     ```bash
-    pip install matplotlib seaborn
+    python -m pip install pandas matplotlib seaborn
     ```
 
 ```ipython

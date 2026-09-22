@@ -26,6 +26,11 @@ class ZipFileReaderB3:
             limits = ArchiveSafetyLimits.from_environment()
         self._limits = limits
 
+    @property
+    def limits(self) -> ArchiveSafetyLimits:
+        """Return the archive safety limits used by this reader."""
+        return self._limits
+
     def iter_lines(
         self, source_path: str
     ) -> Iterator[tuple[str, B3RecordContext]]:

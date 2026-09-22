@@ -2,18 +2,27 @@
 
 from __future__ import annotations
 
+import errno
 import json
+import logging
 import os
 import socket
 from pathlib import Path
 
 import pytest
 
-from globaldatafinance.macro_exceptions import DiskFullError, ExtractionError
+from globaldatafinance.macro_exceptions import (
+    DiskFullError,
+    ExtractionError,
+    InvalidDestinationPathError,
+    PathIsNotDirectoryError,
+    PathPermissionError,
+)
 from globaldatafinance.macro_infra.transactional_publication import (
     FileOperations,
     TransactionalPublication,
     TransactionalPublisher,
+    durability,
 )
 
 pytestmark = pytest.mark.integration
@@ -104,6 +113,24 @@ class _FailCleanupOperations(FileOperations):
         super().rmtree(path)
 
 
+class _UnsupportedDirectoryFsyncOperations(FileOperations):
+    """Simulate a platform where directory fsync is unavailable."""
+
+    def fsync_directory(self, path: Path) -> None:
+        """Raise the errno tolerated by the durability policy."""
+        _ = path
+        raise OSError(errno.EINVAL, 'directory fsync is unsupported')
+
+
+class _UnexpectedDirectoryFsyncOperations(FileOperations):
+    """Simulate a directory fsync failure that must remain visible."""
+
+    def fsync_directory(self, path: Path) -> None:
+        """Raise an I/O failure outside the unsupported set."""
+        _ = path
+        raise OSError(errno.EIO, 'directory fsync failed')
+
+
 def _register(
     publication: TransactionalPublication,
     destination: Path,
@@ -128,6 +155,154 @@ def test_destination_validation_has_no_transaction_side_effects(
     publisher = TransactionalPublisher(tmp_path, owner='test')
 
     publisher.validate_destination()
+
+    assert publisher._manifest_store is None
+    assert not (tmp_path / '.globaldatafinance-transaction.lock').exists()
+    assert not list(tmp_path.glob('.globaldatafinance-transaction-*'))
+
+
+@pytest.mark.parametrize('destination', ['', '   '])
+def test_empty_destination_is_rejected_before_transaction_state(
+    destination: str,
+) -> None:
+    """Blank destinations cannot silently resolve to the current directory."""
+    publisher = TransactionalPublisher(destination, owner='test')
+
+    with pytest.raises(
+        InvalidDestinationPathError,
+        match='path cannot be empty or whitespace',
+    ):
+        publisher.validate_destination()
+
+
+def test_repeated_validation_keeps_relative_destination_canonical(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A transaction cannot move when the current directory changes."""
+    first = tmp_path / 'first'
+    second = tmp_path / 'second'
+    first.mkdir()
+    second.mkdir()
+
+    monkeypatch.chdir(first)
+    publisher = TransactionalPublisher('.', owner='test')
+    publisher.validate_destination()
+
+    monkeypatch.chdir(second)
+    publication = publisher.begin()
+    try:
+        assert publisher.destination_dir == first.resolve()
+        assert publication.staging_dir.is_relative_to(first.resolve())
+    finally:
+        publication.abort()
+
+    assert not list(first.glob('.globaldatafinance-transaction-*'))
+    assert not list(second.glob('.globaldatafinance-transaction-*'))
+
+
+def test_repeated_validation_keeps_tilde_destination_canonical(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A changed HOME cannot redirect an already validated destination."""
+    first = tmp_path / 'home-first'
+    second = tmp_path / 'home-second'
+    first.mkdir()
+    second.mkdir()
+
+    monkeypatch.setenv('HOME', str(first))
+    publisher = TransactionalPublisher('~', owner='test')
+    publisher.validate_destination()
+
+    monkeypatch.setenv('HOME', str(second))
+    publisher.validate_destination()
+
+    assert publisher.destination_dir == first.resolve()
+
+
+def test_repeated_validation_keeps_symlink_destination_canonical(
+    tmp_path: Path,
+) -> None:
+    """A retargeted symlink cannot redirect an existing transaction."""
+    first = tmp_path / 'real-first'
+    second = tmp_path / 'real-second'
+    link = tmp_path / 'destination'
+    first.mkdir()
+    second.mkdir()
+    try:
+        link.symlink_to(first, target_is_directory=True)
+    except OSError as error:
+        pytest.skip(f'symlink support is unavailable: {error}')
+
+    publisher = TransactionalPublisher(link, owner='test')
+    publisher.validate_destination()
+    link.unlink()
+    link.symlink_to(second, target_is_directory=True)
+    publisher.validate_destination()
+
+    assert publisher.destination_dir == first.resolve()
+
+
+def test_directory_fsync_tolerates_unsupported_platforms(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Unsupported directory fsync is logged and does not abort cleanup."""
+    operations = _UnsupportedDirectoryFsyncOperations()
+
+    with caplog.at_level(logging.WARNING):
+        durability.sync_directory(operations, tmp_path)
+
+    assert any(
+        'Directory fsync is unsupported' in record.message
+        for record in caplog.records
+    )
+
+
+def test_directory_fsync_propagates_unexpected_failures(
+    tmp_path: Path,
+) -> None:
+    """Unexpected directory fsync failures remain visible to the caller."""
+    with pytest.raises(OSError, match='directory fsync failed'):
+        durability.sync_directory(
+            _UnexpectedDirectoryFsyncOperations(), tmp_path
+        )
+
+
+@pytest.mark.parametrize('destination_kind', ['missing', 'file'])
+def test_invalid_destination_validation_has_no_transaction_side_effects(
+    tmp_path: Path,
+    destination_kind: str,
+) -> None:
+    """Missing and regular-file destinations fail before transaction state."""
+    destination = tmp_path / destination_kind
+    if destination_kind == 'file':
+        destination.write_bytes(b'not a directory')
+
+    publisher = TransactionalPublisher(destination, owner='test')
+
+    expected_message = (
+        'does not exist' if destination_kind == 'missing' else 'is a file'
+    )
+    with pytest.raises(PathIsNotDirectoryError, match=expected_message):
+        publisher.validate_destination()
+
+    assert publisher._manifest_store is None
+    assert not (tmp_path / '.globaldatafinance-transaction.lock').exists()
+    assert not list(tmp_path.glob('.globaldatafinance-transaction-*'))
+
+
+def test_unwritable_destination_validation_has_no_transaction_side_effects(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Permission failure is typed and leaves no lock or manifest state."""
+    monkeypatch.setattr(os, 'access', lambda *_args: False)
+    publisher = TransactionalPublisher(tmp_path, owner='test')
+
+    with pytest.raises(PathPermissionError):
+        publisher.validate_destination()
 
     assert publisher._manifest_store is None
     assert not (tmp_path / '.globaldatafinance-transaction.lock').exists()

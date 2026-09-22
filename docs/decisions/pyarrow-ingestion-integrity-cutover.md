@@ -37,8 +37,9 @@ lifecycle e diagnósticos de ownership distinto.
 
 Polars será removido de runtime, lockfile, testes e scripts. PyArrow será o
 único engine produtivo e será importado somente no primeiro caminho operacional
-que precisa dele. Pandas continua obrigatório apenas pelo contrato legado de
-ReadFilesAdapter, com import local nos métodos leitores.
+que precisa dele. O antigo `ReadFilesAdapter` também foi removido no corte
+limpo de infraestrutura; Pandas é somente uma opção downstream instalada pelo
+consumidor.
 
 Fachadas e arquivos __init__.py públicos permanecem leves. Construir uma
 fachada, consultar assets/years B3 ou baixar CVM sem extração não pode carregar
@@ -126,6 +127,8 @@ implementação:
   schemas lógicos ou o formato Parquet.
 - Não adicionar serviço, fila, processo externo, framework web ou feature flag.
 - Não suportar CSV RFC quoted/multiline junto com QUOTE_NONE neste cutover.
-- Não manter um pipeline produtivo pandas/Polars de contingência.
+- Não manter um pipeline produtivo pandas/Polars de contingência. Esta decisão
+  histórica é supersedida pelo corte limpo de infraestrutura quanto à remoção
+  do `ReadFilesAdapter` e da dependência automática de Pandas.
 - Não tornar o corpus anual COTAHIST obrigatório na CI sem fixture licenciada.
 - Não prometer isolamento serializável para leitores concorrentes de lote CVM.

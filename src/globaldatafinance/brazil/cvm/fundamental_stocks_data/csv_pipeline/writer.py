@@ -2,15 +2,21 @@
 
 from __future__ import annotations
 
+import errno
 import hashlib
+from contextlib import suppress
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 import pyarrow as pa
 import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 
-from .....macro_exceptions import DiskFullError, ExtractionError
+from .....macro_exceptions import (
+    DiskFullError,
+    ExtractionError,
+    ParquetWriteError,
+)
 from .constants import FALSE_VALUES, NULL_TOKENS, ROW_GROUP_SIZE, TRUE_VALUES
 from .models import CsvAnalysis, CsvPipelineResult, EncodingPlan
 from .source import ReopenableCsvSource, binary_source
@@ -25,7 +31,10 @@ def write_parquet(
     schema: pa.Schema,
 ) -> CsvPipelineResult:
     """Write, close, and reopen one staged Parquet with fixed row groups."""
-    staged_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        staged_path.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as error:
+        _raise_staged_write_error(staged_path, error)
     rows_written = 0
     row_groups: list[int] = []
     writer = None
@@ -38,7 +47,7 @@ def write_parquet(
         )
         if analysis.rows:
             rows_written, row_groups = _write_arrow_batches(
-                source, utf8_source, plan, writer, schema
+                source, utf8_source, plan, writer, schema, staged_path
             )
         writer.close()
         writer = None
@@ -47,16 +56,14 @@ def write_parquet(
             str(source.source_path),
             f'Could not convert CSV member through Arrow: {error}',
         ) from error
+    except (ExtractionError, DiskFullError, ParquetWriteError):
+        raise
     except OSError as error:
-        if getattr(error, 'errno', None) == 28:
-            raise DiskFullError(str(staged_path)) from error
-        raise ExtractionError(
-            str(source.source_path),
-            f'Could not write staged Parquet: {error}',
-        ) from error
+        _raise_staged_write_error(staged_path, error)
     finally:
         if writer is not None:
-            writer.close()
+            with suppress(OSError):
+                writer.close()
     if rows_written != analysis.rows:
         raise ExtractionError(
             str(source.source_path),
@@ -82,54 +89,65 @@ def _write_arrow_batches(
     plan: EncodingPlan,
     writer: Any,
     schema: pa.Schema,
+    output_path: Path,
 ) -> tuple[int, list[int]]:
     """Stream explicitly typed Arrow CSV batches into fixed row groups."""
     rows_written = 0
     row_groups: list[int] = []
     pending_batches: list[Any] = []
     pending_rows = 0
-    with binary_source(source, utf8_source, plan) as opened:
-        reader = pacsv.open_csv(
-            opened,
-            read_options=pacsv.ReadOptions(
-                block_size=256 * 1024,
-                use_threads=False,
-            ),
-            parse_options=pacsv.ParseOptions(
-                delimiter=';',
-                quote_char=False,
-                newlines_in_values=False,
-                ignore_empty_lines=False,
-            ),
-            convert_options=pacsv.ConvertOptions(
-                column_types=schema,
-                null_values=sorted(NULL_TOKENS),
-                strings_can_be_null=True,
-                quoted_strings_can_be_null=True,
-                true_values=TRUE_VALUES,
-                false_values=FALSE_VALUES,
-            ),
-        )
-        for batch in reader:
-            offset = 0
-            while offset < batch.num_rows:
-                size = min(
-                    ROW_GROUP_SIZE - pending_rows,
-                    batch.num_rows - offset,
-                )
-                pending_batches.append(batch.slice(offset, size))
-                pending_rows += size
-                offset += size
-                if pending_rows == ROW_GROUP_SIZE:
-                    _write_row_group(writer, pending_batches, schema)
-                    rows_written += pending_rows
-                    row_groups.append(pending_rows)
-                    pending_batches.clear()
-                    pending_rows = 0
-        if pending_rows:
-            _write_row_group(writer, pending_batches, schema)
-            rows_written += pending_rows
-            row_groups.append(pending_rows)
+    try:
+        with binary_source(source, utf8_source, plan) as opened:
+            reader = pacsv.open_csv(
+                opened,
+                read_options=pacsv.ReadOptions(
+                    block_size=256 * 1024,
+                    use_threads=False,
+                ),
+                parse_options=pacsv.ParseOptions(
+                    delimiter=';',
+                    quote_char=False,
+                    newlines_in_values=False,
+                    ignore_empty_lines=False,
+                ),
+                convert_options=pacsv.ConvertOptions(
+                    column_types=schema,
+                    null_values=sorted(NULL_TOKENS),
+                    strings_can_be_null=True,
+                    quoted_strings_can_be_null=True,
+                    true_values=TRUE_VALUES,
+                    false_values=FALSE_VALUES,
+                ),
+            )
+            for batch in reader:
+                offset = 0
+                while offset < batch.num_rows:
+                    size = min(
+                        ROW_GROUP_SIZE - pending_rows,
+                        batch.num_rows - offset,
+                    )
+                    pending_batches.append(batch.slice(offset, size))
+                    pending_rows += size
+                    offset += size
+                    if pending_rows == ROW_GROUP_SIZE:
+                        _write_row_group(
+                            writer, pending_batches, schema, output_path
+                        )
+                        rows_written += pending_rows
+                        row_groups.append(pending_rows)
+                        pending_batches.clear()
+                        pending_rows = 0
+            if pending_rows:
+                _write_row_group(writer, pending_batches, schema, output_path)
+                rows_written += pending_rows
+                row_groups.append(pending_rows)
+    except (ExtractionError, ParquetWriteError):
+        raise
+    except OSError as error:
+        raise ExtractionError(
+            str(source.source_path),
+            f'Could not read CSV member through Arrow: {error}',
+        ) from error
     return rows_written, row_groups
 
 
@@ -137,10 +155,14 @@ def _write_row_group(
     writer: Any,
     batches: list[Any],
     schema: pa.Schema,
+    output_path: Path,
 ) -> None:
     """Write one bounded group without constructing Python arrays."""
     table = pa.Table.from_batches(batches, schema=schema)
-    writer.write_table(table, row_group_size=ROW_GROUP_SIZE)
+    try:
+        writer.write_table(table, row_group_size=ROW_GROUP_SIZE)
+    except OSError as error:
+        _raise_staged_write_error(output_path, error)
 
 
 def validate_parquet(
@@ -153,11 +175,13 @@ def validate_parquet(
     """Verify schema, metadata, rows, and row groups before publication."""
     try:
         parquet = pq.ParquetFile(path)
-    except OSError as error:
+    except pa.ArrowException as error:
         raise ExtractionError(
             str(source.source_path),
             f'Could not reopen staged Parquet: {error}',
         ) from error
+    except OSError as error:
+        _raise_staged_write_error(path, error)
     metadata = parquet.metadata
     if metadata is None or metadata.num_rows != rows:
         raise ExtractionError(
@@ -184,3 +208,10 @@ def validate_parquet(
             str(source.source_path),
             'Staged Parquet row group validation failed',
         )
+
+
+def _raise_staged_write_error(path: Path, error: OSError) -> NoReturn:
+    """Translate filesystem failures for one staged Parquet artifact."""
+    if error.errno == errno.ENOSPC:
+        raise DiskFullError(str(path)) from error
+    raise ParquetWriteError(str(path), str(error)) from error

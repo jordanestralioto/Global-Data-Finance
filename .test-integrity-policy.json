@@ -1,3 +1,6 @@
 {
-  "allowed_deletions": {}
+  "allowed_deletions": {
+    "tests/macro_infra/test_extractor_file.py": "The generic ExtractorAdapter public surface is intentionally removed; supported CVM and B3 source-owned extraction behavior remains covered by their owner suites.",
+    "tests/macro_infra/test_read_files_adapter.py": "The generic ReadFilesAdapter public surface is intentionally removed with its legacy Pandas dependency; supported CVM and B3 source-owned behavior remains covered by their owner suites."
+  }
 }

@@ -19,20 +19,23 @@ memória total. Sem chamadas de rede; apenas extração local dos ZIPs oficiais.
 
 | Modo   | Linhas gravadas | Tempo decorrido (API) | Tempo decorrido (ponta a ponta) |    Pico RSS |      Throughput |
 | ------ | --------------: | --------------------: | ------------------------------: | ----------: | --------------: |
-| `fast` |      22.303.577 |              649,99 s |                        650,50 s |   429,88 MB | 34.313,8 reg/s  |
-| `slow` |      22.303.577 |              749,45 s |                        750,10 s |   331,11 MB | 29.759,9 reg/s  |
+| `fast` |      22.303.577 |              649,99 s |                        650,50 s |  429,88 MiB | 34.313,8 reg/s  |
+| `slow` |      22.303.577 |              749,45 s |                        750,10 s |  331,11 MiB | 29.759,9 reg/s  |
 
-> **Observação:** O modo `slow` utilizou apenas 331,11 MB (~0,32 GiB) de pico
+> **Observação:** O modo `slow` utilizou apenas 331,11 MiB (~0,32 GiB) de pico
 > RSS (uma redução de ~23% de memória em relação ao modo `fast`), mantendo 100%
 > de paridade de esquema e dados em todos os 22.303.577 registros dos 27 anos.
-> A diferença de memória de apenas ~98 MB entre `fast` e `slow` deve-se ao
+> A diferença de memória de apenas ~98 MiB entre `fast` e `slow` deve-se ao
 > limite delimitado por worker (`python_record_limit` de 25.000 vs 10.000 linhas)
-> e descarte em chunks (`ROW_GROUP_LIMIT = 100.000`), mantendo complexidade de
+> e descarte em chunks (`ROW_GROUP_LIMIT = 200.000`), mantendo complexidade de
 > memória $O(1)$ em relação ao período temporal. O ganho de tempo moderado do
-> `fast` (~15%) reflete a contenção do GIL do CPython em `ThreadPoolExecutor` no
-> loop intensivo em CPU de parsing posicional de strings, além da etapa final
-> sequencial de merge em disco. Em relação à linha de base histórica v2 (~4,4 GB),
-> a arquitetura com streaming colunar PyArrow reduziu o pico de memória em mais de 90%.
+> `fast` (~15%) reflete a hipótese plausível de contenção do GIL do CPython em
+> `ThreadPoolExecutor` no loop intensivo em CPU de parsing posicional de strings
+> Python e montagem de lotes, além da etapa sequencial de merge em disco
+> (embora rotinas de descompressão zlib e escrita C++ do PyArrow liberem o GIL,
+> a validação posicional e construção de linhas em Python retêm o lock). Em
+> relação à linha de base histórica v2 (~4,4 GB), a arquitetura com streaming
+> colunar PyArrow reduziu o pico de memória em mais de 90%.
 
 ### 1.2. Linha de Base Histórica v2 — 25 Anos Completos (2026-09-02, Revisão `703d9ab`)
 
@@ -211,11 +214,20 @@ ______________________________________________________________________
 ## 5. Runner de ingestão em processo novo
 
 `scripts/benchmark_ingestion.py` mede import raiz, CVM, texto CVM, B3 de 100k e
-250k registros, footprint de runtime e, quando disponível, o corpus anual B3.
+250k registros, o cenário multi-arquivo `b3_multi_4x25k` (por padrão, 4 arquivos
+de 25k linhas), footprint de runtime e, quando disponível, o corpus anual B3.
 Ele gera corpus determinístico em diretório temporário, repete cada cenário três
 vezes por padrão, executa a operação em processo Python novo e amostra RSS a
-cada 10 ms no processo filho. Antes de registrar uma medição, valida contagem,
-ordem, schema, valores-limite e o artefato Parquet lógico.
+cada 10 ms no processo filho. Suporta avaliação comparativa via
+`--backend thread|process` e `--processing-mode fast|slow`. Antes de registrar uma
+medição, valida contagem, ordem, schema, valores-limite e o artefato Parquet lógico.
+No corpus anual, o runner obtém antes da medição um digest tipado de todas as
+linhas selecionadas nos 27 ZIPs oficiais e cada repetição é comparada com esse
+digest. `--source-count` é exclusivo do corpus sintético `b3_multi_4x25k` e
+reparte as linhas solicitadas pela quantidade exata de fontes; o corpus anual
+usa sempre suas 27 fontes. `--worker-limit` aplica um teto no processo novo da
+medição por `GDF_B3_WORKER_LIMIT`; o JSON registra tanto o valor solicitado
+quanto o valor efetivo depois da política de recursos e do fallback de backend.
 
 ```bash
 # Medição pequena para verificar o protocolo JSON
@@ -225,22 +237,46 @@ uv run --locked --no-sync python scripts/benchmark_ingestion.py \
 # Corpora sintéticos completos, três repetições e relatório persistido
 uv run --locked --no-sync python scripts/benchmark_ingestion.py \
   --scenario cvm --scenario cvm_text --scenario b3_100k \
-  --scenario b3_250k --repeats 3 --output benchmark.json
+  --scenario b3_250k --scenario b3_multi_4x25k --repeats 3 --output benchmark.json
 
-# O corpus anual só executa com os 17 ZIPs; caso contrário, fica skipped
+# Comparação explícita de backend e modo de processamento
+uv run --locked --no-sync python scripts/benchmark_ingestion.py \
+  --scenario b3_multi_4x25k --backend process --processing-mode fast --repeats 3
+
+# Prova do fallback: duas fontes, mas somente um worker efetivo
+uv run --locked --no-sync python scripts/benchmark_ingestion.py \
+  --scenario b3_multi_4x25k --rows 100 --source-count 2 --worker-limit 1 \
+  --backend process --processing-mode fast
+
+# O corpus anual só executa com os 27 ZIPs (2000–2026); caso contrário, fica skipped
 uv run --locked --no-sync python scripts/benchmark_ingestion.py \
   --scenario b3_annual --cotahist-path /caminho/COTAHIST --output annual.json
 ```
 
 Cada resultado JSON contém versão do schema, revisão, ambiente, checksum de
 entrada, contagem, fingerprint de schema, equivalência lógica, digest lógico,
-tempo da operação, fases de operação/validação, RSS inicial/pico/final, bytes
-de saída e `status`. A equivalência compara todas as linhas tipadas (incluindo
-nulos, ordem e tuplas decimais), não apenas valores de borda. O filho confere o
-checksum antes da medição; uma fonte modificada falha em vez de produzir uma
-comparação inválida. O status anual sem os 17 ZIPs requeridos é `skipped` com a
-razão `external corpus unavailable`; não deve ser convertido em sucesso em
+SHA-256 do artefato gerado (`artifact_sha256`), tempo da operação, fases de
+operação/validação, modo de processamento, backend, contagens e limites de
+fontes/workers solicitados e efetivos, RSS inicial/pico/final do processo pai
+(`rss_peak_mib`, preservando
+a comparação com a linha de base histórica v1),
+pico de RSS agregado da árvore (`aggregate_rss_peak_mib`), contagem de processos
+filhos observados, bytes de saída, `status` e `worktree_sha256`. RSS é memória
+residente por processo, não heap. `aggregate_rss_peak_mib` é a soma de RSS do pai e
+dos descendentes na mesma amostra; páginas compartilhadas podem ser contadas mais de
+uma vez, portanto essa métrica não equivale à memória física única, à memória global
+do host ou ao uso de memória de um cgroup. A equivalência compara todas as linhas
+tipadas (incluindo nulos, ordem e tuplas decimais), não apenas valores de borda. O
+filho confere o checksum antes da medição; uma fonte modificada falha em vez de
+produzir uma comparação inválida. O status anual sem os 27 ZIPs requeridos é `skipped`
+com a razão `external corpus unavailable`; não deve ser convertido em sucesso em
 relatórios de release.
+
+Quando `git_sha` termina em `-dirty`, `worktree_sha256` identifica o diff rastreado
+e o conteúdo de arquivos não rastreados e não ignorados existentes no início da
+medição. Os resultados em `.benchmarks/` são deliberadamente locais e ignorados;
+para uma alegação revisável, guarde o JSON emitido em um artefato rastreado da revisão
+e cite ambos os campos de proveniência.
 
 Os gates de referência desta mudança são avaliados apenas em comparação
 baseline/candidato na mesma máquina: import raiz ≤50 MiB e ≤0,50 s; CVM 269.181

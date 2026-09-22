@@ -102,27 +102,6 @@ def test_lookup_and_non_extracting_download_are_engine_free() -> None:
     assert state == dict.fromkeys(_ENGINES, False)
 
 
-def test_legacy_pandas_adapter_loads_only_pandas_on_first_csv_read() -> None:
-    """The retained legacy API loads pandas locally and never Arrow engines."""
-    state = _run_probe(
-        _program(
-            'import io, sys',
-            "sys.modules['pyarrow'] = None",
-            'from globaldatafinance.macro_infra import ReadFilesAdapter',
-            "source = io.StringIO('value\\n1\\n')",
-            'list(ReadFilesAdapter.read_csv_chunk_size(source, 1))',
-        )
-        + _engine_state()
-    )
-
-    assert state == {
-        'pandas': True,
-        'numpy': True,
-        'pyarrow': False,
-        'polars': False,
-    }
-
-
 def test_cvm_and_b3_extractions_load_arrow_but_not_pandas_or_polars() -> None:
     """Both productive paths activate their single Arrow engine on demand."""
     cvm_state = _run_probe(
@@ -167,6 +146,7 @@ def test_cvm_and_b3_extractions_load_arrow_but_not_pandas_or_polars() -> None:
     )
 
     assert cvm_state['pandas'] is False
+    assert cvm_state['numpy'] is False
     assert cvm_state['pyarrow'] is True
     assert cvm_state['polars'] is False
     assert b3_state['pandas'] is False

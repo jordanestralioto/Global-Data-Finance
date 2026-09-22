@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import zipfile
 from pathlib import Path
 
@@ -15,6 +16,8 @@ from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
 from globaldatafinance.macro_exceptions import (
     CorruptedZipError,
     ExtractionError,
+    PathIsNotDirectoryError,
+    PathPermissionError,
     SecurityError,
 )
 
@@ -117,6 +120,45 @@ def test_unsafe_destination_is_rejected_before_creating_transaction_state(
         ParquetExtractorAdapterCVM().extract(str(archive), '/')
 
     assert not list(tmp_path.glob('.globaldatafinance-transaction-*'))
+
+
+@pytest.mark.parametrize(
+    ('destination_kind', 'message'),
+    [('missing', 'does not exist'), ('file', 'is a file')],
+)
+def test_public_extractor_preserves_destination_kind_error(
+    tmp_path: Path,
+    destination_kind: str,
+    message: str,
+) -> None:
+    """Missing and regular-file destinations retain distinct diagnostics."""
+    archive = tmp_path / 'documents.zip'
+    _archive(archive, {'source.csv': b'code;value\n1;10\n'})
+    destination = tmp_path / destination_kind
+    if destination_kind == 'file':
+        destination.write_text('not a directory', encoding='utf-8')
+
+    with pytest.raises(PathIsNotDirectoryError, match=message):
+        ParquetExtractorAdapterCVM().extract(str(archive), str(destination))
+
+    assert not list(tmp_path.glob('.globaldatafinance-transaction-*'))
+
+
+def test_public_extractor_preserves_destination_permission_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An unwritable destination remains a typed public extraction error."""
+    archive = tmp_path / 'documents.zip'
+    _archive(archive, {'source.csv': b'code;value\n1;10\n'})
+    destination = tmp_path / 'destination'
+    destination.mkdir()
+    monkeypatch.setattr(os, 'access', lambda *_args: False)
+
+    with pytest.raises(PathPermissionError, match='Permission denied'):
+        ParquetExtractorAdapterCVM().extract(str(archive), str(destination))
+
+    assert not list(destination.glob('.globaldatafinance-transaction-*'))
 
 
 def test_basename_collisions_are_rejected_before_writing_a_parquet(

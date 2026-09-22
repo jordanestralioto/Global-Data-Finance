@@ -49,6 +49,32 @@ def test_fast_worker_limit_is_bounded_by_cpu_memory_and_file_count(
     assert policy.worker_limit(2) == 2
 
 
+@pytest.mark.parametrize(
+    ('configured_limit', 'expected_limit'),
+    [('2', 2), ('0', 1), ('invalid', 3)],
+)
+def test_fast_worker_limit_honors_documented_environment_cap(
+    monkeypatch: pytest.MonkeyPatch,
+    configured_limit: str,
+    expected_limit: int,
+) -> None:
+    """The optional runtime cap only reduces the normal fast-mode limit."""
+    monkeypatch.setattr(
+        'globaldatafinance.brazil.b3_data.historical_quotes.extraction_service.resource_policy.os.cpu_count',
+        lambda: 8,
+    )
+    monkeypatch.setenv('GDF_B3_WORKER_LIMIT', configured_limit)
+    policy = extraction_service.ResourcePolicyB3(
+        ProcessingModeEnumB3.FAST,
+        resource_monitor=cast(
+            ResourceMonitor, _Monitor([ResourceState.HEALTHY])
+        ),
+        available_memory_mib=lambda: 6 * 256,
+    )
+
+    assert policy.worker_limit(10) == expected_limit
+
+
 def test_slow_worker_limit_is_always_one() -> None:
     """Slow mode never adds parallel source workers."""
     policy = extraction_service.ResourcePolicyB3(

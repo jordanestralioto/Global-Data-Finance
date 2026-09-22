@@ -34,15 +34,13 @@ REVIEW_OWNER_ROOT = (
 PACK_REGISTRY_PATH = REVIEW_RUNTIME_ROOT / 'pack-registry.json'
 
 TEMPLATE_PATHS = {
-    'gate-report.template.md': LINT_AND_VALIDATE_ROOT
-    / 'templates'
-    / 'gate-report.template.md',
+    'gate-report.template.md': (
+        LINT_AND_VALIDATE_ROOT / 'templates/gate-report.template.md'
+    ),
 }
 
 ARTIFACT_SCHEMA_PATHS = {
-    'gate-report': LINT_AND_VALIDATE_ROOT
-    / 'schemas'
-    / 'gate-report.schema.json',
+    'gate-report': LINT_AND_VALIDATE_ROOT / 'schemas/gate-report.schema.json',
 }
 
 if REVIEW_OWNER_ROOT is not None:

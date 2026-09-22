@@ -123,7 +123,12 @@ ______________________________________________________________________
 
 ## Exemplo 4: Análise com Pandas
 
-Analisar dados extraídos usando Pandas.
+Analisar dados extraídos usando Pandas. Pandas é uma dependência downstream
+opcional e deve ser instalado separadamente:
+
+```bash
+python -m pip install pandas
+```
 
 ```python
 import pandas as pd
@@ -281,10 +286,11 @@ Usar Global-Data-Finance em notebooks Jupyter para análise interativa.
 
 !!! note "Dependências Opcionais"
 
-    Bibliotecas de visualização utilizadas neste exemplo (`matplotlib`, `seaborn`) são dependências externas opcionais:
+    Pandas e as bibliotecas de visualização utilizadas neste exemplo
+    (`matplotlib`, `seaborn`) são dependências externas opcionais:
 
     ```bash
-    pip install matplotlib seaborn
+    python -m pip install pandas matplotlib seaborn
     ```
 
 ```ipython

@@ -152,6 +152,29 @@ years = b3.get_available_years()
 # `current_year` is the current execution year returned by the API.
 ```
 
+#### Instance Properties
+
+- `settings: Settings`: Immutable snapshot of the client runtime configuration.
+
+______________________________________________________________________
+
+## Execution Configuration and Environment Variables
+
+The variables below are resolved when `HistoricalQuotesB3()` is constructed.
+They do not alter an existing instance or add parameters to the public
+constructor. The process backend is experimental and requires explicit opt-in.
+It is not recommended for general operational flows until a measurement on the
+annual corpus meets the promotion criterion documented by the technical decision.
+
+- `GDF_B3_EXECUTOR_BACKEND`: Defines the parallel execution backend in `fast` mode (`"thread"` or `"process"`). Default is `"thread"`.
+  - `"thread"`: Uses `ThreadPoolExecutor`. Lower startup overhead and lower global memory consumption. Recommended for most workloads.
+  - `"process"`: Uses `ProcessPoolExecutor` with `spawn` context only for controlled experiments. It can reduce measured parent-process RSS by isolating per-file buffers in workers, but it also adds `spawn` cost, can increase summed worker RSS, and offers no guaranteed time improvement.
+  - Automatic fallback: If `processing_mode="slow"`, exactly 1 source file is processed, or worker limit is below 2, the system safely falls back to `"thread"`.
+  - Contractual limitations:
+    1. Child worker processes instantiate default readers and parsers; internally injected custom collaborators are not serialized across process boundaries in this version.
+    2. Multiprocessing with `spawn` requires importable Python modules and does not support interactive execution via `<stdin>` (`python -`).
+- `GDF_B3_WORKER_LIMIT`: Optional fast-mode worker cap. Use a positive integer; the effective limit remains the minimum of this value, source-file count, available CPUs, and memory budget. Slow mode remains single-worker. A non-numeric value preserves the default cap; values below one are clamped to one worker.
+
 ______________________________________________________________________
 
 ## Asset Classification Codes
@@ -178,6 +201,9 @@ ______________________________________________________________________
 | --------------- | ------------------- | --------------- | ---------------------- | -------------------------------------- |
 | **fast**        | ~12,300 rec/s       | Intensive       | ~2 GB – 4.2 GB (peak)  | Default profile for multi-core systems |
 | **slow**        | ~8,500 rec/s        | Low             | ~500 MB – 1.5 GB (peak)| Constrained RAM server environments    |
+
+Parallelism in fast mode is coordinated by whole source file. Slow mode
+utilizes a single worker to minimize memory consumption.
 
 ______________________________________________________________________
 

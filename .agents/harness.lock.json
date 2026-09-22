@@ -15,13 +15,13 @@
     },
     {
       "hasScripts": true,
-      "hash": "sha256:9b16d8acad676f944c1081c8e30657999f94348ca78b525f64737d36b8d42f86",
+      "hash": "sha256:6cbb637a134f33b06850fe54ad19038e74fc33d95b909efb5be8ca072f1bbc51",
       "id": "runtime/review",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:ca9ac06234e1ed5b3efd75b3b90c43ade52b0a45236c96421d881f6c84e8f77d",
+      "hash": "sha256:6221dbd7bb348328a6099f5882420384862041b9e02cb5b924a7ce7f6f020fb0",
       "id": "skills/agents-md-author",
       "selectedBy": "manifest"
     },

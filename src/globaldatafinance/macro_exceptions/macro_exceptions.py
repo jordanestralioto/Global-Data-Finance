@@ -1,5 +1,7 @@
 """Shared exception types for filesystem, network, and extraction failures."""
 
+from typing import Any
+
 
 class EmptyDirectoryError(Exception):
     """Indicate that a required directory contains no usable files."""
@@ -18,13 +20,18 @@ class InvalidDestinationPathError(ValueError):
 
 
 class PathIsNotDirectoryError(ValueError):
-    """Indicate that a destination path points to a regular file."""
+    """Indicate that a destination path is missing or not a directory."""
 
-    def __init__(self, path: str):
+    def __init__(self, path: str, *, exists: bool | None = None):
         """Create an error for the invalid destination path."""
-        super().__init__(
-            f"Destination path must be a directory, but '{path}' is a file."
-        )
+        if exists is False:
+            message = f"Destination path does not exist: '{path}'."
+        else:
+            message = (
+                f"Destination path must be a directory, but '{path}' is a "
+                'file.'
+            )
+        super().__init__(message)
 
 
 class PathPermissionError(OSError):
@@ -48,7 +55,7 @@ class NetworkError(Exception):
         )
 
 
-class TimeoutError(Exception):
+class DownloadTimeoutError(Exception):
     """Indicate that a document download exceeded its timeout."""
 
     def __init__(self, doc_name: str, timeout: float | None = None):
@@ -64,7 +71,13 @@ class ExtractionError(Exception):
 
     def __init__(self, path: str, message: str):
         """Create an error with the source path and failure detail."""
+        self.path = path
+        self.message = message
         super().__init__(f"Extraction error for '{path}': {message}")
+
+    def __reduce__(self) -> tuple[Any, ...]:
+        """Support pickle round-trip across multiprocessing spawn pools."""
+        return (self.__class__, (self.path, self.message))
 
 
 class CorruptedZipError(ExtractionError):
@@ -72,7 +85,12 @@ class CorruptedZipError(ExtractionError):
 
     def __init__(self, zip_path: str, message: str):
         """Create an error with the ZIP path and corruption detail."""
+        self.raw_message = message
         super().__init__(zip_path, f'Corrupted ZIP: {message}')
+
+    def __reduce__(self) -> tuple[Any, ...]:
+        """Support pickle round-trip across multiprocessing spawn pools."""
+        return (self.__class__, (self.path, self.raw_message))
 
 
 class DiskFullError(OSError):

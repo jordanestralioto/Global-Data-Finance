@@ -9,6 +9,7 @@ from ....macro_exceptions import (
     CorruptedZipError,
     DiskFullError,
     ExtractionError,
+    ParquetWriteError,
 )
 from .core import DownloadResultCVM
 from .download_validation import find_parquet_files, validate_parquet_files
@@ -87,6 +88,15 @@ def extract_downloaded_file(
         )
         result.add_error_downloads(document_key, f'CorruptedZIP: {zip_err}')
         logger.info('Keeping corrupted ZIP for investigation: %s', filepath)
+
+    except ParquetWriteError as parquet_err:
+        logger.exception(
+            'Parquet write error during extraction of %s', document_key
+        )
+        result.add_error_downloads(
+            document_key, f'ParquetWrite: {parquet_err}'
+        )
+        logger.info('Keeping ZIP after Parquet write failure: %s', filepath)
 
     except ExtractionError as extract_err:
         logger.exception('Extraction error for %s', document_key)

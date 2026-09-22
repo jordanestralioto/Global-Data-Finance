@@ -24,7 +24,7 @@ ______________________________________________________________________
 ### Sempre Retryable
 
 - `NetworkError` - Erros de rede
-- `TimeoutError` - Timeout de requisições
+- `DownloadTimeoutError` - Timeout de downloads CVM
 
 ### Baseado em Mensagem
 
@@ -183,7 +183,7 @@ O `RetryStrategy` usa as exceções definidas em `macro_exceptions`:
 ```python
 from globaldatafinance.macro_exceptions import (
     NetworkError,          # Erro de rede
-    TimeoutError,          # Timeout
+    DownloadTimeoutError,  # Timeout de download
     PathPermissionError,   # Sem permissão
     DiskFullError          # Disco cheio
 )

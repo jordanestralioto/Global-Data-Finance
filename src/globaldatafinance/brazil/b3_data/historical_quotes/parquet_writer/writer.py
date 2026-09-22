@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import contextlib
-import os
-import tempfile
 from pathlib import Path
 from typing import Any
 
 from .....macro_exceptions import DiskFullError, ParquetWriteError
+from .....macro_infra.temporary_files import reserve_temporary_path
 from .disk import check_disk_space
 from .schema import build_b3_schema
 from .session import (
@@ -47,7 +46,9 @@ class ParquetWriterB3:
         )
         temporary: Path | None = None
         try:
-            temporary = self._create_temporary_path(output_path)
+            temporary = reserve_temporary_path(
+                output_path, suffix='.parquet.tmp'
+            )
             schema = build_b3_schema()
             session = B3ParquetWriterSession().open(temporary, schema)
             if mode == 'append' and output_path.exists():
@@ -73,28 +74,6 @@ class ParquetWriterB3:
         """Preserve the caller's list while copying only bounded slices."""
         for offset in range(0, len(data), RECORD_BATCH_LIMIT):
             session.write_records(data[offset : offset + RECORD_BATCH_LIMIT])
-
-    @staticmethod
-    def _create_temporary_path(output_path: Path) -> Path:
-        """Reserve a unique same-directory path for one public write.
-
-        A fixed ``*.parquet.tmp`` name lets concurrent callers truncate or
-        remove one another's in-flight artifacts.  ``mkstemp`` gives each
-        operation an exclusive path on the destination filesystem while the
-        final ``replace`` below remains the only publication operation.
-        """
-        descriptor, name = tempfile.mkstemp(
-            prefix=f'.{output_path.name}.',
-            suffix='.parquet.tmp',
-            dir=output_path.parent,
-        )
-        try:
-            os.close(descriptor)
-        except BaseException:
-            with contextlib.suppress(OSError):
-                Path(name).unlink(missing_ok=True)
-            raise
-        return Path(name)
 
     @staticmethod
     def _copy_existing(

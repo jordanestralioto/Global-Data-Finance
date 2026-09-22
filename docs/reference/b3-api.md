@@ -151,6 +151,29 @@ years = b3.get_available_years()
 # `current_year` corresponde ao ano corrente de execução.
 ```
 
+#### Propriedades da Instância
+
+- `settings: Settings`: Snapshot imutável da configuração de runtime do cliente.
+
+______________________________________________________________________
+
+## Configuração de Execução e Variáveis de Ambiente
+
+As variáveis abaixo são resolvidas ao construir `HistoricalQuotesB3()`. Elas não
+alteram uma instância já existente, nem adicionam parâmetros ao construtor
+público. O backend por processos é experimental e requer ativação explícita.
+Ele não é recomendado para fluxos operacionais gerais até que uma medição no
+corpus anual cumpra o critério de promoção documentado na decisão técnica.
+
+- `GDF_B3_EXECUTOR_BACKEND`: Define o backend executor de paralelismo no modo `fast` (`"thread"` ou `"process"`). O padrão é `"thread"`.
+  - `"thread"`: Utiliza `ThreadPoolExecutor`. Menor sobrecarga de inicialização e menor consumo global de memória. Recomendado para a maioria dos fluxos.
+  - `"process"`: Utiliza `ProcessPoolExecutor` com contexto `spawn` somente para experimentos controlados. Ele pode reduzir o RSS medido do processo pai ao isolar buffers de cada arquivo em processos separados, mas também acrescenta custo de `spawn`, pode aumentar a soma de RSS dos workers e não oferece ganho de tempo garantido.
+  - Fallback automático: Se `processing_mode="slow"`, houver apenas 1 arquivo de entrada ou o limite de workers for inferior a 2, o sistema realiza fallback seguro para `"thread"`.
+  - Limitações de contrato:
+    1. Os workers filhos criam instâncias padrão de leitor e parser; colaboradores customizados injetados internamente não são serializados entre processos nesta versão.
+    2. O multiprocessing via `spawn` requer módulos Python importáveis e não oferece suporte à execução interativa via `<stdin>` (`python -`).
+- `GDF_B3_WORKER_LIMIT`: Limite opcional de workers para o modo `fast`. Use um inteiro positivo; o limite efetivo continua sendo o menor entre esse valor, a quantidade de arquivos, CPUs disponíveis e orçamento de memória. O modo `slow` continua com um worker. Um valor não numérico preserva o teto padrão; valores menores que um são limitados a um worker.
+
 ______________________________________________________________________
 
 ## Classes de Ativos
@@ -177,6 +200,9 @@ ______________________________________________________________________
 | -------- | ----------------- | ---------- | ---------------------- | ------------------------------------ |
 | **fast** | ~12.300 reg/s     | Alto       | ~2 GB – 4.2 GB (pico)  | Padrão, máquinas com múltiplos núcleos |
 | **slow** | ~8.500 reg/s      | Baixo      | ~500 MB – 1.5 GB (pico)| Ambientes com restrição de memória   |
+
+O paralelismo no modo `fast` é coordenado por arquivo-fonte inteiro. O modo
+`slow` utiliza um único worker para minimizar o consumo de memória.
 
 ______________________________________________________________________
 

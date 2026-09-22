@@ -69,6 +69,7 @@ KNOWN_IMPORTS: dict[str, set[str]] = {
         'MissingDownloadUrlError',
     },
     'globaldatafinance.brazil.b3_data.historical_quotes.errors': {
+        'B3Error',
         'InvalidFirstYear',
         'InvalidLastYear',
         'InvalidAssetsName',
@@ -89,7 +90,7 @@ KNOWN_IMPORTS: dict[str, set[str]] = {
         'CorruptedZipError',
         'SecurityError',
         'NetworkError',
-        'TimeoutError',
+        'DownloadTimeoutError',
     },
 }
 

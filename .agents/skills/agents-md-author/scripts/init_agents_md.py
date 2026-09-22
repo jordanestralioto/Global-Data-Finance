@@ -5,33 +5,11 @@ from __future__ import annotations
 
 import argparse
 import sys
-from datetime import UTC, date, datetime
 from pathlib import Path
 
 TEMPLATE_PATH = (
     Path(__file__).resolve().parents[1] / 'assets' / 'AGENTS.template.md'
 )
-
-
-def _single_line(value: str) -> str:
-    normalized = value.strip()
-    if not normalized or '\n' in value or '\r' in value:
-        raise argparse.ArgumentTypeError(
-            'value must be a non-empty single line'
-        )
-    return normalized
-
-
-def render_template(*, owner: str, status: str, reviewed: str) -> str:
-    """Render deterministic metadata into the bundled template."""
-    template = TEMPLATE_PATH.read_text(encoding='utf-8')
-    return (
-        template.replace('> Owner: Unassigned', f'> Owner: {owner}', 1)
-        .replace(
-            '> Last reviewed: YYYY-MM-DD', f'> Last reviewed: {reviewed}', 1
-        )
-        .replace('> Status: Draft', f'> Status: {status}', 1)
-    )
 
 
 def main() -> int:
@@ -45,23 +23,6 @@ def main() -> int:
         help='Destination path (default: AGENTS.md)',
     )
     parser.add_argument(
-        '--owner',
-        type=_single_line,
-        default='Unassigned',
-        help='Confirmed owner or Unassigned (default: Unassigned)',
-    )
-    parser.add_argument(
-        '--status',
-        type=_single_line,
-        default='Draft',
-        help='Confirmed document status (default: Draft)',
-    )
-    parser.add_argument(
-        '--reviewed',
-        default=datetime.now(UTC).date().isoformat(),
-        help='Review date in YYYY-MM-DD format (default: today)',
-    )
-    parser.add_argument(
         '--stdout',
         action='store_true',
         help='Print the scaffold instead of writing a file.',
@@ -69,17 +30,7 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        date.fromisoformat(args.reviewed)
-    except ValueError:
-        print('ERROR: --reviewed must use YYYY-MM-DD.', file=sys.stderr)
-        return 2
-
-    try:
-        rendered = render_template(
-            owner=args.owner,
-            status=args.status,
-            reviewed=args.reviewed,
-        )
+        rendered = TEMPLATE_PATH.read_text(encoding='utf-8')
     except OSError as exc:
         print(f'ERROR: cannot read bundled template: {exc}', file=sys.stderr)
         return 2

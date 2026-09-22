@@ -48,6 +48,6 @@ class TestProcessingModeEnumB3:
 
     def test_slow_mode_runtime_config(self):
         assert ProcessingModeEnumB3.SLOW.desired_concurrent_files == 3
-        assert ProcessingModeEnumB3.SLOW.desired_workers == 2
+        assert ProcessingModeEnumB3.SLOW.desired_workers == 1
         assert ProcessingModeEnumB3.SLOW.use_parallel_parsing is False
         assert ProcessingModeEnumB3.SLOW.memory_threshold_mb == 1000

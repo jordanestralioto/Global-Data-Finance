@@ -1,8 +1,6 @@
-import zipfile
 from pathlib import Path
 from unittest.mock import Mock
 
-import pandas as pd
 import pytest
 
 from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
@@ -18,7 +16,9 @@ from globaldatafinance.macro_exceptions import (
     CorruptedZipError,
     DiskFullError,
     ExtractionError,
+    ParquetWriteError,
 )
+from tests.support.builders import csv_bytes, write_zip
 
 extract_downloaded_file = download_extraction.extract_downloaded_file
 
@@ -26,11 +26,15 @@ pytestmark = pytest.mark.integration
 
 
 def _write_valid_archive(archive_path: Path) -> None:
-    data = pd.DataFrame({'id': [1, 2, 3], 'value': [10, 20, 30]})
-    with zipfile.ZipFile(archive_path, 'w') as archive:
-        archive.writestr(
-            'data.csv', data.to_csv(sep=';', index=False).encode('latin-1')
-        )
+    write_zip(
+        archive_path,
+        {
+            'data.csv': csv_bytes(
+                ['id;value', '1;10', '2;20', '3;30'],
+                encoding='latin-1',
+            )
+        },
+    )
 
 
 def _delete_file(path: str) -> None:
@@ -64,20 +68,22 @@ class TestZipCleanup:
         assert cleanup_calls == [str(archive_path)]
         assert not archive_path.exists()
 
-    @pytest.mark.parametrize('failure_kind', ['disk_full', 'corrupted_zip'])
+    @pytest.mark.parametrize(
+        ('failure_kind', 'failure'),
+        [
+            ('disk_full', DiskFullError('/output')),
+            ('corrupted_zip', CorruptedZipError('/input.zip', 'invalid')),
+            ('parquet_write', ParquetWriteError('/output.parquet', 'denied')),
+        ],
+    )
     def test_cleanup_failures_update_result_and_keep_source_zip(
-        self, tmp_path, failure_kind
+        self, tmp_path, failure_kind, failure
     ):
         archive_path = tmp_path / f'{failure_kind}.zip'
         _write_valid_archive(archive_path)
         result = DownloadResultCVM()
         repository = Mock()
-        if failure_kind == 'disk_full':
-            repository.extract.side_effect = DiskFullError(str(tmp_path))
-        else:
-            repository.extract.side_effect = CorruptedZipError(
-                str(archive_path), 'invalid test archive'
-            )
+        repository.extract.side_effect = failure
 
         cleanup = Mock(side_effect=_delete_file)
         extract_downloaded_file(
@@ -93,10 +99,12 @@ class TestZipCleanup:
         assert result.successful_downloads == []
         assert result.error_count_downloads == 1
         assert 'DFP_2023' in result.failed_downloads
-        assert (
-            failure_kind.split('_')[0].capitalize()
-            in (result.failed_downloads['DFP_2023'])
-        )
+        expected_marker = {
+            'disk_full': 'DiskFull:',
+            'corrupted_zip': 'CorruptedZIP:',
+            'parquet_write': 'ParquetWrite:',
+        }[failure_kind]
+        assert expected_marker in result.failed_downloads['DFP_2023']
         cleanup.assert_not_called()
         assert archive_path.exists()
 

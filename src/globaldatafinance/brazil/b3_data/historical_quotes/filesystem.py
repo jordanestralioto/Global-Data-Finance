@@ -1,19 +1,18 @@
 """Filesystem validation helpers for B3 historical quotes."""
 
-import os
 import re
 from collections.abc import Sequence
 from pathlib import Path
 
 from ....core import get_logger
 from ....core.config import PathSafetySettings
-from ....core.utils import assert_path_not_sensitive
+from ....core.utils.destination_paths import (
+    normalize_destination_path,
+    prepare_writable_destination,
+)
 from ....macro_exceptions import (
     EmptyDirectoryError,
-    InvalidDestinationPathError,
-    PathCreationError,
     PathIsNotDirectoryError,
-    PathPermissionError,
 )
 
 logger = get_logger(__name__)
@@ -46,17 +45,18 @@ class FileSystemServiceB3:
         """Validate that a path exists and is a directory."""
         logger.debug('Validating directory path', extra={'path': path})
 
-        normalized_path = self._normalize_path(
+        normalized_path = normalize_destination_path(
             path,
             type_label='Path',
             empty_message='Path cannot be empty or whitespace',
+            allowed_unc_roots=self._allowed_unc_roots,
         )
 
         if not normalized_path.exists():
-            raise PathIsNotDirectoryError(str(normalized_path))
+            raise PathIsNotDirectoryError(str(normalized_path), exists=False)
 
         if not normalized_path.is_dir():
-            raise PathIsNotDirectoryError(str(normalized_path))
+            raise PathIsNotDirectoryError(str(normalized_path), exists=True)
 
         if not any(normalized_path.iterdir()):
             raise EmptyDirectoryError(str(normalized_path))
@@ -70,50 +70,12 @@ class FileSystemServiceB3:
 
     def prepare_destination_path(self, path: str) -> Path:
         """Validate or create a writable extraction destination directory."""
-        normalized_path = self._normalize_path(
+        return prepare_writable_destination(
             path,
             type_label='Destination path',
             empty_message='path cannot be empty or whitespace',
-        )
-
-        if normalized_path.exists():
-            if not normalized_path.is_dir():
-                raise PathIsNotDirectoryError(str(normalized_path))
-            if not os.access(str(normalized_path), os.W_OK):
-                raise PathPermissionError(str(normalized_path))
-            return normalized_path
-
-        try:
-            normalized_path.mkdir(parents=True, exist_ok=True)
-        except PermissionError as exc:
-            raise PathPermissionError(str(normalized_path)) from exc
-        except OSError as exc:
-            raise PathCreationError(str(normalized_path), str(exc)) from exc
-
-        return normalized_path
-
-    def _normalize_path(
-        self,
-        path: str,
-        *,
-        type_label: str,
-        empty_message: str,
-    ) -> Path:
-        if not isinstance(path, str):
-            raise TypeError(
-                f'{type_label} must be a string, got {type(path).__name__}'
-            )
-
-        if not path or path.isspace():
-            raise InvalidDestinationPathError(empty_message)
-
-        normalized_path = Path(path).expanduser().resolve()
-        assert_path_not_sensitive(
-            normalized_path,
-            raw_input=path,
             allowed_unc_roots=self._allowed_unc_roots,
         )
-        return normalized_path
 
     def find_files_by_years(self, directory: Path, years: range) -> set[str]:
         """Find one official COTAHIST input file for each requested year.

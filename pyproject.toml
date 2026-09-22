@@ -5,18 +5,25 @@ description = "Library for extracting, normalizing and persisting Brazilian CVM 
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-authors = [
-    { name = "Jordan Estralioto", email = "estraliotojordan@gmail.com" }
+authors = [{ name = "Jordan Estralioto", email = "estraliotojordan@gmail.com" }]
+keywords = [
+  "finance",
+  "financial-data",
+  "market-data",
+  "fundamentals",
+  "historical-quotes",
+  "parquet",
+  "b3",
+  "cvm",
 ]
-keywords = ["finance", "financial-data", "market-data", "fundamentals", "historical-quotes", "parquet", "b3", "cvm"]
 classifiers = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Developers",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
-    "Operating System :: OS Independent",
-    "Topic :: Software Development :: Libraries"
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Operating System :: OS Independent",
+  "Topic :: Software Development :: Libraries",
 ]
 
 requires-python = ">=3.12,<4.0"
@@ -26,7 +33,6 @@ dependencies = [
     "pyarrow>=23.0.1,<24.0.0",
     "httpx[http2]>=0.28.1,<0.29.0",
     "psutil>=5.9.0,<7.0.0",
-    "pandas>=2.3.3,<3.0.0",
 ]
 
 [project.urls]
@@ -37,30 +43,25 @@ Documentation = "https://jordanestralioto.github.io/Global-Data-Finance/"
 
 [dependency-groups]
 dev = [
-    "pre-commit>=4.3.0,<5",
-    "pytest>=8.4.2",
-    "pytest-cov>=5.0.0",
-    "mypy>=1.11.0",
-    "mkdocs>=1.6.1",
-    "mkdocs-material>=9.6.22",
-    "mkdocs-static-i18n>=1.2.0",
-    "pytest-asyncio>=1.3.0",
-    "ipykernel>=7.1.0",
-    "pip-audit>=2.9.0",
-    "mdformat==1.0.0",
-    "mdformat-gfm==1.0.0",
-    "requests>=2.32.5",
-    "pytest-benchmark>=4.0.0",
-    "hypothesis>=6.0.0,<7.0.0",
-    "import-linter>=2.0",
-    "grimp>=3.15,<4",
-    # Also needed as CLIs: the workflows call `uv run ruff` and
-    # `uv run detect-secrets-hook` directly, and pre-commit's isolated hook
-    # venvs do not put anything on the project environment. Keep these ranges
-    # matching the `rev:` pins in .pre-commit-config.yaml so the CLI and the
-    # hook never disagree about what is a violation.
-    "ruff>=0.16.2,<0.17",
-    "detect-secrets>=1.5.0,<2",
+  "pre-commit>=4.3.0,<5",
+  "pytest>=8.4.2",
+  "pytest-cov>=5.0.0",
+  "mypy>=1.11.0",
+  "mkdocs>=1.6.1",
+  "mkdocs-material>=9.6.22",
+  "mkdocs-static-i18n>=1.2.0",
+  "pytest-asyncio>=1.3.0",
+  "ipykernel>=7.1.0",
+  "pip-audit>=2.9.0",
+  "mdformat==1.0.0",
+  "mdformat-gfm==1.0.0",
+  "requests>=2.32.5",
+  "pytest-benchmark>=4.0.0",
+  "hypothesis>=6.0.0,<7.0.0",
+  "import-linter>=2.0",
+  "grimp>=3.15,<4",
+  "ruff>=0.16.2,<0.17",
+  "detect-secrets>=1.5.0,<2",
 ]
 
 [build-system]
@@ -78,18 +79,10 @@ local_scheme = "no-local-version"
 packages = ["src/globaldatafinance"]
 
 [tool.hatch.build]
-exclude = [
-    "**/cookies_*.py",
-    "**/__pycache__",
-]
+exclude = ["**/cookies_*.py", "**/__pycache__"]
 
 [tool.hatch.build.targets.sdist]
-include = [
-    "src/globaldatafinance",
-    "README.md",
-    "LICENSE",
-    "pyproject.toml",
-]
+include = ["src/globaldatafinance", "README.md", "LICENSE", "pyproject.toml"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -99,7 +92,7 @@ disallow_untyped_defs = true
 ignore_missing_imports = false
 
 [[tool.mypy.overrides]]
-module = ["pandas", "pyarrow", "pyarrow.*", "psutil"]
+module = ["pyarrow", "pyarrow.*", "psutil"]
 ignore_missing_imports = true
 
 # ---------------------------------------------------------------------------
@@ -113,12 +106,12 @@ ignore_missing_imports = true
 source = ["src"]
 branch = true
 omit = [
-    "*/tests/*",
-    "*/__pycache__/*",
-    "*/venv/*",
-    "*/env/*",
-    "*/.venv/*",
-    "*/site-packages/*",
+  "*/tests/*",
+  "*/__pycache__/*",
+  "*/venv/*",
+  "*/env/*",
+  "*/.venv/*",
+  "*/site-packages/*",
 ]
 
 [tool.coverage.report]
@@ -139,7 +132,15 @@ line-length = 79
 # ruff-policy gate adds the opt-in docstring and security profiles so each
 # profile has a visible, reviewable scope.
 select = [
-  "E", "W", "F", "I", "UP", "B", "C4", "SIM", "RUF",
+  "E",
+  "W",
+  "F",
+  "I",
+  "UP",
+  "B",
+  "C4",
+  "SIM",
+  "RUF",
   "PTH",    # Use pathlib (flake8-use-pathlib)
   "ARG",    # Unused arguments (flake8-unused-arguments)
   "LOG",    # Logging best practices (flake8-logging)
@@ -174,8 +175,8 @@ line-ending = "auto"
 
 [tool.uv]
 cache-keys = [
-    { file = "pyproject.toml" },
-    { git = { commit = true, tags = true } },
+  { file = "pyproject.toml" },
+  { git = { commit = true, tags = true } },
 ]
 
 [tool.uv.sources]
@@ -194,10 +195,10 @@ root_package = "globaldatafinance"
 name = "Layered architecture"
 type = "layers"
 layers = [
-    "globaldatafinance.application : globaldatafinance.brazil",
-    "globaldatafinance.macro_infra",
-    "globaldatafinance.core",
-    "globaldatafinance.macro_exceptions",
+  "globaldatafinance.application : globaldatafinance.brazil",
+  "globaldatafinance.macro_infra",
+  "globaldatafinance.core",
+  "globaldatafinance.macro_exceptions",
 ]
 
 # NOTE: cycle detection is NOT expressible as an import-linter contract -- a

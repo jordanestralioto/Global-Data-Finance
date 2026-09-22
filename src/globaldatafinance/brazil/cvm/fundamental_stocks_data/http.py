@@ -15,8 +15,7 @@ from ....core import (
 )
 from ....core.archive_safety import ArchiveSafetyLimits
 from ....core.config import PathSafetySettings
-from ....macro_exceptions import NetworkError
-from ....macro_exceptions import TimeoutError as MacroTimeoutError
+from ....macro_exceptions import DownloadTimeoutError, NetworkError
 from ....macro_infra import RequestsAdapter
 from .core import DownloadResultCVM
 from .download_extraction import extract_downloaded_file
@@ -328,11 +327,12 @@ class AsyncDownloadAdapterCVM:
                 return True, (
                     str(staging_path) if staging_path is not None else None
                 )
-
             except Exception as e:
                 key = f'{doc_name}_{year}'
                 if isinstance(e, _TIMEOUT_ERRORS):
-                    e = MacroTimeoutError(key, self.requests_adapter.timeout)
+                    e = DownloadTimeoutError(
+                        key, self.requests_adapter.timeout
+                    )
                 elif isinstance(e, _NETWORK_ERRORS):
                     e = NetworkError(key, f'{type(e).__name__}: {e}')
 

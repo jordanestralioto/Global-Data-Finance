@@ -249,9 +249,10 @@ assert result.success_count_downloads == 2
 
 ### Engines obrigatórios e provas reais
 
-PyArrow é o engine obrigatório de leitura/escrita produtiva. Pandas continua
-como dependência de compatibilidade do `ReadFilesAdapter` legado, enquanto
-Polars não faz parte do runtime. Testes unitários podem usar fakes para
+PyArrow é o engine obrigatório de leitura/escrita produtiva. Pandas não é
+instalado pela biblioteca e, quando necessário para análise downstream, deve
+ser uma dependência explícita do consumidor. Polars também não faz parte do
+runtime. Testes unitários podem usar fakes para
 colaboradores do próprio projeto, como monitor de recursos, parser ou a seam de
 filesystem. Eles não substituem testes de um componente que lê ou grava
 Parquet: esse componente também precisa de integrações com PyArrow real,

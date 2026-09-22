@@ -1,5 +1,6 @@
 """Regression tests for observable CVM extraction failures."""
 
+import logging
 from unittest.mock import MagicMock
 
 import pytest
@@ -14,6 +15,7 @@ from globaldatafinance.macro_exceptions import (
     CorruptedZipError,
     DiskFullError,
     ExtractionError,
+    ParquetWriteError,
 )
 
 pytestmark = pytest.mark.unit
@@ -24,12 +26,18 @@ pytestmark = pytest.mark.unit
     [
         (DiskFullError('/output'), 'DiskFull:', False),
         (CorruptedZipError('/input.zip', 'invalid'), 'CorruptedZIP:', False),
+        (
+            ParquetWriteError('/output.parquet', 'permission denied'),
+            'ParquetWrite:',
+            False,
+        ),
         (ExtractionError('/input.zip', 'failed'), 'ExtractionFailed:', False),
     ],
 )
 def test_known_extraction_failures_log_traceback_and_preserve_results(
     tmp_path,
     caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
     failure: Exception,
     result_marker: str,
     cleanup_expected: bool,
@@ -38,6 +46,8 @@ def test_known_extraction_failures_log_traceback_and_preserve_results(
     extractor.extract.side_effect = failure
     cleanup_file = MagicMock()
     result = DownloadResultCVM()
+    package_logger = logging.getLogger('globaldatafinance')
+    monkeypatch.setattr(package_logger, 'propagate', True)
 
     with caplog.at_level('ERROR'):
         download_extraction.extract_downloaded_file(

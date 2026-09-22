@@ -1,13 +1,32 @@
 import pytest
 
 from globaldatafinance.brazil.b3_data.historical_quotes.errors import (
+    B3Error,
     EmptyAssetListError,
     InvalidAssetsName,
     InvalidFirstYear,
     InvalidLastYear,
+    InvalidOutputFilename,
+    InvalidProcessingMode,
 )
 
 pytestmark = pytest.mark.unit
+
+
+def test_every_b3_domain_exception_has_the_source_local_base() -> None:
+    """Concrete B3 failures retain their own type and shared catch boundary."""
+    exceptions = [
+        InvalidFirstYear(1986, 2024),
+        InvalidLastYear(2020, 2024),
+        InvalidAssetsName(['invalid'], ['ações']),
+        EmptyAssetListError(),
+        InvalidProcessingMode('medium', ['fast', 'slow']),
+        InvalidOutputFilename('unsafe'),
+    ]
+
+    for exception in exceptions:
+        assert isinstance(exception, B3Error)
+        assert isinstance(exception, Exception)
 
 
 class TestInvalidFirstYear:

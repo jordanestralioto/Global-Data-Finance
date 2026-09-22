@@ -1,18 +1,14 @@
 """CVM download orchestration and caller-destination safety boundary."""
 
-import os
 import time
 from collections.abc import Sequence
 from pathlib import Path
 
 from ....core import get_logger
 from ....core.config import PathSafetySettings
-from ....core.utils import assert_path_not_sensitive
-from ....macro_exceptions import (
-    InvalidDestinationPathError,
-    PathCreationError,
-    PathIsNotDirectoryError,
-    PathPermissionError,
+from ....core.utils.destination_paths import (
+    normalize_destination_path,
+    prepare_writable_destination,
 )
 from . import core
 from .errors import EmptyDocumentListError, MissingDownloadUrlError
@@ -121,7 +117,12 @@ class VerifyPathsUseCasesCVM:
 
     def execute(self) -> dict[str, dict[int, str]]:
         """Create and verify directory structure for documents and years."""
-        self.__normalize_and_assert_safe(self.destination_path)
+        normalize_destination_path(
+            self.destination_path,
+            type_label='Destination path',
+            empty_message='path cannot be empty or whitespace',
+            allowed_unc_roots=self.allowed_unc_roots,
+        )
         docs_paths: dict[str, dict[int, str]] = {}
         for doc in self.new_set_docs:
             doc_path = str(Path(self.destination_path) / doc)
@@ -162,54 +163,14 @@ class VerifyPathsUseCasesCVM:
         return year >= self.__available_years.get_minimal_general_year()
 
     def __validate_and_create_paths(self, path: str) -> str:
-        normalized_path = self.__normalize_and_assert_safe(path)
-
-        if normalized_path.exists():
-            if not normalized_path.is_dir():
-                raise PathIsNotDirectoryError(str(normalized_path))
-
-            if not os.access(str(normalized_path), os.W_OK):
-                raise PathPermissionError(str(normalized_path))
-
-            logger.debug(
-                'Destination directory already exists: %s', normalized_path
-            )
-        else:
-            try:
-                normalized_path.mkdir(parents=True, exist_ok=True)
-                logger.debug(
-                    'Created destination directory: %s', normalized_path
-                )
-            except PermissionError as e:
-                raise PathPermissionError(str(normalized_path)) from e
-            except OSError as e:
-                raise PathCreationError(str(normalized_path), str(e)) from e
-
-        logger.debug(
-            'Destination path validated and ready: %s', normalized_path
-        )
-        return str(normalized_path)
-
-    def __normalize_and_assert_safe(self, path: str) -> Path:
-        """Validate raw destination syntax before a child path is composed."""
-        if not isinstance(path, str):
-            raise TypeError(
-                f'Destination path must be a string, got {type(path).__name__}'
-            )
-
-        if not path or path.isspace():
-            raise InvalidDestinationPathError(
-                'path cannot be empty or whitespace'
-            )
-
-        normalized_path = Path(path).expanduser().resolve()
-
-        assert_path_not_sensitive(
-            normalized_path,
-            raw_input=path,
+        result = prepare_writable_destination(
+            path,
+            type_label='Destination path',
+            empty_message='path cannot be empty or whitespace',
             allowed_unc_roots=self.allowed_unc_roots,
         )
-        return normalized_path
+        logger.debug('Destination path validated and ready: %s', result)
+        return str(result)
 
 
 class DownloadDocumentsUseCaseCVM:

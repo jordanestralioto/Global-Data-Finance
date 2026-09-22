@@ -172,19 +172,22 @@ print(f"Anos disponíveis: {years.general_min_year} - {years.current_year}")
 
 ### 💾 Análise de Dados
 
+Os exemplos com Pandas abaixo tratam a biblioteca como dependência downstream
+opcional. Instale-a separadamente (`python -m pip install pandas`) se precisar
+de DataFrames; o caminho padrão da biblioteca usa PyArrow.
+
 ```python
-import pandas as pd
+import pyarrow.parquet as pq
 
 # Ler dados processados (formato Parquet)
-df_cotacoes = pd.read_parquet("./dados_processados/cotahist_extracted.parquet")
+table_cotacoes = pq.read_table(
+    "./dados_processados/cotahist_extracted.parquet"
+)
 
-# Análise básica
-print(df_cotacoes.head())
-print(df_cotacoes.info())
+# Inspeção básica
+print(table_cotacoes.slice(0, 5))
 
-# Análise de preços médios por ativo
-precos_medios = df_cotacoes.groupby("ticker")["preco_fechamento"].mean()
-print(precos_medios.sort_values(ascending=False).head(10))
+# Use table_cotacoes.to_batches() para processamento limitado por memória.
 ```
 
 ### ⚙️ Configurações Avançadas
@@ -229,7 +232,8 @@ ______________________________________________________________________
 - **[Como Contribuir](dev-guide/contributing.md)** - Guia de contribuição
 - **[Testes](dev-guide/testing.md)** - Estratégias de teste e cobertura
 - **[Benchmarks](dev-guide/benchmarks.md)** - Métricas reproduzíveis de tempo, memória e volume
-- **[Decisões técnicas](decisions/test-execution-tiers.md)** - Contrato de tiers de execução e validação local do COTAHIST
+- **[Decisões técnicas](decisions/test-execution-tiers.md)** - Contratos de execução, ingestão e fronteiras de infraestrutura
+- **[Corte limpo da infraestrutura compartilhada](decisions/shared-infrastructure-clean-cut.md)** - Hard cut de adapters legados, Pandas e helpers invariantes
 - **[Uso Avançado](dev-guide/advanced-usage.md)** - Técnicas avançadas e otimizações
 - **[Sistema de Logging](dev-guide/logging-system.md)** - Configurações e práticas de logs estruturados
 - **[Monitoramento de Recursos](dev-guide/resource-monitoring.md)** - Monitoramento adaptativo de CPU e memória
@@ -301,6 +305,9 @@ ______________________________________________________________________
 ## 🚀 Casos de Uso
 
 ### 1. Análise Fundamentalista
+
+Os exemplos analíticos desta seção pressupõem a instalação opcional do Pandas:
+`python -m pip install pandas`.
 
 ```python
 from globaldatafinance import FundamentalStocksDataCVM

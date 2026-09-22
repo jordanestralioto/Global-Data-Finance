@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import contextlib
-import errno
 import json
 import os
 import socket
@@ -14,10 +13,15 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from ...core import get_logger
 from ...core.config import PathSafetySettings
-from ...core.utils import assert_path_not_sensitive
-from ...macro_exceptions import DiskFullError, ExtractionError
+from ...core.utils import normalize_destination_path
+from ...macro_exceptions import (
+    DiskFullError,
+    ExtractionError,
+    PathIsNotDirectoryError,
+    PathPermissionError,
+)
+from .durability import sync_directory
 from .manifests import ManifestStore
 from .paths import require_descendant
 from .publication import TransactionalPublication
@@ -28,8 +32,6 @@ from .types import (
     FileOperations,
     PublicationManifest,
 )
-
-logger = get_logger(__name__)
 
 
 class TransactionalPublisher:
@@ -56,6 +58,7 @@ class TransactionalPublisher:
         self.lock_dir = self.destination_dir / LOCK_NAME
         self._manifest_store: ManifestStore | None = None
         self._transaction_id: str | None = None
+        self._canonical_destination: Path | None = None
 
     def begin(
         self,
@@ -105,25 +108,21 @@ class TransactionalPublisher:
         """Validate the destination without opening transaction state."""
         if required_bytes < 0:
             raise ValueError('required_bytes cannot be negative')
-        self.destination_dir = self.destination_dir.expanduser().resolve()
+        if self._canonical_destination is None:
+            self._canonical_destination = normalize_destination_path(
+                self._raw_destination,
+                type_label='Destination path',
+                empty_message='path cannot be empty or whitespace',
+                allowed_unc_roots=self.allowed_unc_roots,
+            )
+        self.destination_dir = self._canonical_destination
         self.lock_dir = self.destination_dir / LOCK_NAME
-        assert_path_not_sensitive(
-            self.destination_dir,
-            raw_input=self._raw_destination,
-            allowed_unc_roots=self.allowed_unc_roots,
-        )
         if not self.destination_dir.is_dir():
-            raise ExtractionError(
-                self.source_path,
-                'Destination directory does not exist or is not a directory: '
-                f'{self.destination_dir}',
+            raise PathIsNotDirectoryError(
+                str(self.destination_dir), exists=self.destination_dir.exists()
             )
         if not os.access(self.destination_dir, os.W_OK):
-            raise ExtractionError(
-                self.source_path,
-                'Destination directory is not writable: '
-                f'{self.destination_dir}',
-            )
+            raise PathPermissionError(str(self.destination_dir))
         if required_bytes > self.operations.disk_free_bytes(
             self.destination_dir
         ):
@@ -316,34 +315,15 @@ class TransactionalPublisher:
     def _read_manifest(self, manifest_path: Path) -> PublicationManifest:
         return self._store.read(manifest_path)
 
-    def _sync_file(self, path: Path) -> None:
-        """Require file data to be durable before publication advances."""
-        self.operations.fsync_file(path)
-
-    def _sync_directory(self, path: Path) -> None:
-        """Sync directory metadata, tolerating only unsupported platforms."""
-        try:
-            self.operations.fsync_directory(path)
-        except OSError as error:
-            if error.errno not in {
-                errno.EINVAL,
-                errno.ENOTSUP,
-                getattr(errno, 'EOPNOTSUPP', errno.ENOTSUP),
-            }:
-                raise
-            logger.warning(
-                'Directory fsync is unsupported for %s: %s', path, error
-            )
-
     def _remove_file(self, path: Path) -> None:
         if path.exists():
             self.operations.unlink(path)
-            self._sync_directory(path.parent)
+            sync_directory(self.operations, path.parent)
 
     def _remove_tree(self, path: Path) -> None:
         if path.exists():
             self.operations.rmtree(path)
-            self._sync_directory(path.parent)
+            sync_directory(self.operations, path.parent)
 
     def _release_lock(self) -> None:
         if self.lock_dir.exists():

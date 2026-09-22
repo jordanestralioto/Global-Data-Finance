@@ -57,8 +57,10 @@ validation fails.
 
 ## Dependencies and measurement
 
-Pandas remains installed for the public compatibility of `ReadFilesAdapter`,
-with a deferred import. PyArrow is the only production CSV/Parquet engine. Use
+`ReadFilesAdapter` was removed together with the automatic Pandas dependency;
+consumers who still want DataFrames must install Pandas themselves. PyArrow is
+the only production CSV/Parquet engine. Use
 `scripts/benchmark_ingestion.py` for local fresh-process measurements; its
 numbers depend on hardware, environment, and corpus, so they are not universal
-time or RSS guarantees.
+time or RSS guarantees. The complete timeout, generic adapter, B3 catch-boundary,
+and write-failure migration is documented in [Infrastructure clean cut](migration-infrastructure-clean-cut.en.md).

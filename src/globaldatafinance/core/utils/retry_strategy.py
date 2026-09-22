@@ -5,9 +5,9 @@ from typing import ClassVar
 
 from ...macro_exceptions import (
     DiskFullError,
+    DownloadTimeoutError,
     NetworkError,
     PathPermissionError,
-    TimeoutError,
 )
 
 
@@ -41,7 +41,8 @@ class RetryStrategy:
         """Determines if an exception warrants a retry.
 
         An exception is retryable if:
-        - It is a NetworkError or TimeoutError (transient network issues)
+        - It is a NetworkError or DownloadTimeoutError (transient network
+          issues)
         - Its error message contains retryable keywords
 
         Non-retryable exceptions: PathPermissionError, DiskFullError, and
@@ -58,7 +59,7 @@ class RetryStrategy:
         ):
             return False
 
-        if isinstance(exception, (NetworkError, TimeoutError)):
+        if isinstance(exception, (NetworkError, DownloadTimeoutError)):
             return True
 
         # Fallback: check error message for known retryable keywords

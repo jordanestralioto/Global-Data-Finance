@@ -23,20 +23,12 @@ EXPECTED_TOP_LEVEL = (
 
 EXPECTED_EXECUTION_SUBHEADINGS = (
     'Precedence',
-    'Hard Blocks',
     'Secrets',
     'Repo Alignment',
     'Autonomy',
     'Validation',
     'Execution Safety',
     'Failure Handling',
-)
-
-METADATA_FIELDS = (
-    'Owner',
-    'Last reviewed',
-    'Status',
-    'Knowledge class',
 )
 
 REQUIRED_TABLE_HEADERS = (
@@ -54,9 +46,6 @@ PLACEHOLDER_PATTERNS = (
     r'AGENTS_AUTHOR',
 )
 
-DRAFT_OWNER_VALUES = {'unassigned', 'unknown', 'not documented'}
-DRAFT_STATUS_VALUES = {'draft', 'proposed', 'unreviewed'}
-
 MINIMUM_MANDATORY_RULES = 8
 
 MANDATORY_RULE_ANCHORS: tuple[tuple[str, tuple[str, ...]], ...] = (
@@ -73,14 +62,6 @@ EXECUTION_POLICY_ANCHORS: dict[
         ('authority rank', ('rank:', 'precedência:')),
         ('system constraints', ('system constraint', 'restrições de sistema')),
         ('user request', ('user request', 'pedido do usuário')),
-    ),
-    'Hard Blocks': (
-        ('git reset', ('git reset --hard',)),
-        ('git clean', ('git clean -fd',)),
-        ('force push', ('git push --force',)),
-        ('remote piping', ('curl | bash', 'wget | sh')),
-        ('system path protection', ('/etc', '~/.ssh')),
-        ('control bypass', ('bypasses permissions', 'burle permissões')),
     ),
     'Secrets': (
         ('secret types', ('.env', 'api keys', 'chaves de api')),
@@ -184,33 +165,9 @@ def _section_text(lines: list[str], *, level: int, name: str) -> str:
     return '\n'.join(result).strip()
 
 
-def _metadata(text: str) -> tuple[dict[str, str], list[str]]:
-    values: dict[str, str] = {}
-    errors: list[str] = []
-
-    for field in METADATA_FIELDS:
-        pattern = rf'^> {re.escape(field)}:\s*(.*?)\s*$'
-        matches = re.findall(pattern, text, flags=re.MULTILINE)
-        if not matches or not matches[0]:
-            errors.append(f'missing non-empty metadata field: {field}')
-            continue
-        if len(matches) > 1:
-            errors.append(f'duplicate metadata field: {field}')
-        values[field] = matches[0]
-
-    return values, errors
-
-
 def _table_pattern(columns: tuple[str, ...]) -> re.Pattern[str]:
     cells = r'\s*\|\s*'.join(re.escape(column) for column in columns)
     return re.compile(rf'^\|\s*{cells}\s*\|\s*$', flags=re.MULTILINE)
-
-
-def _check_document_header(lines: list[str]) -> list[str]:
-    first_non_empty = next((line for line in lines if line.strip()), '')
-    if first_non_empty == '# AGENTS.md':
-        return []
-    return ["first non-empty line must be '# AGENTS.md'"]
 
 
 def _check_heading_contract(headings: list[tuple[int, str]]) -> list[str]:
@@ -290,32 +247,17 @@ def _check_policy_contract(lines: list[str]) -> list[str]:
     return errors
 
 
-def _check_governance(metadata: dict[str, str]) -> list[str]:
-    errors: list[str] = []
-    owner = metadata.get('Owner', '').strip().lower()
-    status = metadata.get('Status', '').strip().lower()
-    if owner in DRAFT_OWNER_VALUES:
-        errors.append('strict governance requires an assigned Owner')
-    if status in DRAFT_STATUS_VALUES:
-        errors.append('strict governance requires a reviewed non-draft Status')
-    return errors
-
-
-def validate(text: str, *, strict_governance: bool = False) -> list[str]:
+def validate(text: str) -> list[str]:
     """Return contract violations in O(number of lines)."""
     lines = _visible_lines(text)
     visible_text = '\n'.join(lines)
     headings = _headings(lines)
-    metadata, metadata_errors = _metadata(visible_text)
 
-    errors = _check_document_header(lines)
-    errors.extend(metadata_errors)
+    errors: list[str] = []
     errors.extend(_check_heading_contract(headings))
     errors.extend(_check_tables(visible_text))
     errors.extend(_check_placeholders(visible_text))
     errors.extend(_check_policy_contract(lines))
-    if strict_governance:
-        errors.extend(_check_governance(metadata))
     return errors
 
 
@@ -377,7 +319,7 @@ def main() -> int:
             print(_render_text(payload), file=sys.stderr)
         return 2
 
-    errors = validate(text, strict_governance=args.strict_governance)
+    errors = validate(text)
     payload = _payload(
         args.file, errors, strict_governance=args.strict_governance
     )

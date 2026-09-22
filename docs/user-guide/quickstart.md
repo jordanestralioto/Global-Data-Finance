@@ -240,11 +240,26 @@ ______________________________________________________________________
 
 ## Trabalhando com os Dados Extraídos
 
-Após extrair os dados, você pode analisá-los com Pandas ou PyArrow. PyArrow é
-o engine usado pela biblioteca para produzir os artefatos; Pandas permanece
-compatível para consumo tabular.
+Após extrair os dados, leia os artefatos com PyArrow, o engine usado pela
+biblioteca para produzir Parquet. Pandas é uma opção downstream; instale-o
+separadamente (`python -m pip install pandas`) se quiser trabalhar com
+DataFrames.
 
-### Com Pandas
+### Com PyArrow em batches
+
+```python
+import pyarrow.parquet as pq
+
+# Ler o arquivo sem materializar todas as linhas de uma vez
+parquet = pq.ParquetFile(
+    "/home/usuario/cotacoes_extraidas/cotahist_extracted.parquet"
+)
+
+for batch in parquet.iter_batches(batch_size=100_000, columns=["ticker"]):
+    print(batch.slice(0, min(5, batch.num_rows)))
+```
+
+### Com Pandas (opcional)
 
 ```python
 import pandas as pd
@@ -259,20 +274,6 @@ print(df.head())
 print(f"\nTotal de registros: {len(df):,}")
 print(f"Colunas: {list(df.columns)}")
 print(f"Período: {df['data_pregao'].min()} a {df['data_pregao'].max()}")
-```
-
-### Com PyArrow em batches
-
-```python
-import pyarrow.parquet as pq
-
-# Ler o arquivo sem materializar todas as linhas de uma vez
-parquet = pq.ParquetFile(
-    "/home/usuario/cotacoes_extraidas/cotahist_extracted.parquet"
-)
-
-for batch in parquet.iter_batches(batch_size=100_000, columns=["ticker"]):
-    print(batch.slice(0, min(5, batch.num_rows)))
 ```
 
 Polars não é instalado como dependência da biblioteca. Caso seja o leitor

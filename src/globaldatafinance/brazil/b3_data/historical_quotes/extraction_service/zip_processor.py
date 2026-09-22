@@ -5,7 +5,7 @@ from __future__ import annotations
 import contextlib
 from collections.abc import Callable, Iterator
 from pathlib import Path
-from typing import Protocol, cast
+from typing import Any, Protocol, cast
 
 from .....core import get_logger
 from .....macro_exceptions import ExtractionError
@@ -39,6 +39,24 @@ class _LineParser(Protocol):
     ) -> dict[str, object] | None: ...
 
 
+class ProcessingCancelled(ExtractionError):
+    """Internal cooperative cancellation requested by the parent process."""
+
+    def __init__(
+        self, source: str, message: str = 'Extraction cancelled by parent'
+    ) -> None:
+        """Initialize cancellation error with source context.
+
+        Args:
+            source: Path or name of the source being processed.
+            message: Informative cancellation explanation.
+        """
+        super().__init__(source, message)
+
+
+CANCELLATION_LINE_STRIDE: int = 1_000
+
+
 class ZipProcessorB3:
     """Write at most one private Arrow artifact for one source file."""
 
@@ -48,6 +66,7 @@ class ZipProcessorB3:
         parser_factory: Callable[[], _LineParser] = CotahistParserB3,
         *,
         python_record_limit: int = RECORD_BATCH_LIMIT,
+        cancel_event: Any | None = None,
     ) -> None:
         """Store factories; each worker receives an isolated parser state."""
         if python_record_limit <= 0:
@@ -55,6 +74,12 @@ class ZipProcessorB3:
         self.zip_reader = zip_reader
         self.parser_factory = parser_factory
         self.python_record_limit = python_record_limit
+        self.cancel_event = cancel_event
+
+    def _check_cancellation(self, source: Path) -> None:
+        """Raise ProcessingCancelled when cancellation event was signaled."""
+        if self.cancel_event is not None and self.cancel_event.is_set():
+            raise ProcessingCancelled(str(source))
 
     def process(
         self,
@@ -64,6 +89,7 @@ class ZipProcessorB3:
     ) -> SourceExtractionResult:
         """Parse one source, keeping only a bounded list of Python records."""
         source = Path(source_path)
+        self._check_cancellation(source)
         parser = self.parser_factory()
         session: B3ParquetWriterSession | None = None
 
@@ -111,6 +137,14 @@ class ZipProcessorB3:
                 metrics=parser.metrics,
                 schema_fingerprint=schema_fingerprint_value,
             )
+        except ProcessingCancelled:
+            if session is not None:
+                with contextlib.suppress(Exception):
+                    session.close()
+            with contextlib.suppress(OSError):
+                temp_output.unlink(missing_ok=True)
+            logger.info('B3 source processing cancelled: %s', source)
+            raise
         except Exception:
             if session is not None:
                 with contextlib.suppress(Exception):
@@ -132,8 +166,13 @@ class ZipProcessorB3:
         session: B3ParquetWriterSession | None = None
         member = source.name
         fingerprint = ''
+        lines_read = 0
         try:
+            self._check_cancellation(source)
             for line, context in self.zip_reader.iter_lines(str(source)):
+                lines_read += 1
+                if lines_read % CANCELLATION_LINE_STRIDE == 0:
+                    self._check_cancellation(source)
                 member = context.zip_member or member
                 row = parser.parse_line_to_csv_row(
                     line, target_tpmerc_codes, context=context
@@ -142,9 +181,11 @@ class ZipProcessorB3:
                     continue
                 rows.append(row)
                 if len(rows) >= self.python_record_limit:
+                    self._check_cancellation(source)
                     session, fingerprint = self._write_csv_rows(
                         session, rows, temp_output
                     )
+            self._check_cancellation(source)
             if rows:
                 session, fingerprint = self._write_csv_rows(
                     session, rows, temp_output
@@ -170,8 +211,13 @@ class ZipProcessorB3:
         session: B3ParquetWriterSession | None = None
         member = source.name
         fingerprint = ''
+        lines_read = 0
         try:
+            self._check_cancellation(source)
             for line, context in self.zip_reader.iter_lines(str(source)):
+                lines_read += 1
+                if lines_read % CANCELLATION_LINE_STRIDE == 0:
+                    self._check_cancellation(source)
                 member = context.zip_member or member
                 parsed = parser.parse_line(
                     line, target_tpmerc_codes, context=context
@@ -180,9 +226,11 @@ class ZipProcessorB3:
                     continue
                 records.append(parsed)
                 if len(records) >= self.python_record_limit:
+                    self._check_cancellation(source)
                     session, fingerprint = self._write_records(
                         session, records, temp_output
                     )
+            self._check_cancellation(source)
             if records:
                 session, fingerprint = self._write_records(
                     session, records, temp_output

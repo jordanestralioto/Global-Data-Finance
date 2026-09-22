@@ -207,13 +207,21 @@ class ExtractHistoricalQuotesUseCaseB3:
         *,
         limits: ArchiveSafetyLimits | None = None,
         allowed_unc_roots: Sequence[str] | None = None,
+        executor_backend: str = 'thread',
     ) -> None:
         """Initialize reusable reader and parser objects."""
+        if executor_backend not in ('thread', 'process'):
+            raise ValueError(
+                f'Invalid executor_backend: {executor_backend!r}. '
+                "Must be 'thread' or 'process'."
+            )
         self.zip_reader = ZipFileReaderB3(limits=limits)
         self.parser = CotahistParserB3()
         self.allowed_unc_roots = PathSafetySettings.resolve_allowed_unc_roots(
             allowed_unc_roots
         )
+        self.executor_backend = executor_backend
+        self.last_phase_timings: dict[str, Any] = {}
 
     async def execute(
         self,
@@ -222,6 +230,7 @@ class ExtractHistoricalQuotesUseCaseB3:
         output_filename: str = 'cotahist_extracted.parquet',
     ) -> dict[str, Any]:
         """Execute the extraction process."""
+        self.last_phase_timings = {}
         # D4: factory removed — construct ExtractionServiceB3 directly. Invalid
         # processing_mode is already validated by
         # ValidateExtractionConfigUseCaseB3 in the facade, which raises
@@ -232,6 +241,7 @@ class ExtractHistoricalQuotesUseCaseB3:
             parser=self.parser,
             processing_mode=mode,
             allowed_unc_roots=self.allowed_unc_roots,
+            executor_backend=self.executor_backend,
         )
 
         target_tpmerc_codes = (
@@ -243,6 +253,12 @@ class ExtractHistoricalQuotesUseCaseB3:
         zip_files: set[str] = docs_to_extract.documents_to_download
 
         if not zip_files:
+            self.last_phase_timings = {
+                'source_wall_seconds': 0.0,
+                'merge_wall_seconds': None,
+                'merge_status': 'bypassed',
+                'validation_wall_seconds': 0.0,
+            }
             return {
                 'total_files': 0,
                 'success_count': 0,
@@ -267,6 +283,7 @@ class ExtractHistoricalQuotesUseCaseB3:
             target_tpmerc_codes=target_tpmerc_codes,
             output_path=output_path,
         )
+        self.last_phase_timings = extraction_service.last_phase_timings
         return result
 
     def execute_sync(

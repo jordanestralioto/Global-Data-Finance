@@ -1,13 +1,3 @@
-# AGENTS.md
-
-> Owner: Unassigned
-> Last reviewed: YYYY-MM-DD
-> Status: Draft
-> Knowledge class: Agent policy
-
-Project context and operating policy for agentic coding agents working in this
-repository.
-
 ## System Overview
 
 <!-- AGENTS_AUTHOR: Explain the system's mission, users, macro boundaries, inputs, outputs, downstream consumers, and non-negotiable invariants. Begin with a direct identity statement: "<Project> is ...". Link to owner documents instead of inventorying private modules or dependencies. -->
@@ -49,23 +39,22 @@ repository.
 - Do not write irrelevant comments in code.
 - Verify files before editing; do not assume structure or behavior.
 - Plan before modifying and keep scope small, reviewable, and verifiable.
-- Write well-factored code with clear single responsibility per function,
-  class, or module; do not create monolithic functions that handle multiple
-  concerns.
+- Write well-factored code with clear single responsibility per function, class,
+  or module; do not create monolithic functions that handle multiple concerns.
 - Never leave duplicated logic; extract common functionality into shared
   functions or modules.
 - Never introduce circular imports or mutual module dependencies.
 - Deliver only what is necessary to satisfy the request end-to-end; do not
   bundle unrequested changes or mix structural refactors with bug fixes.
-- Tests must prove relevant behavior, edge cases, and regressions, not
-  merely nominal line coverage.
-- Always act as a skeptic: verify hypotheses empirically instead of
-  accepting them, whether they came from the user or from you. Never flatter
-  the user or engage in sycophantic agreement.
+- Tests must prove relevant behavior, edge cases, and regressions, not merely
+  nominal line coverage.
+- Always act as a skeptic: verify hypotheses empirically instead of accepting
+  them, whether they came from the user or from you. Never flatter the user or
+  engage in sycophantic agreement.
 - Do not write code files whose sole purpose is to re-export other files or
   modules without added value.
-- `__init__.py` files must never contain code or implementation logic; they
-  must only contain explicit exports.
+- `__init__.py` files must never contain code or implementation logic; they must
+  only contain explicit exports.
 - Never edit generated mirrors or generated files directly; change the source
   and re-run its generation or sync command.
 - Keep `Code/Comments/Git/planning artifacts` in English. Adapt `Chat` to the
@@ -76,7 +65,8 @@ repository.
   the repository; do not mix managers or regenerate another lockfile unless the
   task explicitly includes that migration.
 - Preserve the current framework and its established abstractions; do not add a
-  competing framework or parallel architectural path without an explicit decision.
+  competing framework or parallel architectural path without an explicit
+  decision.
 - Use repository-native entrypoints and official scripts before ad hoc commands.
 - Update tests, contracts, and canonical documentation when behavior or a public
   boundary changes.
@@ -112,21 +102,6 @@ request. Act on the highest-ranking unambiguous, safe instruction without asking
 again. If same-rank instructions conflict, prefer the more specific and safer
 one.
 
-### Hard Blocks
-
-Never execute without the user naming the exact action:
-
-- `git reset --hard`, `git reset --soft`, `git reset --mixed`, `git reset HEAD`,
-  `git clean -fd`, forced checkouts, or any history rewrite.
-- `git push --force`, `git push --force-with-lease`, `git rebase --root`,
-  `git rebase -i --root`, `git filter-branch`, `git reflog expire`,
-  `git update-ref --delete`, or any destructive remote/history operation.
-- Remote piping: `curl | bash`, `wget | sh`, or any equivalent.
-- Writes to `/etc`, `~/.ssh`, system packages, or paths outside the authorized
-  repository/workspace scope.
-- Anything that bypasses permissions, sandbox limits, authentication, or
-  authorization controls.
-
 ### Secrets
 
 Never seek, log, copy, or expand secrets. Treat `.env`, API keys, tokens,
@@ -152,8 +127,7 @@ all hold:
 - Change is fully recoverable via version control.
 
 Stop and ask when: ambiguous scope, destructive side effects, external systems,
-production impact, secrets involved, or conflict between same-rank
-instructions.
+production impact, secrets involved, or conflict between same-rank instructions.
 
 ### Validation
 
