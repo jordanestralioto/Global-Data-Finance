@@ -1,3 +1,5 @@
+# AGENTS.md
+
 ## System Overview
 
 Global-Data-Finance (`globaldatafinance`) is a Python library for extracting,
@@ -67,7 +69,7 @@ public, source, and shared boundaries.
 | Type-check product code              | `uv run --locked --no-sync mypy src --pretty`                                                                                    |
 | Run the repository Ruff gate         | `uv run --locked --no-sync python scripts/check-ruff-policy.py --profile all`                                                    |
 | Check formatting                     | `uv run --locked --no-sync ruff format --check src tests scripts examples`                                                       |
-| Audit dependencies                   | `uv run --locked --no-sync pip-audit --timeout 60`                                                                               |
+| Audit dependencies                   | `uv run --locked --no-sync python scripts/audit_locked_dependencies.py`                                                          |
 | Build documentation strictly         | `uv run --locked --no-sync mkdocs build --strict`                                                                                |
 | Build the distribution               | `uv build`                                                                                                                       |
 

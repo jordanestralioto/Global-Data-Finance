@@ -13,7 +13,7 @@ A classe `FundamentalStocksDataCVM` fornece uma interface simples e poderosa par
 - ✅ Download automático de múltiplos tipos de documentos
 - ✅ Suporte a intervalos de anos flexíveis
 - ✅ Extração automática para formato Parquet (opcional)
-- ✅ Download paralelo de alto desempenho (3-5x mais rápido)
+- ✅ Download assíncrono concorrente
 - ✅ Tratamento robusto de erros e retry automático
 - ✅ Logging detalhado do progresso
 
@@ -466,25 +466,23 @@ cvm.download(
 
 O `FundamentalStocksDataCVM` usa `AsyncDownloadAdapterCVM` por padrão, que oferece:
 
-- ⚡ **3-5x mais rápido** que download sequencial
+- ⚡ Até **10 downloads concorrentes** por padrão
 - 🔄 **Retry automático** em caso de falhas
 - 📊 **Progress tracking** detalhado
-- 🧵 **8 workers paralelos** (configurável)
 
 ### Benchmarks
 
-**Fluxo completo: download + extração CSV→Parquet (2026-08-06):**
+**Linha de base v2 — fluxo completo: download + extração CSV→Parquet
+(2010–2026, revisão `703d9ab`):**
 
-| Docs                | Período   | ZIPs | Parquets |     Linhas |     Saída |    Tempo |  Pico RSS | Erros |
-| ------------------- | --------- | ---: | -------: | ---------: | --------: | -------: | --------: | ----: |
-| DFP, ITR, FRE, etc. | 2010-2024 |   88 |    1.392 | 63.300.208 | 337,93 MB | 505,04 s | 459,18 MB |     0 |
+| Docs                | Período   | ZIPs | Parquets |      Linhas |     Saída |     Tempo | Pico RSS | Erros |
+| ------------------- | --------- | ---: | -------: | ----------: | --------: | --------: | -------: | ----: |
+| DFP, ITR, FRE, etc. | 2010–2026 |  102 |    1.569 | 70.821.466 | 382,27 MB | 906,85 s | 333,91 MB |     0 |
 
-**Tempo aproximado para download de DFP (1 ano):**
-
-| Método                  | Tempo | Velocidade         |
-| ----------------------- | ----- | ------------------ |
-| Download sequencial     | ~60s  | 1x (baseline)      |
-| AsyncDownloadAdapterCVM | ~15s  | **4x mais rápido** |
+O tempo inclui conexão, downloads, validação, extração CSV e geração dos
+Parquets para os 102 ZIPs. Ele varia com a rede e os servidores da CVM e não
+representa uma comparação isolada com download sequencial. Consulte os
+[detalhes e limitações do benchmark](../dev-guide/benchmarks.md).
 
 ## Próximos Passos
 

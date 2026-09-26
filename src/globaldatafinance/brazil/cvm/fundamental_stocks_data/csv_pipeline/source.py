@@ -20,6 +20,15 @@ from .....macro_exceptions import DiskFullError, ExtractionError
 from .constants import CP1252_DEFINED_RANGE, CP1252_UNDEFINED
 from .models import EncodingPlan
 
+_CP1252_TRANSLATION = bytes(
+    2 if byte in CP1252_UNDEFINED else 1 if byte in CP1252_DEFINED_RANGE else 0
+    for byte in range(256)
+)
+_CP1252_RELEVANT_BYTES = CP1252_DEFINED_RANGE | CP1252_UNDEFINED
+_CP1252_DELETE_BYTES = bytes(
+    byte for byte in range(256) if byte not in _CP1252_RELEVANT_BYTES
+)
+
 
 class ReopenableCsvSource:
     """Open a validated ZIP member afresh for every CVM pipeline pass."""
@@ -59,7 +68,12 @@ class ReopenableCsvSource:
 
 def detect_encoding(source: ReopenableCsvSource) -> EncodingPlan:
     """Select the documented UTF-8, CP1252, or Latin-1 policy."""
-    utf8_valid, has_bom, cp1252_bytes = _scan_encoding(source)
+    (
+        utf8_valid,
+        has_bom,
+        has_cp1252_defined_byte,
+        has_cp1252_undefined_byte,
+    ) = _scan_encoding(source)
     if has_bom and not utf8_valid:
         raise ExtractionError(
             str(source.source_path),
@@ -73,7 +87,10 @@ def detect_encoding(source: ReopenableCsvSource) -> EncodingPlan:
             source_member=source.member_name,
         )
     return EncodingPlan(
-        encoding=_fallback_encoding(cp1252_bytes),
+        encoding=_fallback_encoding(
+            has_cp1252_defined_byte,
+            has_cp1252_undefined_byte,
+        ),
         has_utf8_bom=False,
         needs_utf8_spool=True,
         source_member=source.member_name,
@@ -144,10 +161,11 @@ def binary_source(
 
 def _scan_encoding(
     source: ReopenableCsvSource,
-) -> tuple[bool, bool, set[int]]:
+) -> tuple[bool, bool, bool, bool]:
     """Validate UTF-8 incrementally while collecting fallback evidence."""
     utf8_valid = True
-    cp1252_bytes: set[int] = set()
+    has_cp1252_defined_byte = False
+    has_cp1252_undefined_byte = False
     decoder = codecs.getincrementaldecoder('utf-8')(errors='strict')
     prefix = bytearray()
     try:
@@ -155,11 +173,12 @@ def _scan_encoding(
             while chunk := opened.read(64 * 1024):
                 if len(prefix) < len(codecs.BOM_UTF8):
                     prefix.extend(chunk[: len(codecs.BOM_UTF8) - len(prefix)])
-                cp1252_bytes.update(
-                    byte
-                    for byte in chunk
-                    if byte in CP1252_DEFINED_RANGE or byte in CP1252_UNDEFINED
+                cp1252_markers = chunk.translate(
+                    _CP1252_TRANSLATION,
+                    _CP1252_DELETE_BYTES,
                 )
+                has_cp1252_defined_byte |= b'\x01' in cp1252_markers
+                has_cp1252_undefined_byte |= b'\x02' in cp1252_markers
                 if utf8_valid:
                     try:
                         decoder.decode(chunk, final=False)
@@ -169,14 +188,22 @@ def _scan_encoding(
                 decoder.decode(b'', final=True)
     except UnicodeDecodeError:
         utf8_valid = False
-    return utf8_valid, bytes(prefix) == codecs.BOM_UTF8, cp1252_bytes
+    return (
+        utf8_valid,
+        bytes(prefix) == codecs.BOM_UTF8,
+        has_cp1252_defined_byte,
+        has_cp1252_undefined_byte,
+    )
 
 
-def _fallback_encoding(cp1252_bytes: set[int]) -> str:
+def _fallback_encoding(
+    has_cp1252_defined_byte: bool,
+    has_cp1252_undefined_byte: bool,
+) -> str:
     """Choose the lossless non-UTF-8 encoding from observed bytes."""
-    if cp1252_bytes & CP1252_UNDEFINED:
+    if has_cp1252_undefined_byte:
         return 'latin-1'
-    if cp1252_bytes & CP1252_DEFINED_RANGE:
+    if has_cp1252_defined_byte:
         return 'cp1252'
     return 'latin-1'
 

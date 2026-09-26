@@ -34,7 +34,7 @@ def main() -> int:
     credible_findings = [
         finding['findingId']
         for finding in findings
-        if finding.get('topic', '').startswith('security:')
+        if finding.get('topic', '').casefold().startswith('security:')
         and finding.get('confidence') in {'high', 'medium'}
     ]
     security_touch = 'yes' if matched_files or credible_findings else 'no'

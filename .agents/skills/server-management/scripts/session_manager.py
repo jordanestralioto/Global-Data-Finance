@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Session Manager - Antigravity Kit.
+"""Summarize the state of a project session.
 
 Analyzes project state, detects tech stack, tracks file statistics, and provides
 a summary of the current session.
@@ -93,26 +93,34 @@ def count_files(root: Path) -> dict[str, int]:
 def detect_features(root: Path) -> list[str]:
     # Heuristic: look at folder names in common source roots.
     features: list[str] = []
-    src = root / 'local-kit' / 'dashboard' / 'src'
-    if not src.exists():
-        src = root / 'src'
-    if src.exists():
-        possible_dirs = [
-            'components',
-            'modules',
-            'features',
-            'app',
-            'pages',
-            'services',
-        ]
+    possible_dirs = [
+        'components',
+        'modules',
+        'features',
+        'app',
+        'pages',
+        'services',
+    ]
+    candidate_roots = [root / 'src', root / 'lib', root]
+    seen: set[str] = set()
+
+    for base in candidate_roots:
+        if not base.exists() or not base.is_dir():
+            continue
         for d in possible_dirs:
-            p = src / d
-            if p.exists() and p.is_dir():
-                # List subdirectories as likely features
-                features.extend(
-                    child.name for child in p.iterdir() if child.is_dir()
-                )
-    return features[:10]  # Limit to top 10
+            p = base / d
+            if p.exists() and p.is_dir() and p != base:
+                for child in sorted(p.iterdir()):
+                    if (
+                        child.is_dir()
+                        and not child.name.startswith(('.', '_'))
+                        and child.name not in seen
+                    ):
+                        seen.add(child.name)
+                        features.append(child.name)
+                        if len(features) >= 10:
+                            return features
+    return features
 
 
 def print_status(root: Path) -> None:
@@ -136,7 +144,7 @@ def print_status(root: Path) -> None:
     if not features:
         print('   (No distinct feature modules detected)')
 
-    print(f'\n📄 Files: {stats["total"]} total files tracked')
+    print(f'\n📄 Files: {stats["total"]} files found')
     print('\n====================\n')
 
 

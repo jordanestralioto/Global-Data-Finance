@@ -1,17 +1,17 @@
 """Automatic extraction handling for CVM downloads."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Protocol
 
 from ....core import get_logger, remove_file
+from ....core.archive_safety import ArchiveSafetyLimits
 from ....macro_exceptions import (
     CorruptedZipError,
     DiskFullError,
     ExtractionError,
     ParquetWriteError,
 )
-from .core import DownloadResultCVM
 from .download_validation import find_parquet_files, validate_parquet_files
 
 logger = get_logger(__name__)
@@ -26,16 +26,33 @@ class _ParquetExtractor(Protocol):
         """Convert one source ZIP into destination Parquet artifacts."""
 
 
+def resolve_parquet_extractor(
+    repository: _ParquetExtractor | None,
+    *,
+    archive_limits: ArchiveSafetyLimits,
+    allowed_unc_roots: Sequence[str],
+) -> _ParquetExtractor:
+    """Return a supplied extractor or lazily create the CVM implementation."""
+    if repository is not None:
+        return repository
+
+    from .extract import ParquetExtractorAdapterCVM
+
+    return ParquetExtractorAdapterCVM(
+        archive_limits=archive_limits,
+        allowed_unc_roots=allowed_unc_roots,
+    )
+
+
 def extract_downloaded_file(
     file_extractor_repository: _ParquetExtractor,
     filepath: str,
     dest_path: str,
     doc_name: str,
     year: str,
-    result: DownloadResultCVM,
     cleanup_file: Callable[[str], None] = remove_file,
-) -> None:
-    """Extract one downloaded archive and update its aggregate result."""
+) -> str | None:
+    """Extract one archive, returning an error for loop-side aggregation."""
     document_key = f'{doc_name}_{year}'
 
     try:
@@ -54,56 +71,44 @@ def extract_downloaded_file(
                 dest_path,
                 filepath,
             )
-            result.add_error_downloads(
-                document_key,
-                'No parquet files generated after extraction',
-            )
-            return
+            return 'No parquet files generated after extraction'
 
         if not validate_parquet_files(parquet_files, doc_name, year):
-            result.add_error_downloads(
-                document_key,
-                'Parquet validation failed: corrupted or empty files',
-            )
-            return
+            return 'Parquet validation failed: corrupted or empty files'
 
-        result.add_success_downloads(document_key)
         logger.info(
             'Extraction completed for %s: %d parquet files created',
             document_key,
             len(parquet_files),
         )
         cleanup_file(filepath)
+        return None
 
     except DiskFullError as disk_err:
         logger.exception('Disk full during extraction of %s', document_key)
-        result.add_error_downloads(document_key, f'DiskFull: {disk_err}')
         logger.info(
             'Keeping ZIP after disk-full extraction failure: %s', filepath
         )
+        return f'DiskFull: {disk_err}'
 
     except CorruptedZipError as zip_err:
         logger.exception(
             'Corrupted ZIP detected during extraction of %s', document_key
         )
-        result.add_error_downloads(document_key, f'CorruptedZIP: {zip_err}')
         logger.info('Keeping corrupted ZIP for investigation: %s', filepath)
+        return f'CorruptedZIP: {zip_err}'
 
     except ParquetWriteError as parquet_err:
         logger.exception(
             'Parquet write error during extraction of %s', document_key
         )
-        result.add_error_downloads(
-            document_key, f'ParquetWrite: {parquet_err}'
-        )
         logger.info('Keeping ZIP after Parquet write failure: %s', filepath)
+        return f'ParquetWrite: {parquet_err}'
 
     except ExtractionError as extract_err:
         logger.exception('Extraction error for %s', document_key)
-        result.add_error_downloads(
-            document_key, f'ExtractionFailed: {extract_err}'
-        )
         logger.info('Keeping ZIP for manual investigation: %s', filepath)
+        return f'ExtractionFailed: {extract_err}'
 
     except Exception as unexpected_err:
         logger.error(
@@ -111,12 +116,11 @@ def extract_downloaded_file(
             f'{type(unexpected_err).__name__}: {unexpected_err}',
             exc_info=True,
         )
-        result.add_error_downloads(
-            document_key,
-            f'UnexpectedError: {type(unexpected_err).__name__}: '
-            f'{unexpected_err}',
-        )
         logger.info('Keeping ZIP for debugging: %s', filepath)
+        return (
+            f'UnexpectedError: {type(unexpected_err).__name__}: '
+            f'{unexpected_err}'
+        )
 
 
 def _snapshot_parquet_artifacts(dest_path: str) -> ParquetArtifactStateCVM:

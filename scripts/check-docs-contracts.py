@@ -245,11 +245,27 @@ def check_file_contracts(
                 'and TXT support'
             )
 
-    if 'faq' in fname and ('2 GB' not in content or '500 MB' not in content):
-        errors.append(
-            f'{file_path}:1: faq must document operational RAM ranges '
-            '(2 GB and 500 MB)'
+    if 'faq' in fname:
+        benchmark_page = (
+            'benchmarks.en.md' if fname.endswith('.en.md') else 'benchmarks.md'
         )
+        measured_modes = all(
+            re.search(
+                rf'^\|[^\n]*\*\*{mode}\*\*[^\n]*\d+(?:[.,]\d+)?\s+MiB\b',
+                content,
+                flags=re.MULTILINE,
+            )
+            for mode in ('fast', 'slow')
+        )
+        benchmark_link = re.search(
+            rf'\[[^\]]+\]\(\.\./dev-guide/{re.escape(benchmark_page)}\)',
+            content,
+        )
+        if not measured_modes or benchmark_link is None:
+            errors.append(
+                f'{file_path}:1: faq must report measured fast and slow '
+                'peak RSS in MiB and link to the benchmark evidence'
+            )
 
     return errors
 

@@ -50,6 +50,13 @@ repos:
         language: system
         stages: [commit-msg]
 
+      # Supplement the shared hook's advertised length and period rules.
+      - id: validate-commit-msg-policy
+        name: validate-commit-msg-policy
+        entry: uv run --locked --no-sync python scripts/check_commit_msg.py
+        language: system
+        stages: [commit-msg]
+
       - id: check-harness-sync
         name: check-harness-sync
         # Generated AI-client links are not present in a clean checkout and
@@ -117,6 +124,16 @@ repos:
           - examples/02_quickstart_b3.py
           - --allow-print-file
           - examples/03_advanced_options_b3.py
+          # These benchmark CLIs intentionally emit their result reports.
+          - --allow-print-file
+          - scripts/benchmark_cvm_http.py
+          - --allow-print-file
+          - scripts/benchmark_cvm_full.py
+          # Gate CLIs intentionally print their validation results.
+          - --allow-print-file
+          - scripts/audit_locked_dependencies.py
+          - --allow-print-file
+          - scripts/check_commit_msg.py
         language: system
         pass_filenames: false
         always_run: true
@@ -219,6 +236,8 @@ repos:
         args:
           - "--baseline"
           - ".secrets.baseline"
+          # Audited false positives cover SHA-256 benchmark metadata, with
+          # baseline entries bound to each report file and digest.
           # SHA-256 patch bindings are integrity metadata, not credentials.
           - "--exclude-lines"
           - '"diff_sha256":\s*"[0-9a-f]{64}"'
@@ -463,9 +482,11 @@ repos:
 
       - id: pip-audit
         name: pip-audit
-        # Do not suppress dependency advisories. Documentation-only
-        # dependencies still execute in local build and CI environments.
-        entry: uv run --locked --no-sync pip-audit --timeout 60
+        # Audit the uv-locked graph, including dev dependencies, without
+        # assuming the local environment has been synchronized.
+        entry: >-
+          uv run --locked --no-sync python
+          scripts/audit_locked_dependencies.py
         language: system
         pass_filenames: false
         always_run: true

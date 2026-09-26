@@ -1,45 +1,66 @@
 ---
 name: local-quality-gates
 description: >-
-  Use para criar, inspecionar, reparar ou atualizar sistemas de quality gates
-  locais e hooks de pre-commit e pre-push em qualquer stack. Ative quando o
-  usuário pedir "cria um pre-commit", "configura quality gates locais", "arruma
-  meu pre-commit", "adiciona validação de commit", "configura hooks git", "bloqueia
-  debug no commit", "adiciona um atualizador
-  de dependências ao pre-commit" ou "separa atualização de dependências dos
-  hooks". Cobre integridade de repositório, sintaxe, auto-fix seguro, linter,
-  typecheck com baseline, dependências circulares, secret scanning, sanidade de
-  diff, integridade de testes, paridade de lockfiles e a separação entre
-  validação, sincronização de ambiente e atualização de dependências. Ative
-  também para limitar complexidade, aninhamento, funções longas e captura ampla
-  de erros nos hooks locais. Não use
-  para pipelines de CI/CD em nuvem, testes E2E lentos de navegador, validação
-  pesada de dados de produção ou auditoria manual de segurança.
+  Use para criar, revisar ou reparar quality gates locais e hooks de pre-commit,
+  commit-msg e pre-push em qualquer stack. Ative com pedidos como "configura os
+  hooks Git", "cria um pre-push", "arruma meu pre-commit", "bloqueia debug no
+  commit", "valida o lockfile", "limita linhas por arquivo", "limita
+  complexidade no linter", "audita dependências no push", "divide testes entre
+  commit e push" ou "adiciona um atualizador de dependências ao pre-commit". Cobre escolha de runner e estágio,
+  segurança de auto-fix, baseline, validação do estado staged, instalação e
+  teste dos hooks. Não use para pipeline remota, E2E de navegador, auditoria
+  manual de segurança ou validação pesada de dados de produção.
 ---
 
-# Local Quality Gates & Pre-commit Architect
+# Local Quality Gates Architect
 
-This skill guides agents to build, audit, and maintain deterministic local quality gates. The goal is a predictable first line of defense whose cost fits the repository and the developer workflow: start with focused checks, measure the actual cycle, and keep broader checks in pre-commit when the project explicitly accepts their cost. Move expensive checks to pre-push or CI only when their latency harms the workflow or encourages `--no-verify`.
+Build deterministic local gates whose cost fits the repository. Start with
+focused checks, measure the cycle, and move expensive checks to pre-push or CI
+when their latency harms the workflow or encourages bypasses.
+
+## Contrato portátil e política do projeto
+
+1. Leia as regras e os comandos oficiais do projeto antes de escolher gates.
+   Preserve o runner, o gerenciador e as exceções já contratadas.
+2. Para cada gate, registre: estágio, comando e versão da ferramenta, arquivos
+   ou snapshot inspecionados, custo observado, efeitos no workspace, política
+   que aplica e status (`ENABLED`, `DELEGATED`, `MANUAL`, `UNSUPPORTED`).
+3. Aplique em toda stack os invariantes de execução: nenhuma falha declarada
+   bloqueante vira sucesso silencioso; auto-fix é revisado antes de staging;
+   validação de dependências não atualiza versões; o hook instalado é testado.
+4. Os slots abaixo formam um catálogo, não uma lista universal obrigatória.
+   Ative regras de estilo, limites numéricos e os scanners estritos de IA quando
+   o contrato do projeto ou o usuário os pedir. Se uma cobertura bloqueante
+   pedida não tiver ferramenta determinística, informe `UNSUPPORTED` e pare a
+   configuração daquele gate; não declare `PASS` nem invente um substituto.
+5. Escolha a ferramenta nativa ou já instalada antes de copiar helpers desta
+   skill. Um hook local que chama `python` exige Python no `PATH`; declare e
+   prove esse requisito mesmo em projetos Node, Go, Rust ou poliglotas.
 
 ______________________________________________________________________
 
-## Princípios de Design 80/20 e Escopo do MVP
+## Catálogo de gates locais
 
-### O que o MVP Suporta Localmente (Pre-commit)
+### Slots possíveis no pre-commit
 
-1. **Repository Hygiene**: Whitespace, nova linha final, marcadores de conflito, arquivos > 500KB.
-2. **Safe Mechanical Auto-Fix**: Formatação padronizada e organização de imports (executada com staging explícito).
-3. **Syntax / Fast Static**: Compilação/interpretação de arquivos alterados (`py_compile`, `tsc --noEmit`, `go vet`).
-4. **Secret Scanning**: Detecção de chaves de API e credenciais no diff staged (`gitleaks protect --staged`).
-5. **Diff Sanity (AI Traps)**: Bloqueio estrito por padrão de debuggers (`console.log`, `breakpoint()`), stubs (`throw new Error("TODO")`, `pass  # TODO`) e supressões de compilador/linter em código ou configuração (`@ts-ignore`, `@ts-nocheck`, `@ts-expect-error`, `# type: ignore`, `# noqa` e equivalentes). Arquivos `.md`, `.markdown`, `.rst` e `.txt` podem citar esses marcadores como conteúdo explicativo, inclusive em blocos de código documental; a citação não é executável. Os marcadores continuam proibidos em código, scripts, fixtures, docstrings, YAML, JSON, TOML, manifests e workflows.
-   - **Operational Text Safety**: O mesmo gate inspeciona o texto adicionado em qualquer formato textual, sem exceções por diretório. Pipelines que enviam downloads diretamente a um shell, comandos que desativam hooks, variáveis de ambiente que saltam hooks, configurações que continuam após erro e fallbacks shell que forçam sucesso são violações, inclusive quando aparecem em documentação ou projeções geradas.
-6. **Test Integrity**: Bloqueio sem exceção de testes focados (`.only`, `fit`, `fdescribe`), bloqueio por padrão de skips (`@pytest.mark.skip`, `it.skip` — exigem razão com `allow-skip: <reason>`), perda líquida de asserções (`allow-assertion-reduction: <reason>`) e deleções de arquivos de teste (exigem política staged em `.test-deletions.json` com razão por arquivo ou `--allow-deleted-tests`).
-7. **Monorepo-Safe Lockfile Validation**: Garantia de que cada manifesto modificado (`pyproject.toml`, `package.json`, etc.) tenha seu lockfile local atualizado, ou o lockfile da raiz caso o manifesto pertença comprovadamente aos membros declarados de um workspace compartilhado na raiz. Para `package.json`, um arquivo que só contém metadados e não declara dependências não exige lockfile. Quando o gerenciador local fornece uma verificação determinística de coerência (`uv lock --check`, `poetry check --lock`, `cargo check --locked` ou uma verificação Go explicitamente configurada, como `go mod tidy -diff` quando suportada pela versão do projeto), um lockfile existente e confirmado como coerente também satisfaz o gate; ausência da ferramenta ou falha ao iniciar/executar o subprocesso é erro de infraestrutura (`ERROR`, código 2), enquanto lockfile ausente ou comando nativo retornando não zero continua sendo violação (`FAIL`, código 1). Este gate valida o estado existente; não atualiza dependências.
-8. **Circular Imports / Dependencies (obrigatório)**: Todo projeto com código importável deve ter um gate explícito no pre-commit para detectar ciclos diretos e indiretos (`A → B → A` e `A → B → C → A`) no grafo afetado. Um ciclo novo falha; ciclos históricos somente podem ser mantidos por baseline não-crescente. A ausência de uma ferramenta dedicada não autoriza remover o gate: reutilize o compilador, o analisador arquitetural ou o comando de dependências que o projeto já possui e, se não houver nenhum mecanismo determinístico disponível, interrompa a configuração com `ERROR` em vez de declarar `PASS`.
-9. **Structural Linting**: Require parser-aware `[LINTER]` coverage for
-   complexity, nesting, flow simplification, error handling, and routine
-   scope. Use project-native rules and explicit thresholds; never imitate AST
-   analysis with staged-text regexes.
+01. **Repository Hygiene**: Whitespace, nova linha final, marcadores de conflito e limite de tamanho em bytes definido pelo projeto.
+02. **Safe Mechanical Auto-Fix**: Formatação padronizada e organização de imports (executada com staging explícito).
+03. **Syntax / Fast Static**: Compilação/interpretação de arquivos alterados (`py_compile`, `tsc --noEmit`, `go vet`).
+04. **Secret Scanning**: Detecção de credenciais no diff staged com um scanner fixado, como o hook oficial do Gitleaks ou `gitleaks git --pre-commit --staged --redact`.
+05. **Diff Sanity (perfil estrito)**: Bloqueio de debuggers (`console.log`, `breakpoint()`), stubs (`throw new Error("TODO")`, `pass  # TODO`) e supressões (`@ts-ignore`, `@ts-nocheck`, `@ts-expect-error`, `# type: ignore`, `# noqa` e equivalentes). Ao selecionar esse perfil, documente suas exceções e confirme que o projeto aceita essa política: essas construções podem ser legítimas em outros contextos. Arquivos `.md`, `.markdown`, `.rst` e `.txt` podem citar os marcadores como conteúdo explicativo; os formatos executáveis e de configuração seguem a política estrita.
+    - **Operational Text Safety**: O mesmo gate inspeciona o texto adicionado em qualquer formato textual, sem exceções por diretório. Pipelines que enviam downloads diretamente a um shell, comandos que desativam hooks, variáveis de ambiente que saltam hooks, configurações que continuam após erro e fallbacks shell que forçam sucesso são violações, inclusive quando aparecem em documentação ou projeções geradas.
+06. **Test Integrity (perfil estrito)**: Bloqueio de testes focados (`.only`, `fit`, `fdescribe`), skips sem razão, perda líquida de asserções e deleções sem política staged. Ajuste os marcadores e a política ao framework do projeto.
+07. **Monorepo-Safe Lockfile Validation**: Em projeto com lockfile autoritativo, exija que manifesto modificado tenha lockfile correspondente no diff staged ou uma verificação nativa somente leitura que confirme coerência. Confirme membros de workspace; `package.json` sem dependências pode não exigir lockfile. Uma ferramenta ausente para um check nativo declarado é `ERROR` (código 2); lockfile ausente ou check que retorna não zero é `FAIL` (código 1).
+08. **Circular Imports / Dependencies**: Quando o projeto requer arquitetura acíclica, valide ciclos diretos e indiretos no grafo afetado. Um ciclo novo falha; ciclos históricos exigem baseline por identidade. Use compilador ou analisador existente. Se o gate bloqueante foi pedido e nenhuma ferramenta determinística o cobre, registre `UNSUPPORTED` e deixe a configuração desse gate incompleta.
+09. **Structural Linting**: Quando selecionado, use linter com parser para
+    complexidade, aninhamento, simplificação de fluxo, erros e tamanho de
+    rotinas. Registre as regras e os limiares definidos pelo projeto; não
+    simule análise de AST com regexes no diff.
+10. **File Line Limits**: Quando o projeto exigir limite de linhas por arquivo,
+    use o componente `tools/check-max-lines` se seus limites, classificação e
+    exclusões fixas forem compatíveis com a política local. O gate mede linhas
+    físicas dos arquivos elegíveis rastreados; não substitui limite em bytes
+    nem análise de rotinas por AST.
 
 ### Política transversal de dependências (todas as stacks)
 
@@ -99,10 +120,24 @@ restrita a arquivos de código; a análise de operações perigosas permanece
 universal e lê o texto bruto adicionado. Assim, o conteúdo explicativo não
 permite transformar uma operação de bypass em uma exceção.
 
-### O que Pertence ao Pre-push e CI (Fora do Pre-commit)
+### Pre-push e CI
 
-- **Pre-push**: Suítes completas de testes unitários, typecheck do branch inteiro e auditorias de dependências (`pip-audit`, `npm audit`) when the repository's workflow places them there.
-- **CI / Pipelines Remotas**: Testes E2E com navegador (Playwright/Cypress), testes de integração pesados, Docker builds, scans SAST profundos, validações em bancos analíticos e migrações live contra bancos reais.
+- **Pre-push**: Suítes de testes, typecheck do projeto e auditorias quando o
+  tempo medido e as dependências locais forem adequados. Execute sobre o
+  snapshot que será enviado ou identifique claramente quando o resultado
+  cobre apenas o working tree. Scripts de diff staged não validam commits já
+  feitos; não os reutilize como evidência de pre-push.
+- **Testes por estágio**: `[TESTS_FAST]` no pre-commit só quando forem rápidos e
+  cobrirem o escopo declarado; `[TESTS_FULL]` no pre-push executa a suíte local
+  completa, sem usar apenas testes afetados como prova de cobertura total.
+- **Auditoria de dependências**: Quando selecionada, use scanner fixado e
+  somente leitura sobre dependências resolvidas; declare fonte, escopo,
+  política de achados e indisponibilidade. Não confunda ausência de consulta
+  com auditoria limpa. Consulte [gate-catalog.md](references/gate-catalog.md).
+- **CI / Pipelines Remotas**: Testes E2E com navegador, integrações pesadas,
+  builds e scans profundos que dependam de infraestrutura. Gates essenciais
+  para aceitar mudanças precisam de proteção remota equivalente, pois hooks
+  locais podem ser ignorados ou não instalados.
 
 ______________________________________________________________________
 
@@ -110,12 +145,12 @@ ______________________________________________________________________
 
 Os hooks e scripts devem seguir códigos de saída explícitos:
 
-| Status  | Código | Significado                                                                                    | Comportamento                                                                |
-| :------ | :----: | :--------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------- |
-| `PASS`  |  `0`   | Todas as validações passaram no diff staged.                                                   | Permite o commit.                                                            |
-| `FAIL`  |  `1`   | Violação determinística encontrada no diff (erro de sintaxe, secret, stub, perda de asserção). | Bloqueia o commit. Exibe arquivo, linha e comando sugerido.                  |
-| `ERROR` |  `2`   | Falha de infraestrutura (erro no Git, ausência de ferramenta, crash).                          | **Bloqueia o commit (Fail-Closed)**. Jamais converter erro em falso sucesso. |
-| `SKIP`  |  `0`   | Nenhum arquivo relevante para o hook no commit.                                                | Emite mensagem informativa explícita (`SKIP [<GATE>]`).                      |
+| Status  | Código | Significado                                                           | Comportamento                                                             |
+| :------ | :----: | :-------------------------------------------------------------------- | :------------------------------------------------------------------------ |
+| `PASS`  |  `0`   | O gate executou e validou seu snapshot declarado.                     | Permite a operação daquele estágio.                                       |
+| `FAIL`  |  `1`   | Violação determinística encontrada.                                   | Bloqueia a operação; exibe motivo e reprodução.                           |
+| `ERROR` |  `2`   | Falha de infraestrutura (erro no Git, ausência de ferramenta, crash). | Bloqueia a operação; não converte erro em sucesso.                        |
+| `SKIP`  |  `0`   | Nenhuma entrada relevante segundo a política do gate.                 | Declara o motivo; não conta como gate executado em evidência obrigatória. |
 
 ______________________________________________________________________
 
@@ -126,100 +161,153 @@ ______________________________________________________________________
 1. Inspecione a raiz e subpastas do workspace em busca de manifestos (`pyproject.toml`, `package.json`, `Cargo.toml`, `go.mod`, `composer.json`).
 2. Identifique o gerenciador de pacotes e o prefixo de execução do projeto (ex: `uv run`, `pnpm exec`, `cargo`).
    Classifique também cada comando encontrado como **validação do lockfile**,
-   **sincronização do ambiente** ou **atualização/resolução**. Quando `uv.lock`
-   for parte do contrato do projeto, use `uv run --locked` nos gates normais;
-   reserve `uv sync --locked` para setup explícito e `uv lock --upgrade` para
-   atualizações deliberadas. Nunca deduza um updater de dependências só porque
-   a stack possui um manifesto e um lockfile.
+   **sincronização do ambiente** ou **atualização/resolução**. Em projetos `uv`,
+   siga o comando oficial e verifique se `uv run --locked` sincroniza o ambiente;
+   use `--no-sync` só após setup confirmado. Reserve `uv sync --locked` para
+   setup e `uv lock --upgrade` para manutenção deliberada. Nunca deduza um
+   updater da presença de manifesto e lockfile.
 3. Consulte [stack-detection.md](references/stack-detection.md) para mapear linters, formatters, typecheckers e runners já configurados.
-4. Inspecione se já existe um runner de hooks configurado (`.pre-commit-config.yaml`, `.husky/`, `lefthook.yml` ou scripts em `.git/hooks/`).
+4. Inspecione se já existe runner configurado (`.pre-commit-config.yaml`,
+   `.husky/`, `lefthook.yml` ou scripts em `.git/hooks/`), se os hooks estão
+   instalados e se `core.hooksPath` altera o local efetivo. Identifique o
+   runtime disponível para qualquer helper local.
+5. Determine a entrada de cada estágio: index no pre-commit, mensagem no
+   commit-msg e commits/refspecs no pre-push. Um check de projeto que lê o
+   working tree deve tratar alterações não staged como outro snapshot.
 
 ### Passo 2: Gap Analysis e Mapeamento de Slots
 
 Compare o estado atual com a matriz de slots conceituais 80/20 (detalhada em [gate-catalog.md](references/gate-catalog.md)):
 
-- `[HYGIENE]`: Espaços no final de linha, nova linha final, marcadores de conflito, arquivos > 500KB.
+- `[HYGIENE]`: Espaços no final de linha, nova linha final, marcadores de conflito e limite de tamanho acordado.
+- `[FILE_LINES]`: Limite de linhas por arquivo com ferramenta nativa ou
+  `tools/check-max-lines` quando o projeto consumir o harness e aceitar seus
+  limites de 400/1000/500 linhas para produção/testes/documentação, além da
+  classificação e das exclusões do componente.
 - `[SYNTAX]`: Compilação/interpretação básica (`py_compile`, `tsc --noEmit`, `go vet`).
 - `[FORMATTER]`: Formatação padronizada como auto-fix mecânico seguro (`ruff format`, `prettier`).
 - `[LINTER]`: Code quality plus parser-aware structural checks for complexity,
   nesting, flow simplification, error handling, and routine scope.
-- `[SECRETS]`: Varredura de credenciais e chaves no diff staged (`gitleaks protect --staged`).
+- `[SECRETS]`: Varredura de credenciais no diff staged (hook oficial do Gitleaks ou comando atual fixado).
 - `[CONFIG]`: Validação de sintaxe JSON, YAML e TOML.
-- `[CIRCULAR_DEPENDENCIES]`: Detecção obrigatória de ciclos de imports/dependências e de regressões arquiteturais no grafo afetado; ciclos históricos usam baseline não-crescente.
+- `[CIRCULAR_DEPENDENCIES]`: Detecção de ciclos quando o projeto exige grafo acíclico; ciclos históricos usam baseline por identidade.
 - `[DIFF_SANITY]`: Interceptação de debuggers, stubs e bypasses recém-criados.
 - `[LOCKFILE]`: Validação somente leitura da paridade entre manifesto modificado e lockfile (validando pertencimento a workspaces); nunca atualização automática de dependências.
 - `[TEST_INTEGRITY]`: Alerta contra testes com `.only`, `skip`, perda de asserções ou arquivos deletados.
+- `[TESTS_FAST]`: Subconjunto rápido e definido de testes no pre-commit, com cobertura residual declarada.
+- `[TESTS_FULL]`: Suíte local completa no pre-push ou delegação explícita para CI.
+- `[DEPENDENCY_AUDIT]`: Vulnerabilidades conhecidas nas dependências resolvidas; gate separado de `[LOCKFILE]`.
 
-For each structural dimension, record the native rule, metric, threshold,
-scope, and status: `ENABLED`, `DELEGATED`, `MANUAL`, or `UNSUPPORTED`.
-Cyclomatic and cognitive complexity are separate metrics. The default ceilings
-are `15` for each supported complexity metric, `4` nesting levels, and `50`
-executable statements per routine. A complete blocking profile accepts only
-`ENABLED` or `DELEGATED`; a requested blocking check that is unsupported is an
-`ERROR`, not a false `PASS`. Read the complete policy in
-[gate-catalog.md](references/gate-catalog.md) and the anti-pattern boundaries
-in [agent-anti-patterns.md](references/agent-anti-patterns.md).
+Registre a decisão em uma matriz com colunas `gate`, `estágio`, `comando/versão`,
+`snapshot`, `efeito`, `duração observada`, `status` e `justificativa`. Inclua
+slots omitidos quando a ausência poderia ser confundida com cobertura.
+
+Para cada slot selecionado, registre regra nativa, métrica, limite, escopo,
+estágio e status (`ENABLED`, `DELEGATED`, `MANUAL`, `UNSUPPORTED`).
+Complexidade ciclomática e cognitiva são métricas distintas. O perfil estrito
+de exemplo usa tetos de `15` para cada métrica suportada, `4` níveis de
+aninhamento e `50` statements por rotina; adote-os somente se o projeto
+concordar. Um perfil bloqueante completo aceita apenas `ENABLED` ou
+`DELEGATED`; cobertura pedida mas indisponível é `UNSUPPORTED`, não `PASS`.
+Leia a política em [gate-catalog.md](references/gate-catalog.md) e os limites
+de análise em [agent-anti-patterns.md](references/agent-anti-patterns.md).
 
 ### Passo 3: Scaffolding e Composição dos Hooks
 
-1. Se o projeto já utiliza um runner, adapte a configuração existente sem remover regras de negócio válidas.
-2. Se o projeto não possui runner:
-   - Para ecossistemas Python ou genéricos: utilize o template [.pre-commit-config.yaml](assets/templates/pre-commit-config.yaml.template).
-   - Para ecossistemas Go, Rust, Node ou Polyglot: utilize o template [lefthook.yml](assets/templates/lefthook.yml.template).
-3. Isole o escopo em monorepos ou projetos multi-stack usando regex de caminhos, conforme [multi-stack-patterns.md](references/multi-stack-patterns.md).
-4. Configure `[LINTER]` with the project's existing parser-aware rules. Keep
-   structural checks read-only: do not auto-fix conditionals, returns, handlers,
-   or business logic. Do not enforce a blanket single-exit rule; guard clauses
-   are useful only when they make preconditions and the main path clearer.
-5. Configure o slot `[CIRCULAR_DEPENDENCIES]` em todo pre-commit que valide código importável. Se a ferramenta aceitar escopo, execute o grafo do pacote afetado; não substitua a validação por um `SKIP` silencioso. Registre ciclos existentes em baseline e faça qualquer ciclo novo retornar `FAIL`.
-6. Configure o slot `[LOCKFILE]` como um gate de validação, não como um
-   atualizador. Exija o lockfile correspondente no diff staged e use o comando
-   nativo somente quando ele comprovar coerência sem persistir uma nova
-   resolução, reescrever manifestos/lockfiles ou instalar dependências. Para stacks sem
-   esse comando, mantenha a exigência de paridade e registre a limitação; nunca
-   substitua o gate por comandos
-   mutáveis como `install`, `sync`, `update`, `upgrade`, `lock` ou `tidy`.
-   Comandos explicitamente somente leitura, como `uv lock --check`,
-   `poetry check --lock`, `cargo check --locked` e `go mod tidy -diff` (quando
-   suportado), são exceções autorizadas. `go mod verify` verifica a integridade
-   do cache de módulos e não a coerência entre `go.mod` e `go.sum`; trate-o como
-   auditoria de integridade separada, nunca como substituto do `[LOCKFILE]`.
-7. For each remote hook repository, resolve a release and freeze
-   `rev` to a 40-character commit SHA before declaring the generated
-   configuration ready. Preserve the release in a comment for maintenance;
-   do not leave mutable tags in durable project configuration.
-8. When a hook uses `additional_dependencies`, resolve and pin the compatible
-   group as a unit. Update the base package and its plugins together, validate
-   the resolution, and only then record exact pins.
-9. Classifique projeções geradas (`.agents/`, `.claude/`, `.codex/`, mirrors e
-   artefatos equivalentes) antes de atribuir hooks. Hooks auto-fixáveis e
-   corretores lexicais (`end-of-file-fixer`, `ruff --fix`, formatadores e
-   `codespell`) devem declarar `exclude` local para esses caminhos quando eles
-   puderem estar rastreados. Mantenha scanners de segurança e validações
-   semânticas no escopo apropriado e, quando a projeção precisar ser validada,
-   use um gate dedicado somente leitura. Corrija sempre a fonte canônica e
-   regenere a projeção; não corrija o espelho diretamente.
+01. Se o projeto já utiliza um runner, adapte a configuração existente sem remover regras de negócio válidas.
+02. Sem runner, escolha um que a equipe possa instalar e manter com as
+    ferramentas já adotadas. Use [.pre-commit-config.yaml](assets/templates/pre-commit-config.yaml.template)
+    ou [lefthook.yml](assets/templates/lefthook.yml.template) como scaffold,
+    não como configuração pronta: preencha comandos, congele versões e remova
+    exemplos não selecionados. A escolha não depende só da linguagem.
+03. Isole o escopo em monorepos ou projetos multi-stack usando regex de caminhos, conforme [multi-stack-patterns.md](references/multi-stack-patterns.md).
+04. Configure `[LINTER]` with the project's existing parser-aware rules.
+    Prefer read-only structural diagnostics. If the project's explicit
+    contract allows the tool's safe fixes for flow or return rules, preserve
+    that policy and require review before staging. Never enable unsafe fixes
+    or automatic business-logic rewrites. Do not enforce a blanket single-exit
+    rule; guard clauses are useful only when they make preconditions and the
+    main path clearer.
+05. Configure `[CIRCULAR_DEPENDENCIES]` quando requerido. Se a ferramenta
+    aceitar escopo, execute o grafo afetado; não substitua uma exigência do
+    projeto por `SKIP`. Registre ciclos históricos por identidade.
+06. Configure `[LOCKFILE]` em projetos com lockfile autoritativo como um gate
+    de validação. Exija o lockfile correspondente no diff staged ou use o comando
+    nativo somente quando ele comprovar coerência sem persistir uma nova
+    resolução, reescrever manifestos/lockfiles ou instalar dependências. Para stacks sem
+    esse comando, mantenha a exigência de paridade e registre a limitação; nunca
+    substitua o gate por comandos
+    mutáveis como `install`, `sync`, `update`, `upgrade`, `lock` ou `tidy`.
+    Comandos explicitamente somente leitura, como `uv lock --check`,
+    `poetry check --lock`, `cargo check --locked` e `go mod tidy -diff` (quando
+    suportado), são exceções autorizadas. `go mod verify` verifica a integridade
+    do cache de módulos e não a coerência entre `go.mod` e `go.sum`; trate-o como
+    auditoria de integridade separada, nunca como substituto do `[LOCKFILE]`.
+07. For each remote hook repository, resolve a release and freeze
+    `rev` to a 40-character commit SHA before declaring the generated
+    configuration ready. Preserve the release in a comment for maintenance;
+    do not leave mutable tags in durable project configuration.
+08. When a hook uses `additional_dependencies`, resolve and pin the compatible
+    group as a unit. Update the base package and its plugins together, validate
+    the resolution, and only then record exact pins.
+09. Classifique projeções geradas (`.agents/`, `.claude/`, `.codex/`, mirrors e
+    artefatos equivalentes) antes de atribuir hooks. Hooks auto-fixáveis e
+    corretores lexicais (`end-of-file-fixer`, `ruff --fix`, formatadores e
+    `codespell`) devem declarar `exclude` local para esses caminhos quando eles
+    puderem estar rastreados. Mantenha scanners de segurança e validações
+    semânticas no escopo apropriado e, quando a projeção precisar ser validada,
+    use um gate dedicado somente leitura. Corrija sempre a fonte canônica e
+    regenere a projeção; não corrija o espelho diretamente.
+10. Quando pre-push fizer parte do pedido ou contrato do projeto, substitua o
+    placeholder pelo gate escolhido, declare `stages: [pre-push]` ou
+    `pre-push:` e instale esse estágio. Fora desse escopo, remova o placeholder
+    e o estágio do scaffold. Se o working tree estiver sujo, teste os commits
+    em checkout isolado quando a garantia for sobre o push; caso contrário,
+    reporte que o resultado cobre o working tree, não o snapshot enviado.
+11. Para `[FILE_LINES]` em um consumidor do harness, selecione
+    `"check-max-lines"` em `components.tools` de `.agents/harness.json`, rode
+    `harness-sync` e configure `python .agents/scripts/check-max-lines.py` sem
+    filenames. Confirme Python 3.13+, limites e escopo compatíveis; o gate lê o
+    working tree. Só declare cobertura staged se o runner isolar alterações
+    não staged. Veja [gate-catalog.md](references/gate-catalog.md).
 
 ### Passo 4: Instalar Scripts Auxiliares de Sanidade de IA
 
-Copie ou referencie os scripts portáteis da skill (sem dependências externas) na pasta `scripts/` do projeto:
+Quando o projeto seleciona estes helpers e dispõe de Python 3.10+, copie
+ou referencie apenas os helpers necessários na pasta `scripts/` do projeto.
+Eles usam a biblioteca padrão, mas exigem o runtime Python; não os instale por
+inferência em qualquer stack:
 
 - `check_diff_sanity.py`: Bloqueia `console.log`, `breakpoint()`, `print` órfão, `throw new Error("TODO")`, supressões de compilador/linter e operações perigosas recém-adicionadas. Marcadores de supressão são bloqueados em todos os formatos não documentais, inclusive com justificativa; os formatos `.md`, `.markdown`, `.rst` e `.txt` permitem somente a citação não executável. Para uma CLI que precisa emitir saída com `print()`, configure cada arquivo explicitamente com `--allow-print-file <path>` no hook; não isente um diretório inteiro. Structural complexity and nesting remain outside this staged-text scanner. Consulte [agent-anti-patterns.md](references/agent-anti-patterns.md).
 - `check_test_integrity.py`: Bloqueia `.only`/`fit` sem exceção, bloqueia skips e perda de asserções sem razão e exige policy staged em `.test-deletions.json` para deleção de testes. It does not prove assertion meaning across every framework; use native test lint or `testing-patterns` for assertion vacuum and tautologies.
-- `check_lockfile_sync.py`, `lockfile_checks.py`, `staged_changes.py` e `workspace_members.py`: Copie os quatro arquivos juntos para `scripts/`; o primeiro é o CLI, o segundo centraliza a leitura de manifests e as verificações nativas de coerência, o terceiro preserva relações de rename/copy no índice e o quarto fornece a leitura indexada e o matching conservador de membros. O conjunto bloqueia commit de manifesto alterado sem o respectivo lockfile atualizado, comprovando pertencimento aos membros do workspace. O CLI deve analisar o conteúdo staged de `package.json`, dispensar manifests sem dependências declaradas e consultar o gerenciador nativo quando ele puder comprovar a coerência do lockfile. Ele não deve executar atualizadores, resolvers ou sincronizadores de ambiente. Não imponha timeout universal ao comando: escolha escopo e estágio com base no custo observado do projeto.
+- `check_lockfile_sync.py`, `lockfile_checks.py`, `staged_changes.py` e `workspace_members.py`: Copie os quatro arquivos juntos para `scripts/`; o primeiro é o CLI, o segundo centraliza a leitura de manifests e as verificações nativas de coerência, o terceiro preserva relações de rename/copy no índice e o quarto fornece a leitura indexada e o matching conservador de membros. O conjunto exige lockfile staged ou confirmação nativa de coerência e comprova pertencimento ao workspace. Paridade staged sozinha não prova que o conteúdo do lockfile está correto; registre essa limitação. O CLI deve analisar o conteúdo staged de `package.json`, dispensar manifests sem dependências declaradas e recusar confirmação nativa quando arquivos relevantes divergem do index. Ele não executa atualizadores ou sincronizadores de ambiente.
 
 ### Passo 5: Verificação, Tratamento de Legado e Baseline
 
-1. Execute o runner contra os arquivos staged para validar a instalação:
+1. Confirme que todos os placeholders foram substituídos, que o comando de
+   cada gate existe e que as ferramentas estão fixadas no contrato do projeto.
+2. Instale e execute cada estágio configurado. Nos exemplos abaixo, execute
+   pre-push somente quando ele fizer parte do contrato selecionado:
    ```bash
-   uv run --locked pre-commit run --files <paths>  # quando uv.lock for autoritativo
-   # ou npx lefthook run pre-commit
+   pre-commit install
+   pre-commit run --all-files
+   pre-commit run --hook-stage pre-push --all-files
+   # ou, se o runner escolhido for Lefthook:
+   lefthook install
+   lefthook run pre-commit
+   lefthook run pre-push
    ```
-2. Se o projeto possuir dívida técnica pré-existente massiva (ex: centenas de erros de tipagem legados), crie um baseline não-crescente seguindo as receitas em [baseline-recipes.md](references/baseline-recipes.md).
-3. Para o gate `[CIRCULAR_DEPENDENCIES]`, registre o grafo histórico somente quando necessário e congele a contagem/identidade dos ciclos existentes. Garanta que qualquer ciclo novo ou expansão do baseline retorne `FAIL`.
-4. Garanta que novas alterações no diff tenham tolerância zero a regressões.
-5. Apply structural baselines only to identified historical findings. New or
-   changed routines must satisfy the configured thresholds.
+   Use o prefixo fixado pelo projeto (`uv run --locked`, `pnpm exec` etc.)
+   quando necessário. Evite invocação que baixe um runner não fixado.
+3. Em um checkout de teste, prove pelo menos um `PASS` e um `FAIL` real em
+   cada estágio configurado. Inclua um arquivo parcialmente staged, uma
+   ferramenta ausente e um formatter que altera arquivos quando aplicáveis.
+4. Para dívida pré-existente, use [baseline-recipes.md](references/baseline-recipes.md)
+   e congele achados por identidade. Contagem total isolada não garante zero
+   regressões: um achado novo pode substituir um antigo sem mudar o total.
+5. Registre gates executados, `SKIP`s, duração e cobertura residual. Não
+   declare completo um estágio que só foi configurado ou executado manualmente
+   sem comprovar que o hook efetivo está instalado.
 
 ______________________________________________________________________
 
@@ -233,7 +321,8 @@ ______________________________________________________________________
 
 ### Ações Proibidas para Correção Automática
 
-- Alterações em lógica de negócio, condicionais ou retorno de funções.
+- Reescritas de lógica de negócio e correções automáticas de fluxo ou retorno
+  sem permissão explícita no contrato do projeto e revisão antes de staging.
 - Modificação, enfraquecimento ou deleção de asserções de testes.
 - Adição de tipos `any`, `@ts-ignore`, `# type: ignore` ou `# noqa` para forçar aprovação.
 - Migrations e comandos destrutivos de banco de dados.
@@ -253,7 +342,9 @@ ______________________________________________________________________
 
 ## Formato de Diagnóstico Acionável
 
-Quando um gate falhar, o relatório emitido para o agente deve conter arquivo, linha, motivo da falha e o comando local para reprodução. Para corrigir uma supressão, corrija o código ou documente o comportamento sem inseri-la no formato executável; nenhuma justificativa transforma um marcador de supressão em autorização:
+Quando um gate falhar, o diagnóstico deve conter arquivo, linha quando
+aplicável, motivo e comando local para reprodução. No perfil estrito de
+`diff-sanity`, corrija o código em vez de inserir uma supressão executável:
 
 ```text
 ======================================================================
@@ -275,12 +366,13 @@ ______________________________________________________________________
 **Entrada**: Usuário pede: "Configura um pre-commit rápido no meu projeto Python que usa ruff e pytest."
 **Ação do Agente**:
 
-1. Inspeciona `pyproject.toml`, identifica `uv`, `ruff` e `pytest`.
-2. Identifica o validador de ciclos já configurado (por exemplo, `import-linter`) e preenche o gate obrigatório `[CIRCULAR_DEPENDENCIES]`.
-3. Inspects the existing linter for all structural dimensions and records each
-   rule, metric, threshold, scope, and coverage status.
-4. Cria `.pre-commit-config.yaml` com `pre-commit-hooks` (higiene), `gitleaks` (secrets), `ruff-format`, `ruff-lint`, o gate de ciclos e os scripts locais `check_diff_sanity.py`, `check_test_integrity.py` e o conjunto `check_lockfile_sync.py` + `lockfile_checks.py` + `staged_changes.py` + `workspace_members.py`.
-5. Execute `uv run pre-commit run --files pyproject.toml` and confirm that every relevant hook returns `PASS`. Record observed duration when it helps tune the workflow; do not enforce a universal time threshold.
+1. Inspeciona `pyproject.toml`, identifica `uv`, `ruff`, `pytest` e as regras
+   locais; verifica se já há runner e hooks instalados.
+2. Configura higiene e Ruff em pre-commit. Coloca a suíte de testes no estágio
+   que seu custo medido comporta; adiciona o detector de ciclos se o projeto
+   requerer grafo acíclico e os helpers Python somente se a política os pedir.
+3. Instala os estágios declarados, executa pre-commit e pre-push quando
+   configurado e prova um bloqueio real em checkout de teste.
 
 ### Exemplo 1b: Política de dependências em qualquer stack
 
@@ -291,7 +383,8 @@ pre-commit."
 1. Não adiciona um updater automaticamente. Primeiro identifica o gerenciador,
    o manifesto, o lockfile e se existe uma verificação nativa somente leitura.
 
-2. Configura o `[LOCKFILE]` para validar paridade e coerência:
+2. Configura o `[LOCKFILE]` para exigir paridade staged ou confirmar coerência
+   com um comando nativo somente leitura:
 
    | Stack                  | Verificação no hook                                                    | Atualização deliberada fora do hook            |
    | :--------------------- | :--------------------------------------------------------------------- | :--------------------------------------------- |
@@ -323,8 +416,10 @@ comando deliberado de atualização e não invente uma automação silenciosa.
 **Ação do Agente**:
 
 1. Consulta [baseline-recipes.md](references/baseline-recipes.md).
-2. Configura a verificação do mypy para rodar apenas nos arquivos alterados (`git diff --cached --name-only`) ou registra o baseline com limite fixo de erros.
-3. O pre-commit passa a aprovar commits com até 80 erros antigos, mas bloqueia imediatamente qualquer commit que adicione o 81º erro.
+2. Registra os 80 achados históricos por identidade estável e compara o
+   conjunto atual ao baseline; um novo achado falha mesmo se outro desaparecer.
+3. Se não houver ferramenta para comparar identidades, declara cobertura
+   parcial e não promete zero regressões com um teto de 80 erros.
 
 ### Caso Negativo: Tentativa de Incluir Testes E2E Pesados no Pre-commit
 
@@ -332,7 +427,9 @@ comando deliberado de atualização e não invente uma automação silenciosa.
 **Ação do Agente**:
 
 - **Por quê não**: Browser and live database workloads add environment and latency requirements that are disproportionate to a local commit gate. They can block the workflow and encourage the use of `--no-verify`.
-- **Solução Correta**: O agente configura no pre-commit apenas a validação estática de sintaxe e diff sanity, posicionando a suíte Playwright e os testes pesados no `pre-push` ou na pipeline de `CI`.
+- **Solução Correta**: O agente mede custo e dependências, mantém checks locais
+  rápidos no pre-commit e escolhe pre-push ou CI para os testes pesados conforme
+  o contrato do projeto.
 
 ______________________________________________________________________
 
@@ -341,6 +438,8 @@ ______________________________________________________________________
 ### Deve acionar
 
 - "Cria uma configuração de pre-commit para este projeto."
+- "Configura um pre-push que rode os testes antes de enviar a branch."
+- "O arquivo de hooks existe, mas o git push não roda nada."
 - "Adiciona quality gates locais para impedir que a IA commite debugs e console.log."
 - "Arruma os hooks do git que estão falhando no commit."
 - "Configura pre-commit com ruff, prettier e gitleaks."
@@ -350,7 +449,9 @@ ______________________________________________________________________
   o updater deve ser uma automação deliberada fora do hook.
 - "Bloqueia imports circulares antes do commit."
 - "Configura o linter para bloquear funções complexas e aninhamento profundo."
+- "Bloqueia arquivos com mais de 400 linhas no pre-commit."
 - "Adiciona gates para catch-all, handlers vazios e funções longas."
+- "Distribui testes rápidos no commit e completos no push; audita as dependências."
 
 ### Não deve acionar
 
@@ -364,6 +465,10 @@ ______________________________________________________________________
 
 ## Evals de workflow
 
+Execute os três cenários e as assertions binárias em
+[eval-scenarios.md](references/eval-scenarios.md) antes de chamar uma mudança
+de templates portátil entre stacks.
+
 - [ ] Assert: `check_diff_sanity.py` falha com exit code 2 quando o git falha ou fora de um repo git.
 - [ ] Assert: `check_diff_sanity.py` bloqueia `@ts-ignore`, `@ts-nocheck`, `@ts-expect-error` e `# type: ignore` em código e configuração com exit code 1, mesmo com uma razão, e aceita suas citações somente nos formatos documentais declarados.
 - [ ] Assert: `check_diff_sanity.py` bloqueia `# noqa`, `# noqa: BLE001`, `# noqa: F401` com razão e `# noqa` acompanhado de `allow-bypass`, sempre com exit code 1.
@@ -372,14 +477,21 @@ ______________________________________________________________________
 - [ ] Assert: `check_test_integrity.py` bloqueia deleção de arquivos de teste a menos que autorizada em `.test-deletions.json` staged no git.
 - [ ] Assert: `check_lockfile_sync.py` bloqueia manifesto filho sem lockfile local quando não comprovado o pertencimento aos membros do workspace raiz.
 - [ ] Assert: `check_lockfile_sync.py` permite `package.json` sem dependências declaradas sem exigir lockfile.
-- [ ] Assert: `check_lockfile_sync.py` aceita lockfile existente somente quando o gerenciador nativo confirma a coerência; ferramenta ausente ou falha ao iniciar/executar o subprocesso retorna `ERROR` com exit code 2, enquanto retorno não zero continua `FAIL` com exit code 1.
+- [ ] Assert: `check_lockfile_sync.py` aceita lockfile staged como paridade sem prometer coerência; sem update staged, exige confirmação nativa quando disponível. Ferramenta ausente ou falha ao executar retorna `ERROR` código 2; retorno não zero é `FAIL` código 1.
+- [ ] Assert: `check_lockfile_sync.py` reconhece `bun.lock` e bloqueia uma verificação nativa do working tree quando manifesto ou lockfile diverge do index.
 - [ ] Assert: O agente separa validação do lockfile, sincronização do ambiente e atualização de dependências; não adiciona updater ou sincronizador mutável ao pre-commit por inferência.
 - [ ] Assert: Para uma stack sem verificação nativa somente leitura, o agente mantém a exigência de paridade staged e não inventa um comando de instalação, atualização ou resolução.
 - [ ] Assert: O agente não classifica `go mod verify` como coerência de `go.mod`/`go.sum`; quando suportado, usa `go mod tidy -diff` ou mantém a paridade staged.
 - [ ] Assert: Uma atualização automática solicitada é colocada em script/job/PR separado, e o pre-commit permanece sem mutações no manifesto, lockfile ou ambiente.
-- [ ] Assert: Todo pre-commit configurado para código importável contém o slot `[CIRCULAR_DEPENDENCIES]`; ciclo novo retorna `FAIL`, ciclo histórico só passa por baseline não-crescente e ausência de comando determinístico retorna `ERROR`.
-- [ ] Assert: `[LINTER]` records complexity, nesting, flow simplification, error handling, and routine scope with a rule, threshold, scope, and coverage status.
-- [ ] Assert: Cyclomatic and cognitive complexity remain separate metrics; unsupported blocking coverage returns `ERROR` instead of inventing a tool.
+- [ ] Assert: `[DEPENDENCY_AUDIT]` declara grafo inspecionado, política de achados e indisponibilidade; falta de consulta não vira auditoria limpa.
+- [ ] Assert: `[TESTS_FAST]` não substitui `[TESTS_FULL]`; o relatório distingue testes afetados, suíte completa e snapshot validado.
+- [ ] Assert: Quando o projeto exige grafo acíclico, `[CIRCULAR_DEPENDENCIES]` bloqueia ciclo novo; ausência de comando é `UNSUPPORTED`, não `PASS`.
+- [ ] Assert: Um `[LINTER]` estrutural selecionado registra complexidade, aninhamento, fluxo, erros e tamanho de rotina com regra, limite, escopo e status.
+- [ ] Assert: `[FILE_LINES]` seleciona `tools/check-max-lines` só quando limites, classificação, exclusões e runtime forem compatíveis; declara cobertura do working tree ou do index conforme o runner.
+- [ ] Assert: Complexidades ciclomática e cognitiva permanecem distintas; cobertura bloqueante indisponível não é declarada `PASS`.
 - [ ] Assert: Structural configuration never uses a generic diff regex, treats physical lines as executable statements, or enforces a blanket single-exit rule.
 - [ ] Assert: Broad catches are accepted only at explicit boundaries with a narrow scope, defined handling, and preserved cause.
 - [ ] Assert: Assertion vacuum and tautologies remain under `[TEST_INTEGRITY]` and `testing-patterns`, not `[LINTER]`.
+- [ ] Assert: Os dois templates incluem pre-push ativo, exigem substituir o comando do projeto e instruem instalação e teste de falha do estágio.
+- [ ] Assert: Em três cenários (Python com runner existente, monorepo Node e Go/Rust sem runner), o agente registra estágio, snapshot, runtime e cobertura, instala cada hook declarado e prova ao menos um bloqueio real.
+- [ ] Assert: Um baseline com `{A, B}` não aceita `{B, C}` como zero regressões.

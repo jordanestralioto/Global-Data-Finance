@@ -6,6 +6,10 @@
 
 In a repository with multiple stacks (e.g. `backend/` in Python and `frontend/` in TypeScript), each hook must declare explicit path filtering:
 
+The `--fix` examples below assume that the project explicitly permits safe
+lint fixes and requires review before staging. Use read-only lint commands
+when that policy is absent.
+
 ### 1.1 Pre-commit Framework Regex Scoping
 
 ```yaml
@@ -47,8 +51,8 @@ pre-commit:
 
 ## 2. Shared Config and Root Hygiene
 
-Repository-wide checks (whitespace, EOF, secrets and lockfile sync) must run
-unconditionally across all staged files regardless of subdirectory. The
-required `[CIRCULAR_DEPENDENCIES]` gate must inspect each affected package graph
-and include cross-package edges when a workspace shares imports; it must not
-silently skip a stack because another package was unchanged.
+Selected repository-wide checks (whitespace, EOF, secrets and lockfile sync)
+must cover their declared scope regardless of subdirectory. When
+`[CIRCULAR_DEPENDENCIES]` is required, inspect each affected package graph and
+include cross-package edges when a workspace shares imports; do not silently
+skip a stack because another package was unchanged.

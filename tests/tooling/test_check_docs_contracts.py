@@ -396,8 +396,32 @@ logger.info("ok", extra={"file_target": "data.csv"})
     assert checker.check_file_contracts(Path('b3-docs.md'), valid_b3) == []
 
     assert checker.check_file_contracts(Path('faq.md'), 'incomplete') != []
-    valid_faq = '2 GB 500 MB'
+    valid_faq = (
+        '| **fast** | 429,88 MiB |\n'
+        '| **slow** | 331,11 MiB |\n'
+        '[Benchmark](../dev-guide/benchmarks.md)'
+    )
     assert checker.check_file_contracts(Path('faq.md'), valid_faq) == []
+    assert (
+        checker.check_file_contracts(
+            Path('faq.md'), valid_faq.replace('331,11 MiB', 'unmeasured')
+        )
+        != []
+    )
+    assert (
+        checker.check_file_contracts(
+            Path('faq.md'), valid_faq.replace('benchmarks.md', 'other.md')
+        )
+        != []
+    )
+    assert (
+        checker.check_file_contracts(
+            Path('faq.en.md'),
+            valid_faq.replace('benchmarks.md', 'benchmarks.en.md'),
+        )
+        == []
+    )
+    assert checker.check_file_contracts(Path('faq.en.md'), valid_faq) != []
 
 
 @pytest.mark.unit

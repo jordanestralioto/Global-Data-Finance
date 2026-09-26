@@ -1,6 +1,7 @@
 # Standard Polyglot Lefthook Configuration Template
 # Managed and synthesized by local-quality-gates skill.
-# Fast, deterministic, language-agnostic git hooks.
+# Choose project-native commands and runtimes. Replace the pre-push placeholder
+# before using this scaffold.
 
 # NOTE on Auto-Fix: If formatters modify files, the commit fails visibly.
 # Review modifications and stage explicitly:
@@ -14,48 +15,57 @@ pre-commit:
     # 01. REPOSITORY HYGIENE & SECRETS
     # =========================================================================
     trailing-whitespace:
-      run: git diff --check --cached {staged_files}
+      run: git diff --check --cached
+
+    # Optional [FILE_LINES]: use only if fixed caps and exclusions fit the project.
+    # Add "check-max-lines" to components.tools in .agents/harness.json and run
+    # harness-sync first. Requires Python 3.13+; reads eligible tracked files
+    # in the working tree. Claim staged coverage only with unstaged isolation.
+    # check-max-lines:
+    #   run: python .agents/scripts/check-max-lines.py
+
+    # Optional [TESTS_FAST]: select a measured fast tier and declare scope.
+    # It does not replace full pre-push tests or delegated CI coverage.
+    # project-fast-tests:
+    #   run: REPLACE_WITH_PROJECT_FAST_TEST_COMMAND
 
     gitleaks:
-      run: gitleaks protect --staged --verbose
+      run: gitleaks git --pre-commit --staged --redact --verbose
       tags: security secrets
 
     # =========================================================================
-    # 02. AI AGENT DIFF SANITY, TEST INTEGRITY & LOCKFILE SYNC (FAIL-CLOSED)
+    # 02. OPTIONAL STRICT PROFILE (PYTHON RUNTIME REQUIRED)
     # =========================================================================
-    # The lockfile hook validates staged manifest/lockfile parity. Do not
-    # replace it with an install, sync, update, upgrade, or resolver command.
-    diff-sanity:
-      run: python scripts/check_diff_sanity.py {staged_files}
-      tags: ai-guardian sanity
-
-    test-integrity:
-      run: python scripts/check_test_integrity.py {staged_files}
-      tags: ai-guardian tests
-
-    lockfile-sync:
-      run: python scripts/check_lockfile_sync.py
-      tags: dependencies
+    # Copy and enable only selected scripts. The lockfile hook validates
+    # staged parity and never installs or upgrades packages.
+    # diff-sanity:
+    #   run: python scripts/check_diff_sanity.py
+    # test-integrity:
+    #   run: python scripts/check_test_integrity.py
+    # lockfile-sync:
+    #   run: python scripts/check_lockfile_sync.py
 
     # =========================================================================
-    # 03. [CIRCULAR_DEPENDENCIES] ARCHITECTURE (REQUIRED)
+    # 03. [CIRCULAR_DEPENDENCIES] ARCHITECTURE (WHEN REQUIRED)
     # =========================================================================
     # Fill this command with the project's existing graph/architecture check.
-    # Do not remove it or silently turn it into a SKIP. New cycles fail;
-    # historical cycles require a non-growing baseline.
+    # Use when the project requires an acyclic graph. New cycles fail;
+    # historical cycles require a finding-identity baseline.
     # circular-dependencies:
     #   run: uv run lint-imports  # or the discovered stack-native command
 
     # =========================================================================
     # 04. STACK-SPECIFIC FORMATTERS & LINTERS (READ-ONLY IN PRE-COMMIT)
     # =========================================================================
-    # [LINTER] must record native read-only coverage for:
-    #   cyclomatic <= 15; cognitive <= 15 when supported; nesting <= 4;
+    # For a selected strict [LINTER] profile, record native parser-aware coverage:
+    #   example cyclomatic <= 15; cognitive <= 15 when supported; nesting <= 4;
     #   redundant branches after terminal statements; empty/broad handlers;
-    #   routine scope <= 50 executable statements.
+    #   routine scope <= 50 executable statements. Use project-approved limits.
     # Lines do not substitute for statements. Do not enforce one return per
     # routine or add a generic regex scanner. Mark unavailable capabilities as
     # MANUAL or UNSUPPORTED instead of claiming complete coverage.
+    # Prefer read-only diagnostics. Safe structural fixes require explicit
+    # project policy and review before staging; never enable unsafe fixes.
     # [PYTHON EXAMPLE]
     # ruff-format-check:
     #   glob: "*.py"
@@ -71,3 +81,14 @@ pre-commit:
     # eslint:
     #   glob: "*.{ts,tsx,js,jsx}"
     #   run: pnpm eslint {staged_files}
+
+pre-push:
+  parallel: false
+  commands:
+    # Run the full practical local tier against the declared snapshot.
+    project-tests:
+      run: REPLACE_WITH_PROJECT_PRE_PUSH_COMMAND
+    # Optional [DEPENDENCY_AUDIT]: pinned, read-only resolved-package scan.
+    # Declare advisory source, severity policy, outage handling and snapshot.
+    # dependency-audit:
+    #   run: REPLACE_WITH_PROJECT_DEPENDENCY_AUDIT_COMMAND

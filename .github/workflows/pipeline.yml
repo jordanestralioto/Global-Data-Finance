@@ -107,7 +107,8 @@ jobs:
 
       - name: Check for vulnerable dependencies
         run: |
-          uv run --locked --no-sync pip-audit --timeout 60
+          uv run --locked --no-sync python \
+            scripts/audit_locked_dependencies.py
           echo "✅ No vulnerable dependencies found"
 
       # --------------------------------------------------------------------------
@@ -141,6 +142,10 @@ jobs:
             --allow-print-file scripts/check-docs-contracts.py \
             --allow-print-file scripts/check-ruff-policy.py \
             --allow-print-file scripts/check_test_quality.py \
+            --allow-print-file scripts/benchmark_cvm_http.py \
+            --allow-print-file scripts/benchmark_cvm_full.py \
+            --allow-print-file scripts/audit_locked_dependencies.py \
+            --allow-print-file scripts/check_commit_msg.py \
             --allow-print-file \
             "$app_dir/b3_docs/extraction_result_formatter.py" \
             --allow-print-file \

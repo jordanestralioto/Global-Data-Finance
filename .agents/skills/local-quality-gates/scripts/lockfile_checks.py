@@ -28,6 +28,43 @@ class LockfileInfrastructureError(RuntimeError):
     """Raised when a native lockfile check cannot be started or run."""
 
 
+class UnstagedDependencyChangesError(RuntimeError):
+    """Raised when a native check would inspect a different Git snapshot."""
+
+
+def _ensure_staged_snapshot(
+    manifest_path: Path,
+    lock_path: Path,
+    root: Path,
+) -> None:
+    paths = (manifest_path.as_posix(), lock_path.as_posix())
+    try:
+        result = subprocess.run(
+            ['git', 'diff', '--quiet', '--', *paths],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except (subprocess.SubprocessError, OSError) as err:
+        raise LockfileInfrastructureError(
+            f'Unable to compare the Git index with the working tree: {err}'
+        ) from err
+    if result.returncode == 1:
+        raise UnstagedDependencyChangesError(
+            f'{manifest_path.as_posix()}: Unstaged changes in the manifest '
+            f'or {lock_path.as_posix()} prevent a native lockfile check '
+            'against the staged snapshot. Stage the intended files or '
+            'restore the unstaged edits before committing.'
+        )
+    if result.returncode != 0:
+        raise LockfileInfrastructureError(
+            'Unable to compare the Git index with the working tree for '
+            f'{manifest_path.as_posix()} and {lock_path.as_posix()}: '
+            f'{result.stderr.strip() or result.returncode}'
+        )
+
+
 def missing_lockfile_error(
     manifest_path: Path,
     scope: str,
@@ -80,6 +117,7 @@ def is_lockfile_in_sync(
     manifest_dir: Path,
     existing_locks: list[str],
     root: Path,
+    check_staged_snapshot: bool = False,
 ) -> bool:
     """Return whether a native package manager confirms lockfile coherence.
 
@@ -93,6 +131,10 @@ def is_lockfile_in_sync(
         command = NATIVE_LOCKFILE_COMMANDS.get((manifest_path.name, lock_name))
         if command is None:
             continue
+        if check_staged_snapshot:
+            _ensure_staged_snapshot(
+                manifest_path, manifest_dir / lock_name, root
+            )
         command_text = ' '.join(command)
         try:
             result = subprocess.run(

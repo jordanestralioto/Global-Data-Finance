@@ -46,8 +46,7 @@ class TestExecuteAsyncMethod:
     async def test_execute_returns_dict(
         self, mock_assets_service, mock_extraction_service
     ):
-        mock_service = AsyncMock()
-        mock_service.extract_from_zip_files.return_value = {
+        expected_result = {
             'total_files': 1,
             'success_count': 1,
             'error_count': 0,
@@ -55,6 +54,8 @@ class TestExecuteAsyncMethod:
             'errors': {},
             'output_file': '/path/output.parquet',
         }
+        mock_service = AsyncMock()
+        mock_service.extract_from_zip_files.return_value = expected_result
         mock_extraction_service.return_value = mock_service
         mock_assets_service.get_tpmerc_codes_for_assets.return_value = {
             '010',
@@ -71,7 +72,15 @@ class TestExecuteAsyncMethod:
 
         use_case = ExtractHistoricalQuotesUseCaseB3()
         result = await use_case.execute(docs)
-        assert isinstance(result, dict)
+        assert result == expected_result
+        mock_assets_service.get_tpmerc_codes_for_assets.assert_called_once_with(
+            {'ações'}
+        )
+        mock_service.extract_from_zip_files.assert_awaited_once_with(
+            zip_files={'COTAHIST_A2020.ZIP'},
+            target_tpmerc_codes={'010', '020'},
+            output_path=Path('/path/to/output/cotahist_extracted.parquet'),
+        )
 
     @pytest.mark.asyncio
     @patch(
@@ -247,8 +256,7 @@ class TestExecuteSyncMethod:
     def test_execute_sync_returns_dict(
         self, mock_assets_service, mock_extraction_service
     ):
-        mock_service = AsyncMock()
-        mock_service.extract_from_zip_files.return_value = {
+        expected_result = {
             'total_files': 1,
             'success_count': 1,
             'error_count': 0,
@@ -256,6 +264,8 @@ class TestExecuteSyncMethod:
             'errors': {},
             'output_file': '/path/output.parquet',
         }
+        mock_service = AsyncMock()
+        mock_service.extract_from_zip_files.return_value = expected_result
         mock_extraction_service.return_value = mock_service
         mock_assets_service.get_tpmerc_codes_for_assets.return_value = {'010'}
 
@@ -269,7 +279,15 @@ class TestExecuteSyncMethod:
 
         use_case = ExtractHistoricalQuotesUseCaseB3()
         result = use_case.execute_sync(docs)
-        assert isinstance(result, dict)
+        assert result == expected_result
+        mock_assets_service.get_tpmerc_codes_for_assets.assert_called_once_with(
+            {'ações'}
+        )
+        mock_service.extract_from_zip_files.assert_awaited_once_with(
+            zip_files={'COTAHIST_A2020.ZIP'},
+            target_tpmerc_codes={'010'},
+            output_path=Path('/path/to/output/cotahist_extracted.parquet'),
+        )
 
     @patch(
         'globaldatafinance.brazil.b3_data.historical_quotes.client.ExtractionServiceB3'
@@ -280,8 +298,16 @@ class TestExecuteSyncMethod:
     def test_execute_sync_with_all_parameters(
         self, mock_assets_service, mock_extraction_service
     ):
+        expected_result = {
+            'total_files': 1,
+            'success_count': 1,
+            'error_count': 0,
+            'total_records': 100,
+            'errors': {},
+            'output_file': '/path/to/output/custom.parquet',
+        }
         mock_service = AsyncMock()
-        mock_service.extract_from_zip_files.return_value = {}
+        mock_service.extract_from_zip_files.return_value = expected_result
         mock_extraction_service.return_value = mock_service
         mock_assets_service.get_tpmerc_codes_for_assets.return_value = {'010'}
 
@@ -297,7 +323,19 @@ class TestExecuteSyncMethod:
         result = use_case.execute_sync(
             docs, processing_mode='slow', output_filename='custom.parquet'
         )
-        assert isinstance(result, dict)
+        assert result == expected_result
+        mock_assets_service.get_tpmerc_codes_for_assets.assert_called_once_with(
+            {'ações'}
+        )
+        assert (
+            mock_extraction_service.call_args.kwargs['processing_mode']
+            == 'slow'
+        )
+        mock_service.extract_from_zip_files.assert_awaited_once_with(
+            zip_files={'COTAHIST_A2020.ZIP'},
+            target_tpmerc_codes={'010'},
+            output_path=Path('/path/to/output') / 'custom.parquet',
+        )
 
     @patch(
         'globaldatafinance.brazil.b3_data.historical_quotes.client.ExtractionServiceB3'

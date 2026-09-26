@@ -197,13 +197,17 @@ ______________________________________________________________________
 
 ## Computational Execution Modes
 
-| Processing Mode | Measured Throughput | CPU Utilization | RAM Consumption Window | Recommended Operating Profile          |
-| --------------- | ------------------- | --------------- | ---------------------- | -------------------------------------- |
-| **fast**        | ~12,300 rec/s       | Intensive       | ~2 GB – 4.2 GB (peak)  | Default profile for multi-core systems |
-| **slow**        | ~8,500 rec/s        | Low             | ~500 MB – 1.5 GB (peak)| Constrained RAM server environments    |
+| Processing Mode | Measured Throughput* | Measured Peak RSS* | Default Parallelism                                          | Recommended Operating Profile |
+| --------------- | -------------------: | -----------------: | ------------------------------------------------------------ | ----------------------------- |
+| **fast**        | 34,313.8 rows/s      | 429.88 MiB         | Up to 4 workers, bounded by CPU count, memory, and source files | Prioritize throughput         |
+| **slow**        | 29,759.9 rows/s      | 331.11 MiB         | 1 worker                                                     | Reduce memory use             |
 
-Parallelism in fast mode is coordinated by whole source file. Slow mode
-utilizes a single worker to minimize memory consumption.
+*Baseline measured on 27 annual files (2000–2026), 22,303,577 records, Python
+3.13.7, Linux x86_64, 8 CPUs, and 7.55 GB of total memory. Results vary by
+environment; see the [benchmark details](../dev-guide/benchmarks.en.md).*
+
+The `fast` mode coordinates parallelism by source file. The `slow` mode uses a
+single worker to reduce memory use.
 
 ______________________________________________________________________
 

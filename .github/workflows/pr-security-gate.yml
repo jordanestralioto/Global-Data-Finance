@@ -105,7 +105,9 @@ jobs:
           --profile security
 
       - name: Audit dependency vulnerabilities
-        run: uv run --locked --no-sync pip-audit --timeout 60
+        run: >-
+          uv run --locked --no-sync python
+          scripts/audit_locked_dependencies.py
 
       - name: Scan secrets with detect-secrets
         run: |

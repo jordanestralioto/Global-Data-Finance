@@ -140,8 +140,9 @@ cobertura e vulnerabilidades antes de publicar uma branch.
 O hook local do Gitleaks verifica somente o conteúdo staged para manter o
 feedback de commit rápido. A CI executa uma varredura adicional em modo de
 diretório sobre um checkout limpo, portanto ela não depende de haver arquivos
-staged. O `pip-audit` permanece fora do estágio `pre-commit` rápido e é
-executado na validação mais pesada de `pre-push` e da CI.
+staged. A auditoria exporta dependências fixadas em `uv.lock` para um arquivo
+temporário e executa `pip-audit` sem resolver ou instalar pacotes. Ela permanece
+fora do estágio `pre-commit` rápido e roda no `pre-push` e na CI.
 
 Quando uma dependência precisar mudar, faça isso explicitamente, revise o
 diff de `uv.lock`, sincronize o ambiente e só então faça o commit:

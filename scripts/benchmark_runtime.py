@@ -15,6 +15,7 @@ from statistics import median
 from typing import Any
 
 from globaldatafinance.macro_exceptions import ExtractionError
+from scripts.benchmark_corpus import b3_extraction_selection
 from scripts.benchmark_support import (
     RssSampler,
     ScenarioInput,
@@ -140,11 +141,7 @@ def run_b3(
         raise ValueError('B3 benchmark requires a source directory or TXT')
     input_dir = source.path if source.path.is_dir() else source.path.parent
     output_dir.mkdir()
-    year_ranges = {
-        'b3_multi_4x25k': (2021, 2020 + source.source_count),
-        'b3_annual': (2000, 2026),
-    }
-    init_yr, last_yr = year_ranges.get(source.scenario, (2024, 2024))
+    init_yr, last_yr, assets = b3_extraction_selection(source)
     overrides = {
         'GDF_B3_EXECUTOR_BACKEND': executor_backend,
         'GDF_B3_WORKER_LIMIT': str(source.worker_limit),
@@ -157,7 +154,7 @@ def run_b3(
         result = client.extract(
             path_of_docs=str(input_dir),
             destination_path=str(output_dir),
-            assets_list=['ações'],
+            assets_list=assets,
             initial_year=init_yr,
             last_year=last_yr,
             output_filename='benchmark_quotes',

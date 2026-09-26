@@ -112,11 +112,6 @@
       ],
       "source": "skills/review-workflow"
     },
-    "skills/seo-fundamentals": {
-      "hasScripts": true,
-      "requires": [],
-      "source": "skills/seo-fundamentals"
-    },
     "skills/server-management": {
       "hasScripts": true,
       "requires": [],
@@ -141,11 +136,6 @@
       "hasScripts": false,
       "requires": [],
       "source": "skills/systematic-debugging"
-    },
-    "skills/tailwind-patterns": {
-      "hasScripts": false,
-      "requires": [],
-      "source": "skills/tailwind-patterns"
     },
     "skills/testing-patterns": {
       "hasScripts": true,

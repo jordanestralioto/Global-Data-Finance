@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -13,16 +14,27 @@ from .types import SourceExtractionResult
 from .zip_processor import ProcessingCancelled, ZipProcessorB3
 
 _worker_cancel_event: Any | None = None
+_worker_reader_factory: (
+    Callable[[ArchiveSafetyLimits | None], ZipFileReaderB3] | None
+) = None
 
 
-def init_worker(cancel_event: Any | None) -> None:
-    """Initialize process-local reference to parent cancellation event.
+def init_worker(
+    cancel_event: Any | None,
+    reader_factory: (
+        Callable[[ArchiveSafetyLimits | None], ZipFileReaderB3] | None
+    ) = None,
+) -> None:
+    """Initialize process-local cancellation event and optional reader factory.
 
     Args:
         cancel_event: Multiprocessing event created in spawn context.
+        reader_factory: Optional callable returning a configured zip reader
+            accepting archive safety limits.
     """
-    global _worker_cancel_event
+    global _worker_cancel_event, _worker_reader_factory
     _worker_cancel_event = cancel_event
+    _worker_reader_factory = reader_factory
 
 
 def process_source_worker(
@@ -51,13 +63,16 @@ def process_source_worker(
     """
     source = Path(source_path)
     temp_output = Path(temp_output_path)
-    global _worker_cancel_event
+    global _worker_cancel_event, _worker_reader_factory
     cancel_event = _worker_cancel_event
 
     if cancel_event is not None and cancel_event.is_set():
         raise ProcessingCancelled(str(source), 'Cancelled before processing')
 
-    zip_reader = ZipFileReaderB3(limits=archive_safety_limits)
+    if _worker_reader_factory is not None:
+        zip_reader = _worker_reader_factory(archive_safety_limits)
+    else:
+        zip_reader = ZipFileReaderB3(limits=archive_safety_limits)
     zip_processor = ZipProcessorB3(
         zip_reader=zip_reader,
         parser_factory=CotahistParserB3,

@@ -21,6 +21,26 @@ from scripts.benchmark_support import (
 _ANNUAL_B3_YEARS = tuple(range(2000, 2027))
 
 
+def annual_b3_assets() -> list[str]:
+    """Return every supported asset class for the annual B3 benchmark."""
+    from globaldatafinance.brazil.b3_data.historical_quotes.assets import (
+        AvailableAssetsServiceB3,
+    )
+
+    return AvailableAssetsServiceB3.get_available_assets()
+
+
+def b3_extraction_selection(
+    source: ScenarioInput,
+) -> tuple[int, int, list[str]]:
+    """Return the year range and asset scope for a B3 benchmark scenario."""
+    if source.scenario == 'b3_annual':
+        return 2000, 2026, annual_b3_assets()
+    if source.scenario == 'b3_multi_4x25k':
+        return 2021, 2020 + source.source_count, ['ações']
+    return 2024, 2024, ['ações']
+
+
 def write_cvm_zip(path: Path, rows: int, *, long_text: bool = False) -> None:
     """Create one deterministic CVM ZIP with a late numeric-type change."""
     member = 'dfp_cia_aberta_2024.csv'
@@ -337,7 +357,9 @@ def _annual_b3_rows(paths: tuple[Path, ...]) -> Iterator[dict[str, Any]]:
     )
 
     target_tpmerc_codes = (
-        assets.AvailableAssetsServiceB3.get_tpmerc_codes_for_assets({'ações'})
+        assets.AvailableAssetsServiceB3.get_tpmerc_codes_for_assets(
+            set(annual_b3_assets())
+        )
     )
     parser = cotahist_parser.CotahistParserB3()
     reader = zip_reader.ZipFileReaderB3()

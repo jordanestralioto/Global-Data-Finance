@@ -27,9 +27,7 @@ LINT_AND_VALIDATE_ROOT = SKILLS_ROOT / 'lint-and-validate'
 REVIEW_OWNER_PATH = AGENTS_ROOT / 'harness' / 'review-owner.json'
 REVIEW_OWNER = load_review_owner(REVIEW_OWNER_PATH)
 REVIEW_OWNER_ROOT = (
-    SKILLS_ROOT / REVIEW_OWNER.split('/', 1)[1]
-    if REVIEW_OWNER is not None
-    else None
+    SKILLS_ROOT / REVIEW_OWNER.split('/', 1)[1] if REVIEW_OWNER else None
 )
 PACK_REGISTRY_PATH = REVIEW_RUNTIME_ROOT / 'pack-registry.json'
 
@@ -365,6 +363,8 @@ def render_human_view(artifact: dict[str, Any]) -> str:
                 'reviewId': artifact['reviewId'],
                 'status': artifact['status'],
                 'targetAgent': artifact['targetAgent'],
+                'reviewedBy': artifact.get('reviewedBy', ''),
+                'reviewSummary': artifact.get('reviewSummary', ''),
                 'reason': artifact['reason'],
                 'affectedFiles': [
                     f'- {item}' for item in artifact['affectedFiles']
@@ -634,8 +634,8 @@ def assert_transition(
 ) -> None:
     transitions = {
         'review-session': {
-            'initialized': {'planned', 'blocked'},
-            'planned': {'reviewing', 'apply-ready', 'completed', 'blocked'},
+            'initialized': {'planned', 'blocked', 'awaiting_security'},
+            'planned': {'reviewing', 'blocked', 'awaiting_security'},
             'reviewing': {
                 'awaiting_security',
                 'apply-ready',
@@ -649,8 +649,8 @@ def assert_transition(
                 'completed',
                 'blocked',
             },
-            'completed': set(),
-            'blocked': {'planned', 'reviewing'},
+            'completed': {'blocked', 'awaiting_security'},
+            'blocked': {'planned', 'completed', 'awaiting_security'},
         },
         'review-plan': {
             'draft': {'ready'},
@@ -666,9 +666,9 @@ def assert_transition(
         'security-handoff': {
             'pending': {'in_review', 'cleared', 'changes_required', 'waived'},
             'in_review': {'cleared', 'changes_required', 'waived'},
-            'cleared': set(),
-            'changes_required': set(),
-            'waived': set(),
+            'cleared': {'pending'},
+            'changes_required': {'pending'},
+            'waived': {'pending'},
         },
         'verdict': {
             'draft': {'final'},
@@ -738,6 +738,7 @@ def detect_packs(changed_files: list[str], security_touch: str) -> list[str]:
     matched = set()
     for file_path in changed_files:
         lower = file_path.lower()
+        file_packs = set()
         if security_touch == 'yes' or any(
             token in lower
             for token in (
@@ -751,7 +752,7 @@ def detect_packs(changed_files: list[str], security_touch: str) -> list[str]:
                 'upload',
             )
         ):
-            matched.add('security')
+            file_packs.add('security')
         if any(
             token in lower
             for token in (
@@ -766,7 +767,7 @@ def detect_packs(changed_files: list[str], security_touch: str) -> list[str]:
                 'schema',
             )
         ):
-            matched.add('interface')
+            file_packs.add('interface')
         if any(
             token in lower
             for token in (
@@ -781,7 +782,7 @@ def detect_packs(changed_files: list[str], security_touch: str) -> list[str]:
                 'sql',
             )
         ):
-            matched.add('data')
+            file_packs.add('data')
         if any(
             token in lower
             for token in (
@@ -795,14 +796,13 @@ def detect_packs(changed_files: list[str], security_touch: str) -> list[str]:
                 'lock',
             )
         ):
-            matched.add('behavior')
+            file_packs.add('behavior')
         if '/tests/' in lower or lower.startswith('tests/'):
-            matched.add('tests')
+            file_packs.add('tests')
         if lower.endswith(('.md', '.rst', '.txt')) or '/docs/' in lower:
-            matched.add('docs')
-    return sorted(
-        matched, key=lambda pack_id: -PACK_REGISTRY[pack_id]['priority']
-    )
+            file_packs.add('docs')
+        matched.update(file_packs or {'behavior'})
+    return sorted(matched, key=lambda name: -PACK_REGISTRY[name]['priority'])
 
 
 def build_plan_items(

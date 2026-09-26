@@ -48,7 +48,8 @@ jobs:
 
       - name: Check for vulnerable dependencies
         run: |
-          uv run --locked --no-sync pip-audit --timeout 60
+          uv run --locked --no-sync python \
+            scripts/audit_locked_dependencies.py
           echo "✅ No vulnerable dependencies in release"
 
   # --------------------------------------------------------------------------

@@ -9,54 +9,83 @@ Pedido: "Essa feature precisa de unit, integration ou e2e?"
 Assertions:
 
 - [ ] aciona `testing-patterns`
-- [ ] escolhe menor nivel confiavel
-- [ ] explica trade-off de custo e confianca
+- [ ] escolhe menor nível confiável
+- [ ] explica trade-off de custo e confiança
 
 ### Caso 2
 
-Pedido: "Quais mocks sao aceitaveis para cobrir este servico externo?"
+Pedido: "Quais mocks são aceitáveis para cobrir este serviço externo?"
 
 Assertions:
 
 - [ ] aciona `testing-patterns`
-- [ ] diferencia boundary externa de logica sob teste
-- [ ] nao recomenda mockar regra de negocio central
+- [ ] diferencia boundary externa de lógica sob teste
+- [ ] não recomenda mockar regra de negócio central
 
 ### Caso 3
+
+Pedido: "Como desenho casos de limite e transições de estado para este cupom?"
+
+Assertions:
+
+- [ ] aciona `testing-patterns`
+- [ ] deriva casos de fronteira (off-by-one, extremos numéricos)
+- [ ] deriva transições válidas e rejeição de estados inválidos
+
+### Caso 4
+
+Pedido: "Como testo se este endpoint sofre de race condition ou double-spend?"
+
+Assertions:
+
+- [ ] aciona `testing-patterns`
+- [ ] identifica o risco de concorrência e propõe teste com requisições simultâneas
+- [ ] formula assertions para estado invariante e deduplicação
+
+### Caso 5
 
 Pedido: "Preciso cobrir tenant errado e auth expirada."
 
 Assertions:
 
 - [ ] aciona `testing-patterns`
-- [ ] inclui teste negativo de seguranca
+- [ ] inclui teste negativo de segurança
 - [ ] pede fixtures com dois principals quando houver isolamento
 
-## Nao deve acionar
+## Não deve acionar
 
 ### Caso 1
 
-Pedido: "Rode a validação repo-native e testes."
+Pedido: "Rode a validação repo-native e a suíte de testes."
 
 Assertions:
 
-- [ ] nao aciona `testing-patterns`
-- [ ] usa `lint-and-validate`
+- [ ] não aciona `testing-patterns`
+- [ ] direciona para validação operacional (`lint-and-validate`)
 
 ### Caso 2
 
-Pedido: "Modele o schema do banco desta feature."
+Pedido: "Modele o schema do banco e as migrations desta feature."
 
 Assertions:
 
-- [ ] nao aciona `testing-patterns`
-- [ ] usa `database-design`
+- [ ] não aciona `testing-patterns`
+- [ ] direciona para `database-design`
 
 ### Caso 3
 
-Pedido: "O fluxo ja esta coberto e so preciso reexecutar a suite."
+Pedido: "Crie testes E2E no Playwright para validar a tela de checkout no navegador."
 
 Assertions:
 
-- [ ] nao aciona `testing-patterns`
-- [ ] trata como validacao operacional
+- [ ] não aciona `testing-patterns`
+- [ ] direciona para `webapp-testing`
+
+### Caso 4
+
+Pedido: "O fluxo já está implementado e coberto; só preciso reexecutar os checks."
+
+Assertions:
+
+- [ ] não aciona `testing-patterns`
+- [ ] trata como validação operacional direta

@@ -1,13 +1,14 @@
 ---
 name: performance-profiling
 description: >-
-  Use para identificar o gargalo dominante quando a lentidão ainda não estiver
-  isolada de um serviço. Ative com "está lento e não sei onde", "mede antes/depois", "qual
-  gargalo atacar primeiro?", "quero prova antes de otimizar", "ficou mais lento"
-  ou "onde está o bottleneck?". Cobre profiling, baseline, comparação e
-  evidências de antes/depois. Não use quando a causa já for query Postgres, query
-  Polars, re-render React específico, teste de navegador ou bug funcional sem
-  sintoma de performance; use a skill especialista.
+  Use para medir e localizar o gargalo quando a lentidão ainda pode estar no
+  navegador, API ou banco. Ative com "está lento e não sei onde", "mede
+  antes/depois", "qual gargalo atacar primeiro?" ou "a API ficou lenta, mas não
+  sei se é backend ou banco". Cobre baseline, profiling e comparação. Se o
+  gargalo já aponta para renderização, waterfall ou bundle de um app React/Next,
+  use `react-performance`; para query SQL identificada, use `database-design`
+  ou `supabase` conforme a stack. Não use para testes de navegador ou bugs sem
+  sintoma de performance.
 ---
 
 # Performance Profiling
@@ -122,6 +123,7 @@ Deve acionar:
 Nao deve acionar:
 
 - "esse componente React re-renderiza demais"
+- "tem waterfall de requests nessa tela React"
 - "otimiza essa query Postgres"
 - "bug intermitente e as vezes trava"
 - "roda os checks do repo"

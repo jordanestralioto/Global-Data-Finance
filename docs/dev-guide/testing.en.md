@@ -105,8 +105,11 @@ largest year. The catalog validates the central directory and internal-member
 resolution. Limited parity derives a non-empty sample of up to 20,000 real
 `01` records and compares fast/slow across all 20 columns with exact types and
 ordering; because it runs both processing modes, it is marked `slow`. The
-annual proof, also marked `slow`, processes one full year only once in `fast`
-mode.
+annual `fast` proof validates the Arrow schema, record count, and date bounds.
+Another annual `slow` proof compares counts, schema, and table equality or a
+logical digest between `fast` and `slow`. Every check that processes data is
+marked `slow`; the non-slow check only inspects one line per file in the local
+catalog.
 
 ```bash
 COTAHIST_PATH=./cotahist_b3 COTAHIST_TEST_YEAR=2000 \
@@ -201,7 +204,7 @@ from globaldatafinance.brazil.cvm.fundamental_stocks_data.errors import (
 class TestValidateDocsName:
     def test_validate_valid_doc(self):
         """Verifies validation succeeds without exception on valid document code."""
-        validate_docs_name('DFP')  # Should pass silently
+        assert validate_docs_name('DFP') is None  # Should pass silently
 
     def test_validate_invalid_doc(self):
         """Verifies InvalidDocumentName is raised upon supplying unverified strings."""

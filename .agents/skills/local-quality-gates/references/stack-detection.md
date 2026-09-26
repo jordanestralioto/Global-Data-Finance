@@ -4,18 +4,18 @@
 
 ## 1. Package Managers and Language Indicators
 
-| Ecosystem           | Manifest File                         | Lockfile            | Execution Prefix     |
-| :------------------ | :------------------------------------ | :------------------ | :------------------- |
-| **Python (uv)**     | `pyproject.toml`                      | `uv.lock`           | `uv run`             |
-| **Python (poetry)** | `pyproject.toml`                      | `poetry.lock`       | `poetry run`         |
-| **Python (pip)**    | `requirements.txt`, `requirements.in` | `requirements.txt`  | `python -m`          |
-| **Node (pnpm)**     | `package.json`                        | `pnpm-lock.yaml`    | `pnpm exec` / `pnpm` |
-| **Node (npm)**      | `package.json`                        | `package-lock.json` | `npx` / `npm run`    |
-| **Node (yarn)**     | `package.json`                        | `yarn.lock`         | `yarn`               |
-| **Node (bun)**      | `package.json`                        | `bun.lockb`         | `bun x` / `bun`      |
-| **Rust**            | `Cargo.toml`                          | `Cargo.lock`        | `cargo`              |
-| **Go**              | `go.mod`                              | `go.sum`            | `go`                 |
-| **PHP**             | `composer.json`                       | `composer.lock`     | `composer exec`      |
+| Ecosystem           | Manifest File                         | Lockfile                        | Execution Prefix     |
+| :------------------ | :------------------------------------ | :------------------------------ | :------------------- |
+| **Python (uv)**     | `pyproject.toml`                      | `uv.lock`                       | `uv run`             |
+| **Python (poetry)** | `pyproject.toml`                      | `poetry.lock`                   | `poetry run`         |
+| **Python (pip)**    | `requirements.txt`, `requirements.in` | `requirements.txt`              | `python -m`          |
+| **Node (pnpm)**     | `package.json`                        | `pnpm-lock.yaml`                | `pnpm exec` / `pnpm` |
+| **Node (npm)**      | `package.json`                        | `package-lock.json`             | `npx` / `npm run`    |
+| **Node (yarn)**     | `package.json`                        | `yarn.lock`                     | `yarn`               |
+| **Node (bun)**      | `package.json`                        | `bun.lock` (`bun.lockb` legacy) | `bun x` / `bun`      |
+| **Rust**            | `Cargo.toml`                          | `Cargo.lock`                    | `cargo`              |
+| **Go**              | `go.mod`                              | `go.sum`                        | `go`                 |
+| **PHP**             | `composer.json`                       | `composer.lock`                 | `composer exec`      |
 
 ## 1.1 Dependency Lifecycle Classification
 
@@ -54,7 +54,7 @@ Before selecting a tool, inspect the workspace configuration files:
 - **Mypy**: Search for `[tool.mypy]` in `pyproject.toml` or `mypy.ini` / `setup.cfg`.
 - **Pyright**: Search for `pyrightconfig.json` or `[tool.pyright]` in `pyproject.toml`.
 - **Pytest**: Search for `[tool.pytest.ini_options]` in `pyproject.toml` or `pytest.ini` / `conftest.py`.
-- **Circular imports**: Reuse `import-linter`, `pycycle` or an existing architecture/dependency command. If none is configured, the required gate must fail closed until a deterministic local command is selected.
+- **Circular imports**: If an acyclic graph is project policy, reuse `import-linter`, `pycycle` or an existing architecture command. Report missing deterministic coverage instead of a false pass.
 
 ### JavaScript / TypeScript
 
@@ -63,26 +63,26 @@ Before selecting a tool, inspect the workspace configuration files:
 - **Prettier**: Search for `.prettierrc*`, `prettier.config.js`, or `"prettier"` in `package.json`.
 - **TypeScript (tsc)**: Search for `tsconfig.json`.
 - **Test Runners**: Inspect `package.json` for `vitest`, `jest`, `playwright`, `mocha`.
-- **Circular dependencies**: Reuse `madge --circular`, `dependency-cruiser` or an existing package script. Do not treat the absence of a dedicated package as permission to omit the required gate.
+- **Circular dependencies**: If required, reuse `madge --circular`, `dependency-cruiser` or an existing package script. Report missing deterministic coverage.
 
 ### Go
 
 - Standard: `gofmt`, `go vet`, `golangci-lint` (`.golangci.yml`).
-- **Circular imports**: The Go compiler rejects import cycles; run the narrowest affected `go test`/`go list` package check as the required gate and report compiler errors as `FAIL`.
+- **Circular imports**: The Go compiler rejects import cycles; when that policy is selected, run the narrowest affected `go test`/`go list` package check and report compiler errors as `FAIL`.
 
 ### Rust
 
 - Standard: `cargo fmt`, `cargo clippy` (`clippy.toml`), `cargo check`.
-- **Circular dependencies**: Inspect the existing Cargo/module architecture command. `cargo check` remains mandatory for compiler-level cycles; use any configured dependency graph checker for module-level cycles.
+- **Circular dependencies**: Inspect the existing Cargo/module architecture command. When selected, `cargo check` covers compiler-level cycles; use a configured graph checker for module-level rules.
 
 ### Other or polyglot repositories
 
-- Locate the project's configured dependency graph or architecture validator and wire it into the required `[CIRCULAR_DEPENDENCIES]` slot. A missing tool is an `ERROR` during setup, not an optional gate.
+- When the project requires acyclic dependencies, locate its graph or architecture validator. A missing tool means requested coverage is `UNSUPPORTED`.
 
 ## 3. Structural Lint Capability Discovery
 
-Inspect the existing linter configuration before declaring `[LINTER]`
-complete. Record the rule, metric, threshold, file scope, and one of
+For a selected structural profile, inspect the linter before declaring
+`[LINTER]` complete. Record the rule, metric, threshold, file scope, and one of
 `ENABLED`, `DELEGATED`, `MANUAL`, or `UNSUPPORTED` for each capability:
 
 1. Cyclomatic complexity and cognitive complexity as separate metrics.
@@ -109,8 +109,13 @@ Check for prior git hook configurations:
 3. `lefthook.yml` / `.lefthook/` -> Lefthook binary runner.
 4. `.git/hooks/` -> Plain shell scripts.
 
+Confirm the effective `core.hooksPath`, installed hook files and runtime
+availability. A configuration file alone does not activate a Git hook.
+
 ## 5. Reuse-First Decision Matrix
 
 1. If the repository already uses `biome`, do not introduce `eslint` or `prettier`.
 2. If the repository uses `ruff`, do not introduce `black`, `flake8`, or `isort`.
 3. If the repository already has an active runner (e.g. Husky or pre-commit), extend the existing runner instead of replacing it.
+4. With no runner, choose one the project can pin, install and maintain. Do
+   not select pre-commit or Lefthook solely from the language name.

@@ -137,12 +137,12 @@ categories.
 
 ### What is the distinction between `fast` and `slow` processing modes?
 
-| Processing Profile | Performance | CPU Usage | Peak RAM (Operational Range)  | Recommended Use                        |
-| ------------------ | ----------- | --------- | ----------------------------- | -------------------------------------- |
-| **fast**           | High        | Intensive | ~2 GB to 4.2 GB (Default)     | Standard multi-core machines (Default) |
-| **slow**           | Moderate    | Minimal   | ~500 MB to 1.5 GB             | Constrained RAM or background workers  |
+| Processing Profile | Default workers                                            | Measured throughput* | Measured peak RSS* | Recommended Use        |
+| ------------------ | ---------------------------------------------------------- | -------------------: | -----------------: | ---------------------- |
+| **fast**           | Up to 4, bounded by CPU count, available memory, and source file count | 34,313.8 rows/s      | 429.88 MiB         | Prioritize throughput  |
+| **slow**           | 1 worker                                                   | 29,759.9 rows/s      | 331.11 MiB         | Reduce memory use      |
 
-> Benchmark figures measured on a complete annual dataset (~4,260 MB in `fast` mode and ~1,571 MB in `slow` mode) represent peak load conditions. In typical execution workloads or individual year slices, peak consumption falls within the ranges listed above.
+*Measured on 27 annual files (2000–2026), with 22,303,577 records, using Python 3.13.7, Linux x86_64, 8 CPUs, and 7.55 GB of total memory. Results vary by environment; see the [benchmark details](../dev-guide/benchmarks.en.md).*
 
 ```python
 from globaldatafinance import HistoricalQuotesB3
@@ -216,7 +216,10 @@ ______________________________________________________________________
 
 ### How are CVM file downloads accelerated?
 
-Global-Data-Finance automatically processes CVM downloads using `AsyncDownloadAdapterCVM`, leveraging asynchronous parallel HTTP streaming that executes 3–5x faster than conventional blocking scripts.
+Global-Data-Finance uses asynchronous concurrent downloads by default
+(`AsyncDownloadAdapterCVM`, up to 10 simultaneous downloads). Elapsed time
+depends on the network, CVM servers, and requested volume; see the [full CVM
+pipeline baseline](../dev-guide/benchmarks.en.md).
 
 ### How can I maximize B3 market quote extraction throughput?
 

@@ -50,7 +50,8 @@ class FundamentalStocksDataCVM:
 
     This class provides a simple API for downloading CVM financial documents
     and discovering available data. It uses AsyncDownloadAdapterCVM by default
-    for 3-5x faster downloads compared to wget, with automatic retry logic.
+    for concurrent downloads with automatic retry logic. The elapsed time
+    depends on network conditions and the requested data volume.
 
     You can also customize the adapter:
     - AsyncDownloadAdapterCVM (default): Fast, no external dependencies

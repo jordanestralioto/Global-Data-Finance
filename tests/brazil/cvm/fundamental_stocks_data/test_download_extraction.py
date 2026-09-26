@@ -8,9 +8,6 @@ import pytest
 from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
     download_extraction,
 )
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.core import (
-    DownloadResultCVM,
-)
 from globaldatafinance.macro_exceptions import (
     CorruptedZipError,
     DiskFullError,
@@ -45,21 +42,20 @@ def test_known_extraction_failures_log_traceback_and_preserve_results(
     extractor = MagicMock()
     extractor.extract.side_effect = failure
     cleanup_file = MagicMock()
-    result = DownloadResultCVM()
     package_logger = logging.getLogger('globaldatafinance')
     monkeypatch.setattr(package_logger, 'propagate', True)
 
     with caplog.at_level('ERROR'):
-        download_extraction.extract_downloaded_file(
+        error_message = download_extraction.extract_downloaded_file(
             file_extractor_repository=extractor,
             filepath=str(tmp_path / 'input.zip'),
             dest_path=str(tmp_path),
             doc_name='DFP',
             year='2024',
-            result=result,
             cleanup_file=cleanup_file,
         )
 
-    assert result_marker in result.failed_downloads['DFP_2024']
+    assert error_message is not None
+    assert result_marker in error_message
     assert cleanup_file.called is cleanup_expected
     assert any(record.exc_info is not None for record in caplog.records)

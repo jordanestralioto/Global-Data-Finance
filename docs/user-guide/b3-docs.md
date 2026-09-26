@@ -293,12 +293,15 @@ result = b3.extract(
 
 ### Comparação de Performance
 
-*Medição de benchmark em dataset completo (picos gerais variam de ~2 GB a 4.2 GB no modo `fast` e ~500 MB a 1.5 GB no modo `slow` conforme hardware e volume).*
+*Linha de base v3: 27 arquivos anuais (2000–2026), com 22.303.577 registros. Medida em Python 3.13.7, Linux x86_64, 8 CPUs e 7,55 GB de memória; os valores variam conforme o ambiente. Consulte os [detalhes do benchmark](../dev-guide/benchmarks.md).*
 
-| Modo     | Throughput medido | CPU   | Pico de RAM (Benchmark) | Cenário Indicado   |
-| -------- | ----------------- | ----- | ----------------------- | ------------------ |
-| **fast** | ~12.317 reg/s     | Alto  | ~4.260 MB               | ✅ Padrão (rápido) |
-| **slow** | ~8.557 reg/s      | Baixo | ~1.571 MB               | Recursos limitados |
+| Modo     | Throughput medido | Pico RSS medido | Paralelismo padrão                                  | Cenário Indicado        |
+| -------- | ----------------- | --------------- | --------------------------------------------------- | ----------------------- |
+| **fast** | 34.313,8 reg/s    | 429,88 MiB      | Até 4 workers, limitado por CPUs, memória e arquivos-fonte | ✅ Priorizar velocidade |
+| **slow** | 29.759,9 reg/s    | 331,11 MiB      | 1 worker                                            | Reduzir uso de memória  |
+
+O pico RSS é o observado nesse benchmark, não uma garantia de consumo para
+qualquer máquina ou conjunto de arquivos.
 
 ______________________________________________________________________
 

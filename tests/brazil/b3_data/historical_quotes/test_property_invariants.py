@@ -5,18 +5,11 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from globaldatafinance.brazil.b3_data.historical_quotes import CotahistParserB3
 from tests.support.builders import build_cotahist_record
-
-try:
-    from hypothesis import given, settings
-    from hypothesis import strategies as st
-except ModuleNotFoundError:
-    pytest.skip(
-        'hypothesis is installed through the development dependency group',
-        allow_module_level=True,
-    )
 
 pytestmark = pytest.mark.unit
 

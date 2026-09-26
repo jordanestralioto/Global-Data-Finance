@@ -1,18 +1,13 @@
 ---
 name: resolve-open-questions
 description: >-
-  Use para conduzir uma sabatina persistente: uma interrogação estruturada em
-  rodadas que leva um plano, design ou ideia a zero decisões pendentes, com
-  registro retomável. Ative somente quando o usuário deixar claro a intenção de
-  persistir as decisões ou retomar a discussão, por exemplo: "me sabatina sobre
-  isso", "registra as decisões", "quero fechar todas as decisões antes de
-  implementar", "continua a sabatina de ontem" ou "quero poder retomar essa
-  discussão depois". Perguntas rápidas como "quais perguntas você tem antes de
-  começar?", "me explica os riscos?", "quais são as opções?" e "esse plano está
-  completo?" ou execução de um plano já
-  decidido não ativam o modo persistente. Não use para exploração de alternativas
-  sem direção fechada, revisar código já escrito (`review-workflow`) ou quando o
-  usuário já decidiu e pediu implementação.
+  Use para conduzir uma sabatina estruturada e retomável sobre um plano, design
+  ou ideia. Ative somente com intenção clara de persistir as decisões ou de
+  retomar a discussão: "me sabatina sobre esse plano", "registra as decisões"
+  ou "quero poder retomar essa discussão depois". Perguntas pontuais como
+  "quais perguntas você tem antes de começar?", "me explica os riscos?" e
+  "quais são as opções?" não ativam o modo persistente. Não use para revisar
+  código já escrito (`review-workflow`) ou executar um plano já decidido.
 ---
 
 # Resolve Open Questions
@@ -425,7 +420,7 @@ Deve acionar:
 
 - "me sabatina sobre esse plano"
 - "registra as decisões enquanto me sabatina"
-- "quero fechar todas as decisões antes de implementar"
+- "quero registrar e fechar todas as decisões antes de implementar"
 - "continua a sabatina da segregação"
 - "quero poder retomar essa discussão depois"
 

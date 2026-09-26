@@ -261,7 +261,7 @@ ______________________________________________________________________
 - ✅ **Layout orientado por fonte**: módulos nomeados por papel e subpacotes especializados — código fácil de ler e auditar
 - ✅ **Extensível**: Uma nova fonte suportada pode seguir os limites atuais de ownership e módulos por papel
 - ✅ **Type hints**: Contratos `TypedDict` e anotações verificados com `mypy`
-- ✅ **CI/CD**: Quality checks automáticos com GitHub Actions (`ruff`, `mypy`, `pytest --cov`)
+- ✅ **CI/CD**: Quality checks automáticos com GitHub Actions (`ruff`, `mypy` e `pytest --cov`), com cobertura mínima de 85% configurada no `pyproject.toml`
 
 ### Para Analistas e Cientistas de Dados
 

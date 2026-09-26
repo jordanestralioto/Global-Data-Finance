@@ -13,7 +13,7 @@ The `FundamentalStocksDataCVM` class exposes a clean, highly extensible interfac
 - ✅ Automated processing across diverse document types and categories
 - ✅ Flexible temporal parameter boundaries
 - ✅ Native automated conversion into columnar Apache Parquet files (optional)
-- ✅ Concurrent asynchronous down-streaming (3–5x faster than linear requests)
+- ✅ Asynchronous concurrent downloads
 - ✅ Resilient connection exception handling and automated retry policies
 - ✅ Transparent structured tracking and status console output
 
@@ -464,25 +464,23 @@ cvm.download(
 
 The CVM implementation utilizes `AsyncDownloadAdapterCVM` by default, delivering significant throughput improvements:
 
-- ⚡ **3–5x Faster** than linear synchronous sequential script executions
+- ⚡ Up to **10 concurrent downloads** by default
 - 🔄 **Automated Fault Recovery** utilizing exponential retry backoff loops
 - 📊 **Real-time Diagnostic Logs** detailing active concurrent thread transfers
-- 🧵 **Multi-threaded Worker Execution** (defaulting to 8 concurrent worker queues)
 
 ### Benchmark Comparisons
 
-**Full pipeline: download + CSV→Parquet extraction (2026-08-06):**
+**Baseline v2 — full pipeline: download + CSV→Parquet extraction
+(2010–2026, revision `703d9ab`):**
 
-| Docs                | Period    | ZIPs | Parquets | Extracted Rows |    Output |     Time |  Peak RSS | Errors |
-| ------------------- | --------- | ---: | -------: | -------------: | --------: | -------: | --------: | -----: |
-| DFP, ITR, FRE, etc. | 2010-2024 |   88 |    1,392 |     63,300,208 | 337.93 MB | 505.04 s | 459.18 MB |      0 |
+| Docs                | Period    | ZIPs | Parquets | Extracted Rows |    Output |     Time | Peak RSS | Errors |
+| ------------------- | --------- | ---: | -------: | -------------: | --------: | -------: | -------: | -----: |
+| DFP, ITR, FRE, etc. | 2010–2026 |  102 |    1,569 |     70,821,466 | 382.27 MB | 906.85 s | 333.91 MB |      0 |
 
-Estimated duration required to fetch 1 complete annual DFP archive bundle:
-
-| Ingestion Method         | Execution Duration | Relative Throughput |
-| ------------------------ | ------------------ | ------------------- |
-| Sequential standard HTTP | ~60s               | 1x (Baseline)       |
-| AsyncDownloadAdapterCVM  | ~15s               | **4x Faster**       |
+Elapsed time includes connecting, downloading, validating, extracting CSV,
+and generating Parquet for all 102 ZIPs. It varies with network and CVM server
+conditions and is not an isolated comparison against sequential downloads. See
+the [benchmark details and limitations](../dev-guide/benchmarks.en.md).
 
 ## Next Steps
 

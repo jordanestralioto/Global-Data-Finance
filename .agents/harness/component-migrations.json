@@ -21,10 +21,22 @@
       "message": "skills/python-patterns was retired; gpt-5.6-luna with max reasoning effort performs this task natively"
     },
     {
+      "action": "remove",
+      "componentId": "skills/seo-fundamentals",
+      "message": "Remove seo-fundamentals from components.skills in .agents/harness.json, then run harness-sync.",
+      "source": "skills/seo-fundamentals"
+    },
+    {
       "action": "replace",
       "componentId": "skills/supabase-postgres-best-practices",
       "message": "skills/supabase-postgres-best-practices was merged into skills/supabase; select skills/supabase instead",
       "replacement": "skills/supabase"
+    },
+    {
+      "action": "remove",
+      "componentId": "skills/tailwind-patterns",
+      "message": "Remove tailwind-patterns from components.skills in .agents/harness.json, then run harness-sync.",
+      "source": "skills/tailwind-patterns"
     },
     {
       "action": "remove",

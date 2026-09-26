@@ -15,7 +15,7 @@
     },
     {
       "hasScripts": true,
-      "hash": "sha256:6cbb637a134f33b06850fe54ad19038e74fc33d95b909efb5be8ca072f1bbc51",
+      "hash": "sha256:51c133c50d39861e1f74121772a14e66aa34b912365676c04a42f54cf3854510",
       "id": "runtime/review",
       "selectedBy": "manifest"
     },
@@ -33,13 +33,13 @@
     },
     {
       "hasScripts": true,
-      "hash": "sha256:51ab785e0a78de04c27359ae2ab751c46e5d1f4138ec5772610c6ddeb048d217",
+      "hash": "sha256:3451cc98c542ecf2e468bb5a145ab6330460d632adbe2f03dcd136887a04c93e",
       "id": "skills/lint-and-validate",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:980813ea066aad6f840ceb6f64cee19b49003f1580b72ee101821fea11e62acb",
+      "hash": "sha256:0d61cac4c2edff6979531078d7603af4564df823c6cf1f7a470732f2600a9444",
       "id": "skills/local-quality-gates",
       "selectedBy": "manifest"
     },
@@ -51,13 +51,13 @@
     },
     {
       "hasScripts": false,
-      "hash": "sha256:f2375c04902e736d77373fb1b5448bd26c2d82c291ce309a246e33c3a279dcd7",
+      "hash": "sha256:0a27f4bf5fbfae5a858076a7d1b1fdc514bf566132ad80c971ca9c6fc88c44b4",
       "id": "skills/openspec-workflow",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:6c97f381e422a4125da72a94c8a0ccb2aab60c3ec69fdf0616f75a35cf59c4b7",
+      "hash": "sha256:b8f774e455524d22535d2d5b602724b40901d7462591b2672113100e5e6a93f9",
       "id": "skills/performance-profiling",
       "selectedBy": "manifest"
     },
@@ -69,19 +69,19 @@
     },
     {
       "hasScripts": false,
-      "hash": "sha256:79ffe227997c1b83747c5567882e4e14fd7f91fdd6ccf0f07859062084c6fa27",
+      "hash": "sha256:4a3f43d4a56c91506df41ec320010bf4ede173bb46330175e536f59e0c1918ef",
       "id": "skills/resolve-open-questions",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:113c81b05bc082e69d2f57a26a5cf8659bc1d99ceed44742fd00eec50c752ad5",
+      "hash": "sha256:5d35f6f7b4f0f34daf8ce1cbabbaf737cd2de2488c2c920ab3933e0ad2404144",
       "id": "skills/review-workflow",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:ee35e3f2a53b68db71cb9d6e9adf435ad1294ba78492957722e906e21262d4a2",
+      "hash": "sha256:3d9bc13bd0f329d8dde8a44a7c46cc31743dde485e20d7d4f08378d4c9f1641b",
       "id": "skills/server-management",
       "selectedBy": "manifest"
     },
@@ -99,13 +99,13 @@
     },
     {
       "hasScripts": false,
-      "hash": "sha256:452cc3127f66fd63c1d12dbc6c45ab4ca9da56b38f018cd76901a2395b967a20",
+      "hash": "sha256:1dfb7e8ed69420dfbab92d33bc3f04f20cfbfc94c78b3e55e011701eb85ed935",
       "id": "skills/systematic-debugging",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:dc999f5b0927f2d03e90ab1d63ebae6b490764f94c1296e2cc9e0846680c0f6a",
+      "hash": "sha256:3bbafece478a57542bdf5fdc0ebed16fc739e53eb5cbdc88d603fe9f50e2d27f",
       "id": "skills/testing-patterns",
       "selectedBy": "manifest"
     },

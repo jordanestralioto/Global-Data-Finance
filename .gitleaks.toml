@@ -12,3 +12,10 @@ paths = [
   '''^\.opencode/''',
   '''^\.github/prompts/''',
 ]
+
+[[allowlists]]
+description = "Audited detect-secrets fingerprints for benchmark digests"
+condition = "AND"
+paths = ['''^\.secrets\.baseline$''']
+regexTarget = "line"
+regexes = ['''^\s*"hashed_secret":\s*"[0-9a-f]{40}",?\s*$''']

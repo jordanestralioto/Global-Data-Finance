@@ -283,12 +283,15 @@ result = b3.extract(
 
 ### Performance Benchmark Comparison
 
-*Measured benchmark on complete annual dataset (general peak RAM ranges between ~2 GB to 4.2 GB in `fast` mode and ~500 MB to 1.5 GB in `slow` mode depending on dataset span and hardware).*
+*Version 3 baseline: 27 annual files (2000–2026), with 22,303,577 records. Measured with Python 3.13.7, Linux x86_64, 8 CPUs, and 7.55 GB of total memory; results vary by environment. See the [benchmark details](../dev-guide/benchmarks.en.md).*
 
-| Processing Profile | Measured Throughput | CPU Impact | Peak RAM (Benchmark) | Guidance                   |
-| ------------------ | ------------------- | ---------- | -------------------- | -------------------------- |
-| **fast**           | ~12,317 rows/s      | High       | ~4,260 MB            | ✅ Recommended Default     |
-| **slow**           | ~8,557 rows/s       | Low        | ~1,571 MB            | Memory-Constrained Servers |
+| Processing Profile | Measured Throughput | Measured Peak RSS | Default Parallelism                                          | Guidance                |
+| ------------------ | ------------------- | ----------------- | ------------------------------------------------------------ | ----------------------- |
+| **fast**           | 34,313.8 rows/s     | 429.88 MiB        | Up to 4 workers, bounded by CPU count, available memory, and source files | ✅ Prioritize throughput |
+| **slow**           | 29,759.9 rows/s     | 331.11 MiB        | 1 worker                                                     | Reduce memory use       |
+
+Peak RSS is the value observed in this benchmark, not a guaranteed memory
+requirement for every machine or input set.
 
 ## Advanced Recipes & Implementations
 

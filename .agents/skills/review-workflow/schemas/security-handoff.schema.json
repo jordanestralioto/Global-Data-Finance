@@ -34,6 +34,12 @@
     "reviewId": {
       "type": "string"
     },
+    "reviewSummary": {
+      "type": "string"
+    },
+    "reviewedBy": {
+      "type": "string"
+    },
     "schemaVersion": {
       "type": "string"
     },

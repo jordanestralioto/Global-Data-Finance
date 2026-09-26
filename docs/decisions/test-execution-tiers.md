@@ -71,21 +71,21 @@ aplica estas regras:
    reais `01` no `tmp_path` e compara `fast` e `slow` pelas 20 colunas, dtypes
    e ordenação determinística exatos. Como executa os dois modos, ela é
    marcada `slow`.
-7. O teste anual, também marcado `slow`, processa uma vez um ano completo
-   somente em `fast`; verifica schema, contagem, ano, mercados, tickers,
-   leitura lazy e coerência com `ExtractionResultB3`.
+7. Uma prova anual em `fast` valida o schema Arrow, a contagem de registros e
+   os limites de data. Outra prova anual `slow` compara contagens, schema e
+   igualdade de tabela ou digest lógico entre `fast` e `slow`.
 
-Para executar os dois cenários locais:
+Para executar a verificação do catálogo e as provas de processamento:
 
 ```bash
-COTAHIST_TEST_YEAR=2000 \
-  uv run --env-file .env --locked --no-sync pytest -m "real_data and not slow"
-COTAHIST_TEST_YEAR=2000 \
-  uv run --env-file .env --locked --no-sync pytest -m "real_data and slow"
-COTAHIST_TEST_YEAR=2024 \
-  uv run --env-file .env --locked --no-sync pytest -m "real_data and not slow"
-COTAHIST_TEST_YEAR=2024 \
-  uv run --env-file .env --locked --no-sync pytest -m "real_data and slow"
+COTAHIST_PATH=./cotahist_b3 COTAHIST_TEST_YEAR=2000 \
+  uv run --locked --no-sync pytest -m "real_data and not slow"
+COTAHIST_PATH=./cotahist_b3 COTAHIST_TEST_YEAR=2000 \
+  uv run --locked --no-sync pytest -m "real_data and slow"
+COTAHIST_PATH=./cotahist_b3 COTAHIST_TEST_YEAR=2024 \
+  uv run --locked --no-sync pytest -m "real_data and not slow"
+COTAHIST_PATH=./cotahist_b3 COTAHIST_TEST_YEAR=2024 \
+  uv run --locked --no-sync pytest -m "real_data and slow"
 ```
 
 ## Gatilho para dados oficiais

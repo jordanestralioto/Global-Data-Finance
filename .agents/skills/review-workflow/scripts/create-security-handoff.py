@@ -42,7 +42,13 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument('--reason', required=True)
     parser.add_argument('--requested-by', default='review-workflow')
-    parser.add_argument('--target-agent', default='security-engineer')
+    parser.add_argument(
+        '--target-agent',
+        choices=['security-engineer'],
+        default='security-engineer',
+    )
+    parser.add_argument('--reviewed-by', choices=['security-engineer'])
+    parser.add_argument('--review-summary')
     parser.add_argument('--file', action='append', default=[])
     parser.add_argument('--evidence-id', action='append', default=[])
     return parser.parse_args()
@@ -54,16 +60,30 @@ def main() -> int:
     session = load_or_migrate_artifact(session_dir, 'review-session')
     gate_report = load_or_migrate_artifact(session_dir, 'gate-report')
     stamp = now_iso()
+    if args.status in {'cleared', 'changes_required', 'waived'} and (
+        args.reviewed_by != 'security-engineer'
+        or not (args.review_summary or '').strip()
+    ):
+        raise SystemExit(
+            'terminal security status requires --reviewed-by security-engineer '
+            'and --review-summary from the specialist review'
+        )
 
     handoff_path = session_dir / 'artifacts' / 'security-handoff.json'
     if handoff_path.exists():
         handoff = load_or_migrate_artifact(session_dir, 'security-handoff')
+        if handoff['reviewId'] != session['reviewId']:
+            raise SystemExit('security handoff belongs to another review')
         if handoff['status'] != args.status:
             assert_transition(
                 'security-handoff', handoff['status'], args.status
             )
         handoff['updatedAt'] = stamp
     else:
+        if args.status not in NON_TERMINAL_SECURITY_STATUSES:
+            raise SystemExit(
+                'create a pending security handoff before closing it'
+            )
         handoff = {
             'artifactType': 'security-handoff',
             'schemaVersion': CURRENT_SCHEMA_VERSION,
@@ -77,21 +97,31 @@ def main() -> int:
             'affectedFiles': [],
             'evidenceIds': [],
             'gateSummary': [],
+            'reviewedBy': '',
+            'reviewSummary': '',
         }
 
-    findings = {
-        finding['findingId']: finding for finding in list_findings(session_dir)
-    }
+    all_findings = list_findings(session_dir)
+    if any(item['reviewId'] != session['reviewId'] for item in all_findings):
+        raise SystemExit('findings belong to another review')
+    findings = {finding['findingId']: finding for finding in all_findings}
     evidence_ids = sorted(
         set(
             args.evidence_id
             or [
                 item
                 for item in findings
-                if findings[item]['topic'].startswith('security:')
+                if findings[item]['topic'].casefold().startswith('security:')
             ]
         )
     )
+    if (
+        handoff_path.exists()
+        and handoff['status'] in {'cleared', 'changes_required', 'waived'}
+        and args.status == handoff['status']
+        and evidence_ids != handoff['evidenceIds']
+    ):
+        raise SystemExit('reopen the security handoff before adding findings')
     affected_files = sorted(
         set(
             args.file
@@ -114,6 +144,8 @@ def main() -> int:
         f'({"blocking" if gate["blocking"] else "advisory"})'
         for gate in gate_report['gates']
     ]
+    handoff['reviewedBy'] = args.reviewed_by or ''
+    handoff['reviewSummary'] = args.review_summary or ''
     save_artifact(session_dir, handoff)
 
     if args.status in NON_TERMINAL_SECURITY_STATUSES and session['status'] in {

@@ -105,8 +105,11 @@ um ano. Quando existe um único ano, ele pode ser inferido. Com vários anos,
 ano. O catálogo valida o central directory e a resolução do membro interno. A
 paridade limitada cria uma amostra real não vazia de até 20.000 registros `01`
 e compara fast/slow nas 20 colunas com tipos e ordenação exatos; como executa
-os dois modos de processamento, ela é marcada `slow`. A prova anual, também
-marcada `slow`, processa uma vez somente em modo `fast`.
+os dois modos de processamento, ela é marcada `slow`. A prova anual em `fast`
+valida schema Arrow, contagem de registros e limites de data. Outra prova anual
+`slow` compara contagens, schema e igualdade de tabela ou digest lógico entre
+`fast` e `slow`. Todas as provas que processam dados são `slow`; a verificação
+sem `slow` apenas inspeciona uma linha por arquivo no catálogo local.
 
 ```bash
 COTAHIST_PATH=./cotahist_b3 COTAHIST_TEST_YEAR=2000 \
@@ -202,7 +205,7 @@ from globaldatafinance.brazil.cvm.fundamental_stocks_data.errors import (
 class TestValidateDocsName:
     def test_validate_valid_doc(self):
         """Verifica validação de documento válido."""
-        validate_docs_name('DFP')  # Passa sem exceção
+        assert validate_docs_name('DFP') is None  # Passa sem exceção
 
     def test_validate_invalid_doc(self):
         """Verifica se InvalidDocumentName é lançada para documento inválido."""

@@ -1,13 +1,14 @@
 ---
 name: systematic-debugging
 description: >-
-  Use para debugging estruturado quando a causa raiz for incerta. Ative com "não
-  sei por que quebra", "acha a causa raiz", "bug intermitente", "funciona na
-  minha máquina", "CI passa mas local falha", "deu stack trace", "módulo não
-  encontrado", "import quebrou", "env não carrega" ou "por que esse erro
-  acontece?". Cobre reprodução, isolamento de hipóteses e validação de correção.
-  Não use para problemas já identificados como performance, validação final de
-  testes ou bugs com causa e correção já delimitadas.
+  Use para investigar bugs quando a causa raiz ainda é incerta. Ative com "não
+  sei por que quebra", "bug intermitente", "funciona na minha máquina", "CI
+  passa mas local falha", "deu stack trace sem causa clara", "env não carrega"
+  ou falha de import sem origem identificada. Cobre reprodução, hipóteses e
+  prova da correção. Para sintomas específicos do runtime Node.js como
+  `ERR_REQUIRE_ESM` ou `ERR_MODULE_NOT_FOUND`, use `nodejs-best-practices`;
+  para lentidão sem gargalo isolado, use `performance-profiling`. Não use para
+  checagem final ou defeitos com causa já comprovada.
 ---
 
 # Systematic Debugging
@@ -82,13 +83,14 @@ Deve acionar:
 
 - "bug intermitente sem causa clara"
 - "funciona na minha máquina mas no CI passa"
-- "está dando erro de import ou módulo ausente"
+- "falha de import sem saber se o problema é ambiente ou código"
 - "minhas variáveis não estão carregando"
 - "preciso achar root cause"
 
 Não deve acionar:
 
 - "feature nova bem definida"
+- "ERR_REQUIRE_ESM ao carregar um pacote no Node.js"
 - "configura workers e healthcheck"
 - "audita segredo exposto no serviço"
 - "gera README"

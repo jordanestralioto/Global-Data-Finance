@@ -45,19 +45,20 @@ and downloading via the injected `AsyncDownloadAdapterCVM`.
 
 ### Key Components
 
-| Module                   | Component                     | Type                  | Responsibility                                                                                                 |
-| ------------------------ | ----------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `client.py`              | `DownloadDocumentsUseCaseCVM` | Orchestrator (class)  | Coordinates URL generation, path validation, and download execution (`execute` and `execute_async`). Stateful. |
-| `client.py`              | `generate_urls`               | Application function  | Constructs download URLs from `DictZipsToDownloadCVM`.                                                         |
-| `client.py`              | `VerifyPathsUseCasesCVM`      | Use case              | Creates destination directory structure. Raises `SecurityError` on sensitive paths.                            |
-| `core.py`                | `DownloadResultCVM`           | Result object         | Aggregated result containing successes, failures, and counters (including `elapsed_time`).                     |
-| `core.py`                | `DictZipsToDownloadCVM`       | Value object          | Document to URLs per year mapping.                                                                             |
-| `http.py`                | `AsyncDownloadAdapterCVM`     | Concrete adapter      | Asynchronous downloads with retry/back-off and extraction delegation.                                          |
-| `extract.py`             | `ParquetExtractorAdapterCVM`  | Concrete adapter      | Opens ZIP files and delegates recoverable conversion commit.                                                   |
-| `transaction.py`         | `CvmFailureAtomicBatchCommit` | Extraction detail     | Performs staging, validation, backup, and deterministic restoration per batch.                                 |
-| `csv_pipeline/`          | `CsvToParquetPipelineCVM`     | Conversion subpackage | PyArrow streaming CSV ingestion and typed Parquet writing in bounded memory chunks (`chunk_size`).             |
-| `download_extraction.py` | `extract_downloaded_file`     | Helper / Use case     | Tracks published artifacts and validates download outcome.                                                     |
-| `download_validation.py` | `validate_downloaded_file`    | Helper                | Validates integrity and completeness of ZIPs and extracted Parquet files.                                      |
+| Module                     | Component                     | Type                  | Responsibility                                                                                                 |
+| -------------------------- | ----------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `client.py`                | `DownloadDocumentsUseCaseCVM` | Orchestrator (class)  | Coordinates URL generation, path validation, and download execution (`execute` and `execute_async`). Stateful. |
+| `client.py`                | `generate_urls`               | Application function  | Constructs download URLs from `DictZipsToDownloadCVM`.                                                         |
+| `client.py`                | `VerifyPathsUseCasesCVM`      | Use case              | Creates destination directory structure. Raises `SecurityError` on sensitive paths.                            |
+| `core.py`                  | `DownloadResultCVM`           | Result object         | Aggregated result containing successes, failures, and counters (including `elapsed_time`).                     |
+| `core.py`                  | `DictZipsToDownloadCVM`       | Value object          | Document to URLs per year mapping.                                                                             |
+| `http.py`                  | `AsyncDownloadAdapterCVM`     | Concrete adapter      | Asynchronous downloads with retry/back-off and extraction delegation.                                          |
+| `extract.py`               | `ParquetExtractorAdapterCVM`  | Concrete adapter      | Opens ZIP files and delegates recoverable conversion commit.                                                   |
+| `transaction.py`           | `CvmFailureAtomicBatchCommit` | Extraction detail     | Performs staging, validation, backup, and deterministic restoration per batch.                                 |
+| `csv_pipeline/`            | `CsvToParquetPipelineCVM`     | Conversion subpackage | PyArrow streaming CSV ingestion and typed Parquet writing in bounded memory chunks (`chunk_size`).             |
+| `download_finalization.py` | `finalize_downloaded_file`    | CVM worker            | Validates the ZIP, promotes the `.part` file, and coordinates synchronous extraction outside the event loop.   |
+| `download_extraction.py`   | `extract_downloaded_file`     | CVM helper            | Tracks generated Parquet files, validates extraction, and returns errors for event-loop aggregation.           |
+| `download_validation.py`   | `validate_downloaded_file`    | Helper                | Validates integrity and completeness of ZIPs and extracted Parquet files.                                      |
 
 ## 🚀 Usage Guide
 

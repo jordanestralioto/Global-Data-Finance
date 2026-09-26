@@ -168,6 +168,54 @@ def test_b3_runtime_scopes_executor_environment_and_restores_it(
 
 
 @pytest.mark.unit
+def test_annual_b3_runtime_extracts_all_supported_asset_classes(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Annual extraction and its oracle use the same asset scope."""
+    observed: dict[str, object] = {}
+    expected_assets = (
+        historical_quotes.AvailableAssetsServiceB3.get_available_assets()
+    )
+
+    class FakeB3:
+        """Capture annual scenario arguments at the public facade boundary."""
+
+        def __init__(self) -> None:
+            self._last_phase_timings: dict[str, Any] = {}
+
+        def extract(self, **kwargs: object) -> dict[str, object]:
+            observed.update(kwargs)
+            return {'success': True, 'output_file': str(tmp_path / 'quotes')}
+
+    source = benchmark_corpus.ScenarioInput(
+        'b3_annual',
+        tmp_path,
+        0,
+        '',
+        processing_mode='slow',
+        source_count=27,
+        worker_limit=1,
+    )
+    monkeypatch.setattr(globaldatafinance, 'HistoricalQuotesB3', FakeB3)
+    monkeypatch.setattr(
+        benchmark_runtime,
+        'validate_b3_output',
+        lambda _path, _source: (1, 'schema', True, 10, 'digest'),
+    )
+    monkeypatch.setattr(benchmark_runtime, '_last_b3_phase_timings', {})
+
+    benchmark_runtime.run_b3(
+        source,
+        tmp_path / 'output',
+        processing_mode=source.processing_mode,
+    )
+
+    assert observed['assets_list'] == expected_assets
+    assert observed['processing_mode'] == 'slow'
+
+
+@pytest.mark.unit
 def test_benchmark_cli_returns_non_zero_when_scenario_fails(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -340,13 +388,25 @@ def test_annual_b3_output_without_trusted_digest_cannot_report_equivalence(
 def test_annual_corpus_builds_a_full_typed_digest_and_actual_source_count(
     tmp_path: Path,
 ) -> None:
-    """The annual manifest covers all rows, not only ticker boundaries."""
+    """The annual digest covers every supported market code and source year."""
+    available_assets = (
+        historical_quotes.AvailableAssetsServiceB3.get_available_assets()
+    )
+    market_codes = sorted(
+        historical_quotes.AvailableAssetsServiceB3.get_tpmerc_codes_for_assets(
+            set(available_assets)
+        )
+    )
     for index, year in enumerate(benchmark_corpus._ANNUAL_B3_YEARS):
         source = tmp_path / f'COTAHIST_A{year}.ZIP'
-        payload = (
-            '00COTAHIST BENCHMARK\n'
-            f'{benchmark_corpus.b3_record(index)}\n'
-            '99COTAHIST BENCHMARK\n'
+        records = []
+        for market_code in market_codes:
+            record = list(benchmark_corpus.b3_record(index))
+            record[2:10] = f'{year}0115'
+            record[24:27] = market_code
+            records.append(''.join(record))
+        payload = '\n'.join(
+            ['00COTAHIST BENCHMARK', *records, '99COTAHIST BENCHMARK']
         )
         with zipfile.ZipFile(source, 'w') as archive:
             archive.writestr(f'COTAHIST_A{year}.TXT', payload)
@@ -354,11 +414,18 @@ def test_annual_corpus_builds_a_full_typed_digest_and_actual_source_count(
     prepared = benchmark_corpus.prepare_input(
         'b3_annual', tmp_path, None, tmp_path
     )
+    rows = list(
+        benchmark_corpus._annual_b3_rows(
+            tuple(sorted(tmp_path.glob('COTAHIST_A*.ZIP')))
+        )
+    )
 
     assert prepared.source_count == len(benchmark_corpus._ANNUAL_B3_YEARS)
-    assert prepared.expected_digest == benchmark_corpus.expected_b3_digest(
-        len(benchmark_corpus._ANNUAL_B3_YEARS)
+    assert len(rows) == len(benchmark_corpus._ANNUAL_B3_YEARS) * len(
+        market_codes
     )
+    assert {row['tipo_mercado'] for row in rows} == set(market_codes)
+    assert prepared.expected_digest == benchmark_corpus.logical_digest(rows)
 
 
 @pytest.mark.unit

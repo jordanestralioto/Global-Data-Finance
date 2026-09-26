@@ -1,16 +1,14 @@
 ---
 name: openspec-workflow
 description: >-
-  Use para executar workflows OpenSpec/OPSX explicitamente pedidos e para
-  classificar se uma mudança precisa de artefatos formais. Ative com "cria uma change", "faz proposal/design/tasks",
-  "valida spec", "sincroniza specs", ou quando o usuário pede para decidir se
-  OpenSpec é necessário. Uma mera menção a OpenSpec/OPSX aciona somente a
-  triagem: não crie uma change sem comando explícito ou uma fronteira formal
-  comprovada. Sem pedido explícito, selecione OpenSpec apenas para contrato
-  compartilhado duradouro, múltiplos consumidores ou owners independentes,
-  rollout, rollback ou lifecycle auditável. Não use para planos simples,
-  bugs isolados, ajustes rápidos, revisões de skills sem contrato compartilhado
-  ou refatorações delimitadas sem rastreabilidade formal.
+  Use para executar workflows OpenSpec/OPSX pedidos pelo usuário ou decidir se
+  uma mudança exige artefatos formais. Ative com "cria uma change", "faz
+  proposal/design/tasks", "valida spec", "sincroniza specs" ou "preciso mesmo de
+  OpenSpec?". Mencionar OpenSpec sem pedir o workflow aciona apenas triagem. Sem
+  pedido explícito, escolha o workflow só para contrato duradouro compartilhado,
+  múltiplos consumidores ou responsáveis independentes, rollout, rollback ou
+  auditoria. Não use para bugs locais, planos simples ou revisão de skills sem
+  contrato compartilhado.
 ---
 
 # OpenSpec Workflow

@@ -46,19 +46,38 @@ ______________________________________________________________________
 
 ## Workers e Concorrência
 
-| Tipo de trabalho           | Estratégia                                           |
-| -------------------------- | ---------------------------------------------------- |
-| I/O bound (HTTP, DB)       | Async ou thread pool — muitos workers, pouca CPU     |
-| CPU bound (ML, compressão) | Process pool — workers = núcleos disponíveis         |
-| Mixed                      | Separar em serviços distintos se o volume justificar |
+| Tipo de trabalho           | Estratégia                                              |
+| -------------------------- | ------------------------------------------------------- |
+| I/O bound (HTTP, DB)       | Async ou threads; dimensionar pela latência e saturação |
+| CPU bound (ML, compressão) | Process pool; respeitar cotas de CPU e memória          |
+| Mixed                      | Separar em serviços distintos se o volume justificar    |
 
-**Regra de worker count para Uvicorn/Gunicorn:**
+### Dimensionamento de Workers (Sem Fórmulas Fixas)
 
-```bash
-# Fórmula base: (2 * núcleos) + 1
-# Para servidor com 2 núcleos: 5 workers
-uvicorn app:app --workers 5
-```
+Evite regras prescritivas ou fórmulas fixas como `(2 * núcleos) + 1` ou "1 worker por núcleo". O número adequado de workers é uma decisão operacional que equilibra modelo de concorrência, pegada de memória, limites de conexões externas e topologia de deploy:
+
+1. **Runtimes Assíncronos (Uvicorn / FastAPI / Node.js):**
+
+   - Um processo com event loop pode atender muitas conexões I/O concorrentes; a capacidade real depende dos handlers, limites de sockets, CPU e memória. Aumente workers quando medições mostrarem saturação do processo ou necessidade de isolamento de falhas.
+   - Em VMs ou bare-metal: comece com a menor configuração operável e meça throughput, latência e memória antes de aumentar. Não vincule workers diretamente a `nproc` ou `os.cpu_count()`: esses comandos podem relatar CPUs lógicas, não núcleos físicos dedicados.
+   - Em containers (Docker / Kubernetes): um worker por container/pod pode simplificar health checks e métricas, com réplicas para escala horizontal. Valide a escolha contra as cotas de CPU/memória e o custo de cada processo.
+
+2. **Runtimes Síncronos (Gunicorn sync workers):**
+
+   - Cada worker bloqueia a execução inteira durante chamadas de I/O. A heurística histórica `(2 * núcleos) + 1` foi criada para compensar esperas de I/O em servidores dedicados antigos, mas frequentemente esgota memória ou satura bancos de dados em sistemas modernos.
+   - A memória RAM disponível é tipicamente o primeiro gargalo: `workers_max = (RAM_total - RAM_so_e_servicos) / consumo_medio_p95_por_worker`.
+   - Limite estrito de conexões a jusante: garanta que a soma dos pools de conexões de todos os workers não exceda a capacidade do banco (`workers * max_conns_por_worker <= max_conns_database`).
+
+3. **Restrições de Container e cgroups:**
+
+   - Ferramentas de sistema e runtimes dentro de containers costumam inspecionar o host físico em vez das cotas de cgroups (`limits.cpu` e `limits.memory`).
+   - Dimensionar workers pelo hardware do host dentro de um container com limites baixos provoca throttling severo de CPU e encerramento abrupto por OOMKilled.
+
+4. **Diretriz de Calibração Contínua:**
+
+   - Inicie sempre com a menor quantidade viável de processos.
+   - Submeta a carga sintética próxima do perfil real de produção (mix de I/O e CPU).
+   - Monitore saturação de CPU, percentis de latência (p95/p99), fila de conexões pendentes e estabilidade do consumo de memória antes de cogitar aumentar processos.
 
 ______________________________________________________________________
 
@@ -138,7 +157,7 @@ ______________________________________________________________________
 - [ ] Graceful shutdown está implementado (SIGTERM handled)?
 - [ ] Health checks de liveness e readiness existem?
 - [ ] Logs são estruturados e sem dados sensíveis?
-- [ ] O número de workers é proporcional ao tipo de trabalho (I/O vs CPU)?
+- [ ] O dimensionamento de workers considera o modelo (sync vs async), limite de RAM/cgroups e topologia de deploy?
 - [ ] Scaling decision é baseada em métrica real, não em suposição?
 
 ## Procedimento
@@ -150,7 +169,9 @@ ______________________________________________________________________
 
 ## Scripts
 
-- `scripts/auto_preview.py`: gerencia preview local start/stop/status.
+- `scripts/auto_preview.py`: gerencia preview local start/stop/status e só
+  encerra processos cuja identidade de criação corresponde ao registro salvo.
+  Se o sistema não oferecer um handle seguro, recusa iniciar o preview.
 - `scripts/session_manager.py`: inspeciona e gerencia sessões locais de servidor.
 
 ## Exemplos

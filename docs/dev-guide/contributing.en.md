@@ -137,8 +137,10 @@ checks before a branch is published.
 
 The local Gitleaks hook checks only staged content to keep commit feedback
 fast. CI runs an additional directory-mode scan over a clean checkout, so it
-does not depend on staged files. `pip-audit` remains outside the fast
-`pre-commit` stage and runs during the heavier `pre-push` and CI validation.
+does not depend on staged files. The dependency audit exports pinned packages
+from `uv.lock` to a temporary file and runs `pip-audit` without resolving or
+installing packages. It stays outside the fast `pre-commit` stage and runs in
+`pre-push` and CI.
 
 When a dependency must change, make that operation explicit, review the
 `uv.lock` diff, synchronize the environment, and then commit:

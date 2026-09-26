@@ -44,6 +44,12 @@ class ColumnInference:
 
     def observe(self, value: str) -> None:
         """Classify one raw non-header CSV value without coercing it."""
+        if (
+            self.has_string
+            or self.has_signed_overflow
+            or self.has_unsigned_overflow
+        ):
+            return
         if value in NULL_TOKENS:
             self.has_null = True
             return

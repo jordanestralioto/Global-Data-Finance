@@ -52,9 +52,8 @@ def main() -> int:
         'topic': payload['topic'],
         'severity': payload['severity'],
         'confidence': payload['confidence'],
-        'blocking': bool(
-            payload.get('blocking', payload['severity'] == 'blocker')
-        ),
+        'blocking': payload['severity'] == 'blocker'
+        or bool(payload.get('blocking', False)),
         'summary': payload['summary'],
         'impact': payload['impact'],
         'recommendedAction': payload['recommendedAction'],

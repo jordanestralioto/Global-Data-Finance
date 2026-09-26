@@ -148,6 +148,12 @@ def test_precommit_configuration_preserves_the_quality_gate_contract() -> None:
     ):
         assert root in content
     assert 'id: validate-agents-md' in content
+    assert 'entry: bash .agents/scripts/validate-commit-msg.sh' in content
+    assert 'id: validate-commit-msg-policy' in content
+    assert (
+        'entry: uv run --locked --no-sync python scripts/check_commit_msg.py'
+        in content
+    )
     assert 'validate_agents_md.py' in content
     assert 'files: ^AGENTS\\.md$' in content
     assert 'stages: [manual]' in content
@@ -161,7 +167,7 @@ def test_precommit_configuration_preserves_the_quality_gate_contract() -> None:
     assert 'id: import-cycles' in content
     assert 'id: import-linter' in content
     assert 'exclude: ^tests/support/' in hook_block(content, 'name-tests-test')
-    assert 'entry: uv run --locked --no-sync pip-audit --timeout 60' in content
+    assert 'scripts/audit_locked_dependencies.py' in content
     assert (
         'files: ^(?:src|tests|scripts|examples)/.*\\.(?:py|pyi|pyw|sh|bash)$'
         in content
@@ -180,6 +186,8 @@ def test_diff_sanity_print_allowlist_matches_ci() -> None:
 
     assert pre_commit == ci
     assert 'scripts/check_test_quality.py' in pre_commit
+    assert 'scripts/audit_locked_dependencies.py' in pre_commit
+    assert 'scripts/check_commit_msg.py' in pre_commit
 
 
 def test_mutating_hooks_keep_projection_exclusions() -> None:

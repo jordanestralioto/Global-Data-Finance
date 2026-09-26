@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import threading
-import time
 
 import pytest
 
@@ -16,16 +15,21 @@ pytestmark = pytest.mark.unit
 
 
 class _BlockingExecutor:
-    """Executor double that makes an event-loop block observable."""
+    """Executor double observing event-loop blocks via a barrier."""
 
     def __init__(self) -> None:
-        """Initialize shutdown observations."""
+        """Initialize shutdown observations and synchronization barriers."""
         self.calls: list[tuple[bool, bool]] = []
+        self.shutdown_entered = threading.Event()
+        self.shutdown_release = threading.Event()
+        self.shutdown_thread_id: int | None = None
 
     def shutdown(self, *, wait: bool, cancel_futures: bool) -> None:
-        """Block long enough to distinguish a thread from the event loop."""
+        """Block until released by the loop to prove non-blocking run."""
+        self.shutdown_thread_id = threading.get_ident()
         self.calls.append((wait, cancel_futures))
-        time.sleep(0.25)
+        self.shutdown_entered.set()
+        self.shutdown_release.wait(timeout=5.0)
 
 
 class _CancellationEvent:
@@ -45,13 +49,7 @@ async def test_process_shutdown_does_not_block_the_event_loop() -> None:
     """Cooperative process cleanup leaves the event loop responsive."""
     executor = _BlockingExecutor()
     cancel_event = _CancellationEvent()
-    loop = asyncio.get_running_loop()
-    probe: asyncio.Future[float] = loop.create_future()
-    started = time.perf_counter()
-    loop.call_later(
-        0.02,
-        lambda: probe.set_result(time.perf_counter()),
-    )
+    loop_thread_id = threading.get_ident()
 
     shutdown = asyncio.create_task(
         extraction_service.scheduler.ExtractionSchedulerB3._shutdown_executor(
@@ -60,9 +58,24 @@ async def test_process_shutdown_does_not_block_the_event_loop() -> None:
             cancel_futures=True,
         )
     )
-    observed = await asyncio.wait_for(probe, timeout=1.0)
+
+    try:
+        await asyncio.to_thread(executor.shutdown_entered.wait, 5.0)
+        assert executor.shutdown_entered.is_set()
+        assert executor.shutdown_thread_id is not None
+        assert executor.shutdown_thread_id != loop_thread_id
+        assert not shutdown.done()
+
+        loop_responsive = False
+        await asyncio.sleep(0.01)
+        loop_responsive = True
+
+        assert not shutdown.done()
+        assert loop_responsive
+    finally:
+        executor.shutdown_release.set()
+
     await shutdown
 
-    assert observed - started < 0.15
     assert cancel_event.signaled.is_set()
     assert executor.calls == [(True, True)]

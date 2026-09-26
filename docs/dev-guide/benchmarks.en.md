@@ -125,31 +125,33 @@ calls.
 
 ```bash
 # In-repository hot path micro-benchmarks (CVM URL generation and B3 line parsing)
-uv run --locked --no-sync pytest tests/perf -m perf
+uv run --locked --no-sync pytest tests/perf -m perf -k benchmark_
 
 # Save a performance baseline
-uv run --locked --no-sync pytest tests/perf -m perf --benchmark-save=baseline_v1
+uv run --locked --no-sync pytest tests/perf -m perf -k benchmark_ --benchmark-save=baseline_v1
 
 # Compare against saved baseline
-uv run --locked --no-sync pytest tests/perf -m perf --benchmark-compare=baseline_v1
+uv run --locked --no-sync pytest tests/perf -m perf -k benchmark_ --benchmark-compare=baseline_v1
 ```
 
-The repository's available benchmarks are executed through pytest-benchmark:
+The two hot-path micro-benchmarks use pytest-benchmark. The directory also
+contains a memory measurement test marked `perf` and `slow`; the commands below
+select only the two micro-benchmarks:
 
 ```bash
 # List the two benchmarks without running them
-uv run --locked --no-sync pytest tests/perf -m perf -o addopts='' --collect-only -q
+uv run --locked --no-sync pytest tests/perf -m perf -o addopts='' --collect-only -q -k benchmark_
 
 # Run the hot-path benchmarks
-uv run --locked --no-sync pytest tests/perf -m perf -o addopts=''
+uv run --locked --no-sync pytest tests/perf -m perf -o addopts='' -k benchmark_
 
 # Save results for a later comparison
 uv run --locked --no-sync pytest tests/perf -m perf -o addopts='' \
-  --benchmark-save=baseline_v1
+  -k benchmark_ --benchmark-save=baseline_v1
 
 # Compare against the saved baseline
 uv run --locked --no-sync pytest tests/perf -m perf -o addopts='' \
-  --benchmark-compare=baseline_v1
+  -k benchmark_ --benchmark-compare=baseline_v1
 ```
 
 The synthetic archive used for the baseline has SHA-256
@@ -220,13 +222,15 @@ times by default, runs the operation in a fresh Python process, and samples chil
 RSS every 10 ms. It supports comparative evaluation via `--backend thread|process`
 and `--processing-mode fast|slow`. Before recording a result it validates row count,
 order, schema, boundary values, and the logical Parquet artifact.
-For the annual corpus, the runner derives a typed digest of every selected row from
-the 27 official ZIPs before measurement and compares every repeat with that digest.
-`--source-count` is exclusive to the synthetic `b3_multi_4x25k` corpus and
-partitions the requested rows across the exact number of sources; the annual
-corpus always uses its 27 sources. `--worker-limit` applies a cap in the fresh
-measurement process through `GDF_B3_WORKER_LIMIT`; JSON records both requested
-and effective values after resource policy and backend fallback.
+For the annual corpus, both the reference digest and extraction cover every
+asset class supported by the API across the 27 official ZIPs; each repeat is
+compared with that typed digest. `--processing-mode` runs only the selected mode
+and does not start the other mode automatically. `--source-count` is exclusive
+to the synthetic `b3_multi_4x25k` corpus and partitions requested rows across
+the exact number of sources; the annual corpus always uses its 27 sources.
+`--worker-limit` applies a cap in the fresh measurement process through
+`GDF_B3_WORKER_LIMIT`; JSON records both requested and effective values after
+resource policy and backend fallback.
 
 ```bash
 # Small measurement to verify the JSON protocol
@@ -247,9 +251,12 @@ uv run --locked --no-sync python scripts/benchmark_ingestion.py \
   --scenario b3_multi_4x25k --rows 100 --source-count 2 --worker-limit 1 \
   --backend process --processing-mode fast
 
-# The annual corpus runs only with all 27 ZIPs (2000–2026); otherwise it is skipped
+# Run only slow across all seven asset classes; all 27 ZIPs are required
+mkdir -p .benchmarks
 uv run --locked --no-sync python scripts/benchmark_ingestion.py \
-  --scenario b3_annual --cotahist-path /path/to/COTAHIST --output annual.json
+  --scenario b3_annual --cotahist-path /path/to/COTAHIST \
+  --processing-mode slow --repeats 1 \
+  --output .benchmarks/b3-annual-slow.json
 ```
 
 Each JSON result contains schema version, revision, environment, input checksum,
@@ -278,3 +285,121 @@ machine: root import ≤50 MiB and ≤0.50 s; CVM 269,181 rows ≤60% of baselin
 time and ≤70% of baseline RSS; B3 250k ≤50% of baseline time and ≤25% of
 baseline RSS; and a closed runtime footprint without Polars ≤260 MiB. These are
 release objectives, not universal CI limits.
+
+______________________________________________________________________
+
+## 6. CVM Optimizations — Encoding, Inference, and HTTP
+
+### 6.1. Encoding Scan and Terminal Inference
+
+On **2026-09-23**, the `cvm` and `cvm_text` scenarios ran in three fresh
+processes per stage against the same deterministic corpora. Environment: Python
+3.13.9, Linux x86_64, kernel 6.8, 8 CPUs. The `scan` stage replaces per-byte
+classification with a C-level block translation; `scan + inference` also stops
+observing columns once they have been promoted permanently to strings.
+
+| Scenario | Stage | Repeats | Median time | Median peak RSS |
+| -------- | ----- | ------: | ----------: | --------------: |
+| `cvm` | baseline | 3 | 4.092 s | 166.30 MiB |
+| `cvm` | scan | 3 | 1.798 s | 165.99 MiB |
+| `cvm` | scan + inference | 3 | 1.593 s | 162.10 MiB |
+| `cvm_text` | baseline | 3 | 2.705 s | 227.28 MiB |
+| `cvm_text` | scan | 3 | 0.822 s | 227.13 MiB |
+| `cvm_text` | scan + inference | 3 | 0.762 s | 227.33 MiB |
+
+The scan reduced median time by 56.1% for `cvm` and 69.6% for `cvm_text`.
+Terminal inference reduced it by a further 11.4% and 7.3%, respectively,
+compared with the `scan` stage. Final peak RSS was 2.5% below baseline for
+`cvm` and 0.02% above baseline for `cvm_text`.
+
+All three stages produced identical row counts, schema fingerprints, logical
+digests, and physical Parquet SHA-256 values across all nine repeats per
+scenario. The logical digests were
+`1ef1f6d9cd9ade4fba4551796916241ff0966620846a219b1f87be78f0e186c9` for
+`cvm` (269,181 rows) and
+`2f3649d866f98263ce2156bdb688733da3ae31b0fbc7c963c720675c6ae49d0b` for
+`cvm_text` (8,000 rows).
+
+Full reports with input checksums, each repeat, and `git_sha` /
+`worktree_sha256` provenance are available as [baseline](benchmark-results/cvm-optimizations-20260923/cvm-opt-baseline-20260923.json), [scan](benchmark-results/cvm-optimizations-20260923/cvm-opt-scan-20260923.json), and [scan + inference](benchmark-results/cvm-optimizations-20260923/cvm-opt-inference-20260923.json) reports.
+Reproduce these scenarios with:
+
+```bash
+mkdir -p .benchmarks
+uv run --locked --no-sync python scripts/benchmark_ingestion.py \
+  --scenario cvm --scenario cvm_text --repeats 3 \
+  --output .benchmarks/cvm-optimizations.json
+```
+
+### 6.2. CVM Download Phase Measurements
+
+`scripts/benchmark_cvm_http.py` separately measures time and bytes for GET, HEAD,
+ZIP validation, and Parquet extraction. Local mode serves the same deterministic
+ZIP over HTTP/1.1, runs batches of three downloads by default, and compares 8,
+64, and 256 KiB chunks. GET bytes are transferred bytes; HEAD transfers zero
+body bytes and records `Content-Length`; validation records the ZIP size read;
+extraction records the uncompressed CSV bytes. The report also counts
+`httpx.AsyncClient` constructions and measures their synchronous constructor
+cost.
+
+```bash
+mkdir -p .benchmarks
+uv run --locked --no-sync python scripts/benchmark_cvm_http.py \
+  --source local --repeats 3 --batch-size 3 --payload-mib 4 \
+  --output .benchmarks/cvm-http-local.json
+```
+
+For a few equivalent official sources, provide explicit URLs:
+
+```bash
+mkdir -p .benchmarks
+uv run --locked --no-sync python scripts/benchmark_cvm_http.py \
+  --source official \
+  --official-url https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2022.zip \
+  --official-url https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2023.zip \
+  --official-url https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2024.zip \
+  --repeats 3 --output .benchmarks/cvm-http-official.json
+```
+
+On **2026-09-23**, the local run completed with `passed`: nine batches, three
+repeats per chunk size, and three downloads per batch. The medians below show
+total batch time; phase times sum the concurrent operations in each batch.
+
+| Chunk | Total batch | HEAD | GET | Validation | Extraction | HTTPX client initialization |
+| ----: | ----------: | ---: | --: | ----------: | ---------: | ---------------------------: |
+| 8 KiB | 0.246 s | 0.049 s | 0.201 s | 0.013 s | 0.136 s | 6 clients; 0.0369 s |
+| 64 KiB | 0.241 s | 0.046 s | 0.151 s | 0.014 s | 0.133 s | 6 clients; 0.0371 s |
+| 256 KiB | 0.236 s | 0.047 s | 0.157 s | 0.013 s | 0.128 s | 6 clients; 0.0371 s |
+
+Each batch transferred 12,590,178 bytes across three GETs. HEAD announced the
+same size; validation read the same number of bytes; extraction processed 6,612
+CSV bytes. All nine runs produced three Parquet files and 768 rows, with
+identical schema fingerprints and artifact SHA-256 values. The best median total
+time was 4.2% below the 8 KiB chunk, with variation between repeats and a small
+difference between 64 and 256 KiB. The six `httpx.AsyncClient` constructors
+totaled about 37 ms per batch, 18% of cumulative GET and HEAD time. Since the
+synthetic local benchmark does not compare shared clients and the total-time
+difference is small, the current 8 KiB chunk and HTTPX client lifecycle remain
+unchanged.
+
+The full report, including each repeat, fixture checksum, and `git_sha` /
+`worktree_sha256` provenance, is available as
+[cvm-http-local-20260923.json](benchmark-results/cvm-http-local-20260923.json).
+The first local attempt inside the sandbox failed to bind the fixture server to
+`127.0.0.1` (`PermissionError: Operation not permitted`); the later local run
+passed. The official measurement was `skipped`: DNS lookup for
+`dados.cvm.gov.br` still fails in this environment.
+
+### 6.3. Full benchmark against live CVM data
+
+`scripts/benchmark_cvm_full.py` manually downloads and extracts CVM filings
+from 2010 through 2026, measures elapsed time and parent-process peak RSS, and
+summarizes the generated Parquet files. It accesses CVM and writes large
+artifacts, so it is outside deterministic tests and CI. Provide an existing,
+empty directory:
+
+```bash
+mkdir -p .benchmarks/cvm-full
+uv run --locked --no-sync python -m scripts.benchmark_cvm_full \
+  --output-dir .benchmarks/cvm-full
+```

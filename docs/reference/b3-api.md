@@ -196,13 +196,17 @@ ______________________________________________________________________
 
 ## Modos de Processamento
 
-| Modo     | Throughput medido | Uso de CPU | Faixa de RAM           | Cenário Indicado                     |
-| -------- | ----------------- | ---------- | ---------------------- | ------------------------------------ |
-| **fast** | ~12.300 reg/s     | Alto       | ~2 GB – 4.2 GB (pico)  | Padrão, máquinas com múltiplos núcleos |
-| **slow** | ~8.500 reg/s      | Baixo      | ~500 MB – 1.5 GB (pico)| Ambientes com restrição de memória   |
+| Modo     | Throughput medido* | Pico RSS medido* | Paralelismo padrão                                  | Cenário Indicado        |
+| -------- | -----------------: | ---------------: | --------------------------------------------------- | ----------------------- |
+| **fast** | 34.313,8 reg/s    | 429,88 MiB       | Até 4 workers, limitado por CPUs, memória e arquivos-fonte | Priorizar velocidade    |
+| **slow** | 29.759,9 reg/s    | 331,11 MiB       | 1 worker                                            | Reduzir uso de memória  |
 
-O paralelismo no modo `fast` é coordenado por arquivo-fonte inteiro. O modo
-`slow` utiliza um único worker para minimizar o consumo de memória.
+*Linha de base em 27 arquivos anuais (2000–2026), 22.303.577 registros,
+Python 3.13.7, Linux x86_64, 8 CPUs e 7,55 GB de memória. Os resultados variam
+conforme o ambiente; consulte os [detalhes do benchmark](../dev-guide/benchmarks.md).*
+
+O modo `fast` coordena o paralelismo por arquivo-fonte. O modo `slow` utiliza um
+único worker para reduzir o consumo de memória.
 
 ______________________________________________________________________
 

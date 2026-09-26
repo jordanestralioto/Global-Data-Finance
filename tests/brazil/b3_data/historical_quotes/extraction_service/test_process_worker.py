@@ -1,11 +1,15 @@
 """Integration tests for B3 multiprocessing worker and process backend."""
 
+from __future__ import annotations
+
 import asyncio
 import multiprocessing as mp
 import pickle
 import time
+from collections.abc import Iterator
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
+from typing import Any
 
 import psutil
 import pyarrow.parquet as pq
@@ -17,13 +21,22 @@ from globaldatafinance.brazil.b3_data.historical_quotes import (
     ExtractionServiceB3,
     extraction_service,
 )
+from globaldatafinance.brazil.b3_data.historical_quotes.integrity import (
+    B3RecordContext,
+)
 from globaldatafinance.brazil.b3_data.historical_quotes.processing import (
     ProcessingModeEnumB3,
 )
 from globaldatafinance.brazil.b3_data.historical_quotes.zip_reader import (
     ZipFileReaderB3,
 )
-from tests.support.builders import build_cotahist_record, write_cotahist_txt
+from globaldatafinance.core.archive_safety import ArchiveSafetyLimits
+from globaldatafinance.macro_exceptions import CorruptedZipError
+from tests.support.builders import (
+    build_cotahist_record,
+    write_cotahist_txt,
+    write_cotahist_zip,
+)
 
 pytestmark = pytest.mark.integration
 
@@ -359,39 +372,181 @@ def test_historical_quotes_b3_facade_extract_with_process_backend(
     assert client._last_phase_timings['merge_status'] == 'completed'
 
 
+class _InstrumentedZipReader(ZipFileReaderB3):
+    """Reader pausing at a stride checkpoint to prove cooperative abort."""
+
+    def __init__(
+        self,
+        checkpoint_line: int,
+        checkpoint_reached_event: Any,
+        advanced_beyond_checkpoint_event: Any,
+        cancel_event: Any,
+        *,
+        limits: ArchiveSafetyLimits | None = None,
+    ) -> None:
+        super().__init__(limits=limits)
+        self._checkpoint_line = checkpoint_line
+        self._checkpoint_reached_event = checkpoint_reached_event
+        self._advanced_beyond_checkpoint_event = (
+            advanced_beyond_checkpoint_event
+        )
+        self._cancel_event = cancel_event
+
+    def iter_lines(
+        self, source_path: str
+    ) -> Iterator[tuple[str, B3RecordContext]]:
+        for line_number, (line, context) in enumerate(
+            super().iter_lines(source_path), start=1
+        ):
+            if line_number == self._checkpoint_line:
+                self._checkpoint_reached_event.set()
+                self._cancel_event.wait(timeout=5.0)
+            elif line_number > self._checkpoint_line:
+                self._advanced_beyond_checkpoint_event.set()
+            yield line, context
+
+
+class _InstrumentedReaderFactory:
+    """Pickleable factory for spawn-isolated worker processes."""
+
+    def __init__(
+        self,
+        checkpoint_line: int,
+        checkpoint_reached_event: Any,
+        advanced_beyond_checkpoint_event: Any,
+        cancel_event: Any,
+    ) -> None:
+        self.checkpoint_line = checkpoint_line
+        self.checkpoint_reached_event = checkpoint_reached_event
+        self.advanced_beyond_checkpoint_event = (
+            advanced_beyond_checkpoint_event
+        )
+        self.cancel_event = cancel_event
+
+    def __call__(
+        self, limits: ArchiveSafetyLimits | None = None
+    ) -> _InstrumentedZipReader:
+        return _InstrumentedZipReader(
+            checkpoint_line=self.checkpoint_line,
+            checkpoint_reached_event=self.checkpoint_reached_event,
+            advanced_beyond_checkpoint_event=(
+                self.advanced_beyond_checkpoint_event
+            ),
+            cancel_event=self.cancel_event,
+            limits=limits,
+        )
+
+
+class _ConfiguredZipReaderFactory:
+    """Reader factory passing supplied limits to ZipFileReaderB3."""
+
+    def __call__(
+        self, limits: ArchiveSafetyLimits | None = None
+    ) -> ZipFileReaderB3:
+        return ZipFileReaderB3(limits=limits)
+
+
 def test_process_worker_cancellation_during_dense_filtered_sweep(
     tmp_path: Path,
 ) -> None:
     """Worker aborts promptly on cancellation during dense filtered scan."""
-    records = [
-        build_cotahist_record(year=2024, ticker='PETR4', market='070')
-        for _ in range(2_500)
+    matching_records = [
+        build_cotahist_record(year=2024, ticker='PETR4', market='010')
+        for _ in range(50)
     ]
-    source = write_cotahist_txt(tmp_path, year=2024, records=records)
+    filtered_records = [
+        build_cotahist_record(year=2024, ticker='VALE3', market='070')
+        for _ in range(2_450)
+    ]
+    source = write_cotahist_txt(
+        tmp_path, year=2024, records=matching_records + filtered_records
+    )
     temp_output = tmp_path / 'filtered.parquet'
 
     ctx = mp.get_context('spawn')
+    checkpoint_reached = ctx.Event()
+    advanced_beyond_checkpoint = ctx.Event()
     cancel_event = ctx.Event()
-    cancel_event.set()
+    reader_factory = _InstrumentedReaderFactory(
+        checkpoint_line=1_000,
+        checkpoint_reached_event=checkpoint_reached,
+        advanced_beyond_checkpoint_event=advanced_beyond_checkpoint,
+        cancel_event=cancel_event,
+    )
 
     with ProcessPoolExecutor(
         max_workers=1,
         mp_context=ctx,
         initializer=extraction_service.process_worker.init_worker,
-        initargs=(cancel_event,),
+        initargs=(cancel_event, reader_factory),
     ) as executor:
         future = executor.submit(
             extraction_service.process_worker.process_source_worker,
             str(source),
             {'010'},
             str(temp_output),
+            python_record_limit=50,
         )
+        assert checkpoint_reached.wait(timeout=5.0), (
+            'Worker did not reach line 1,000 checkpoint'
+        )
+        # Staging file is created with 50 records in writer session buffer
+        assert temp_output.exists()
+        assert temp_output.stat().st_size > 0
+
+        cancel_event.set()
         with pytest.raises(
             extraction_service.zip_processor.ProcessingCancelled
-        ):
+        ) as exc_info:
             future.result(timeout=10)
 
+    assert exc_info.value.message == 'Extraction cancelled by parent'
+    assert not advanced_beyond_checkpoint.is_set(), (
+        'Worker read beyond line 1,000 despite cancellation during stride'
+    )
     assert not temp_output.exists()
+    assert list(tmp_path.glob('*.parquet')) == []
+
+
+def test_process_worker_propagates_safety_limits_to_factory(
+    tmp_path: Path,
+) -> None:
+    """Injected reader factory receives and enforces custom safety limits."""
+    source = write_cotahist_zip(
+        tmp_path,
+        year=2024,
+        records=[build_cotahist_record(year=2024, ticker='PETR4')],
+    )
+    temp_output = tmp_path / 'limits_test.parquet'
+    default_limits = ArchiveSafetyLimits.from_environment()
+    restrictive_limits = ArchiveSafetyLimits(
+        max_archive_bytes=10,
+        max_members=default_limits.max_members,
+        max_member_uncompressed_bytes=(
+            default_limits.max_member_uncompressed_bytes
+        ),
+        max_total_uncompressed_bytes=(
+            default_limits.max_total_uncompressed_bytes
+        ),
+        max_compression_ratio=default_limits.max_compression_ratio,
+    )
+
+    ctx = mp.get_context('spawn')
+    with ProcessPoolExecutor(
+        max_workers=1,
+        mp_context=ctx,
+        initializer=extraction_service.process_worker.init_worker,
+        initargs=(None, _ConfiguredZipReaderFactory()),
+    ) as executor:
+        future = executor.submit(
+            extraction_service.process_worker.process_source_worker,
+            str(source),
+            {'010'},
+            str(temp_output),
+            archive_safety_limits=restrictive_limits,
+        )
+        with pytest.raises(CorruptedZipError, match='compressed archive size'):
+            future.result(timeout=10)
 
 
 def test_historical_quotes_b3_invalid_backend_fails_fast_without_side_effects(
@@ -451,11 +606,13 @@ def test_historical_quotes_b3_last_phase_timings_reset_on_empty_run(
     assert client._last_phase_timings['validation_wall_seconds'] == 0.0
 
 
+@pytest.mark.slow
 @pytest.mark.asyncio
 async def test_active_process_pool_cancellation_cleans_up_bounded(
-    tmp_path: Path,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Multi-process extraction cancels cooperatively with bounded cleanup."""
+    monkeypatch.setattr('os.cpu_count', lambda: 4)
     first = write_cotahist_txt(
         tmp_path,
         year=2023,

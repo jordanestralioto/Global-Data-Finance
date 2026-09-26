@@ -62,6 +62,85 @@ def test_global_inference_handles_a_decimal_after_the_first_row_group(
     ]
 
 
+def test_terminal_string_inference_preserves_late_values_and_short_rows(
+    tmp_path: Path,
+) -> None:
+    """Late string and overflow transitions preserve every logical value."""
+    output, result = _convert(
+        tmp_path,
+        b'late_text;late_unsigned;late_signed;short\n'
+        b'1;1;-9223372036854775808;10\n'
+        b'1.5;18446744073709551616;-9223372036854775809;11\n'
+        b'true;true;-1;12\n'
+        b';; ;13\n'
+        b'word;word;word;14\n'
+        b'18446744073709551616;1.5;false;15\n'
+        b'-9223372036854775809;;;16\n'
+        b'17;18\n',
+    )
+
+    parquet = pq.ParquetFile(output)
+    assert result.rows == 8
+    assert parquet.schema_arrow == pa.schema(
+        [
+            pa.field('late_text', pa.string()),
+            pa.field('late_unsigned', pa.string()),
+            pa.field('late_signed', pa.string()),
+            pa.field('short', pa.int64()),
+        ]
+    )
+    assert pq.read_table(output).to_pylist() == [
+        {
+            'late_text': '1',
+            'late_unsigned': '1',
+            'late_signed': '-9223372036854775808',
+            'short': 10,
+        },
+        {
+            'late_text': '1.5',
+            'late_unsigned': '18446744073709551616',
+            'late_signed': '-9223372036854775809',
+            'short': 11,
+        },
+        {
+            'late_text': 'true',
+            'late_unsigned': 'true',
+            'late_signed': '-1',
+            'short': 12,
+        },
+        {
+            'late_text': None,
+            'late_unsigned': None,
+            'late_signed': ' ',
+            'short': 13,
+        },
+        {
+            'late_text': 'word',
+            'late_unsigned': 'word',
+            'late_signed': 'word',
+            'short': 14,
+        },
+        {
+            'late_text': '18446744073709551616',
+            'late_unsigned': '1.5',
+            'late_signed': 'false',
+            'short': 15,
+        },
+        {
+            'late_text': '-9223372036854775809',
+            'late_unsigned': None,
+            'late_signed': None,
+            'short': 16,
+        },
+        {
+            'late_text': '17',
+            'late_unsigned': '18',
+            'late_signed': None,
+            'short': None,
+        },
+    ]
+
+
 def test_header_only_csv_writes_empty_null_schema_without_pandas_metadata(
     tmp_path: Path,
 ) -> None:

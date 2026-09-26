@@ -8,19 +8,12 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from globaldatafinance.brazil.cvm.fundamental_stocks_data.csv_pipeline import (
     CvmCsvParquetPipeline,
 )
-
-try:
-    from hypothesis import given, settings
-    from hypothesis import strategies as st
-except ModuleNotFoundError:
-    pytest.skip(
-        'hypothesis is installed through the development dependency group',
-        allow_module_level=True,
-    )
 
 pytestmark = pytest.mark.integration
 

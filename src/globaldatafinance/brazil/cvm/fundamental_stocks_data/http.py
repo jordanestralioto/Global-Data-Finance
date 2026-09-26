@@ -2,8 +2,9 @@
 
 import asyncio
 from collections.abc import Sequence
+from concurrent.futures import Executor, ThreadPoolExecutor
+from functools import partial
 from pathlib import Path
-from typing import Protocol
 
 import httpx
 
@@ -18,7 +19,14 @@ from ....core.config import PathSafetySettings
 from ....macro_exceptions import DownloadTimeoutError, NetworkError
 from ....macro_infra import RequestsAdapter
 from .core import DownloadResultCVM
-from .download_extraction import extract_downloaded_file
+from .download_extraction import (
+    _ParquetExtractor,
+    resolve_parquet_extractor,
+)
+from .download_finalization import (
+    finalize_downloaded_file,
+    run_download_finalizer,
+)
 from .download_paths import build_download_target_path
 from .download_validation import validate_downloaded_file
 
@@ -27,13 +35,6 @@ logger = get_logger(__name__)
 DownloadTaskCVM = tuple[str, str, str, str]
 _TIMEOUT_ERRORS = (httpx.TimeoutException, TimeoutError, asyncio.TimeoutError)
 _NETWORK_ERRORS = (httpx.RequestError, httpx.HTTPStatusError, ConnectionError)
-
-
-class _ParquetExtractor(Protocol):
-    """Defer construction of the Arrow-backed CVM extractor until needed."""
-
-    def extract(self, source_path: str, destination_path: str) -> None:
-        """Extract one downloaded source archive."""
 
 
 class AsyncDownloadAdapterCVM:
@@ -142,6 +143,11 @@ class AsyncDownloadAdapterCVM:
             total=len(tasks), desc='Downloading (async)'
         )
         semaphore = asyncio.Semaphore(self.max_concurrent)
+        finalization_lock = asyncio.Lock()
+        executor = ThreadPoolExecutor(
+            max_workers=1,
+            thread_name_prefix='cvm-finalizer',
+        )
 
         async def download_with_semaphore(task: DownloadTaskCVM) -> None:
             async with semaphore:
@@ -154,13 +160,24 @@ class AsyncDownloadAdapterCVM:
                     result,
                     progress_bar,
                     automatic_extractor=automatic_extractor,
+                    executor=executor,
+                    finalization_lock=finalization_lock,
                 )
 
+        download_tasks = [
+            asyncio.create_task(download_with_semaphore(task))
+            for task in tasks
+        ]
         try:
-            download_tasks = [download_with_semaphore(task) for task in tasks]
             await asyncio.gather(*download_tasks)
+        except BaseException:
+            for task in download_tasks:
+                task.cancel()
+            await asyncio.gather(*download_tasks, return_exceptions=True)
+            raise
         finally:
             progress_bar.close()
+            executor.shutdown(wait=True, cancel_futures=True)
 
     async def _download_and_extract(
         self,
@@ -172,6 +189,8 @@ class AsyncDownloadAdapterCVM:
         progress_bar: SimpleProgressBar,
         *,
         automatic_extractor: bool = False,
+        executor: Executor | None = None,
+        finalization_lock: asyncio.Lock | None = None,
     ) -> None:
         """Download a file and extract its contents."""
         filepath = str(
@@ -191,6 +210,8 @@ class AsyncDownloadAdapterCVM:
                 year,
                 result,
                 automatic_extractor=automatic_extractor,
+                executor=executor,
+                finalization_lock=finalization_lock,
             )
         finally:
             progress_bar.update(1)
@@ -205,6 +226,8 @@ class AsyncDownloadAdapterCVM:
         result: DownloadResultCVM,
         *,
         automatic_extractor: bool = False,
+        executor: Executor | None = None,
+        finalization_lock: asyncio.Lock | None = None,
     ) -> None:
         success, staged_path_or_error = await self._download_with_retry(
             url, filepath, doc_name, year
@@ -217,86 +240,63 @@ class AsyncDownloadAdapterCVM:
                 staged_path_or_error or 'Unknown download error',
             )
             return
-
         staging_path = Path(staged_path_or_error or filepath)
-        owns_staging = staged_path_or_error is not None
-        promoted = False
+        owns_staging = (
+            staged_path_or_error is not None and staging_path != Path(filepath)
+        )
+        worker_executor = executor
+        owns_executor = worker_executor is None
 
         try:
             expected_size = await self._get_content_length(url)
-            if not self._validate_downloaded_file(
-                str(staging_path), expected_size
-            ):
-                logger.error(
-                    'Downloaded file validation failed for %s: %s',
-                    document_key,
+            if worker_executor is None:
+                worker_executor = ThreadPoolExecutor(
+                    max_workers=1,
+                    thread_name_prefix='cvm-finalizer',
+                )
+            if finalization_lock is None:
+                finalization_lock = asyncio.Lock()
+            if automatic_extractor:
+                self.file_extractor_repository = resolve_parquet_extractor(
+                    self.file_extractor_repository,
+                    archive_limits=self.archive_limits,
+                    allowed_unc_roots=self.allowed_unc_roots,
+                )
+            file_extractor_repository = (
+                self.file_extractor_repository if automatic_extractor else None
+            )
+            finalization_result = await run_download_finalizer(
+                worker_executor,
+                finalization_lock,
+                partial(
+                    finalize_downloaded_file,
                     staging_path,
-                )
-                result.add_error_downloads(
-                    document_key,
-                    'Downloaded file corrupted, incomplete, or invalid ZIP',
-                )
-                return
-
-            try:
-                staging_path.replace(Path(filepath))
-            except OSError as promotion_error:
-                logger.error(
-                    'Failed to promote downloaded file for %s: %s',
-                    document_key,
-                    promotion_error,
-                    exc_info=True,
-                )
-                result.add_error_downloads(
-                    document_key,
-                    f'Downloaded file promotion failed: '
-                    f'{type(promotion_error).__name__}: {promotion_error}',
-                )
-                return
-
-            promoted = True
-
-        finally:
-            if owns_staging and not promoted:
+                    Path(filepath),
+                    dest_path,
+                    doc_name,
+                    year,
+                    expected_size,
+                    automatic_extractor=automatic_extractor,
+                    file_extractor_repository=file_extractor_repository,
+                    validate_file=self._validate_downloaded_file,
+                    cleanup_file=partial(remove_file, log_on_error=True),
+                ),
+            )
+        except BaseException:
+            if owns_staging:
                 remove_file(str(staging_path), log_on_error=True)
+            raise
+        finally:
+            if owns_executor and worker_executor is not None:
+                worker_executor.shutdown(wait=True, cancel_futures=True)
 
-        if automatic_extractor:
-            self._extract_downloaded_file(
-                filepath, dest_path, doc_name, year, result
-            )
+        if finalization_result.succeeded:
+            result.add_success_downloads(document_key)
             return
-
-        result.add_success_downloads(document_key)
-        logger.info('✓ Downloaded %s (extraction disabled)', document_key)
-
-    def _extract_downloaded_file(
-        self,
-        filepath: str,
-        dest_path: str,
-        doc_name: str,
-        year: str,
-        result: DownloadResultCVM,
-    ) -> None:
-        extract_downloaded_file(
-            file_extractor_repository=self._get_file_extractor(),
-            filepath=filepath,
-            dest_path=dest_path,
-            doc_name=doc_name,
-            year=year,
-            result=result,
-            cleanup_file=lambda path: remove_file(path, log_on_error=True),
+        result.add_error_downloads(
+            document_key,
+            finalization_result.error_message or 'Unknown finalization error',
         )
-
-    def _get_file_extractor(self) -> _ParquetExtractor:
-        """Instantiate the Arrow extraction path only for requested work."""
-        if self.file_extractor_repository is None:
-            from .extract import ParquetExtractorAdapterCVM
-
-            self.file_extractor_repository = ParquetExtractorAdapterCVM(
-                archive_limits=self.archive_limits,
-                allowed_unc_roots=self.allowed_unc_roots,
-            )
-        return self.file_extractor_repository
 
     async def _download_with_retry(
         self,

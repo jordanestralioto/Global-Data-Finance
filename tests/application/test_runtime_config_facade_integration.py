@@ -7,6 +7,9 @@ from pathlib import Path
 import pytest
 
 from globaldatafinance import FundamentalStocksDataCVM, HistoricalQuotesB3
+from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
+    download_extraction,
+)
 from globaldatafinance.core.config import (
     ArchiveSafetySettings,
     NetworkSettings,
@@ -54,13 +57,17 @@ def test_cvm_facades_hold_independent_network_and_archive_snapshots(
     dest_b.mkdir()
 
     with pytest.raises(CorruptedZipError):
-        client_a.download_adapter._get_file_extractor().extract(
-            str(zip_file), str(dest_a)
-        )
+        download_extraction.resolve_parquet_extractor(
+            client_a.download_adapter.file_extractor_repository,
+            archive_limits=client_a.download_adapter.archive_limits,
+            allowed_unc_roots=client_a.download_adapter.allowed_unc_roots,
+        ).extract(str(zip_file), str(dest_a))
 
-    client_b.download_adapter._get_file_extractor().extract(
-        str(zip_file), str(dest_b)
-    )
+    download_extraction.resolve_parquet_extractor(
+        client_b.download_adapter.file_extractor_repository,
+        archive_limits=client_b.download_adapter.archive_limits,
+        allowed_unc_roots=client_b.download_adapter.allowed_unc_roots,
+    ).extract(str(zip_file), str(dest_b))
     assert (dest_b / 'data.parquet').exists()
 
 

@@ -6,9 +6,6 @@ import pytest
 from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
     download_extraction,
 )
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.core import (
-    DownloadResultCVM,
-)
 from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
     ParquetExtractorAdapterCVM,
 )
@@ -45,25 +42,22 @@ class TestZipCleanup:
     def test_successful_production_flow_removes_zip(self, tmp_path):
         archive_path = tmp_path / 'successful_download.zip'
         _write_valid_archive(archive_path)
-        result = DownloadResultCVM()
         cleanup_calls: list[str] = []
 
         def cleanup(path: str) -> None:
             cleanup_calls.append(path)
             _delete_file(path)
 
-        extract_downloaded_file(
+        error_message = extract_downloaded_file(
             file_extractor_repository=ParquetExtractorAdapterCVM(),
             filepath=str(archive_path),
             dest_path=str(tmp_path),
             doc_name='DFP',
             year='2023',
-            result=result,
             cleanup_file=cleanup,
         )
 
-        assert result.successful_downloads == ['DFP_2023']
-        assert result.failed_downloads == {}
+        assert error_message is None
         assert (tmp_path / 'data.parquet').exists()
         assert cleanup_calls == [str(archive_path)]
         assert not archive_path.exists()
@@ -81,30 +75,26 @@ class TestZipCleanup:
     ):
         archive_path = tmp_path / f'{failure_kind}.zip'
         _write_valid_archive(archive_path)
-        result = DownloadResultCVM()
         repository = Mock()
         repository.extract.side_effect = failure
 
         cleanup = Mock(side_effect=_delete_file)
-        extract_downloaded_file(
+        error_message = extract_downloaded_file(
             file_extractor_repository=repository,
             filepath=str(archive_path),
             dest_path=str(tmp_path),
             doc_name='DFP',
             year='2023',
-            result=result,
             cleanup_file=cleanup,
         )
 
-        assert result.successful_downloads == []
-        assert result.error_count_downloads == 1
-        assert 'DFP_2023' in result.failed_downloads
+        assert error_message is not None
         expected_marker = {
             'disk_full': 'DiskFull:',
             'corrupted_zip': 'CorruptedZIP:',
             'parquet_write': 'ParquetWrite:',
         }[failure_kind]
-        assert expected_marker in result.failed_downloads['DFP_2023']
+        assert expected_marker in error_message
         cleanup.assert_not_called()
         assert archive_path.exists()
 
@@ -114,7 +104,6 @@ class TestZipCleanup:
     ):
         archive_path = tmp_path / f'{error_kind}.zip'
         _write_valid_archive(archive_path)
-        result = DownloadResultCVM()
         repository = Mock()
         if error_kind == 'extraction':
             repository.extract.side_effect = ExtractionError(
@@ -124,18 +113,15 @@ class TestZipCleanup:
             repository.extract.side_effect = RuntimeError('unexpected failure')
 
         cleanup = Mock(side_effect=_delete_file)
-        extract_downloaded_file(
+        error_message = extract_downloaded_file(
             file_extractor_repository=repository,
             filepath=str(archive_path),
             dest_path=str(tmp_path),
             doc_name='DFP',
             year='2023',
-            result=result,
             cleanup_file=cleanup,
         )
 
-        assert result.successful_downloads == []
-        assert result.error_count_downloads == 1
-        assert 'DFP_2023' in result.failed_downloads
+        assert error_message is not None
         assert archive_path.exists()
         cleanup.assert_not_called()

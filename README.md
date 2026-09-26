@@ -32,11 +32,15 @@ live in `core/`, `macro_infra/`, and `macro_exceptions/`.
 
 ### 🌟 Why Choose Global-Data-Finance?
 
-- **🚀 Performance**: Async downloads with `httpx[http2]`, custom exponential retry/backoff (`core/utils/retry_strategy.py`), and adaptive concurrency monitored by CPU/RAM (`psutil`).
+- **🚀 CVM downloads**: Asynchronous HTTP/2 with up to 10 concurrent requests
+  and exponential retries.
+- **B3 processing**: Fast mode bounds file workers by source count, CPU count,
+  and available memory. The default worker cap is four and can be configured
+  with `GDF_B3_WORKER_LIMIT`; slow mode uses one worker.
 - **🛡️ Robustness**: Downloaded files are checked for expected size and readable ZIP contents; inputs and paths are validated before extraction or writes, with a failure-atomic CVM batch commit during automatic extraction.
 - **💾 Columnar Format**: Canonical output in **Parquet** through `pyarrow`, ready for PyArrow or optional Pandas consumers.
 - **🧩 Source Ownership**: CVM and B3 keep source-specific validation, parsing, orchestration, and I/O in their owning directories; shared behavior is centralized only when it is genuinely generic.
-- **✨ Developer Experience**: Complete type hints, structured logging, strict test markers (`unit`, `integration`, `slow`, `asyncio`).
+- **✨ Developer Experience**: Complete type hints, structured logging, and explicit pytest tiers (`unit`, `integration`, `perf`) with qualifiers (`slow`, `real_data`, `asyncio`).
 
 ______________________________________________________________________
 
@@ -57,7 +61,8 @@ ______________________________________________________________________
   - File path, size, and readable-ZIP validation. MD5 checksum support is **Planned** and is not implemented in the current runtime.
 - **Quotes Processing (B3)**:
   - Optimized parser for legacy positional files.
-  - Execution modes: `fast` (in-memory) and `slow` (low-memory).
+  - Execution modes: `fast` (bounded concurrent file processing) and `slow`
+    (single worker with lower memory use).
   - Advanced filtering by currently supported asset category.
 
 ### B3 asset categories
@@ -89,35 +94,36 @@ fixed-time promise for every machine or dataset.
 
 ### B3 local benchmark
 
-Measured on **2026-08-06** with Python 3.13.7, 8 CPUs, and 7.55 GB RAM. The 17
-official COTAHIST ZIP files for 2008–2024 were already present locally, so no
-network call occurred during the measurement. The scope covered all currently
-supported asset categories.
+Baseline v3, measured on **2026-09-16** with Python 3.13.7, Linux x86_64,
+8 CPUs, and 7.55 GB RAM. It processed the 27 official COTAHIST ZIP files for
+2000–2026 locally, without network calls, across all supported asset
+categories.
 
-| Mode          | Written rows |    Peak RSS | Elapsed time |
-| :------------ | -----------: | ----------: | -----------: |
-| **B3 `fast`** |   15,059,876 | 4,259.35 MB |   1,224.64 s |
-| **B3 `slow`** |   15,059,876 | 1,570.54 MB |   1,761.91 s |
+| Mode          | Written rows |      Throughput |   Peak RSS | End-to-end time |
+| :------------ | -----------: | --------------: | ---------: | --------------: |
+| **B3 `fast`** |   22,303,577 | 34,313.8 rows/s | 429.88 MiB |        650.50 s |
+| **B3 `slow`** |   22,303,577 | 29,759.9 rows/s | 331.11 MiB |        750.10 s |
 
 ### CVM end-to-end benchmark
 
-This separate measurement includes CVM downloads, downloaded-file validation,
-CSV extraction, and Parquet generation. It is network-dependent, so elapsed
-time varies with source availability, bandwidth, and latency.
+Baseline v2 (revision `703d9ab`) includes CVM downloads, downloaded-file
+validation, CSV extraction, and Parquet generation. It is network-dependent, so
+elapsed time varies with source availability, bandwidth, and latency.
 
-| Scope                              | ZIPs downloaded | Parquet artifacts | Extracted rows |  Peak RSS | Elapsed time |
-| :--------------------------------- | --------------: | ----------------: | -------------: | --------: | -----------: |
-| CVM, all document types, 2010–2024 |              88 |             1,392 |     63,300,208 | 459.18 MB |     505.04 s |
+| Scope                              | ZIPs | Parquets | Extracted rows | Output total |  Peak RSS | Elapsed time | Errors |
+| :--------------------------------- | ---: | -------: | -------------: | -----------: | --------: | -----------: | -----: |
+| CVM, all document types, 2010–2026 |  102 |    1,569 |     70,821,466 |    382.27 MB | 333.91 MB |     906.85 s |      0 |
 
-### Reproducible synthetic B3 baseline
+### Synthetic B3 candidate under the Arrow v3 protocol
 
-The synthetic benchmark used 250,000 records and three local runs per mode; it
-also made no network calls.
+The 2026-09-12 candidate used three fresh Python processes and a deterministic
+250,000-row corpus, without network calls. The protocol separates operation
+time from post-write validation, so these results are not directly comparable
+with the historical synthetic baseline.
 
-| Mode   | Written rows | Elapsed time (median) |    Peak RSS | Throughput (median) |
-| :----- | -----------: | --------------------: | ----------: | ------------------: |
-| `fast` |      250,000 |               12.27 s | 1,111.72 MB |    22,427 records/s |
-| `slow` |      250,000 |               19.04 s | 1,103.01 MB |    13,847 records/s |
+| Scenario | Repetitions | Written rows | Operational time (median) | Peak RSS (median) |  Parquet output | Logical equivalence |
+| :------- | ----------: | -----------: | ------------------------: | ----------------: | --------------: | ------------------: |
+| B3 250k  |           3 |      250,000 |                   5.832 s |       215.898 MiB | 5,822,005 bytes |                 3/3 |
 
 See the full [benchmark methodology and reproduction guide](docs/dev-guide/benchmarks.md).
 
@@ -254,7 +260,7 @@ graph TD
     Source --> External[Web / File System / Parquet]
 ```
 
-### Directory Structure
+### Key Source Directories
 
 ```text
 src/
@@ -266,13 +272,15 @@ src/
     │   ├── cvm/
     │   │   └── fundamental_stocks_data/   # CVM source implementation
     │   │       ├── core.py · client.py · errors.py
-    │   │       ├── http.py · extract.py
-    │   │       └── download_validation.py · download_extraction.py
+    │   │       ├── http.py · extract.py · transaction.py
+    │   │       ├── download_paths.py · download_validation.py
+    │   │       ├── download_extraction.py · download_finalization.py
+    │   │       └── csv_pipeline/          # encoding, inference, Arrow writer
     │   └── b3_data/
     │       └── historical_quotes/         # B3 source implementation
     │           ├── models.py · filesystem.py · assets.py · processing.py · years.py
-    │           ├── client.py · zip_reader.py · errors.py
-    │           ├── cotahist_parser.py
+    │           ├── client.py · catalog.py · integrity.py · member_resolver.py
+    │           ├── cotahist_parser.py · zip_reader.py · errors.py
     │           ├── parquet_writer/        # subpackage (writer/schema/session/...)
     │           └── extraction_service/    # subpackage (service/zip_processor/...)
     ├── core/                              # shared configuration and runtime utilities
@@ -290,12 +298,12 @@ ______________________________________________________________________
 
 Manager for downloading CVM documents.
 
-| Method                    | Signature                                                                                                                                                                               | Description                                                 |
-| :------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------- |
-| **`download`**            | `(destination_path: str, list_docs: list[str] \| None = None, initial_year: int \| None = None, last_year: int \| None = None, automatic_extractor: bool = False) -> DownloadResultCVM` | Downloads and optionally extracts documents.                |
-| **`async_download`**      | `(destination_path: str, list_docs: list[str] \| None = None, initial_year: int \| None = None, last_year: int \| None = None, automatic_extractor: bool = False) -> DownloadResultCVM` | Asynchronous variant of `download`.                         |
-| **`get_available_docs`**  | `() -> dict[str, str]`                                                                                                                                                                  | Returns list of available documents and their descriptions. |
-| **`get_available_years`** | `() -> AvailableYearsInfoCVM`                                                                                                                                                           | Returns range of available years for download.              |
+| Method                    | Signature                                                                                                                                                                               | Description                                                    |
+| :------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------- |
+| **`download`**            | `(destination_path: str, list_docs: list[str] \| None = None, initial_year: int \| None = None, last_year: int \| None = None, automatic_extractor: bool = False) -> DownloadResultCVM` | Downloads and optionally extracts documents.                   |
+| **`async_download`**      | `(destination_path: str, list_docs: list[str] \| None = None, initial_year: int \| None = None, last_year: int \| None = None, automatic_extractor: bool = False) -> DownloadResultCVM` | Asynchronous variant of `download`.                            |
+| **`get_available_docs`**  | `() -> dict[str, str]`                                                                                                                                                                  | Returns a mapping of available document codes to descriptions. |
+| **`get_available_years`** | `() -> AvailableYearsInfoCVM`                                                                                                                                                           | Returns range of available years for download.                 |
 
 ### `HistoricalQuotesB3`
 

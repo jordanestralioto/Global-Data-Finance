@@ -3,6 +3,7 @@
 - review_id: ${reviewId}
 - status: ${status}
 - target_agent: ${targetAgent}
+- reviewed_by: ${reviewedBy}
 
 ## Reason
 
@@ -15,3 +16,7 @@ ${affectedFiles}
 ## Evidence IDs
 
 ${evidenceIds}
+
+## Specialist Assessment
+
+${reviewSummary}

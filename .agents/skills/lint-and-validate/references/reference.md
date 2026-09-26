@@ -1,64 +1,41 @@
-# reference.md
+# Contratos de validação
 
-## O que esta referencia faz
+## Escolha do comando
 
-Esta referencia nao e mais o manual completo do harness.
-Ela existe para ajudar a IA e humanos a decidir rapidamente quando usar a skill `lint-and-validate`, o que fazer primeiro e por que esse caminho e o certo.
+Leia os comandos declarados pelo repositório operado antes de executar qualquer
+gate. A escolha depende do resultado solicitado:
 
-O guia amplo do runtime fica nas diretrizes de verificacao do repositorio.
+| Resultado solicitado                                  | Comando e limite                                                                                                                                                                                                                                  |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Checks pontuais de um diff                            | Use os comandos de lint, typecheck ou teste declarados pelo repositório. Relate que a cobertura é parcial.                                                                                                                                        |
+| Validação completa ou `gate-report` de uma change     | Use `validationCommand` e `evidencePath` de `openspec/handoff.json`, se declarados. Nesta central, o executor é `scripts/harness_verify.py`; num consumidor que selecionou `tools/harness-verify`, a cópia é `.agents/scripts/harness_verify.py`. |
+| Skills e agents na árvore-fonte desta central         | Use os validadores oficiais da central, como `scripts/validate-skills.py` e `scripts/validate-agent-protocols.py`, além dos demais gates exigidos pelo repositório.                                                                               |
+| Manifesto, lock e projeção no consumidor              | Use `harness-sync --check`.                                                                                                                                                                                                                       |
+| Estrutura de skills, agents e workflows no consumidor | Use `harness-validate --request <caminho-do-request>`. Ele só cobre os escopos declarados no request. Se houver snapshot versionado, use também `--check-result` para detectar evidência desatualizada.                                           |
 
-## Quando usar esta skill
+Se `validationCommand` não existir, leia os hooks e seus estágios antes de
+escolher os comandos. `pre-commit run --all-files` executa o estágio
+`pre-commit`; hooks `commit-msg` e `pre-push` precisam de seus próprios estágios
+ou de um verificador repo-native que os execute. Não apresente um check pontual
+ou um único estágio como aprovação de todos os gates.
 
-Use `lint-and-validate` quando o trabalho principal for validacao objetiva de um artefato alterado:
+`harness-validate` inspeciona estaticamente os artefatos selecionados no
+request. Ele não confere se o manifesto e o lock correspondem à projeção; essa
+é a função de `harness-sync --check`. Também não produz `gate-report.json`.
 
-- escolher o comando canonico de verificacao sem inventar fluxo local;
-- validar diff comum com gates repo-native e `gate-report`;
-- validar uma skill contra `skill-governance`;
-- validar agents, manifests e o protocolo `review-workflow`.
+## Leitura de falhas
 
-## Por que usar esta skill
+- Registre comando, escopo, estágio, código de saída e status de cada gate
+  executado. Um escopo opcional `skipped` só é aceitável quando o contrato o
+  permite; ele não demonstra que o artefato foi validado.
+- Separe falha de código, falha de ambiente e ausência de ferramenta pela
+  evidência do terminal. Se não for possível determinar a causa, marque-a como
+  indeterminada.
+- Para falhas de TypeScript fora do diff, investigue dependências e compare com
+  um baseline verificável antes de atribuir a origem. Mesmo quando for
+  preexistente, o gate oficial permanece falho; relate isso explicitamente.
 
-Ela existe para evitar tres erros comuns:
+Não use autofix amplo como padrão nem substitua `review-workflow` ou
+`security-engineer` por uma validação mecânica.
 
-- escolher gates manualmente por intuicao;
-- misturar falha de ambiente com falha de codigo;
-- encerrar uma entrega sem evidencias reutilizaveis para `review-workflow` ou security.
-
-Em vez disso, a skill separa o problema por entrypoint canonico:
-
-- Comando oficial declarado pelo projeto consumidor (ou `pre-commit run --all-files`) para diff comum e gates do repo;
-- `harness-validate --request <caminho>` para governança e integridade de skills, agents e workflows projetados no consumidor.
-
-## O que fazer na pratica
-
-1. Confirme se o pedido e de validacao, nao de implementacao ou arquitetura.
-2. Escolha o entrypoint pelo artefato:
-   - diff comum e gates: comando oficial do projeto ou `pre-commit run --all-files`
-   - skills, agents e workflows projetados: `harness-validate --request <caminho>` (ex.: `harness-validate --request .agents/validation/request.json`)
-3. Execute o comando e confira o exit code e o status de cada gate.
-4. Responda com a evidencia terminal resumida.
-
-## O que nao fazer
-
-- Nao substituir `review-workflow` ou `security-engineer`.
-- Nao usar autofix amplo como comportamento padrao.
-- Nao criar wrapper local se o script oficial do repo ja cobre a necessidade.
-- Nao recomendar ferramentas internas da central (`validate-skills.py` ou `validate-agent-protocols.py`) fora da própria árvore-fonte da central.
-
-## Perguntas que esta skill responde bem
-
-- "Qual e o menor comando canonico para validar isso?"
-- "Essa falha e de codigo ou de ambiente?"
-- "Como valido as skills e agents projetados no consumidor?"
-
-## Atalhos uteis
-
-- Executar todos os gates repo-native:
-  `pre-commit run --all-files`
-- Validar skills, agents e workflows projetados:
-  `harness-validate --request .agents/validation/request.json`
-
-## Exemplos e guia amplo
-
-- [examples.md](./examples.md): pedidos concretos e resposta esperada da skill.
-- Diretrizes do verifier repo-native, contrato de gates e integridade de evidencia no repositorio.
+Veja [examples.md](./examples.md) para pedidos e respostas concretos.

@@ -134,12 +134,12 @@ atualmente.
 
 ### Qual a diferença entre modo fast e slow?
 
-| Modo     | Performance | CPU   | Pico de RAM (Faixa Operacional) | Quando usar                         |
-| -------- | ----------- | ----- | ------------------------------- | ----------------------------------- |
-| **fast** | Alta        | Alto  | ~2 GB a 4.2 GB (padrão)         | Máquinas com bons recursos (padrão) |
-| **slow** | Moderada    | Baixo | ~500 MB a 1.5 GB                | Recursos limitados                  |
+| Modo     | Workers no padrão                                    | Throughput medido* | Pico RSS medido* | Quando usar            |
+| -------- | ---------------------------------------------------- | -----------------: | ---------------: | ---------------------- |
+| **fast** | Até 4, limitado por CPUs, memória disponível e arquivos-fonte | 34.313,8 reg/s    | 429,88 MiB       | Priorizar velocidade   |
+| **slow** | 1 worker                                             | 29.759,9 reg/s      | 331,11 MiB       | Reduzir uso de memória |
 
-> Os valores de benchmark medidos em dataset anual completo (~4.260 MB em modo `fast` e ~1.571 MB em modo `slow`) representam cenários de carga máxima. Em execuções operacionais típicas ou anos individuais, o pico varia dentro das faixas indicadas.
+*Medição em 27 arquivos anuais (2000–2026), com 22.303.577 registros, em Python 3.13.7, Linux x86_64, 8 CPUs e 7,55 GB de memória. Os números variam conforme o ambiente; veja os [detalhes do benchmark](../dev-guide/benchmarks.md).*
 
 ```python
 from globaldatafinance import HistoricalQuotesB3
@@ -213,7 +213,10 @@ ______________________________________________________________________
 
 ### Como acelerar downloads?
 
-O Global-Data-Finance já usa download paralelo por padrão (`AsyncDownloadAdapterCVM`), que é 3-5x mais rápido que download sequencial.
+O Global-Data-Finance usa downloads assíncronos concorrentes por padrão
+(`AsyncDownloadAdapterCVM`, até 10 downloads simultâneos). O tempo depende da
+rede, dos servidores da CVM e do volume solicitado; veja a [linha de base do
+fluxo CVM completo](../dev-guide/benchmarks.md).
 
 ### Como acelerar extração de cotações?
 

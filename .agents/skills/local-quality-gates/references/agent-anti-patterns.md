@@ -2,6 +2,10 @@
 
 > Summary: Comprehensive reference of common mistakes, shortcuts, and erosion patterns introduced by AI coding agents during refactoring or feature implementation, and how to intercept them locally.
 
+The scanner rules below describe an optional strict profile. Select it only
+when the project's policy accepts its bans and Python runtime requirement;
+the portable workflow does not impose these rules on every stack.
+
 ## 1. Catalog of AI Coding Agent Traps
 
 ### 1.1 Leftover Debug and Inspection Artifacts

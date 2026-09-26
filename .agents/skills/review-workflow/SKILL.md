@@ -36,16 +36,33 @@ Use estes nomes técnicos apenas como identificadores estáveis de arquivo:
 
 ## Procedimento
 
-1. Inicialize ou retome a sessão com `scripts/init-review-session.py`.
-2. Gere o plano de revisão com `scripts/build-review-plan.py`.
+1. Crie a sessão com `scripts/init-review-session.py`, ou retome uma sessão
+   existente com `--resume`. Nunca repita a criação sobre uma sessão existente.
+2. Se o plano ainda estiver em `draft`, gere-o com
+   `scripts/build-review-plan.py`; caso contrário, continue o plano existente.
+   Confira que cada arquivo alterado aparece em pelo menos um item. Arquivos
+   sem categoria específica entram no item `behavior`.
 3. Avalie se deve executar a seção `Revisão Isolada`.
 4. Leia o diff e contexto adjacente de cada item planejado.
 5. Registre apenas apontamentos acionáveis com `scripts/append-finding.py`.
    Evite comentários de estilo que uma validação mecânica resolveria.
-6. Execute a validação repo-native (ex.: `pre-commit run --all-files` ou o comando declarado em `openspec/handoff.json`) e escreva o artefato `artifacts/gate-report.json` da sessão (com status `completed` e a lista `gates` preenchida a partir do resultado) usando a estrutura base de `build_empty_gate_report()` em `.agents/runtime/review/runtime_support.py`.
-7. Crie `security-handoff` quando houver risco material com
-   `scripts/create-security-handoff.py`; não aprove segurança material sem uma
-   revisão própria de segurança.
+6. Execute a validação repo-native por `scripts/record-gate-report.py`. O
+   script seleciona o comando de `openspec/handoff.json` (com `--change`) ou,
+   na ausência dele, `pre-commit run --all-files` quando há hooks declarados
+   sem estágios adicionais. Hooks com estágios explícitos exigem contrato
+   estruturado para evitar aprovação sem executar parte dos gates.
+   Inspecione o entrypoint de scripts locais antes de executá-los. O relatório
+   registra falhas, rejeita alterações no código durante a validação e vincula
+   o resultado ao estado do repositório; o fechamento confere esse vínculo
+   novamente. Sem contrato declarado, preserve
+   `INCOMPLETE` e informe o comando ausente.
+7. Crie `security-handoff` com `scripts/create-security-handoff.py` para todo
+   apontamento de segurança não descartado com severidade `blocker` ou
+   `warning` e confiança `high` ou `medium`. Encaminhe-o a
+   `security-engineer`. Só registre `cleared` ou `waived` depois de receber e
+   conferir a análise independente; inclua `--reviewed-by security-engineer`
+   e `--review-summary`. O CLI registra a declaração, mas não autentica quem
+   executou a revisão.
 8. Marque itens concluídos e consolide o parecer final com
    `scripts/consolidate-verdict.py`.
 9. Exporte o resumo legível com `scripts/export-review-summary.py`.
@@ -62,13 +79,43 @@ python3 .agents/skills/review-workflow/scripts/init-review-session.py \
   --changed-file src/example.py
 ```
 
+Para retomar, use `--resume --session-dir .agents/sessions/review-<id>`.
+O comando preserva os artefatos e recusa opções de criação.
+Em revisão de PR, informe também `--base-ref` e `--head-ref` e os arquivos do
+diff; o fechamento compara a lista com `git diff base...head`. Em revisão do
+working tree, confira a lista contra o diff e o estado de Git antes de abrir
+a sessão, pois não há refs que delimitem automaticamente a mudança.
+
 ```bash
 python3 .agents/skills/review-workflow/scripts/build-review-plan.py \
   --session-dir .agents/sessions/review-<id>
 ```
 
-Execute a validação repo-native (ex.: `pre-commit run --all-files`) e popule
-`artifacts/gate-report.json` na sessão.
+Execute o contrato de validação do repositório e grave os gates:
+
+```bash
+python3 .agents/skills/review-workflow/scripts/record-gate-report.py \
+  --session-dir .agents/sessions/review-<id>
+```
+
+Se houver `openspec/handoff.json`, acrescente `--change <nome-da-change>`.
+O script deriva o comando, o caminho da evidência e o verificador desse
+contrato, exige relatório recém-gerado e importa os gates individuais. Não
+substitua o verificador por um comando escolhido na revisão. Se o código mudar
+depois da validação, execute o script novamente antes de consolidar o parecer.
+
+Para encaminhar segurança, crie primeiro o handoff em `pending`:
+
+```bash
+python3 .agents/skills/review-workflow/scripts/create-security-handoff.py \
+  --session-dir .agents/sessions/review-<id> \
+  --reason "Review the authorization finding."
+```
+
+Depois da resposta do especialista, registre o resultado com `--status cleared` ou `--status changes_required`, `--reviewed-by security-engineer` e
+`--review-summary "<resultado concreto>"`. Confira a resposta recebida antes
+de executar o comando: o arquivo local registra a procedência declarada, mas
+não prova a identidade do revisor.
 
 Para registrar `finding`, envie JSON pelo stdin para manter o artefato
 validável pelo schema:
@@ -159,6 +206,7 @@ motivo na saída final.
 - `scripts/init-review-session.py`: cria os artefatos iniciais.
 - `scripts/build-review-plan.py`: cria o plano por tipo de risco.
 - `scripts/append-finding.py`: registra um apontamento estruturado.
+- `scripts/record-gate-report.py`: executa gates e grava a evidência da sessão.
 - `scripts/expand-review-item-context.py`: adiciona contexto relacionado.
 - `scripts/mark-review-item-done.py`: conclui item do plano.
 - `scripts/detect-security-touch.py`: detecta sinais de superfície sensível.
@@ -168,8 +216,14 @@ motivo na saída final.
 
 ## Se Algo Falhar
 
-- Se sessão, plano ou gates estiverem ausentes, gere o artefato faltante pelo
-  script correspondente. Não escreva JSON manualmente.
+- Se sessão, plano ou gates estiverem ausentes, use o script correspondente.
+  Nunca escreva o artefato JSON manualmente.
+- Se `gate-report` estiver pendente, vazio ou contiver gate bloqueante não
+  executado, preserve `INCOMPLETE` até a validação ser concluída. Uma gate
+  bloqueante que já falhou produz `CHANGES_REQUIRED` e mantém as lacunas
+  restantes em `blockingReasons`.
+- Se a evidência estruturada mudar ou a reverificação nativa falhar, preserve
+  `INCOMPLETE` e execute novamente o contrato de validação.
 - Se o contexto factual não sustentar um apontamento, registre a incerteza ou
   expanda contexto antes de salvar o apontamento.
 - Se segurança estiver pendente, preserve `SECURITY_REVIEW_REQUIRED` até o
@@ -177,7 +231,8 @@ motivo na saída final.
 
 ## Condições de Saída
 
-- Sessão, plano, `gate-report` e `verdict` existem como JSON canônico.
+- Sessão, plano, `gate-report` e `verdict` existem como JSON canônico; todo
+  arquivo alterado tem item de revisão e toda gate bloqueante foi executada.
 - Todo apontamento tem severidade, confiança, impacto, ação recomendada e
   evidência.
 - O resumo legível reflete os artefatos atuais.
@@ -249,8 +304,8 @@ Assertions:
 
 ### Cenário 3 - Revisão com findings não bloqueantes
 
-Entrada: sessão com apenas findings `warning` ou `nit` abertos e gates
-bloqueantes aprovados.
+Entrada: sessão com apenas findings não relacionados à segurança, `warning` ou
+`nit`, abertos e gates bloqueantes aprovados.
 
 Assertions:
 
@@ -276,5 +331,55 @@ Entrada: pedido para registrar um apontamento ou encerrar parecer.
 Assertions:
 
 - [ ] cria artefatos por scripts, não por JSON manual.
+- [ ] grava `gate-report` com `record-gate-report.py`.
 - [ ] registra finding com severidade, confiança, impacto, ação e evidência.
 - [ ] exporta resumo legível depois de consolidar o `verdict`.
+
+### Cenário 6 - Evidência incompleta
+
+Entrada: relatório pendente, vazio ou com gate bloqueante não executado.
+
+Assertions:
+
+- [ ] consolida `verdict` como `INCOMPLETE`.
+- [ ] explica a evidência ausente em `blockingReasons`.
+- [ ] não emite `APPROVED`.
+
+### Cenário 7 - Arquivo sem categoria e retomada
+
+Entrada: mudança em `pkg/selection.py` e sessão já iniciada.
+
+Assertions:
+
+- [ ] o arquivo entra em um item `behavior`.
+- [ ] `--resume` mantém plano, apontamentos, gates e parecer existentes.
+- [ ] repetir a criação falha sem sobrescrever a sessão.
+
+### Cenário 8 - Segurança material sem handoff
+
+Entrada: finding `security:` aberto, `warning/high`, sem `security-handoff`.
+
+Assertions:
+
+- [ ] consolida `verdict` como `SECURITY_REVIEW_REQUIRED`.
+- [ ] informa que o handoff precisa ser criado.
+- [ ] não aprova o risco como advisory comum.
+
+### Cenário 9 - Evidência adulterada ou estado alterado
+
+Entrada: gate aprovado, seguido de alteração no código ou no relatório nativo.
+
+Assertions:
+
+- [ ] reverifica o contrato e o estado no fechamento.
+- [ ] consolida `INCOMPLETE` e pede nova validação.
+
+### Cenário 10 - Resultado de segurança sem análise registrada
+
+Entrada: handoff pendente e tentativa de marcar `cleared` sem o resultado do
+`security-engineer`.
+
+Assertions:
+
+- [ ] recusa o fechamento do handoff.
+- [ ] mantém `SECURITY_REVIEW_REQUIRED`.

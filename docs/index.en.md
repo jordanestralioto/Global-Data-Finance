@@ -259,7 +259,7 @@ ______________________________________________________________________
 - ✅ **Source-Oriented Layout**: Role-named modules and specialized packages make the implementation intuitive to navigate, debug, and audit
 - ✅ **Extensible Design**: Adding a new supported source can follow the existing source-ownership and role-based module boundaries
 - ✅ **Type Safety**: TypedDict contracts and type annotations checked with `mypy`
-- ✅ **Automated CI/CD**: Enforced GitHub Actions quality gates (`ruff`, `mypy`, and `pytest --cov=85%`)
+- ✅ **Automated CI/CD**: Enforced GitHub Actions quality gates (`ruff`, `mypy`, and `pytest --cov`), with an 85% minimum coverage threshold configured in `pyproject.toml`
 
 ### For Analysts & Data Scientists
 

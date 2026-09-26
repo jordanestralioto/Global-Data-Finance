@@ -13,9 +13,6 @@ from staged_changes import (
     get_staged_changes,
     status_for_path,
 )
-from staged_changes import (
-    _parse_name_status as _parse_staged_name_status,
-)
 from workspace_members import (
     GitInspectionError,
     index_file_exists,
@@ -28,6 +25,7 @@ MANIFEST_LOCKFILE_PAIRS: dict[str, tuple[str, ...]] = {
         'pnpm-lock.yaml',
         'package-lock.json',
         'yarn.lock',
+        'bun.lock',
         'bun.lockb',
     ),
     'pyproject.toml': (
@@ -45,11 +43,6 @@ MANIFEST_LOCKFILE_PAIRS: dict[str, tuple[str, ...]] = {
 LOCKFILE_UPDATED_STATUSES = frozenset({'A', 'M', 'R', 'C'})
 
 
-def _parse_name_status(output: str) -> list[StagedChange]:
-    """Keep the parser available for callers of the original CLI module."""
-    return _parse_staged_name_status(output)
-
-
 def get_staged_file_statuses(
     repo_root: Path | None = None,
 ) -> dict[str, str]:
@@ -58,11 +51,6 @@ def get_staged_file_statuses(
         change.new_path: change.status
         for change in get_staged_changes(repo_root)
     }
-
-
-def get_staged_files(repo_root: Path | None = None) -> list[str]:
-    """Return paths currently staged in Git."""
-    return [change.new_path for change in get_staged_changes(repo_root)]
 
 
 def _lockfile_path(manifest_dir: Path, lock_name: str) -> str:
@@ -214,10 +202,19 @@ def _check_lockfiles_for_manifest(
             return []
         if deleted:
             return [_deletion_error(manifest_path, scope, deleted)]
-        if lockfile_checks.is_lockfile_in_sync(
-            manifest_path, manifest_dir, existing, root
-        ):
-            return []
+        try:
+            if lockfile_checks.is_lockfile_in_sync(
+                manifest_path,
+                manifest_dir,
+                existing,
+                root,
+                check_staged_snapshot=(
+                    staged_statuses is not None or staged_changes is not None
+                ),
+            ):
+                return []
+        except lockfile_checks.UnstagedDependencyChangesError as err:
+            return [str(err)]
         return [_missing_update_error(manifest_path, scope, existing)]
     if deleted:
         return [_deletion_error(manifest_path, scope, deleted)]
