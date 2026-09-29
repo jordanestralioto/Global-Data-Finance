@@ -102,3 +102,29 @@ def test_run_process_translates_command_failure(
 
     with pytest.raises(process_runner.ProcessRunnerError, match='exit code 3'):
         process_runner.run_process(['git', 'status'], cwd=tmp_path)
+
+
+def test_run_process_passes_custom_environment(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """The adapter must pass custom environment variables to subprocess."""
+    received_env: object = None
+    expected = SimpleNamespace(returncode=0, stdout='ok', stderr='')
+
+    def fake_run(*_args: object, **kwargs: object) -> SimpleNamespace:
+        nonlocal received_env
+        received_env = kwargs.get('env')
+        return expected
+
+    monkeypatch.setattr(process_runner.shutil, 'which', lambda _: '/bin/git')
+    monkeypatch.setattr(process_runner.subprocess, 'run', fake_run)
+
+    process_runner.run_process(
+        ['git', 'status'],
+        cwd=tmp_path,
+        env={'CUSTOM_VAR': '1'},
+        check=False,
+    )
+
+    assert received_env == {'CUSTOM_VAR': '1'}

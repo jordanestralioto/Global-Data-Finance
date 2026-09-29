@@ -27,12 +27,15 @@ from globaldatafinance import FundamentalStocksDataCVM
 cvm = FundamentalStocksDataCVM()
 
 # 2. Baixar documentos DFP (Demonstrações Financeiras Padronizadas)
-cvm.download(
+result = cvm.download(
     destination_path="/home/usuario/dados_cvm",
     list_docs=["DFP"],
     initial_year=2022,
     last_year=2023
 )
+if result.error_count_downloads > 0 or result.success_count_downloads == 0:
+    print(f"Download incompleto: {result.failed_downloads}")
+    raise SystemExit(1)
 ```
 
 ### O que acontece?
@@ -73,6 +76,7 @@ Agora vamos extrair cotações históricas da B3 (Bolsa de Valores do Brasil).
 ### Código Básico
 
 ```python
+from pathlib import Path
 from globaldatafinance import HistoricalQuotesB3
 
 # 1. Criar instância do cliente B3
@@ -83,8 +87,20 @@ result = b3.extract(
     path_of_docs="/home/usuario/cotahist_zips",
     assets_list=["ações"],
     initial_year=2023,
+    last_year=2023,
     destination_path="/home/usuario/cotacoes_extraidas"
 )
+output_file = Path(result["output_file"])
+if (
+    not result["success"]
+    or result["total_files"] == 0
+    or result["total_records"] == 0
+    or not result["output_file"]
+    or not output_file.is_file()
+    or output_file.stat().st_size == 0
+):
+    print(f"Extração incompleta: {result['errors']}")
+    raise SystemExit(1)
 
 ```
 
@@ -103,7 +119,7 @@ result = b3.extract(
 ✓ Extraction completed successfully!
 
 📈 Summary:
-  • Processed files: 2
+  • Processed files: 1
   • Total records: 836,978
   • Asset classes: ações
   • Processing mode: fast
@@ -188,6 +204,7 @@ ______________________________________________________________________
 Aqui está um exemplo mais completo que combina download e extração:
 
 ```python
+from pathlib import Path
 from globaldatafinance import FundamentalStocksDataCVM, HistoricalQuotesB3
 
 # === PARTE 1: Download de Documentos CVM ===
@@ -196,13 +213,19 @@ print("ETAPA 1: Download de Documentos CVM")
 print("=" * 60)
 
 cvm = FundamentalStocksDataCVM()
-cvm.download(
+cvm_result = cvm.download(
     destination_path="/home/usuario/dados_financeiros/cvm",
     list_docs=["DFP", "ITR"],
     initial_year=2022,
     last_year=2023,
     automatic_extractor=True  # Extrai automaticamente para Parquet
 )
+if (
+    cvm_result.error_count_downloads > 0
+    or cvm_result.success_count_downloads == 0
+):
+    print(f"Download CVM incompleto: {cvm_result.failed_downloads}")
+    raise SystemExit(1)
 
 # === PARTE 2: Extração de Cotações B3 ===
 print("\n" + "=" * 60)
@@ -225,7 +248,15 @@ print("\n" + "=" * 60)
 print("RESUMO FINAL")
 print("=" * 60)
 
-if result['success']:
+output_file = Path(result["output_file"])
+if (
+    result["success"]
+    and result["total_files"] > 0
+    and result["total_records"] > 0
+    and result["output_file"]
+    and output_file.is_file()
+    and output_file.stat().st_size > 0
+):
     print(f"✓ Pipeline concluído com sucesso!")
     print(f"✓ Total de registros extraídos: {result['total_records']:,}")
     print(f"✓ Arquivo de cotações: {result['output_file']}")
@@ -234,6 +265,7 @@ else:
     if 'errors' in result and result['errors']:
         for file_name, message in result['errors'].items():
             print(f"  • {file_name}: {message}")
+    raise SystemExit(1)
 ```
 
 ______________________________________________________________________

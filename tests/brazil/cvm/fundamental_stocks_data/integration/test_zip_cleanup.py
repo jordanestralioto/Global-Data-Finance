@@ -42,6 +42,12 @@ class TestZipCleanup:
     def test_successful_production_flow_removes_zip(self, tmp_path):
         archive_path = tmp_path / 'successful_download.zip'
         _write_valid_archive(archive_path)
+        unprocessed_archives = [
+            tmp_path / 'unprocessed_1.zip',
+            tmp_path / 'unprocessed_2.zip',
+        ]
+        for unprocessed_archive in unprocessed_archives:
+            unprocessed_archive.write_bytes(b'unprocessed')
         cleanup_calls: list[str] = []
 
         def cleanup(path: str) -> None:
@@ -61,6 +67,8 @@ class TestZipCleanup:
         assert (tmp_path / 'data.parquet').exists()
         assert cleanup_calls == [str(archive_path)]
         assert not archive_path.exists()
+        assert unprocessed_archives[0].exists()
+        assert unprocessed_archives[1].exists()
 
     @pytest.mark.parametrize(
         ('failure_kind', 'failure'),
@@ -95,6 +103,7 @@ class TestZipCleanup:
             'parquet_write': 'ParquetWrite:',
         }[failure_kind]
         assert expected_marker in error_message
+        assert str(failure) in error_message
         cleanup.assert_not_called()
         assert archive_path.exists()
 

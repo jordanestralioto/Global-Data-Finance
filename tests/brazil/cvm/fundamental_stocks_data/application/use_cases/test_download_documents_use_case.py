@@ -440,6 +440,9 @@ class TestDownloadDocumentsUseCaseTaskPreparation:
             last_year=2021,
         )
 
+        assert mock_repo.download_docs_called
+        assert len(mock_repo.last_tasks) == 2
+
         for task in mock_repo.last_tasks:
             _url, _doc_name, _year, dest_path = task
             assert Path(dest_path).exists()

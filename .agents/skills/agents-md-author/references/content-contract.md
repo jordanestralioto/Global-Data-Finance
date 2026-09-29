@@ -1,234 +1,102 @@
 # Contrato de conteúdo para `AGENTS.md`
 
-## Sumário
+## Estrutura raiz
 
-- Estrutura fixa e metadados com fallbacks explícitos.
-- Função obrigatória de cada seção.
-- Separação entre baseline, fatos, políticas e preferências.
-- Navegação por progressive disclosure.
-- Critérios para draft, aprovação e canonicalidade.
+O template sugere cinco headings de nível 2, nesta ordem:
 
-## Estrutura fixa
+1. `## Project Overview`
+2. `## Architecture & Ownership`
+3. `## Development Workflow`
+4. `## Engineering Rules`
+5. `## Documentation Map`
 
-Use os headings de nível 2 abaixo, exatamente nesta ordem:
+Cada bloco deve ter conteúdo útil. Seções adicionais são permitidas quando
+respondem a uma pergunta recorrente ou mudam uma decisão de trabalho. Traduza
+os títulos quando a política explícita do repositório alvo exigir outro idioma;
+preserve as cinco funções e a ordem sugerida.
 
-1. `## System Overview`
-2. `## Success Metrics`
-3. `## Pipeline Architecture`
-4. `## Configuration & Runtime`
-5. `## Technical Stack`
-6. `## Mandatory Rules`
-7. `## Execution Policy`
-8. `## Related Documentation`
+### Project Overview
 
-`Configuration & Runtime` contém `### Commands`. `Execution Policy` contém, na
-ordem: `### Precedence`, `### Secrets`,
-`### Repo Alignment`, `### Autonomy`, `### Validation`,
-`### Execution Safety` e `### Failure Handling`.
+Resuma o que o projeto faz, seus consumidores e limites importantes. Inclua
+invariantes que mudem uma decisão de implementação. Não transforme a abertura
+em um catálogo de dependências, serviços ou diretórios.
 
-Não renomeie `Pipeline Architecture` em projetos que não sejam pipelines: a
-estrutura é fixa. Nesse caso, descreva o fluxo real de request, runtime, build,
-eventos ou processamento e diga claramente qual modelo se aplica.
+### Architecture & Ownership
 
-## Classes de conteúdo
+Mostre por onde começar no código e como as responsabilidades fluem. Nomeie
+entrypoints, owners, fronteiras e pontos de extensão estáveis quando eles
+evitam editar a camada errada. Encaminhe detalhes internos para o documento ou
+módulo que os mantém.
 
-| Classe              | Pode materializar?              | Fonte exigida                                      | Exemplos                                              |
-| ------------------- | ------------------------------- | -------------------------------------------------- | ----------------------------------------------------- |
-| `PORTABLE_BASELINE` | sim, do template bundled        | template                                           | segurança, qualidade geral e limites operacionais     |
-| `REPO_FACT`         | sim                             | código, manifest, CI, teste ou doc vigente         | stack, versão, comando, entrypoint, fluxo, consumidor |
-| `REPO_POLICY`       | sim                             | instrução, governança, ownership ou decisão aceita | idioma obrigatório, branching, boundaries, manager    |
-| `USER_PREFERENCE`   | sim, se compatível com os fatos | declaração explícita do usuário                    | idioma de chat, ferramenta preferida, clean cutover   |
-| `USER_DECISION`     | sim                             | aprovação explícita                                | owner, status, escolha entre fontes conflitantes      |
-| `EXPLICIT_UNKNOWN`  | somente via fallback            | busca registrada sem resultado                     | `Unassigned`, `Not documented`                        |
-| `CONFLICT`          | não como verdade resolvida      | fontes/autoridades divergentes                     | README e CI discordam; preferência exige migração     |
+### Development Workflow
 
-Todo comentário `AGENTS_AUTHOR` é uma instrução de geração e deve desaparecer do
-arquivo final. Os blocos já preenchidos de `Mandatory Rules` e `Execution Policy`
-são `PORTABLE_BASELINE`; podem ser fortalecidos, mas não silenciosamente
-reduzidos.
+Registre comandos exatos confirmados para setup, execução, testes e validação.
+Inclua formatter, linter, type checker ou build somente quando o projeto usa
+essas ferramentas. Prefira o gate agregado oficial quando ele cobre as etapas;
+aponte para a configuração owner quando o roster completo já existe nela.
 
-## Resultado mínimo por seção
+### Engineering Rules
 
-### `System Overview`
+Preserve as práticas portáteis do template: inspecionar a fonte responsável,
+respeitar contratos e boundaries, manter mudanças coesas, atualizar testes e
+documentação afetados, validar proporcionalmente e relatar falhas ou skips.
+Acrescente regras específicas do projeto quando estiverem confirmadas por
+política ou comportamento atual. Não copie para cá cada regra de linter ou
+configuração mecânica que um hook já impõe.
 
-Responda em prosa curta:
+### Documentation Map
 
-- qual é o nome e a missão do sistema;
-- quem ou o que o consome;
-- quais entradas e saídas definem sua boundary;
-- quais invariantes e prioridades orientam decisões;
-- quais componentes adjacentes estão fora do escopo.
+Ordene poucos links existentes pela pergunta que respondem: começar, entender a
+arquitetura, desenvolver, operar, testar, consultar contratos ou decisões.
+Explique qual abrir primeiro e qual documento possui os detalhes. Não use uma
+lista de diretórios como substituto de navegação.
 
-Fontes aceitáveis: README vigente, metadados de package, entrypoints, arquitetura
-aceita, deploy config e runtime. Se a missão só puder ser observada parcialmente,
-escreva a parte comprovável e mantenha Draft.
+## Arquivos locais
 
-### `Success Metrics`
+Um `AGENTS.md` sob uma subárvore herda as instruções aplicáveis de seus
+ancestrais. Ele registra somente diferenças locais de stack, ownership,
+comandos, contratos, riscos ou navegação. Repita uma regra compartilhada apenas
+quando o contexto local exige uma exceção que seria difícil perceber de outra
+forma. Quando não houver um root document, escreva só regras que realmente
+governam o escopo local.
 
-Inclua somente targets já adotados pelo projeto: SLOs, thresholds de gate,
-critérios de release, limites de qualidade ou invariantes mensuráveis. Use SLO,
-config, CI, testes, observabilidade ou contratos aceitos. Recomendações genéricas
-como “100% de qualidade” não são métricas.
+## Evidência e concisão
 
-Sem targets confirmados, use uma linha `Project-owned metrics | Not documented`
-e mantenha Draft.
+Separe quatro tipos de afirmação:
 
-### `Pipeline Architecture`
+- comportamento técnico confirmado por código, manifest, CI, teste ou
+  documentação atual;
+- política confirmada por instruções, governança ou decisão do projeto;
+- preferência explicitamente declarada pelo usuário;
+- questão desconhecida ou fontes atuais conflitantes.
 
-Explique o caminho executável desde o entrypoint até outputs ou efeitos. Nomeie
-componentes principais, boundaries, gates e ownership. Depois escreva a rota de
-navegação:
+Não converta preferência em fato nem um plano futuro em política atual. Quando
+fontes discordarem, nomeie cada fonte e a afirmação que ela sustenta; não
+invente uma resolução. Continue com fatos independentes e peça decisão somente
+quando o conflito impedir a orientação correta.
 
-1. primeiro arquivo para visão macro;
-2. documento ou módulo owner dos detalhes;
-3. fonte operacional para executar ou diagnosticar;
-4. fonte de decisões permanentes, quando existir.
+Mantenha um detalhe quando ele identifica onde começar, quem possui uma
+responsabilidade, qual boundary preservar ou como validar uma mudança
+recorrente. Encaminhe defaults, schemas, inventários extensos e anatomia que não
+mude uma decisão para seu owner canônico.
 
-Use código, manifests, deploy config, ADRs aceitos e docs vigentes. Não deduza
-camadas pelos nomes de diretório. Um inventário sem fluxo e sem “onde começar”
-não satisfaz esta seção.
+Não exija tabela de métricas, superfície de configuração, comandos ou
+documentação. Use tabelas quando melhorarem comparação ou consulta; não invente
+targets de qualidade para preencher uma estrutura.
 
-Preserve paths concretos quando forem âncoras estáveis de alto roteamento, como
-facade ou entrypoint público, composition root, factory/registry, owner de
-extensão e gate canônico. Isso não é inventário: essas âncoras definem onde o
-agente começa, implementa, registra ou valida. Omita a anatomia interna que não
-muda nenhuma dessas decisões.
+## Validação estrutural
 
-### `Configuration & Runtime`
+`scripts/validate_agents_md.py` oferece dois escopos:
 
-A tabela de superfícies deve incluir, quando existirem:
+- `--scope root` (padrão): exige pelo menos cinco seções de nível 2, distintas e
+  não vazias, além de verificar marcadores de autoria e links Markdown
+  relativos; aceita seções extras. Quando os cinco títulos padrão são usados,
+  confere também sua ordem. Com títulos traduzidos, a revisão factual deve
+  confirmar que as cinco funções estão presentes.
+- `--scope local`: exige apenas conteúdo não vazio e aceita links relativos e
+  marcadores da mesma forma, sem exigir os headings herdados do root.
 
-- objeto ou arquivo de configuração;
-- runtime e versão;
-- dependency manager, lockfile e workspace config;
-- framework config e entrypoint;
-- environment examples e nomes de variáveis públicas;
-- deploy, container ou migration config.
-
-A tabela `Commands` deve nomear comandos oficiais de setup, run, format, lint,
-typecheck, testes, validação, build e docs conforme aplicável. Confirme-os em
-manifests, task runners, CI ou documentação operacional vigente. Não execute um
-comando com side effects apenas para descobri-lo.
-
-### `Technical Stack`
-
-Liste explicitamente:
-
-- linguagens e versões;
-- runtime e dependency manager;
-- framework principal e bibliotecas estruturais;
-- data/database/queue quando centrais;
-- formatter, linter, typechecker e test framework;
-- tooling de segurança, build, deploy e documentação.
-
-Inclua valores pequenos e estáveis de formatter/linter quando eles restringirem
-diretamente novas implementações, como largura de linha, estilo de aspas,
-convenção de docstrings ou limite de complexidade. Deixe seleções extensas de
-regras e exceções na configuração owner.
-
-Omitir uma categoria inexistente é correto. Esconder stack confirmada atrás de
-“use o tooling do projeto” não é.
-
-### `Mandatory Rules`
-
-Esta seção é a política diária de desenvolvimento. Ela contém três camadas, na
-ordem:
-
-1. todas as regras gerais já preenchidas no template (disciplina de engenharia,
-   fatoração coesa, zero duplicação, ausência de imports circulares, escopo estrito,
-   testes com prova de comportamento, ceticismo e verificação empírica);
-2. perfil operacional resolvido do usuário e do projeto;
-3. invariantes, boundaries e rotas específicas do sistema.
-
-O perfil operacional deve nomear valores exatos para idioma, manager/runner,
-framework/padrão de contribuição e quality gates. Se um item realmente não
-existir, registre isso no relatório. Se existir mas ainda não tiver autoridade
-para virar política, mantenha Draft e peça a decisão; não deixe regra vaga.
-
-As regras específicas devem ser duráveis e decisórias. Bons exemplos de classes
-de regra:
-
-- imutabilidade, idempotência ou determinismo de dados;
-- ownership de schemas, contratos e aliases;
-- boundary de autenticação/autorização;
-- uso obrigatório de abstração/framework já adotado;
-- clean cutover versus compatibilidade exigida;
-- documento inicial para arquitetura e owner dos detalhes.
-
-Detalhes de função, lista extensa de módulos e procedimentos incidentais
-pertencem aos documentos owner, não a esta seção. Paths de alto roteamento e
-regras de extensão são diferentes: mantenha-os quando evitarem que o agente
-edite a camada errada, omita um registro/export ou use o gate incorreto.
-
-### `Execution Policy`
-
-Preserve o baseline completo do template. A seção regula como o agente age, não
-o domínio do sistema. Ela deve manter:
-
-- precedência explícita;
-- lista concreta de Git destrutivo, remote piping, escrita fora do escopo e
-  bypass de controles;
-- proteção e tratamento de exposição de segredos;
-- alinhamento a contratos e stop rule para fontes divergentes;
-- critérios objetivos de autonomia;
-- validação repo-native e obrigação de declarar skips/falhas;
-- dry run, inspeção de target e legibilidade de ações perigosas;
-- fail-closed em locks de segurança, permissão e autenticação.
-
-Política superior pode fortalecer o texto. Remoção ou relaxamento precisa de
-fonte, justificativa e autoridade; preferência do usuário não pode autorizar uma
-violação de segurança ou de permissão.
-
-### `Related Documentation`
-
-Ordene por progressive disclosure e diga quando abrir cada fonte. Um conjunto
-completo, quando existir, normalmente cobre: orientação, onboarding,
-arquitetura, manual de código, operações, runbooks, referência de contratos,
-testes, governança e decisões.
-
-Inclua apenas caminhos existentes. Reproduza classes documentadas; sem taxonomia,
-use `Unclassified`. Identifique fontes planejadas, geradas, exploratórias,
-internas, arquivadas ou não canônicas quando o próprio repositório sustentar essa
-classificação. Nunca invente autoridade pelo nome do diretório.
-
-## Tabelas obrigatórias
-
-Mantenha estes headers, mesmo quando uma linha precisar usar `Not documented`:
-
-```markdown
-| Metric | Target |
-| Surface | Location | Purpose |
-| Action | Command |
-| Doc | Knowledge class | Purpose |
-```
-
-Não use `Not documented` para esconder busca incompleta. O relatório final deve
-listar categorias inspecionadas e decisões ainda pendentes.
-
-## Precedência factual
-
-Use primeiro a precedência declarada pela governança do alvo. Sem ela, aplique
-este fallback apenas para decidir fatos técnicos:
-
-1. comportamento implementado, manifests, lockfiles, CI e testes executáveis;
-2. decisões arquiteturais aceitas e documentação marcada como vigente;
-3. documentação de orientação sem status explícito;
-4. planos, RFCs, proposals e mudanças ainda não implementadas;
-5. outputs locais, debug, exemplos e material gerado.
-
-Essa ordem não resolve conflito de política por conta própria. Divergência sobre
-segurança, owner, comando oficial, idioma obrigatório, manager, contrato público
-ou topologia recebe `CONFLICT` e decisão explícita.
-
-## Estado de conclusão
-
-- `Draft`: contém fallback, conflito pendente, perfil operacional essencial
-  incompleto ou ainda não recebeu aprovação.
-- `Ready for approval`: estrutura, fatos, navegação e política foram validados,
-  sem conflito material, mas canonicalidade depende de autoridade humana ou
-  organizacional.
-- `Confirmed`: owner e status foram confirmados, o perfil operacional está
-  completo e os gates relevantes passaram.
-
-O validador estrutural não concede esses estados. O relatório deve declarar a
-evidência para o estado escolhido.
+O JSON `agents-md-policy.v3` identifica o escopo e a checagem como
+`structural`. Uma saída aprovada não comprova comandos, arquitetura, owners ou
+políticas. Faça a revisão factual com as fontes do alvo e relate-a
+separadamente; não exija status de aprovação formal.

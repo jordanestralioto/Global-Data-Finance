@@ -154,9 +154,11 @@ git add pyproject.toml uv.lock
 ```
 
 Os gates de diff, integridade de testes e sintaxe shell examinam apenas o
-conteúdo staged durante um commit. O CI executa os mesmos scripts sobre a faixa
-de commits da pull request ou do push, portanto um `SKIP` de diff sem arquivos
-staged não equivale a aprovação de CI.
+conteúdo staged durante um commit. Na CI, os mesmos scripts examinam o intervalo
+cumulativo desde a tag de release anterior até o commit candidato. Isso mantém
+as autorizações de integridade de testes válidas para as remoções incluídas
+nesse intervalo; um `SKIP` local por não haver arquivos staged não equivale à
+aprovação da CI.
 
 `.agents/` permanece rastreado para que cada clone distribua os validadores
 portáteis, mas é uma projeção gerada e mantida pelo repositório separado

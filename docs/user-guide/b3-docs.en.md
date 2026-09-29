@@ -50,6 +50,7 @@ file or one containing only a header/trailer is not a valid extraction.
 ### Quickstart Example
 
 ```python
+from pathlib import Path
 from globaldatafinance import HistoricalQuotesB3
 
 b3 = HistoricalQuotesB3()
@@ -61,6 +62,8 @@ result = b3.extract(
     initial_year=2023,
 )
 
+if not result['success']:
+    raise SystemExit(result['errors'])
 print(f"✓ Successfully processed {result['total_records']:,} transaction records")
 ```
 
@@ -139,9 +142,10 @@ result = b3.extract(
     last_year=2023,
 )
 
-if result['success']:
-    print(f"✓ Generated Parquet file: {result['output_file']}")
-    print(f"✓ Total consolidated rows: {result['total_records']:,}")
+if not result['success']:
+    raise SystemExit(result['errors'])
+print(f"✓ Generated Parquet file: {result['output_file']}")
+print(f"✓ Total consolidated rows: {result['total_records']:,}")
 ```
 
 **Example 2: Multi-Asset Ingestion**
@@ -313,6 +317,8 @@ result = b3.extract(
     output_filename="complete_market_2023"
 )
 
+if not result['success']:
+    raise SystemExit(result['errors'])
 print(f"✓ Extracted {result['total_records']:,} rows spanning {len(all_assets)} supported categories")
 ```
 
@@ -320,11 +326,10 @@ print(f"✓ Extracted {result['total_records']:,} rows spanning {len(all_assets)
 
 ```python
 from globaldatafinance import HistoricalQuotesB3
-import os
 
 b3 = HistoricalQuotesB3()
 base_path = "/data/cotahist"
-output_path = "/data/extracted_quotes"
+output_dir = "/data/extracted_quotes"
 
 # Process historical epochs individually to yield segregated Parquet files per year
 for year in range(2020, 2024):
@@ -332,17 +337,16 @@ for year in range(2020, 2024):
 
     result = b3.extract(
         path_of_docs=base_path,
-        destination_path=output_path,
+        destination_path=output_dir,
         assets_list=["ações"],
         initial_year=year,
         last_year=year,
         output_filename=output_file
     )
 
-    if result['success']:
-        print(f"✓ {year}: {result['total_records']:,} transaction rows extracted")
-    else:
-        print(f"✗ {year}: Extraction exception detected")
+    if not result['success']:
+        raise SystemExit(result['errors'])
+    print(f"✓ {year}: {result['total_records']:,} transaction rows extracted")
 ```
 
 ### Pre-Execution Integrity & Path Verification

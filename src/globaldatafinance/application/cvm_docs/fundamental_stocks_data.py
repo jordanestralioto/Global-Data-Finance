@@ -4,7 +4,7 @@ This module provides a simple, high-level API for working with CVM
 financial documents, making it easy to download and discover available data.
 
 Example:
-    >>> from datafin.cvm_docs import FundamentalStocksDataCVM
+    >>> from globaldatafinance import FundamentalStocksDataCVM
     >>>
     >>> # Initialize the client
     >>> cvm = FundamentalStocksDataCVM()
@@ -60,7 +60,7 @@ class FundamentalStocksDataCVM:
         None - all dependencies are managed internally
 
     Example:
-        >>> # Basic usage (uses ThreadPool by default)
+        >>> # Basic usage (uses AsyncDownloadAdapterCVM by default)
         >>> cvm = FundamentalStocksDataCVM()
         >>>
         >>> # Download all document types for recent years

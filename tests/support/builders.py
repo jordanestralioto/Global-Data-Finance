@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import zipfile
 from collections.abc import Iterable, Mapping
 from pathlib import Path
@@ -43,6 +44,12 @@ def build_cotahist_record(
     record = ''.join(line)
     assert len(record) == 245
     return record + (' ' * trailing_spaces)
+
+
+def build_long_cotahist_line(byte_length: int) -> bytes:
+    """Build deterministic incompressible bytes without line terminators."""
+    line = hashlib.shake_256(b'long-cotahist-line-fixture').digest(byte_length)
+    return line.replace(b'\r', b'R').replace(b'\n', b'N')
 
 
 def write_cotahist_zip(

@@ -15,6 +15,7 @@ usage. Quick start::
 import asyncio
 import os
 import time
+from pathlib import Path
 from typing import Any
 
 from ...brazil.b3_data.historical_quotes import (
@@ -28,6 +29,7 @@ from ...brazil.b3_data.historical_quotes import (
 from ...core.archive_safety import ArchiveSafetyLimits
 from ...core.config import Settings
 from ...core.logging_config import get_logger
+from ...macro_exceptions import CorruptedZipError, ExtractionError
 from .extraction_result_formatter import ExtractionResultFormatter
 from .result_formatters import HistoricalQuotesResultFormatter
 from .types import ExtractionResultB3
@@ -48,20 +50,6 @@ class HistoricalQuotesB3:
     Supported asset classes:
     - 'ações': Stocks (cash and fractional market)
     - 'etf': Exchange Traded Funds
-
-    Attributes:
-        None - all dependencies are managed internally
-
-    Example:
-        >>> b3 = HistoricalQuotesB3()
-        >>> result = b3.extract(
-        ...     path_of_docs="/data/cotahist",
-        ...     destination_path="/data/output",
-        ...     assets_list=["ações", "etf"],
-        ...     initial_year=2022,
-        ... )
-        >>> if not result['success']:
-        ...     print(f"Extraction had errors: {result['message']}")
     """
 
     def __init__(self, *, settings: Settings | None = None) -> None:
@@ -207,19 +195,39 @@ class HistoricalQuotesB3:
         raise ``RuntimeError``. Arguments and return value are identical to
         :meth:`extract`; see that method for full documentation.
         """
-        docs_to_extract, processing_mode, output_filename_with_ext = (
-            self._prepare_extraction(
-                path_of_docs=path_of_docs,
-                assets_list=assets_list,
-                initial_year=initial_year,
-                last_year=last_year,
-                destination_path=destination_path,
-                output_filename=output_filename,
-                processing_mode=processing_mode,
-            )
-        )
-
         start_time = time.time()
+        try:
+            docs_to_extract, processing_mode, output_filename_with_ext = (
+                self._prepare_extraction(
+                    path_of_docs=path_of_docs,
+                    assets_list=assets_list,
+                    initial_year=initial_year,
+                    last_year=last_year,
+                    destination_path=destination_path,
+                    output_filename=output_filename,
+                    processing_mode=processing_mode,
+                )
+            )
+        except (CorruptedZipError, ExtractionError) as error:
+            filename = (
+                Path(error.path).name
+                if hasattr(error, 'path') and error.path
+                else 'input'
+            )
+            return self._finalize_result(
+                result={
+                    'total_files': 1,
+                    'success_count': 0,
+                    'error_count': 1,
+                    'total_records': 0,
+                    'errors': {filename: f'{type(error).__name__}: {error}'},
+                    'output_file': '',
+                },
+                assets_list=assets_list,
+                processing_mode=processing_mode,
+                elapsed_time=time.time() - start_time,
+                verbose=verbose,
+            )
 
         result = await self._extract_use_case.execute(
             docs_to_extract=docs_to_extract,
@@ -278,6 +286,7 @@ class HistoricalQuotesB3:
             last_year=last_year,
             destination_path=destination_path,
             allowed_unc_roots=self._allowed_unc_roots,
+            limits=ArchiveSafetyLimits.from_settings(self._settings.archive),
         ).execute()
 
         logger.info(

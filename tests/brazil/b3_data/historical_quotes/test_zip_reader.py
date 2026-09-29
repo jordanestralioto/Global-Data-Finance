@@ -16,8 +16,10 @@ from globaldatafinance.macro_exceptions import (
 )
 from tests.support.builders import (
     build_cotahist_record,
+    build_long_cotahist_line,
     write_cotahist_txt,
     write_cotahist_zip,
+    write_zip,
 )
 
 pytestmark = pytest.mark.integration
@@ -71,6 +73,30 @@ async def test_reader_plain_txt_and_zip_preserve_identical_fixed_width_lines(
     assert zip_lines == txt_lines
     assert len(zip_lines[0]) == 245
     assert zip_lines[0].endswith('001')
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('extension', ['TXT', 'ZIP'])
+async def test_reader_accepts_official_header_and_trailer_widths(
+    tmp_path: Path, extension: str
+) -> None:
+    """Physical line bounds include official metadata and CRLF bytes."""
+    header = '00' + (' ' * 245)
+    record = build_cotahist_record(ticker='BOUNDED')
+    trailer = '99' + (' ' * 245)
+    payload = (
+        '\r\n'.join([header, record, trailer]).encode('latin-1') + b'\r\n'
+    )
+    if extension == 'TXT':
+        path = tmp_path / 'COTAHIST_A2024.TXT'
+        path.write_bytes(payload)
+    else:
+        path = tmp_path / 'COTAHIST_A2024.ZIP'
+        write_zip(path, {'COTAHIST_A2024.TXT': payload})
+
+    lines = await _read_all(ZipFileReaderB3(), path)
+
+    assert lines == [header, record, trailer]
 
 
 @pytest.mark.asyncio
@@ -156,6 +182,32 @@ async def test_reader_rejects_txt_without_quote_data_records(
 
     with pytest.raises(ExtractionError, match=reason):
         await _read_all(ZipFileReaderB3(), txt_path)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('extension', ['TXT', 'ZIP'])
+async def test_reader_rejects_overwide_line_after_quote_record(
+    tmp_path: Path, extension: str
+) -> None:
+    """The parser never receives a complete oversized line from either IO."""
+    record = build_cotahist_record(ticker='BOUNDED')
+    oversized_line = build_long_cotahist_line(1_000_002)
+    payload = record.encode('latin-1') + b'\n' + oversized_line + b'\n'
+    if extension == 'TXT':
+        path = tmp_path / 'COTAHIST_A2024.TXT'
+        path.write_bytes(payload)
+    else:
+        path = tmp_path / 'COTAHIST_A2024.ZIP'
+        write_zip(path, {'COTAHIST_A2024.TXT': payload})
+
+    with pytest.raises(
+        ExtractionError,
+        match=(
+            'physical line 2 exceeds the COTAHIST physical-line limit '
+            'of 247 content bytes'
+        ),
+    ):
+        await _read_all(ZipFileReaderB3(), path)
 
 
 @pytest.mark.asyncio

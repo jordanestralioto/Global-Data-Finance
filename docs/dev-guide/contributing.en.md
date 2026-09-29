@@ -152,8 +152,10 @@ git add pyproject.toml uv.lock
 ```
 
 The diff-sanity, test-integrity, and shell-syntax gates inspect only staged
-content during a commit. CI invokes the same scripts over the pull request or
-push commit range, so a diff `SKIP` without staged files is not a CI approval.
+content during a commit. In CI, the same scripts inspect the cumulative range
+from the previous release tag through the candidate commit. This keeps test
+integrity authorizations valid for deletions included in that range; a local
+`SKIP` without staged files is not a CI approval.
 
 `.agents/` remains tracked so every clone distributes the portable validators,
 but it is a generated projection maintained by the separate `central-skills`

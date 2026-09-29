@@ -15,13 +15,16 @@ from globaldatafinance import FundamentalStocksDataCVM
 cvm = FundamentalStocksDataCVM()
 
 # Download de DFP com extração automática
-cvm.download(
+result_cvm = cvm.download(
     destination_path="/home/usuario/dados_financeiros/dfp",
     list_docs=["DFP"],
     initial_year=2020,
     last_year=2023,
     automatic_extractor=True  # Converte os arquivos baixados para Parquet
 )
+if result_cvm.error_count_downloads > 0 or result_cvm.success_count_downloads == 0:
+    print(f"✗ Download CVM incompleto: {result_cvm.failed_downloads}")
+    raise SystemExit(1)
 
 print("✓ Download e extração concluídos!")
 ```
@@ -36,6 +39,7 @@ vista (010) e fracionário (020).
 ```python
 from globaldatafinance import HistoricalQuotesB3
 import time
+import os
 
 # Criar cliente
 b3 = HistoricalQuotesB3()
@@ -57,11 +61,21 @@ result = b3.extract(
 elapsed = time.time() - start_time
 
 # Exibir resultados
-if result['success']:
+if (
+    result['success']
+    and result['total_files'] > 0
+    and result['total_records'] > 0
+    and result['output_file']
+    and os.path.isfile(result['output_file'])
+    and os.path.getsize(result['output_file']) > 0
+):
     print(f"✓ Extração concluída em {elapsed:.2f}s")
     print(f"  Registros: {result['total_records']:,}")
     print(f"  Throughput: {result['total_records']/elapsed:,.0f} registros/s")
     print(f"  Arquivo: {result['output_file']}")
+else:
+    print(f"✗ Extração incompleta: {result['errors']}")
+    raise SystemExit(1)
 ```
 
 ______________________________________________________________________
@@ -71,8 +85,8 @@ ______________________________________________________________________
 Pipeline completo de download CVM e extração B3.
 
 ```python
-from globaldatafinance import FundamentalStocksDataCVM, HistoricalQuotesB3
 import os
+from globaldatafinance import FundamentalStocksDataCVM, HistoricalQuotesB3
 
 
 # Diretórios
@@ -87,13 +101,16 @@ print("ETAPA 1: Download de Documentos CVM")
 print("=" * 60)
 
 cvm = FundamentalStocksDataCVM()
-cvm.download(
+cvm_result = cvm.download(
     destination_path=cvm_dir,
     list_docs=["DFP", "ITR"],
     initial_year=2022,
     last_year=2023,
     automatic_extractor=True
 )
+if cvm_result.error_count_downloads > 0 or cvm_result.success_count_downloads == 0:
+    print(f"✗ Download CVM incompleto: {cvm_result.failed_downloads}")
+    raise SystemExit(1)
 
 # === ETAPA 2: Extração B3 ===
 print("\n" + "=" * 60)
@@ -109,6 +126,16 @@ result = b3.extract(
     destination_path=output_dir,
     output_filename="cotacoes_2022_2023"
 )
+if (
+    not result['success']
+    or result['total_files'] == 0
+    or result['total_records'] == 0
+    or not result['output_file']
+    or not os.path.isfile(result['output_file'])
+    or os.path.getsize(result['output_file']) == 0
+):
+    print(f"✗ Extração B3 incompleta: {result['errors']}")
+    raise SystemExit(1)
 
 # === RESUMO ===
 print("\n" + "=" * 60)
@@ -232,27 +259,36 @@ def main():
         if args.tipo in ["cvm", "ambos"]:
             print("Baixando documentos CVM...")
             cvm = FundamentalStocksDataCVM()
-            cvm.download(
+            resultado_cvm = cvm.download(
                 destination_path=str(dest_path / "cvm"),
                 list_docs=["DFP", "ITR"],
                 initial_year=args.ano_inicial,
                 last_year=args.ano_final,
                 automatic_extractor=True
             )
+            if resultado_cvm.has_errors() or resultado_cvm.success_count_downloads == 0:
+                print("✗ Falha no download dos documentos CVM", file=sys.stderr)
+                for doc, err in resultado_cvm.failed_downloads.items():
+                    print(f"  • {doc}: {err}", file=sys.stderr)
+                return 1
+            print(f"✓ Baixados {resultado_cvm.success_count_downloads} arquivos CVM")
 
         if args.tipo in ["b3", "ambos"]:
             print("Extraindo cotações B3...")
             b3 = HistoricalQuotesB3()
-            result = b3.extract(
+            result_b3 = b3.extract(
                 path_of_docs=str(dest_path / "cotahist"),
                 assets_list=["ações", "etf"],
                 initial_year=args.ano_inicial,
                 last_year=args.ano_final,
                 destination_path=str(dest_path / "cotacoes")
             )
-
-            if result['success']:
-                print(f"✓ Extraídos {result['total_records']:,} registros")
+            if not result_b3['success'] or result_b3['total_records'] == 0:
+                print("✗ Falha na extração de cotações B3", file=sys.stderr)
+                for file_name, err in result_b3['errors'].items():
+                    print(f"  • {file_name}: {err}", file=sys.stderr)
+                return 1
+            print(f"✓ Extraídos {result_b3['total_records']:,} registros")
 
         print("✓ Processamento concluído!")
         return 0

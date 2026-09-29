@@ -69,16 +69,21 @@ def read_policy_entries(
     data, _ = _read_policy_document(policy_name, repo_root, revision_range)
     allowed = data.get(section)
     if section == 'allowed_assertion_reductions':
-        if not isinstance(allowed, list):
-            return {}
-        entries: dict[str, object] = {}
-        for entry in allowed:
-            if isinstance(entry, dict) and isinstance(entry.get('path'), str):
-                entries[entry['path']] = entry
-        return entries
-    if not isinstance(allowed, dict):
-        return {}
-    return {str(path): reason for path, reason in allowed.items()}
+        return (
+            {
+                entry['path']: entry
+                for entry in allowed
+                if isinstance(entry, dict)
+                and isinstance(entry.get('path'), str)
+            }
+            if isinstance(allowed, list)
+            else {}
+        )
+    return (
+        {str(path): reason for path, reason in allowed.items()}
+        if isinstance(allowed, dict)
+        else {}
+    )
 
 
 def _has_reason(value: object) -> bool:
@@ -103,27 +108,24 @@ def _assertion_entry_is_complete(
     if not isinstance(entry, dict):
         return False
     entry_path = entry.get('path')
+    digest = entry.get('diff_sha256')
+    reason = entry.get('reason')
+    replacements = entry.get('replacement_test_ids')
     if (
         entry_path != file_path
         or not isinstance(entry_path, str)
         or not _is_relative_test_path(entry_path, is_test_file)
-    ):
-        return False
-    digest = entry.get('diff_sha256')
-    if (
-        not isinstance(digest, str)
+        or not isinstance(digest, str)
         or _SHA256_RE.fullmatch(digest) is None
         or digest != expected_hash
+        or not isinstance(reason, str)
+        or not reason.strip()
+        or not isinstance(replacements, list)
+        or not replacements
     ):
         return False
-    reason = entry.get('reason')
-    if not isinstance(reason, str) or not reason.strip():
-        return False
-    replacement_ids = entry.get('replacement_test_ids')
-    if not isinstance(replacement_ids, list) or not replacement_ids:
-        return False
     normalized_ids: set[str] = set()
-    for replacement_id in replacement_ids:
+    for replacement_id in replacements:
         if not isinstance(replacement_id, str):
             return False
         _, separator, selector = replacement_id.partition('::')
@@ -161,13 +163,14 @@ def is_test_deletion_approved(
     revision_range: str | None = None,
 ) -> bool:
     """Check whether a test deletion has a reason in inspected Git policy."""
-    for policy_name in _POLICY_NAMES:
-        reason = read_policy_entries(
-            policy_name, repo_root=repo_root, revision_range=revision_range
-        ).get(file_path)
-        if _has_reason(reason):
-            return True
-    return False
+    return any(
+        _has_reason(
+            read_policy_entries(
+                name, repo_root=repo_root, revision_range=revision_range
+            ).get(file_path)
+        )
+        for name in _POLICY_NAMES
+    )
 
 
 def is_assertion_reduction_approved(
@@ -204,6 +207,7 @@ def stale_deletion_policy_errors(
     is_test_file: Callable[[str], bool],
     repo_root: Path | None = None,
     revision_range: str | None = None,
+    base_deleted_paths: set[str] | None = None,
 ) -> list[str]:
     """Return diagnostics for deletion policy entries absent from the diff."""
     deleted_paths = {
@@ -211,6 +215,8 @@ def stale_deletion_policy_errors(
         for match in _DELETED_FILE_RE.finditer(diff_text)
         if is_test_file(match.group(1))
     }
+    if base_deleted_paths:
+        deleted_paths.update(base_deleted_paths)
     errors: list[str] = []
     for policy_name in _POLICY_NAMES:
         data, parse_errors = _read_policy_document(
@@ -218,19 +224,18 @@ def stale_deletion_policy_errors(
         )
         errors.extend(parse_errors)
         allowed = data.get('allowed_deletions')
-        if allowed is None:
-            continue
         if not isinstance(allowed, dict):
-            errors.append(
-                f'{policy_name}: [TEST_POLICY] allowed_deletions must be '
-                'an object'
-            )
+            if allowed is not None:
+                errors.append(
+                    f'{policy_name}: [TEST_POLICY] allowed_deletions '
+                    'must be an object'
+                )
             continue
         for file_path, reason in allowed.items():
             if not isinstance(file_path, str) or not is_test_file(file_path):
                 errors.append(
-                    f'{policy_name}: [TEST_POLICY] invalid deletion path '
-                    f'{file_path!r}'
+                    f'{policy_name}: [TEST_POLICY] invalid deletion '
+                    f'path {file_path!r}'
                 )
             elif not _has_reason(reason):
                 errors.append(
@@ -240,8 +245,8 @@ def stale_deletion_policy_errors(
             elif file_path not in deleted_paths:
                 errors.append(
                     f'{policy_name}: [TEST_POLICY] stale deletion '
-                    f'authorization for {file_path!r}; remove it or delete '
-                    'that test in the inspected Git diff.'
+                    f'authorization for {file_path!r}; remove it or '
+                    'delete that test in the inspected Git diff.'
                 )
     return errors
 
@@ -255,42 +260,52 @@ def _assertion_policy_entry_errors(
     is_test_file: Callable[[str], bool],
     repo_root: Path | None,
     revision_range: str | None,
+    base_hashes: dict[str, str] | None = None,
+    base_reduced_paths: set[str] | None = None,
 ) -> list[str]:
     """Validate one structured assertion-reduction policy entry."""
     prefix = f'{_ASSERTION_POLICY}: [TEST_POLICY] entry {index}'
     if not isinstance(entry, dict):
         return [f'{prefix} must be an object']
-
-    file_path = entry.get('path')
-    if not isinstance(file_path, str) or not _is_relative_test_path(
-        file_path, is_test_file
+    path = entry.get('path')
+    if not isinstance(path, str) or not _is_relative_test_path(
+        path, is_test_file
     ):
         return [f'{prefix} has an invalid test path']
-
     errors: list[str] = []
-    if file_path in seen_paths:
+    if path in seen_paths:
         errors.append(
             f'{_ASSERTION_POLICY}: [TEST_POLICY] duplicate reduction '
-            f'authorization for {file_path!r}'
+            f'authorization for {path!r}'
         )
-    seen_paths.add(file_path)
-
+    seen_paths.add(path)
+    file_reduced = path in reduced_paths
+    if (
+        not file_reduced
+        and base_reduced_paths
+        and path in base_reduced_paths
+        and base_hashes
+    ):
+        expected_hash = base_hashes.get(path)
+        file_reduced = True
+    else:
+        expected_hash = hashes.get(path)
     if not _assertion_entry_is_complete(
         entry,
-        file_path,
-        hashes.get(file_path),
+        path,
+        expected_hash,
         is_test_file,
         repo_root=repo_root,
         revision_range=revision_range,
     ):
         errors.append(
-            f'{prefix} for {file_path!r} is incomplete or its '
+            f'{prefix} for {path!r} is incomplete or its '
             'diff_sha256 does not match the inspected patch'
         )
-    if file_path not in reduced_paths:
+    if not file_reduced:
         errors.append(
             f'{_ASSERTION_POLICY}: [TEST_POLICY] stale assertion '
-            f'reduction authorization for {file_path!r}; the current '
+            f'reduction authorization for {path!r}; the current '
             'diff does not reduce assertions in that file'
         )
     return errors
@@ -302,6 +317,8 @@ def assertion_reduction_policy_errors(
     is_test_file: Callable[[str], bool],
     repo_root: Path | None = None,
     revision_range: str | None = None,
+    base_hashes: dict[str, str] | None = None,
+    base_reduced_paths: set[str] | None = None,
 ) -> list[str]:
     """Validate one-use assertion authorizations against the current diff."""
     data, parse_errors = _read_policy_document(
@@ -314,7 +331,6 @@ def assertion_reduction_policy_errors(
             'a valid assertion-reduction authorization; use '
             'allowed_assertion_reductions with a hash-bound entry'
         )
-
     entries = data.get('allowed_assertion_reductions')
     if entries is None:
         return errors
@@ -338,6 +354,8 @@ def assertion_reduction_policy_errors(
                 is_test_file,
                 repo_root,
                 revision_range,
+                base_hashes=base_hashes,
+                base_reduced_paths=base_reduced_paths,
             )
         )
 
@@ -356,21 +374,26 @@ def test_integrity_policy_errors(
     is_test_file: Callable[[str], bool],
     repo_root: Path | None = None,
     revision_range: str | None = None,
+    base_deleted_paths: set[str] | None = None,
+    base_hashes: dict[str, str] | None = None,
+    base_reduced_paths: set[str] | None = None,
 ) -> list[str]:
     """Validate deletion and assertion policies for one Git inspection."""
-    errors = stale_deletion_policy_errors(
-        diff_text,
-        is_test_file,
-        repo_root=repo_root,
-        revision_range=revision_range,
-    )
-    errors.extend(
-        assertion_reduction_policy_errors(
+    return [
+        *stale_deletion_policy_errors(
+            diff_text,
+            is_test_file,
+            repo_root=repo_root,
+            revision_range=revision_range,
+            base_deleted_paths=base_deleted_paths,
+        ),
+        *assertion_reduction_policy_errors(
             diff_text,
             reduced_paths,
             is_test_file,
             repo_root=repo_root,
             revision_range=revision_range,
-        )
-    )
-    return errors
+            base_hashes=base_hashes,
+            base_reduced_paths=base_reduced_paths,
+        ),
+    ]

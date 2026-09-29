@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate AGENTS.md against the portable structure and policy contract."""
+"""Structurally validate root or local AGENTS.md guidance."""
 
 from __future__ import annotations
 
@@ -9,94 +9,43 @@ import re
 import sys
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote, urlsplit
 
-EXPECTED_TOP_LEVEL = (
-    'System Overview',
-    'Success Metrics',
-    'Pipeline Architecture',
-    'Configuration & Runtime',
-    'Technical Stack',
-    'Mandatory Rules',
-    'Execution Policy',
-    'Related Documentation',
+SCHEMA_VERSION = 'agents-md-policy.v3'
+VALIDATION_KIND = 'structural'
+ROOT_SECTIONS = (
+    'Project Overview',
+    'Architecture & Ownership',
+    'Development Workflow',
+    'Engineering Rules',
+    'Documentation Map',
 )
-
-EXPECTED_EXECUTION_SUBHEADINGS = (
-    'Precedence',
-    'Secrets',
-    'Repo Alignment',
-    'Autonomy',
-    'Validation',
-    'Execution Safety',
-    'Failure Handling',
-)
-
-REQUIRED_TABLE_HEADERS = (
-    ('Metric', 'Target'),
-    ('Surface', 'Location', 'Purpose'),
-    ('Action', 'Command'),
-    ('Doc', 'Knowledge class', 'Purpose'),
-)
-
 PLACEHOLDER_PATTERNS = (
     r'\b(?:TODO|TBD|FIXME)\b',
     r'\bYYYY-MM-DD\b',
     r'\[PROJECT_NAME\]',
+    r'\{\{\s*[^}]+\s*\}\}',
     r'<(?:fill|replace|preencher|project(?: name)?|todo|owner|date)[^>]*>',
     r'AGENTS_AUTHOR',
 )
-
-MINIMUM_MANDATORY_RULES = 8
-
-MANDATORY_RULE_ANCHORS: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ('file verification', ('before editing', 'antes de editar')),
-    ('scoped changes', ('keep scope', 'mantenha o escopo')),
-    ('current versus planned state', ('current state', 'estado atual')),
-    ('canonical navigation', ('canonical doc', 'documentação canônica')),
+INLINE_LINK_RE = re.compile(
+    r'!?\[[^\]\n]*\]\(\s*(<[^>\n]+>|(?:\\.|[^\s)]+))'
+    r'(?:\s+(?:"[^"]*"|\'[^\']*\'|\([^)]*\)))?\s*\)'
 )
+REFERENCE_LINK_RE = re.compile(
+    r'^\s{0,3}\[[^\]]+\]:\s*(<[^>\n]+>|(?:\\.|[^\s]+))'
+)
+INLINE_CODE_RE = re.compile(r'`+[^`\n]*`+')
+HTML_COMMENT_RE = re.compile(r'<!--.*?-->', flags=re.DOTALL)
+EMPTY_MARKUP_RE = re.compile(r'(?:[-*+]|\d+[.)]|#{1,6})\s*')
 
-EXECUTION_POLICY_ANCHORS: dict[
-    str, tuple[tuple[str, tuple[str, ...]], ...]
-] = {
-    'Precedence': (
-        ('authority rank', ('rank:', 'precedência:')),
-        ('system constraints', ('system constraint', 'restrições de sistema')),
-        ('user request', ('user request', 'pedido do usuário')),
-    ),
-    'Secrets': (
-        ('secret types', ('.env', 'api keys', 'chaves de api')),
-        ('redaction response', ('redact', 'redija')),
-    ),
-    'Repo Alignment': (
-        ('canonical sources', ('canonical contract', 'contratos canônicos')),
-        (
-            'public contract protection',
-            ('public contract', 'contratos públicos'),
-        ),
-        ('source conflict stop', ('disagree', 'discordarem')),
-    ),
-    'Autonomy': (
-        ('reversible changes', ('reversible', 'reversíveis')),
-        (
-            'version control recovery',
-            ('version control', 'controle de versão'),
-        ),
-        ('stop and ask', ('stop and ask', 'pare e peça')),
-    ),
-    'Validation': (
-        ('official validation', ('official validation', 'validação oficial')),
-        ('failure disclosure', ('failing', 'falhando')),
-    ),
-    'Execution Safety': (
-        ('affected scope', ('what will be affected', 'o que será afetado')),
-        ('dry run', ('dry run',)),
-        ('script inspection', ('inspect the command', 'inspecione o comando')),
-    ),
-    'Failure Handling': (
-        ('security boundary', ('security lock', 'bloqueio de segurança')),
-        ('no workaround', ('do not work around', 'não contorne')),
-    ),
-}
+
+def _has_content(text: str) -> bool:
+    without_comments = HTML_COMMENT_RE.sub('', text)
+    return any(
+        line.strip() and not EMPTY_MARKUP_RE.fullmatch(line.strip())
+        for line in without_comments.splitlines()
+    )
 
 
 def _visible_lines(text: str) -> list[str]:
@@ -132,157 +81,153 @@ def _headings(lines: list[str]) -> list[tuple[int, str]]:
     return result
 
 
-def _subheadings_between(
-    headings: list[tuple[int, str]], parent: str
-) -> list[str]:
-    result: list[str] = []
-    in_parent = False
-    for level, name in headings:
-        if level == 2:
-            in_parent = name == parent
-            continue
-        if in_parent and level == 3:
-            result.append(name)
-    return result
-
-
-def _section_text(lines: list[str], *, level: int, name: str) -> str:
-    """Return visible text inside one heading, excluding the heading itself."""
-    heading = f'{"#" * level} {name}'
-    result: list[str] = []
-    in_section = False
+def _root_sections(lines: list[str]) -> list[tuple[str, str]]:
+    sections: list[tuple[str, str]] = []
+    name: str | None = None
+    content: list[str] = []
 
     for line in lines:
-        if line == heading:
-            in_section = True
-            continue
-        match = re.match(r'^(#{1,6})\s+', line)
-        if in_section and match and len(match.group(1)) <= level:
-            break
-        if in_section:
-            result.append(line)
+        match = re.match(r'^(#{1,6})\s+(.+?)\s*$', line)
+        if match and len(match.group(1)) <= 2:
+            if name is not None:
+                visible = HTML_COMMENT_RE.sub('', '\n'.join(content)).strip()
+                sections.append((name, visible))
+            name = match.group(2) if len(match.group(1)) == 2 else None
+            content = []
+        elif name is not None:
+            content.append(line)
 
-    return '\n'.join(result).strip()
+    if name is not None:
+        visible = HTML_COMMENT_RE.sub('', '\n'.join(content)).strip()
+        sections.append((name, visible))
+    return sections
 
 
-def _table_pattern(columns: tuple[str, ...]) -> re.Pattern[str]:
-    cells = r'\s*\|\s*'.join(re.escape(column) for column in columns)
-    return re.compile(rf'^\|\s*{cells}\s*\|\s*$', flags=re.MULTILINE)
-
-
-def _check_heading_contract(headings: list[tuple[int, str]]) -> list[str]:
+def _check_root_sections(lines: list[str]) -> list[str]:
+    sections = _root_sections(lines)
+    names = [name for name, _ in sections]
     errors: list[str] = []
-    top_level = tuple(name for level, name in headings if level == 2)
-    if top_level != EXPECTED_TOP_LEVEL:
+
+    if len(sections) < len(ROOT_SECTIONS):
         errors.append(
-            'level-2 headings must match portable contract order: '
-            f'expected={EXPECTED_TOP_LEVEL!r}, actual={top_level!r}'
+            'root document requires at least five level-two sections '
+            f'(found {len(sections)})'
         )
 
-    execution = tuple(_subheadings_between(headings, 'Execution Policy'))
-    if execution != EXPECTED_EXECUTION_SUBHEADINGS:
+    seen: set[str] = set()
+    for name, content in sections:
+        if name in seen:
+            errors.append(f'duplicate root section: {name}')
+        seen.add(name)
+        if not _has_content(content):
+            errors.append(f'root section is empty: {name}')
+
+    if all(name in names for name in ROOT_SECTIONS) and [
+        names.index(name) for name in ROOT_SECTIONS
+    ] != sorted(names.index(name) for name in ROOT_SECTIONS):
         errors.append(
-            'Execution Policy subheadings must match portable contract order: '
-            f'expected={EXPECTED_EXECUTION_SUBHEADINGS!r}, actual={execution!r}'
+            'standard root sections must appear in order: '
+            + ', '.join(ROOT_SECTIONS)
         )
-
-    configuration = _subheadings_between(headings, 'Configuration & Runtime')
-    if 'Commands' not in configuration:
-        errors.append('Configuration & Runtime must contain ### Commands')
-
     return errors
-
-
-def _check_tables(text: str) -> list[str]:
-    return [
-        f'missing required table header: {" | ".join(columns)}'
-        for columns in REQUIRED_TABLE_HEADERS
-        if not _table_pattern(columns).search(text)
-    ]
 
 
 def _check_placeholders(text: str) -> list[str]:
     return [
-        f'unresolved authoring marker found: {pattern}'
+        f'unresolved authorship marker found: {pattern}'
         for pattern in PLACEHOLDER_PATTERNS
         if re.search(pattern, text, flags=re.IGNORECASE)
     ]
 
 
-def _contains_any(text: str, alternatives: tuple[str, ...]) -> bool:
-    normalized = ' '.join(text.casefold().split())
-    return any(
-        ' '.join(alternative.casefold().split()) in normalized
-        for alternative in alternatives
-    )
-
-
-def _check_policy_contract(lines: list[str]) -> list[str]:
-    errors: list[str] = []
-    mandatory = _section_text(lines, level=2, name='Mandatory Rules')
-    rule_count = sum(
-        1 for line in mandatory.splitlines() if re.match(r'^\s*-\s+\S', line)
-    )
-    if rule_count < MINIMUM_MANDATORY_RULES:
-        errors.append(
-            'Mandatory Rules must contain at least '
-            f'{MINIMUM_MANDATORY_RULES} concrete bullet rules; found {rule_count}'
+def _link_destinations(lines: list[str]) -> list[str]:
+    destinations: list[str] = []
+    for line in lines:
+        without_code = INLINE_CODE_RE.sub('', line)
+        destinations.extend(
+            match.group(1) for match in INLINE_LINK_RE.finditer(without_code)
         )
+        reference = REFERENCE_LINK_RE.match(without_code)
+        if reference:
+            destinations.append(reference.group(1))
+    return destinations
 
-    for label, alternatives in MANDATORY_RULE_ANCHORS:
-        if not _contains_any(mandatory, alternatives):
-            errors.append(f'Mandatory Rules missing policy anchor: {label}')
 
-    for section, anchors in EXECUTION_POLICY_ANCHORS.items():
-        content = _section_text(lines, level=3, name=section)
-        if not content:
-            errors.append(f'Execution Policy section is empty: {section}')
-            continue
-        for label, alternatives in anchors:
-            if not _contains_any(content, alternatives):
-                errors.append(
-                    f'Execution Policy/{section} missing control: {label}'
-                )
+def _relative_path(destination: str, base_dir: Path) -> Path | None:
+    target = destination[1:-1] if destination.startswith('<') else destination
+    parsed = urlsplit(target)
+    if parsed.scheme or parsed.netloc or parsed.path.startswith('/'):
+        return None
+    relative_target = unquote(parsed.path)
+    if not relative_target:
+        return None
+    return (base_dir / relative_target).resolve()
 
+
+def _check_relative_links(lines: list[str], base_dir: Path) -> list[str]:
+    errors: list[str] = []
+    for destination in _link_destinations(lines):
+        try:
+            target = _relative_path(destination, base_dir)
+            if target is not None and not target.exists():
+                errors.append(f'broken relative Markdown link: {destination}')
+        except (OSError, RuntimeError):
+            errors.append(f'broken relative Markdown link: {destination}')
     return errors
 
 
-def validate(text: str) -> list[str]:
-    """Return contract violations in O(number of lines)."""
+def validate(
+    text: str,
+    *,
+    scope: str = 'root',
+    base_dir: Path | None = None,
+) -> list[str]:
+    """Return structural violations for a root or local guidance file."""
     lines = _visible_lines(text)
     visible_text = '\n'.join(lines)
-    headings = _headings(lines)
-
     errors: list[str] = []
-    errors.extend(_check_heading_contract(headings))
-    errors.extend(_check_tables(visible_text))
+
+    if scope not in {'root', 'local'}:
+        errors.append(f'unsupported validation scope: {scope}')
+    elif not _has_content(text):
+        errors.append('document must not be empty')
+    elif scope == 'root':
+        errors.extend(_check_root_sections(lines))
+
     errors.extend(_check_placeholders(visible_text))
-    errors.extend(_check_policy_contract(lines))
+    errors.extend(_check_relative_links(lines, base_dir or Path.cwd()))
     return errors
 
 
 def _payload(
-    path: Path, errors: list[str], *, strict_governance: bool
+    path: Path,
+    errors: list[str],
+    *,
+    scope: str,
+    status: str | None = None,
 ) -> dict[str, Any]:
     return {
-        'schema_version': 'agents-md-policy.v2',
-        'status': 'passed' if not errors else 'failed',
+        'schema_version': SCHEMA_VERSION,
+        'status': status or ('passed' if not errors else 'failed'),
         'file': str(path),
-        'strict_governance': strict_governance,
+        'scope': scope,
+        'validation_kind': VALIDATION_KIND,
         'errors': errors,
     }
 
 
 def _render_text(payload: dict[str, Any]) -> str:
     status = str(payload['status']).upper()
-    lines = [f'{status}: {payload["file"]}']
+    scope = str(payload['scope'])
+    path = str(payload['file'])
+    lines = [f'{status} ({scope}, structural): {path}']
     lines.extend(f'- {error}' for error in payload['errors'])
     return '\n'.join(lines)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description='Validate AGENTS.md structure and operating policy contract.'
+        description='Structurally validate root or local AGENTS.md guidance.'
     )
     parser.add_argument(
         '--file',
@@ -291,38 +236,40 @@ def main() -> int:
         help='AGENTS.md path to validate (default: AGENTS.md)',
     )
     parser.add_argument(
-        '--strict-governance',
-        action='store_true',
-        help='Reject explicit draft fallbacks such as Unassigned or Draft.',
+        '--scope',
+        choices=('root', 'local'),
+        default='root',
+        help='validation scope (default: root)',
     )
     parser.add_argument(
         '--format',
         choices=('text', 'json'),
         default='text',
-        help='Output format (default: text)',
+        help='output format (default: text)',
     )
     args = parser.parse_args()
 
     try:
         text = args.file.read_text(encoding='utf-8')
     except OSError as exc:
-        payload = {
-            'schema_version': 'agents-md-policy.v2',
-            'status': 'error',
-            'file': str(args.file),
-            'strict_governance': args.strict_governance,
-            'errors': [str(exc)],
-        }
+        payload = _payload(
+            args.file,
+            [str(exc)],
+            scope=args.scope,
+            status='error',
+        )
         if args.format == 'json':
             print(json.dumps(payload, indent=2, ensure_ascii=False))
         else:
             print(_render_text(payload), file=sys.stderr)
         return 2
 
-    errors = validate(text)
-    payload = _payload(
-        args.file, errors, strict_governance=args.strict_governance
+    errors = validate(
+        text,
+        scope=args.scope,
+        base_dir=args.file.resolve().parent,
     )
+    payload = _payload(args.file, errors, scope=args.scope)
     if args.format == 'json':
         print(json.dumps(payload, indent=2, ensure_ascii=False))
     else:

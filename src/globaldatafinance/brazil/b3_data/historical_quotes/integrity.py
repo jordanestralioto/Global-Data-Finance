@@ -2,9 +2,51 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
+from typing import Protocol
 
 from ....macro_exceptions import ExtractionError
+
+COTAHIST_RECORD_WIDTH = 245
+_COTAHIST_MAX_PHYSICAL_LINE_CONTENT_BYTES = COTAHIST_RECORD_WIDTH + 2
+_COTAHIST_MAX_LINE_ENDING_BYTES = 2
+_COTAHIST_MAX_PHYSICAL_LINE_BYTES = (
+    _COTAHIST_MAX_PHYSICAL_LINE_CONTENT_BYTES + _COTAHIST_MAX_LINE_ENDING_BYTES
+)
+
+
+class CotahistLineTooLongError(ValueError):
+    """Indicate that a physical COTAHIST line exceeds its byte limit."""
+
+
+class BoundedLineSource(Protocol):
+    """Provide bounded binary lines from files and ZIP members."""
+
+    def readline(self, size: int = -1, /) -> bytes:
+        """Read no more than ``size`` bytes from the source."""
+        ...
+
+
+def iter_bounded_cotahist_lines(
+    source: BoundedLineSource,
+) -> Iterator[tuple[int, bytes]]:
+    """Read physical records with a byte cap before callers decode them."""
+    line_number = 0
+    while raw_line := source.readline(_COTAHIST_MAX_PHYSICAL_LINE_BYTES + 1):
+        line_number += 1
+        content = raw_line.removesuffix(b'\r\n').removesuffix(b'\n')
+        content = content.removesuffix(b'\r')
+        if (
+            len(raw_line) > _COTAHIST_MAX_PHYSICAL_LINE_BYTES
+            or len(content) > _COTAHIST_MAX_PHYSICAL_LINE_CONTENT_BYTES
+        ):
+            raise CotahistLineTooLongError(
+                f'physical line {line_number} exceeds the COTAHIST '
+                'physical-line limit of '
+                f'{_COTAHIST_MAX_PHYSICAL_LINE_CONTENT_BYTES} content bytes'
+            )
+        yield line_number, raw_line
 
 
 @dataclass(frozen=True)

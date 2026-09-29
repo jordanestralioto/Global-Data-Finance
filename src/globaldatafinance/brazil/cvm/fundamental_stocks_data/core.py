@@ -128,7 +128,7 @@ def get_url_docs(
     list_docs: list[str] | None = None,
 ) -> tuple[dict[str, str], set[str]]:
     """Get URLs for specified docs or all docs when the list is empty."""
-    if list_docs and not isinstance(list_docs, list):
+    if list_docs is not None and not isinstance(list_docs, list):
         raise TypeError('list_docs must be a list of strings or None')
 
     dict_urls: dict[str, str] = {}

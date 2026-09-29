@@ -1,113 +1,298 @@
----
 name: CD - Publish to PyPI
 
 on:
   release:
     types: [published]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: >-
+          Semantic version tag to validate and publish (must already exist,
+          e.g. v0.2.0)
+        required: true
+        type: string
+      dry_run:
+        description: >-
+          Perform validation only without publishing to PyPI
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
 
 jobs:
-  # --------------------------------------------------------------------------
-  # Security Scan before Publishing
-  # --------------------------------------------------------------------------
+  validate-release-tag:
+    name: Validate release tag
+    runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.validate.outputs.release_tag }}
+      release_version: ${{ steps.validate.outputs.release_version }}
+      dry_run: ${{ steps.validate.outputs.dry_run }}
+    steps:
+      - name: Validate semantic version tag
+        id: validate
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          IS_PRERELEASE: ${{ github.event.release.prerelease }}
+          RELEASE_REF: ${{ github.ref }}
+          RELEASE_TAG: >-
+            ${{ github.event.release.tag_name || inputs.release_tag }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+          import shutil
+          import subprocess
+
+          event_name = os.environ.get('EVENT_NAME', '').strip()
+          is_prerelease = (
+              os.environ.get('IS_PRERELEASE', '').strip().lower() == 'true'
+          )
+          release_tag = os.environ.get('RELEASE_TAG', '').strip()
+          release_ref = os.environ.get('RELEASE_REF', '').strip()
+          dry_run_raw = os.environ.get('DRY_RUN', '').strip().lower()
+
+          if event_name == 'workflow_dispatch':
+              dry_run = dry_run_raw != 'false'
+          else:
+              dry_run = False
+
+          if is_prerelease:
+              raise SystemExit(
+                  'Prereleases are not eligible for automated PyPI '
+                  'publication; only stable releases may be published.'
+              )
+
+          stable_tag = re.compile(
+              r'v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)'
+          )
+          if stable_tag.fullmatch(release_tag) is None:
+              raise SystemExit(
+                  'Publish requires a stable vMAJOR.MINOR.PATCH tag.'
+              )
+
+          expected_ref = f'refs/tags/{release_tag}'
+          if event_name == 'release' and release_ref != expected_ref:
+              raise SystemExit('The published release ref must match its tag.')
+
+          if event_name == 'workflow_dispatch' and not dry_run:
+              gh_bin = shutil.which('gh')
+              if not gh_bin:
+                  raise SystemExit(
+                      'GitHub CLI (gh) is required for non-dry-run '
+                      'publication.'
+                  )
+              github_token = os.environ.get('GITHUB_TOKEN', '').strip()
+              if not github_token:
+                  raise SystemExit(
+                      'GITHUB_TOKEN is required for non-dry-run publication.'
+                  )
+              repo = os.environ.get('GITHUB_REPOSITORY', '').strip()
+              if not repo:
+                  raise SystemExit(
+                      'GITHUB_REPOSITORY is required for non-dry-run '
+                      'publication.'
+                  )
+              try:
+                  res = subprocess.run(
+                      [
+                          gh_bin,
+                          'release',
+                          'view',
+                          release_tag,
+                          '--repo',
+                          repo,
+                          '--json',
+                          'isPrerelease',
+                      ],
+                      capture_output=True,
+                      text=True,
+                      check=False,
+                  )
+              except OSError as error:
+                  raise SystemExit(
+                      f'Failed to execute gh release view: {error}'
+                  ) from error
+
+              if res.returncode != 0:
+                  err = res.stderr.strip() or f'exit code {res.returncode}'
+                  raise SystemExit(
+                      f'GitHub release query failed for {release_tag} '
+                      f'in {repo}: {err}'
+                  )
+              try:
+                  data = json.loads(res.stdout)
+              except (json.JSONDecodeError, ValueError) as error:
+                  raise SystemExit(
+                      'Invalid JSON response from gh release view: '
+                      f'{error}'
+                  ) from error
+
+              if not isinstance(data, dict) or 'isPrerelease' not in data:
+                  raise SystemExit(
+                      'GitHub release query response missing '
+                      f'"isPrerelease": {data!r}'
+                  )
+              if data.get('isPrerelease') is not False:
+                  raise SystemExit(
+                      f'Release {release_tag} in {repo} is marked as a '
+                      'prerelease; only stable releases may be published.'
+                  )
+
+          with open(
+              os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8'
+          ) as output:
+              version = release_tag.removeprefix('v')
+              output.write(f'release_tag={release_tag}\n')
+              output.write(f'release_version={version}\n')
+              output.write(f'dry_run={"true" if dry_run else "false"}\n')
+          PY
+
   security-scan:
     name: Security scan before release
     runs-on: ubuntu-latest
+    needs: validate-release-tag
     steps:
-      - name: Checkout
+      - name: Checkout release SHA
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
         with:
           persist-credentials: false
           fetch-depth: 0
+          ref: ${{ github.sha }}
 
-      # v7
-      - name: Set up Python
-        uses: >-
-          actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+      - name: Set up Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: "3.12"
 
-      # v8.3.2
       - name: Install uv
-        uses: >-
-          astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990
+        # v8.3.2
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990
         with:
           enable-cache: false
 
       - name: Install dependencies
         run: uv sync --locked --all-extras --dev
 
-      - name: Static security analysis (Ruff flake8-bandit rules)
-        run: |
-          uv run --locked --no-sync python scripts/check-ruff-policy.py \
-            --profile security
-          echo "✅ Security analysis passed"
+      - name: Static security analysis
+        run: >-
+          uv run --locked --no-sync python
+          scripts/check-ruff-policy.py --profile security
 
       - name: Check for vulnerable dependencies
-        run: |
-          uv run --locked --no-sync python \
-            scripts/audit_locked_dependencies.py
-          echo "✅ No vulnerable dependencies in release"
+        run: >-
+          uv run --locked --no-sync python
+          scripts/audit_locked_dependencies.py
 
-  # --------------------------------------------------------------------------
-  # Build and Publish
-  # --------------------------------------------------------------------------
-  publish:
-    name: Build and publish to PyPI
+  quality:
+    name: Quality matrix for release SHA
+    needs: validate-release-tag
+    uses: ./.github/workflows/pipeline.yml
+    with:
+      release_tag: ${{ needs.validate-release-tag.outputs.release_tag }}
+
+  package-check:
+    name: Build, inspect, and install release distributions
     runs-on: ubuntu-latest
-    needs: security-scan  # Only publish if security checks pass
+    needs: validate-release-tag
+    env:
+      UV_VIRTUALENVS_IN_PROJECT: true
+    steps:
+      - name: Checkout release SHA
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        # v8.3.2
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990
+        with:
+          enable-cache: false
+
+      - name: Install dependencies
+        run: uv sync --locked --all-extras --dev
+
+      - name: Build source and wheel distributions
+        run: uv build
+
+      - name: Check distribution metadata and contents
+        run: uvx --from twine twine check dist/*
+
+      - name: Install the wheel in an isolated environment
+        env:
+          EXPECTED_VERSION: >-
+            ${{ needs.validate-release-tag.outputs.release_version }}
+        run: |
+          python -m venv "$RUNNER_TEMP/package-smoke"
+          uv pip install \
+            --python "$RUNNER_TEMP/package-smoke/bin/python" \
+            dist/*.whl
+          cd "$RUNNER_TEMP"
+          EXPECTED_VERSION="$EXPECTED_VERSION" \
+            "$RUNNER_TEMP/package-smoke/bin/python" -I -c '
+          import importlib.metadata
+          import os
+          import globaldatafinance
+
+          assert (
+              importlib.metadata.version("globaldatafinance")
+              == os.environ["EXPECTED_VERSION"]
+          )
+          assert set(globaldatafinance.__all__) == {
+              "ExtractionResultB3",
+              "FundamentalStocksDataCVM",
+              "HistoricalQuotesB3",
+          }
+          '
+
+      - name: Upload checked distributions
+        # v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: dist-packages
+          path: dist/
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Publish checked distributions to PyPI
+    if: needs.validate-release-tag.outputs.dry_run != 'true'
+    runs-on: ubuntu-latest
+    needs:
+      - validate-release-tag
+      - security-scan
+      - quality
+      - package-check
     permissions:
       contents: read
-      id-token: write  # Required for PyPI trusted publishing
+      id-token: write
     environment:
       name: release
       url: https://pypi.org/project/globaldatafinance/
     steps:
-      - name: Checkout
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
+      - name: Download checked distributions
+        # v8.0.1
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
-          persist-credentials: false
-          fetch-depth: 0
+          name: dist-packages
+          path: dist/
 
-      # v7
-      - name: Set up Python
-        uses: >-
-          actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: "3.12"
-
-      # v8.3.2
-      - name: Install uv
-        uses: >-
-          astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990
-        with:
-          enable-cache: false
-
-      - name: Install dependencies
-        run: uv sync --locked --all-extras --dev
-
-      - name: Build package
-        run: uv build
-
-      - name: Check package distribution
-        run: uvx twine check dist/*
-
-      # release/v1
       - name: Publish to PyPI using Trusted Publishers
+        # release/v1
         uses: >-
           pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33
         with:
           print-hash: true
           verbose: true
-
-      # v7
-      - name: Upload build artifacts
-        uses: >-
-          actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: dist-packages
-          path: dist/
-          retention-days: 30

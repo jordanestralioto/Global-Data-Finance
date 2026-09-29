@@ -18,10 +18,12 @@ concerns belong in common foundations only when they are genuinely reusable.
 
 ## Success Metrics
 
-| Metric           | Target                                           |
-| ---------------- | ------------------------------------------------ |
-| Coverage gate    | 85% minimum, enforced by `pyproject.toml` and CI |
-| Supported Python | `>=3.12,<4.0`; CI validates 3.12, 3.13, and 3.14 |
+| Signal                       | Acceptance criterion                                                                 | Source of truth                                                                           |
+| ---------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| Product coverage             | At least 85% aggregate coverage for `src/`, with branch coverage enabled             | [`pyproject.toml`](pyproject.toml), [testing guide](docs/dev-guide/testing.md)            |
+| Validation executor coverage | At least 85% aggregate coverage, including branches, for the real-validation scripts | [CI workflow](.github/workflows/pipeline.yml), [testing guide](docs/dev-guide/testing.md) |
+| Python support               | Package declares `>=3.12,<4.0`                                                       | [`pyproject.toml`](pyproject.toml)                                                        |
+| CI quality                   | Quality matrix passes on Python 3.12, 3.13, and 3.14                                 | [CI workflow](.github/workflows/pipeline.yml)                                             |
 
 ## Pipeline Architecture
 
@@ -100,12 +102,10 @@ for the exact dependency set, versions, and tool configuration.
 
 Pytest validates behavior and coverage; mypy checks types; pre-commit
 coordinates local gates; and the repository owns dedicated security, dependency,
-import-boundary, documentation, and package checks. Ruff uses a closed
-repository policy: 79-character lines, single-quote formatting, Google-style
-docstrings, McCabe complexity capped at 10, and explicit base, documentation,
-and security profiles. Run those profiles through
-`scripts/check-ruff-policy.py`; `pyproject.toml` owns their exact rules and the
-single file-scoped exception.
+import-boundary, documentation, and package checks. Ruff enforces repository
+linting and formatting policies across base, documentation, and security
+profiles via `scripts/check-ruff-policy.py`; [pyproject.toml](pyproject.toml)
+owns the exact rule configuration and file-scoped exceptions.
 
 ## Mandatory Rules
 
@@ -194,10 +194,10 @@ single file-scoped exception.
 
 ### Precedence
 
-Rank: system constraints → repository/workspace policy and tooling → user
-request. Act on the highest-ranking unambiguous, safe instruction without asking
-again. If same-rank instructions conflict, prefer the more specific and safer
-one.
+Respect applicable user instructions while preserving canonical repository
+contracts, safety invariants, and established boundaries. When user requests
+and repository sources conflict, report the ambiguity and identify the diverging
+sources instead of assuming an unverified resolution.
 
 ### Secrets
 
@@ -208,52 +208,22 @@ appears in output: stop, redact it, and report that sensitive data was found.
 ### Repo Alignment
 
 Follow the repository's canonical contracts, documentation, current code,
-accepted decisions, and official scripts before inventing a new workflow. Prefer
-existing project patterns, entrypoints, and abstractions over ad hoc
-alternatives. Do not silently change public contracts, persisted formats,
-authentication flows, runtime topology, or security boundaries. If code, docs,
-and tooling disagree, stop, report the ambiguity, and identify the conflicting
-sources.
+accepted decisions, and official scripts before inventing an ad hoc workflow.
+Do not silently change public contracts, persisted formats, runtime topology,
+or security boundaries.
 
-### Autonomy
+### Autonomy & Safety
 
-Execute reversible repository/workspace changes without confirmation only when
-all hold:
-
-- Goal and success criteria are unambiguous.
-- Change is contained inside the authorized repository/workspace scope.
-- Change is fully recoverable via version control.
-
-Stop and ask when scope is ambiguous, side effects are destructive, external
-systems or production are involved, secrets are involved, or same-rank
-instructions conflict.
-
-### Validation
-
-Before concluding code or tooling changes, use the repository's official
-validation entrypoint for the affected scope. Prefer repository-native commands
-and scripts over custom one-off equivalents. If validation is skipped,
-unsupported, or failing, report the reason and impact; never treat it as a pass.
-
-### Execution Safety
-
-Before any destructive, publish, migration, deployment-like, or external-state
-operation:
-
-1. State exactly what will be affected.
-2. Inspect and validate the exact target and scope.
-3. Run a dry run when the command supports it.
-4. Break complex operations into readable steps; do not hide behavior in opaque
-   one-liners.
-
-Before running local scripts, inspect the command path. Stop and ask if a script
-is obfuscated, downloads executables, touches secrets, or has unclear side
-effects.
+Execute reversible repository changes within authorized scope without
+unnecessary confirmation. Stop and ask when requirements are ambiguous,
+operations are destructive, or external systems or credentials are involved.
+Inspect command paths and targets before executing unfamiliar scripts or
+migrations.
 
 ### Failure Handling
 
 If a security lock, permission denial, authentication boundary, or authorization
-boundary blocks the task, stop. Do not work around it. Report the block, the
+boundary blocks execution, stop. Do not work around it. Report the block, the
 evidence, and the safest next step.
 
 ## Related Documentation
@@ -276,7 +246,7 @@ or repository state changes, or a conflict requires revalidation.
 | [pyproject.toml](pyproject.toml), [uv.lock](uv.lock), [pytest.ini](pytest.ini), [.pre-commit-config.yaml](.pre-commit-config.yaml), and [.github/workflows/pipeline.yml](.github/workflows/pipeline.yml)                                                     | Tooling                | Authoritative package, dependency, test, local-gate, and CI configuration                                                          |
 | [examples/README.md](examples/README.md) and [examples/](examples/)                                                                                                                                                                                          | Examples               | Runnable onboarding; open only when the task needs an execution example                                                            |
 | [.agents/harness.json](.agents/harness.json)                                                                                                                                                                                                                 | Agent harness manifest | Internal development harness; open only for harness work                                                                           |
-| [openspec/](openspec/)                                                                                                                                                                                                                                       | Planned                | Planning material; it does not govern runtime or policy until implemented and accepted                                             |
+| OpenSpec planning artifacts (`openspec/`)                                                                                                                                                                                                                    | Planned                | Planning material; it does not govern runtime or policy until implemented and accepted                                             |
 
 Portuguese pages are the default documentation. Matching English `*.en.md` pages
 are translation counterparts. Generated, mirrored, exploratory, archived, and

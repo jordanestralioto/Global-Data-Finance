@@ -89,6 +89,66 @@ def range_target_revision(
     return result.stdout.strip()
 
 
+def find_base_tag(repo_root: Path | None = None) -> str | None:
+    """Find the most recent ancestor tag, or None if untagged."""
+    root = _root(repo_root)
+    result = _run_git(['describe', '--tags', '--abbrev=0'], root, check=False)
+    if result.returncode == 0 and result.stdout.strip():
+        return result.stdout.strip()
+    return None
+
+
+def get_base_staged_diff(
+    *,
+    context_lines: int,
+    base_tag: str,
+    target_files: list[str] | None = None,
+    no_renames: bool = False,
+    repo_root: Path | None = None,
+) -> str:
+    """Return unified diff from ancestor base_tag to the staged index."""
+    root = _root(repo_root)
+    command = [
+        'diff',
+        '--no-color',
+        f'-U{context_lines}',
+        '--cached',
+        base_tag,
+    ]
+    if no_renames:
+        command.append('--no-renames')
+    pathspecs = _pathspecs(target_files)
+    if target_files and not pathspecs:
+        return ''
+    command.extend(['--', *pathspecs])
+    return _run_git(command, root, check=False).stdout
+
+
+def get_base_staged_deleted_paths(
+    base_tag: str,
+    repo_root: Path | None = None,
+) -> set[str]:
+    """Return paths deleted between base_tag and the staged index."""
+    root = _root(repo_root)
+    command = [
+        'diff',
+        '--no-color',
+        '--name-only',
+        '--diff-filter=D',
+        '--cached',
+        base_tag,
+    ]
+    command.extend(['--', *_pathspecs(None)])
+    result = _run_git(command, root, check=False)
+    if result.returncode != 0:
+        return set()
+    return {
+        path
+        for path in result.stdout.splitlines()
+        if path and not is_external_harness_path(path)
+    }
+
+
 def get_diff(
     *,
     context_lines: int,

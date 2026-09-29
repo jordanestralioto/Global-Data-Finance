@@ -1,10 +1,22 @@
 # Migração: corte limpo de infraestrutura
 
-Esta versão major remove APIs genéricas obsoletas e a dependência automática de
-Pandas. As fachadas raiz, as assinaturas públicas de CVM/B3, os nomes de saída,
-os schemas Parquet e a publicação transacional continuam iguais. A mudança é
-intencionalmente incompatível: não há alias, warning, shim ou fallback para os
-nomes removidos.
+Esta quebra de compatibilidade pertence à linha `0.x` e deve ser publicada como
+`v0.2.0`, não como uma versão patch `v0.1.5`. APIs genéricas obsoletas e a
+dependência automática de Pandas foram removidas. As fachadas raiz, as
+assinaturas públicas de CVM/B3, os nomes de saída, os schemas Parquet e a
+publicação transacional continuam iguais. A mudança é intencionalmente
+incompatível: não há alias, warning, shim ou fallback para os nomes removidos.
+
+## Versão removida da raiz
+
+`globaldatafinance.__version__` não é mais exportado. Consulte os metadados da
+distribuição no runtime:
+
+```python
+from importlib.metadata import version
+
+package_version = version('globaldatafinance')
+```
 
 ## Timeout de download
 

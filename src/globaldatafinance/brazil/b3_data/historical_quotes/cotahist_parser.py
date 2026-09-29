@@ -8,9 +8,9 @@ from decimal import Decimal
 from typing import Any, cast
 
 from ....macro_exceptions import ExtractionError
-from .integrity import B3RecordContext
+from .integrity import COTAHIST_RECORD_WIDTH, B3RecordContext
 
-_EXPECTED_LENGTH = 245
+_EXPECTED_LENGTH = COTAHIST_RECORD_WIDTH
 # ``decimal128(38, 2)`` has 38 total significant digits, two of which are
 # reserved for the fractional scale.  COTAHIST V99 values are integer cents,
 # so at most 36 digits may appear before the implicit decimal point.

@@ -14,6 +14,7 @@ from globaldatafinance.brazil.b3_data.historical_quotes.catalog import (
 )
 from tests.support.builders import (
     build_cotahist_record,
+    build_long_cotahist_line,
     write_cotahist_txt,
     write_cotahist_zip,
     write_zip,
@@ -104,6 +105,26 @@ def test_catalog_rejects_inputs_without_quote_data_records(
     writer(tmp_path / filename)
 
     with pytest.raises(CotahistCatalogError, match='no type-01 quote data'):
+        validate_cotahist_catalog(tmp_path)
+
+
+@pytest.mark.parametrize('extension', ['TXT', 'ZIP'])
+def test_catalog_rejects_overwide_physical_lines_before_decoding(
+    tmp_path: Path, extension: str
+) -> None:
+    """Catalog validation reads at most one bounded COTAHIST line at once."""
+    path = tmp_path / f'COTAHIST_A2024.{extension}'
+    oversized_line = build_long_cotahist_line(1_000_002)
+    payload = oversized_line + b'\n'
+    if extension == 'TXT':
+        path.write_bytes(payload)
+    else:
+        write_zip(path, {'COTAHIST_A2024.TXT': payload})
+
+    with pytest.raises(
+        CotahistCatalogError,
+        match=r'oversized physical line.*physical line 1',
+    ):
         validate_cotahist_catalog(tmp_path)
 
 

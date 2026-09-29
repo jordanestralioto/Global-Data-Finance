@@ -15,13 +15,16 @@ from globaldatafinance import FundamentalStocksDataCVM
 cvm = FundamentalStocksDataCVM()
 
 # Trigger download with automated Parquet conversion
-cvm.download(
+cvm_result = cvm.download(
     destination_path="/home/user/financial_data/dfp",
     list_docs=["DFP"],
     initial_year=2020,
     last_year=2023,
     automatic_extractor=True  # Automatically converts downloaded tables into Parquet
 )
+if cvm_result.error_count_downloads > 0 or cvm_result.success_count_downloads == 0:
+    print(f"✗ Incomplete CVM download: {cvm_result.failed_downloads}")
+    raise SystemExit(1)
 
 print("✓ Ingestion and extraction completed successfully!")
 ```
@@ -36,6 +39,7 @@ Extract historical exchange trading quotes for equities and ETFs across the spot
 ```python
 from globaldatafinance import HistoricalQuotesB3
 import time
+import os
 
 # Instantiate public client
 b3 = HistoricalQuotesB3()
@@ -57,11 +61,21 @@ result = b3.extract(
 elapsed = time.time() - start_time
 
 # Display execution diagnostics
-if result['success']:
+if (
+    result['success']
+    and result['total_files'] > 0
+    and result['total_records'] > 0
+    and result['output_file']
+    and os.path.isfile(result['output_file'])
+    and os.path.getsize(result['output_file']) > 0
+):
     print(f"✓ Extraction complete in {elapsed:.2f}s")
     print(f"  Processed records: {result['total_records']:,}")
     print(f"  Average throughput: {result['total_records']/elapsed:,.0f} records/sec")
     print(f"  Consolidated artifact: {result['output_file']}")
+else:
+    print(f"✗ Incomplete extraction: {result['errors']}")
+    raise SystemExit(1)
 ```
 
 ______________________________________________________________________
@@ -71,8 +85,8 @@ ______________________________________________________________________
 An integrated ingestion script compiling corporate fundamental disclosures from CVM alongside historical exchange quotes from B3.
 
 ```python
-from globaldatafinance import FundamentalStocksDataCVM, HistoricalQuotesB3
 import os
+from globaldatafinance import FundamentalStocksDataCVM, HistoricalQuotesB3
 
 
 # Configure target filesystem repositories
@@ -87,13 +101,16 @@ print("PHASE 1: Downloading CVM Financial Filings")
 print("=" * 60)
 
 cvm = FundamentalStocksDataCVM()
-cvm.download(
+cvm_result = cvm.download(
     destination_path=cvm_dir,
     list_docs=["DFP", "ITR"],
     initial_year=2022,
     last_year=2023,
     automatic_extractor=True
 )
+if cvm_result.error_count_downloads > 0 or cvm_result.success_count_downloads == 0:
+    print(f"✗ Incomplete CVM download: {cvm_result.failed_downloads}")
+    raise SystemExit(1)
 
 # === PHASE 2: B3 Processing ===
 print("\n" + "=" * 60)
@@ -109,6 +126,16 @@ result = b3.extract(
     destination_path=output_dir,
     output_filename="market_quotes_2022_2023"
 )
+if (
+    not result['success']
+    or result['total_files'] == 0
+    or result['total_records'] == 0
+    or not result['output_file']
+    or not os.path.isfile(result['output_file'])
+    or os.path.getsize(result['output_file']) == 0
+):
+    print(f"✗ Incomplete B3 extraction: {result['errors']}")
+    raise SystemExit(1)
 
 # === PHASE 3: Execution Summary ===
 print("\n" + "=" * 60)
@@ -233,27 +260,36 @@ def main():
         if args.source in ["cvm", "both"]:
             print("Downloading CVM corporate regulatory archives...")
             cvm = FundamentalStocksDataCVM()
-            cvm.download(
+            cvm_result = cvm.download(
                 destination_path=str(dest_path / "cvm"),
                 list_docs=["DFP", "ITR"],
                 initial_year=args.start_year,
                 last_year=args.end_year,
                 automatic_extractor=True
             )
+            if cvm_result.has_errors() or cvm_result.success_count_downloads == 0:
+                print("✗ CVM document download failed", file=sys.stderr)
+                for doc, err in cvm_result.failed_downloads.items():
+                    print(f"  • {doc}: {err}", file=sys.stderr)
+                return 1
+            print(f"✓ Downloaded {cvm_result.success_count_downloads} CVM archives")
 
         if args.source in ["b3", "both"]:
             print("Extracting B3 historical exchange quotes...")
             b3 = HistoricalQuotesB3()
-            result = b3.extract(
+            b3_result = b3.extract(
                 path_of_docs=str(dest_path / "cotahist"),
                 assets_list=["ações", "etf"],
                 initial_year=args.start_year,
                 last_year=args.end_year,
                 destination_path=str(dest_path / "quotes")
             )
-
-            if result['success']:
-                print(f"✓ Normalized and consolidated {result['total_records']:,} transaction rows")
+            if not b3_result['success'] or b3_result['total_records'] == 0:
+                print("✗ B3 quotes extraction failed", file=sys.stderr)
+                for file_name, err in b3_result['errors'].items():
+                    print(f"  • {file_name}: {err}", file=sys.stderr)
+                return 1
+            print(f"✓ Normalized and consolidated {b3_result['total_records']:,} transaction rows")
 
         print("✓ Automated batch processing script finished cleanly!")
         return 0

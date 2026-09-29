@@ -2,6 +2,13 @@
 name: CI - Quality & Tests
 
 on:
+  workflow_call:
+    inputs:
+      release_tag:
+        description: >-
+          Release tag whose cumulative diff must pass integrity gates.
+        required: true
+        type: string
   pull_request:
     branches: [develop, main]
   push:
@@ -24,6 +31,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
         with:
           persist-credentials: false
+          ref: ${{ github.sha }}
 
       # Gitleaks v8.30.0 source tag object:
       # 2ca41cc1372d1e939a6a879f18cdc19fc1cac1ce (the frozen local hook pin).
@@ -51,6 +59,7 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+          ref: ${{ github.sha }}
 
       # v7
       - name: Set up Python ${{ matrix.python-version }}
@@ -70,24 +79,39 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked --all-extras --dev
 
-      - name: Select pull request change range
+      - name: Select cumulative pull request change range
         if: github.event_name == 'pull_request'
         env:
-          QUALITY_GATE_BASE: ${{ github.event.pull_request.base.sha }}
           QUALITY_GATE_HEAD: ${{ github.sha }}
         run: |
-          range="${QUALITY_GATE_BASE}...${QUALITY_GATE_HEAD}"
+          base_tag="$(git describe --tags --abbrev=0 "${QUALITY_GATE_HEAD}^")"
+          range="${base_tag}...${QUALITY_GATE_HEAD}"
           echo "QUALITY_GATE_RANGE=$range" >> "$GITHUB_ENV"
 
-      - name: Select push change range
+      - name: Select cumulative push change range
         if: >-
           github.event_name == 'push' &&
           github.event.before != '0000000000000000000000000000000000000000'
         env:
-          QUALITY_GATE_BASE: ${{ github.event.before }}
           QUALITY_GATE_HEAD: ${{ github.sha }}
         run: |
-          range="${QUALITY_GATE_BASE}..${QUALITY_GATE_HEAD}"
+          base_tag="$(git describe --tags --abbrev=0 "${QUALITY_GATE_HEAD}^")"
+          range="${base_tag}...${QUALITY_GATE_HEAD}"
+          echo "QUALITY_GATE_RANGE=$range" >> "$GITHUB_ENV"
+
+      - name: Select release change range
+        if: inputs.release_tag != ''
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          QUALITY_GATE_HEAD: ${{ github.sha }}
+        run: |
+          release_sha="$(git rev-parse --verify "${RELEASE_TAG}^{commit}")"
+          if [[ "$release_sha" != "$QUALITY_GATE_HEAD" ]]; then
+            echo "Release tag does not identify the workflow SHA." >&2
+            exit 1
+          fi
+          base_tag="$(git describe --tags --abbrev=0 "${RELEASE_TAG}^")"
+          range="${base_tag}...${QUALITY_GATE_HEAD}"
           echo "QUALITY_GATE_RANGE=$range" >> "$GITHUB_ENV"
 
       # --------------------------------------------------------------------------

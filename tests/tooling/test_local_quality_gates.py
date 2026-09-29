@@ -14,6 +14,7 @@ import pytest
 REPOSITORY_ROOT = Path(__file__).parents[2]
 PRE_COMMIT_CONFIG = REPOSITORY_ROOT / '.pre-commit-config.yaml'
 PIPELINE_CONFIG = REPOSITORY_ROOT / '.github' / 'workflows' / 'pipeline.yml'
+PUBLISH_CONFIG = REPOSITORY_ROOT / '.github' / 'workflows' / 'publish.yml'
 GITLEAKS_CONFIG = REPOSITORY_ROOT / '.gitleaks.toml'
 AGENTS_VALIDATOR = (
     REPOSITORY_ROOT
@@ -190,6 +191,30 @@ def test_diff_sanity_print_allowlist_matches_ci() -> None:
     assert 'scripts/check_commit_msg.py' in pre_commit
 
 
+def test_release_quality_call_selects_the_release_diff_range() -> None:
+    """Release calls select the integrity range from the explicit tag."""
+    content = PIPELINE_CONFIG.read_text(encoding='utf-8')
+    publish_content = PUBLISH_CONFIG.read_text(encoding='utf-8')
+
+    assert "if: inputs.release_tag != ''" in content
+    assert "if: github.event_name == 'workflow_call'" not in content
+    assert 'RELEASE_TAG: ${{ inputs.release_tag }}' in content
+    assert 'QUALITY_GATE_HEAD: ${{ github.sha }}' in content
+    assert 'release_sha" != "$QUALITY_GATE_HEAD' in content
+    assert 'QUALITY_GATE_RANGE=$range' in content
+    assert 'uses: ./.github/workflows/pipeline.yml' in publish_content
+    assert (
+        'release_tag: ${{ needs.validate-release-tag.outputs.release_tag }}'
+        in publish_content
+    )
+    assert 'dry_run:' in publish_content
+    assert (
+        "needs.validate-release-tag.outputs.dry_run != 'true'"
+        in publish_content
+    )
+    assert 'Prereleases are not eligible' in publish_content
+
+
 def test_mutating_hooks_keep_projection_exclusions() -> None:
     """Every mutating file hook must independently exclude projections."""
     content = PRE_COMMIT_CONFIG.read_text(encoding='utf-8')
@@ -248,7 +273,6 @@ def test_agents_hook_validator_rejects_an_invalid_document(
             str(AGENTS_VALIDATOR),
             '--file',
             str(invalid_agents),
-            '--strict-governance',
         ],
         cwd=tmp_path,
         check=False,
@@ -256,7 +280,8 @@ def test_agents_hook_validator_rejects_an_invalid_document(
 
     assert result.returncode == 1
     assert (
-        'level-2 headings must match portable contract order' in result.stdout
+        'root document requires at least five level-two sections'
+        in result.stdout
     )
 
 

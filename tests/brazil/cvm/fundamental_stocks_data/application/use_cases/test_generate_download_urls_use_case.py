@@ -139,6 +139,8 @@ class TestGenerateUrlsUseCaseDocTypeErrors:
             list_docs=[], initial_year=2020, last_year=2020
         )
 
+        assert len(urls) == 7
+        assert len(new_set_docs) == 7
         assert set(urls) == new_set_docs
         assert set(urls) == {
             'CGVN',

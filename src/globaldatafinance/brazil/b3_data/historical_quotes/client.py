@@ -14,6 +14,7 @@ from ....core.archive_safety import ArchiveSafetyLimits
 from ....core.config import PathSafetySettings
 from ....macro_exceptions import InvalidDestinationPathError
 from .assets import AvailableAssetsServiceB3
+from .catalog import validate_and_resolve_cotahist_input
 from .cotahist_parser import CotahistParserB3
 from .errors import InvalidOutputFilename
 from .extraction_service import ExtractionServiceB3
@@ -94,6 +95,19 @@ class CreateSetToDownloadUseCaseB3:
         return file_system.find_files_by_years(validated_path, range_years)
 
 
+class ValidateCotahistInputUseCaseB3:
+    """Validate one COTAHIST input before destination creation."""
+
+    @staticmethod
+    def execute(
+        path: str | Path,
+        *,
+        limits: ArchiveSafetyLimits | None = None,
+    ) -> str | None:
+        """Validate an input archive or file and return the member name."""
+        return validate_and_resolve_cotahist_input(path, limits=limits)
+
+
 class VerifyDestinationPathsUseCaseB3:
     """Validate and prepare the destination directory for extraction."""
 
@@ -107,6 +121,17 @@ class VerifyDestinationPathsUseCaseB3:
         return FileSystemServiceB3(
             allowed_unc_roots=allowed_unc_roots
         ).prepare_destination_path(destination_path)
+
+    @staticmethod
+    def validate(
+        destination_path: str,
+        *,
+        allowed_unc_roots: Sequence[str] | None = None,
+    ) -> Path:
+        """Validate a destination path without creating the directory."""
+        return FileSystemServiceB3(
+            allowed_unc_roots=allowed_unc_roots
+        ).validate_destination_path(destination_path)
 
 
 class ValidateExtractionConfigUseCaseB3:
@@ -136,6 +161,7 @@ class CreateDocsToExtractUseCaseB3:
         destination_path: str | None = None,
         *,
         allowed_unc_roots: Sequence[str] | None = None,
+        limits: ArchiveSafetyLimits | None = None,
     ):
         """Store raw inputs before validating them in ``execute``."""
         if not isinstance(path_of_docs, str):
@@ -162,6 +188,7 @@ class CreateDocsToExtractUseCaseB3:
         self.allowed_unc_roots = PathSafetySettings.resolve_allowed_unc_roots(
             allowed_unc_roots
         )
+        self.limits = limits
 
     def execute(self) -> DocsToExtractorB3:
         """Create and return a validated DocsToExtractorB3 entity."""
@@ -171,19 +198,28 @@ class CreateDocsToExtractUseCaseB3:
             self.initial_year, self.last_year
         )
 
-        normalized_destination = VerifyDestinationPathsUseCaseB3().execute(
+        destination_paths = VerifyDestinationPathsUseCaseB3()
+        validated_destination = destination_paths.validate(
             self.destination_path,
+            allowed_unc_roots=self.allowed_unc_roots,
+        )
+        documents_to_download = CreateSetToDownloadUseCaseB3.execute(
+            range_years,
+            self.path_of_docs,
+            allowed_unc_roots=self.allowed_unc_roots,
+        )
+        for document_path in sorted(documents_to_download):
+            ValidateCotahistInputUseCaseB3.execute(
+                document_path, limits=self.limits
+            )
+        normalized_destination = destination_paths.execute(
+            str(validated_destination),
             allowed_unc_roots=self.allowed_unc_roots,
         )
         destination_path = (
             str(normalized_destination)
             if normalized_destination is not None
             else self.destination_path
-        )
-        documents_to_download = CreateSetToDownloadUseCaseB3.execute(
-            range_years,
-            self.path_of_docs,
-            allowed_unc_roots=self.allowed_unc_roots,
         )
 
         return DocsToExtractorB3(

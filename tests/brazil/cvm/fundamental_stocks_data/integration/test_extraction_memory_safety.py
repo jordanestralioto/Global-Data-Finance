@@ -37,7 +37,9 @@ class TestMemorySafety:
 
         output_path = tmp_path / 'multi_chunk.parquet'
         assert output_path.exists()
+        assert len(source_rows) == 7
         parquet = pq.ParquetFile(output_path)
         assert parquet.metadata.num_rows == 7
+        assert parquet.metadata.num_columns == 3
         assert parquet.metadata.num_row_groups == 1
         assert pq.read_table(output_path).to_pylist() == source_rows

@@ -266,7 +266,7 @@ de análise em [agent-anti-patterns.md](references/agent-anti-patterns.md).
     reporte que o resultado cobre o working tree, não o snapshot enviado.
 11. Para `[FILE_LINES]` em um consumidor do harness, selecione
     `"check-max-lines"` em `components.tools` de `.agents/harness.json`, rode
-    `harness-sync` e configure `python .agents/scripts/check-max-lines.py` sem
+    `harness-sync` e configure a tool projetada (`tools/check-max-lines`) sem
     filenames. Confirme Python 3.13+, limites e escopo compatíveis; o gate lê o
     working tree. Só declare cobertura staged se o runner isolar alterações
     não staged. Veja [gate-catalog.md](references/gate-catalog.md).

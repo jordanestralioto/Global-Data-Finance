@@ -14,7 +14,14 @@ from pathlib import Path
 if __package__ in {None, ''}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scripts.git_changes import GitInspectionError, get_diff, read_git_file
+from scripts.git_changes import (
+    GitInspectionError,
+    find_base_tag,
+    get_base_staged_deleted_paths,
+    get_base_staged_diff,
+    get_diff,
+    read_git_file,
+)
 from scripts.integrity_policy import (
     file_patch_hashes,
     is_assertion_reduction_approved,
@@ -44,7 +51,10 @@ SKIPPED_TEST_PATTERNS = [
         re.compile(r'\b(?:it|describe|test)\.skip\b'),
         'Skipped test (.skip) detected',
     ),
-    (re.compile(r'\b(?:xit|xtest)\('), 'Skipped test (xit/xtest) detected'),
+    (
+        re.compile(r'\b(?:xit|xtest)\('),
+        'Skipped test (xit/xtest) detected',
+    ),
 ]
 
 ASSERTION_PATTERNS = re.compile(
@@ -57,28 +67,16 @@ ALLOW_SKIP_RE = re.compile(
     r'(?:allow-skip|skip-reason):\s*\S+.*', re.IGNORECASE
 )
 _ALLOW_DELETED_FLAG = '--allow-' + 'deleted-tests'
+_TEST_EXT_RE = re.compile(r'(_test\.py|\.(test|spec)\.[tj]sx?)$')
 
 
 def is_test_file(file_path: str) -> bool:
     """Check if the given file path belongs to a test suite."""
     p = Path(file_path)
-    name = p.name.lower()
-    posix_path = p.as_posix().lower()
+    name, posix_path = p.name.lower(), p.as_posix().lower()
     return (
         name.startswith('test_')
-        or name.endswith(
-            (
-                '_test.py',
-                '.test.ts',
-                '.test.js',
-                '.test.tsx',
-                '.test.jsx',
-                '.spec.ts',
-                '.spec.js',
-                '.spec.tsx',
-                '.spec.jsx',
-            )
-        )
+        or bool(_TEST_EXT_RE.search(name))
         or '/tests/' in posix_path
         or '/__tests__/' in posix_path
         or posix_path.startswith(('tests/', 'test/'))
@@ -111,59 +109,48 @@ def _evaluate_file_assertions(
     repo_root: Path | None = None,
     revision_range: str | None = None,
 ) -> list[str]:
-    errors: list[str] = []
     if not (file_path and is_test_file(file_path)):
-        return errors
-
+        return []
     if is_deleted:
-        if not (
-            allow_deleted
-            or is_test_deletion_approved(
-                file_path,
-                repo_root,
-                revision_range,
-            )
-        ):
-            errors.append(
+        approved = allow_deleted or is_test_deletion_approved(
+            file_path, repo_root, revision_range
+        )
+        if not approved:
+            return [
                 f'{file_path}: [TEST_DELETION] Test file deleted in staged '
                 f'changes. To authorize, pass {_ALLOW_DELETED_FLAG} '
                 'or stage a policy entry in .test-integrity-policy.json.'
-            )
-    elif (
+            ]
+        return []
+    if (
         removed_assertions > added_assertions
         and not is_assertion_reduction_approved(
-            file_path,
-            diff_sha256,
-            is_test_file,
-            repo_root,
-            revision_range,
+            file_path, diff_sha256, is_test_file, repo_root, revision_range
         )
     ):
-        errors.append(
+        return [
             f'{file_path}: [TEST_INTEGRITY] Net reduction of test '
             f'assertions detected ({removed_assertions} removed vs '
             f'{added_assertions} added without '
             'a hash-bound allowed_assertion_reductions entry)'
-        )
-    return errors
+        ]
+    return []
 
 
 def _check_focus_or_skip_line(
     content: str, file_path: str, line_num: int
 ) -> list[str]:
-    errors: list[str] = []
-    for pattern, desc in STRICT_FOCUS_PATTERNS:
-        if pattern.search(content):
-            errors.append(
-                f'{file_path}:{line_num}: [TEST_FOCUS] {desc} ("{content}")'
-            )
-
-    for pattern, desc in SKIPPED_TEST_PATTERNS:
-        if pattern.search(content) and not ALLOW_SKIP_RE.search(content):
-            errors.append(
-                f'{file_path}:{line_num}: [TEST_SKIP] {desc} ("{content}")'
-            )
-
+    loc = f'{file_path}:{line_num}'
+    errors: list[str] = [
+        f'{loc}: [TEST_FOCUS] {desc} ("{content}")'
+        for pattern, desc in STRICT_FOCUS_PATTERNS
+        if pattern.search(content)
+    ]
+    errors.extend(
+        f'{loc}: [TEST_SKIP] {desc} ("{content}")'
+        for pattern, desc in SKIPPED_TEST_PATTERNS
+        if pattern.search(content) and not ALLOW_SKIP_RE.search(content)
+    )
     return errors
 
 
@@ -179,10 +166,8 @@ class _FileDiffState:
         self.reduced_paths: set[str] = set()
 
     def reset_for_file(self, file_path: str, is_deleted: bool = False) -> None:
-        self.current_file = file_path
-        self.removed_assertions = 0
-        self.added_assertions = 0
-        self.is_deleted_file = is_deleted
+        self.current_file, self.is_deleted_file = file_path, is_deleted
+        self.removed_assertions = self.added_assertions = 0
 
     def evaluate(
         self,
@@ -207,10 +192,10 @@ class _FileDiffState:
         )
 
     def track_previous_file(self, line: str) -> bool:
-        if not line.startswith('--- a/'):
-            return False
-        self.prev_file = line[6:]
-        return True
+        if line.startswith('--- a/'):
+            self.prev_file = line[6:]
+            return True
+        return False
 
     def handle_file_start(
         self,
@@ -219,29 +204,27 @@ class _FileDiffState:
         repo_root: Path | None,
         revision_range: str | None,
     ) -> list[str] | None:
-        if line.startswith('+++ b/'):
+        if line.startswith(('+++ b/', '+++ /dev/null')):
             errors = self.evaluate(allow_deleted, repo_root, revision_range)
-            self.reset_for_file(line[6:], is_deleted=False)
-            return errors
-        if line.startswith('+++ /dev/null'):
-            errors = self.evaluate(allow_deleted, repo_root, revision_range)
-            self.reset_for_file(self.prev_file, is_deleted=True)
+            is_del = line.startswith('+++ /dev/null')
+            self.reset_for_file(self.prev_file if is_del else line[6:], is_del)
             return errors
         return None
 
     def handle_hunk(self, line: str) -> bool:
-        if not line.startswith('@@ '):
-            return False
-        match = re.search(r'\+(\d+)', line)
-        if match:
-            self.line_num = int(match.group(1)) - 1
-        return True
+        if line.startswith('@@ '):
+            m = re.search(r'\+(\d+)', line)
+            if m:
+                self.line_num = int(m.group(1)) - 1
+            return True
+        return False
 
     def handle_removal(self, line: str) -> bool:
         if not line.startswith('-') or line.startswith('---'):
             return False
-        if ASSERTION_PATTERNS.search(line[1:].strip()):
-            self.removed_assertions += 1
+        self.removed_assertions += bool(
+            ASSERTION_PATTERNS.search(line[1:].strip())
+        )
         return True
 
     def handle_addition(self, line: str) -> list[str] | None:
@@ -251,8 +234,7 @@ class _FileDiffState:
         content = line[1:].strip()
         if not content:
             return []
-        if ASSERTION_PATTERNS.search(content):
-            self.added_assertions += 1
+        self.added_assertions += bool(ASSERTION_PATTERNS.search(content))
         return _check_focus_or_skip_line(
             content, self.current_file, self.line_num
         )
@@ -263,6 +245,52 @@ class _FileDiffState:
         return self.handle_addition(line) or []
 
 
+def _scan_diff_lines(
+    diff_text: str,
+    allow_deleted: bool,
+    repo_root: Path | None,
+    revision_range: str | None,
+) -> tuple[list[str], _FileDiffState]:
+    errors: list[str] = []
+    state = _FileDiffState(file_patch_hashes(diff_text))
+    for line in diff_text.splitlines():
+        if state.track_previous_file(line):
+            continue
+        file_errors = state.handle_file_start(
+            line, allow_deleted, repo_root, revision_range
+        )
+        if file_errors is not None:
+            errors.extend(file_errors)
+            continue
+        if is_test_file(state.current_file):
+            errors.extend(state.inspect_test_line(line))
+    errors.extend(state.evaluate(allow_deleted, repo_root, revision_range))
+    return errors, state
+
+
+def _resolve_base_state(
+    repo_root: Path | None,
+) -> tuple[set[str] | None, dict[str, str] | None, set[str] | None]:
+    base_tag = find_base_tag(repo_root)
+    if not base_tag:
+        return None, None, None
+    del_paths = {
+        p
+        for p in get_base_staged_deleted_paths(base_tag, repo_root)
+        if is_test_file(p)
+    }
+    base_diff = get_base_staged_diff(
+        context_lines=1,
+        base_tag=base_tag,
+        no_renames=True,
+        repo_root=repo_root,
+    )
+    if not base_diff.strip():
+        return del_paths, None, None
+    _, base_state = _scan_diff_lines(base_diff, False, repo_root, None)
+    return del_paths, base_state.patch_hashes, base_state.reduced_paths
+
+
 def scan_test_integrity(
     diff_text: str,
     allow_deleted: bool = False,
@@ -270,24 +298,14 @@ def scan_test_integrity(
     revision_range: str | None = None,
 ) -> list[str]:
     """Scan diff for test integrity violations."""
-    errors: list[str] = []
-    state = _FileDiffState(file_patch_hashes(diff_text))
-
-    for line in diff_text.splitlines():
-        if state.track_previous_file(line):
-            continue
-
-        file_errors = state.handle_file_start(
-            line, allow_deleted, repo_root, revision_range
-        )
-        if file_errors is not None:
-            errors.extend(file_errors)
-            continue
-
-        if is_test_file(state.current_file):
-            errors.extend(state.inspect_test_line(line))
-
-    errors.extend(state.evaluate(allow_deleted, repo_root, revision_range))
+    errors, state = _scan_diff_lines(
+        diff_text, allow_deleted, repo_root, revision_range
+    )
+    b_del, b_hashes, b_red = (
+        _resolve_base_state(repo_root)
+        if revision_range is None
+        else (None, None, None)
+    )
     errors.extend(
         test_integrity_policy_errors(
             diff_text,
@@ -295,6 +313,9 @@ def scan_test_integrity(
             is_test_file,
             repo_root=repo_root,
             revision_range=revision_range,
+            base_deleted_paths=b_del,
+            base_hashes=b_hashes,
+            base_reduced_paths=b_red,
         )
     )
     return errors
@@ -306,10 +327,7 @@ def main() -> int:
     parser.add_argument(
         'files',
         nargs='*',
-        help=(
-            'Specific files to check. If omitted, checks all staged test '
-            'files.'
-        ),
+        help='Specific files to check (defaults to staged test files).',
     )
     parser.add_argument(
         _ALLOW_DELETED_FLAG,
@@ -320,17 +338,12 @@ def main() -> int:
     parser.add_argument(
         '--range',
         dest='revision_range',
-        help=(
-            'Inspect an explicit Git A..B or A...B range instead of the index.'
-        ),
+        help='Inspect an explicit Git A..B or A...B range.',
     )
     parser.add_argument(
         '--print-hash',
         action='store_true',
-        help=(
-            'Print canonical SHA-256 hashes for test-file patches without '
-            'evaluating the integrity policy.'
-        ),
+        help='Print canonical SHA-256 hashes for test-file patches.',
     )
     args = parser.parse_args()
     if args.files and args.revision_range:
@@ -350,11 +363,9 @@ def main() -> int:
             )
             return 0
         if args.print_hash:
-            for file_path, digest in sorted(
-                file_patch_hashes(diff_text).items()
-            ):
-                if is_test_file(file_path):
-                    sys.stdout.write(f'{file_path} {digest}\n')
+            for path, digest in sorted(file_patch_hashes(diff_text).items()):
+                if is_test_file(path):
+                    sys.stdout.write(f'{path} {digest}\n')
             return 0
         errors = scan_test_integrity(
             diff_text,

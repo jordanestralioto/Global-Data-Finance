@@ -21,7 +21,7 @@
     },
     {
       "hasScripts": true,
-      "hash": "sha256:6221dbd7bb348328a6099f5882420384862041b9e02cb5b924a7ce7f6f020fb0",
+      "hash": "sha256:b1d43423f7ac32cfcb12118fe20bfc59e3ffcfe638557aedf2aa98f7f40190e3",
       "id": "skills/agents-md-author",
       "selectedBy": "manifest"
     },
@@ -39,7 +39,7 @@
     },
     {
       "hasScripts": true,
-      "hash": "sha256:0d61cac4c2edff6979531078d7603af4564df823c6cf1f7a470732f2600a9444",
+      "hash": "sha256:aafc98c6ee96f39ea10f3caf2b5d0d52da4669d0abfea6ec4af4d04b13c81d4b",
       "id": "skills/local-quality-gates",
       "selectedBy": "manifest"
     },
@@ -81,7 +81,7 @@
     },
     {
       "hasScripts": true,
-      "hash": "sha256:3d9bc13bd0f329d8dde8a44a7c46cc31743dde485e20d7d4f08378d4c9f1641b",
+      "hash": "sha256:f32a9e5acb59ac97f9c123dc0092fbd8c4b45c19630e6643d306f40e199237de",
       "id": "skills/server-management",
       "selectedBy": "manifest"
     },

@@ -27,12 +27,15 @@ from globaldatafinance import FundamentalStocksDataCVM
 cvm = FundamentalStocksDataCVM()
 
 # 2. Download DFP (Standardized Annual Financial Statements)
-cvm.download(
+result = cvm.download(
     destination_path="/home/user/data_cvm",
     list_docs=["DFP"],
     initial_year=2022,
     last_year=2023
 )
+if result.error_count_downloads > 0 or result.success_count_downloads == 0:
+    print(f"Incomplete download: {result.failed_downloads}")
+    raise SystemExit(1)
 ```
 
 ### What Happens Behind the Scenes?
@@ -73,6 +76,7 @@ Next, let's extract and normalize official market exchange quotes from B3 (Brazi
 ### Minimal Script
 
 ```python
+from pathlib import Path
 from globaldatafinance import HistoricalQuotesB3
 
 # 1. Instantiate the B3 public client
@@ -83,8 +87,20 @@ result = b3.extract(
     path_of_docs="/home/user/cotahist_zips",
     assets_list=["ações"],
     initial_year=2023,
+    last_year=2023,
     destination_path="/home/user/extracted_quotes"
 )
+output_file = Path(result["output_file"])
+if (
+    not result["success"]
+    or result["total_files"] == 0
+    or result["total_records"] == 0
+    or not result["output_file"]
+    or not output_file.is_file()
+    or output_file.stat().st_size == 0
+):
+    print(f"Incomplete extraction: {result['errors']}")
+    raise SystemExit(1)
 ```
 
 ### What Happens Behind the Scenes?
@@ -102,7 +118,7 @@ result = b3.extract(
 ✓ Extraction completed successfully!
 
 📈 Summary:
-  • Processed files: 2
+  • Processed files: 1
   • Total records: 836,978
   • Asset classes: ações
   • Processing mode: fast
@@ -187,6 +203,7 @@ ______________________________________________________________________
 Here is an end-to-end processing pipeline illustrating combined regulatory and market data ingestion:
 
 ```python
+from pathlib import Path
 from globaldatafinance import FundamentalStocksDataCVM, HistoricalQuotesB3
 
 # === PART 1: CVM Regulatory Ingestion ===
@@ -195,13 +212,19 @@ print("PHASE 1: Ingesting CVM Financial Statements")
 print("=" * 60)
 
 cvm = FundamentalStocksDataCVM()
-cvm.download(
+cvm_result = cvm.download(
     destination_path="/home/user/financial_data/cvm",
     list_docs=["DFP", "ITR"],
     initial_year=2022,
     last_year=2023,
     automatic_extractor=True  # Automatically extracts ZIP files into columnar Parquet datasets
 )
+if (
+    cvm_result.error_count_downloads > 0
+    or cvm_result.success_count_downloads == 0
+):
+    print(f"Incomplete CVM download: {cvm_result.failed_downloads}")
+    raise SystemExit(1)
 
 # === PART 2: B3 Quotes Processing ===
 print("\n" + "=" * 60)
@@ -224,7 +247,15 @@ print("\n" + "=" * 60)
 print("EXECUTION SUMMARY")
 print("=" * 60)
 
-if result['success']:
+output_file = Path(result["output_file"])
+if (
+    result["success"]
+    and result["total_files"] > 0
+    and result["total_records"] > 0
+    and result["output_file"]
+    and output_file.is_file()
+    and output_file.stat().st_size > 0
+):
     print(f"✓ Pipeline finished successfully!")
     print(f"✓ Total consolidated records written: {result['total_records']:,}")
     print(f"✓ Persisted Parquet artifact: {result['output_file']}")
@@ -233,6 +264,7 @@ else:
     if 'errors' in result and result['errors']:
         for file_name, message in result['errors'].items():
             print(f"  • {file_name}: {message}")
+    raise SystemExit(1)
 ```
 
 ______________________________________________________________________

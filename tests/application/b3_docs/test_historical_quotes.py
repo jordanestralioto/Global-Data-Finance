@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -11,6 +12,9 @@ from globaldatafinance.application.b3_docs import HistoricalQuotesB3
 from globaldatafinance.application.b3_docs import (
     historical_quotes as facade_module,
 )
+from globaldatafinance.core.archive_safety import ArchiveSafetyLimits
+from globaldatafinance.macro_exceptions import PathIsNotDirectoryError
+from tests.support.builders import build_cotahist_record
 
 pytestmark = pytest.mark.unit
 
@@ -70,6 +74,76 @@ def test_invalid_executor_backend_environment_fails_at_construction(
         HistoricalQuotesB3()
 
 
+def test_missing_source_does_not_create_destination(tmp_path: Path) -> None:
+    """Reject a missing input directory before preparing output paths."""
+    source = tmp_path / 'missing-cotahist'
+    destination = tmp_path / 'output'
+
+    with pytest.raises(PathIsNotDirectoryError):
+        HistoricalQuotesB3().extract(
+            path_of_docs=str(source),
+            assets_list=['ações'],
+            initial_year=2023,
+            last_year=2023,
+            destination_path=str(destination),
+            verbose=False,
+        )
+
+    assert not destination.exists()
+
+
+def test_invalid_archive_does_not_create_destination(tmp_path: Path) -> None:
+    """An invalid COTAHIST archive must fail before destination creation."""
+    source = tmp_path / 'source'
+    source.mkdir()
+    invalid_zip = source / 'COTAHIST_A2023.ZIP'
+    invalid_zip.write_bytes(b'not a valid zip file')
+    destination = tmp_path / 'output'
+
+    result = HistoricalQuotesB3().extract(
+        path_of_docs=str(source),
+        assets_list=['ações'],
+        initial_year=2023,
+        last_year=2023,
+        destination_path=str(destination),
+        verbose=False,
+    )
+
+    assert result['success'] is False
+    assert result['error_count'] == 1
+    assert any('CorruptedZipError' in err for err in result['errors'].values())
+    assert not destination.exists()
+
+
+def test_invalid_record_after_valid_quote_does_not_create_destination(
+    tmp_path: Path,
+) -> None:
+    """An invalid record after a quote must not create destination."""
+    source = tmp_path / 'source'
+    source.mkdir()
+    valid_record = build_cotahist_record(year=2023, ticker='PETR4')
+    invalid_record = '02' + ' ' * 243
+    txt_file = source / 'COTAHIST_A2023.TXT'
+    txt_file.write_text(
+        f'{valid_record}\n{invalid_record}\n', encoding='latin1'
+    )
+    destination = tmp_path / 'output'
+
+    result = HistoricalQuotesB3().extract(
+        path_of_docs=str(source),
+        assets_list=['ações'],
+        initial_year=2023,
+        last_year=2023,
+        destination_path=str(destination),
+        verbose=False,
+    )
+
+    assert result['success'] is False
+    assert result['error_count'] == 1
+    assert any('ExtractionError' in err for err in result['errors'].values())
+    assert not destination.exists()
+
+
 @patch.object(facade_module, 'CreateDocsToExtractUseCaseB3')
 @patch.object(facade_module, 'ExtractHistoricalQuotesUseCaseB3')
 def test_extract_forwards_normalized_arguments_and_enriches_result(
@@ -102,6 +176,7 @@ def test_extract_forwards_normalized_arguments_and_enriches_result(
         last_year=2023,
         destination_path='/output',
         allowed_unc_roots=(),
+        limits=ArchiveSafetyLimits.from_settings(b3.settings.archive),
     )
     extract_use_case.execute.assert_awaited_once_with(
         docs_to_extract=docs,
@@ -109,9 +184,15 @@ def test_extract_forwards_normalized_arguments_and_enriches_result(
         output_filename='quotes.parquet',
     )
     assert result['success'] is True
+    assert result['total_files'] == 2
+    assert result['success_count'] == 2
+    assert result['error_count'] == 0
+    assert result['total_records'] == 321
     assert result['assets'] == ['ações', 'etf']
     assert result['processing_mode'] == 'fast'
     assert result['output_file'] == '/output/quotes.parquet'
+    assert result['errors'] == {}
+    assert 'elapsed_time' in result
     assert result['message'].startswith('Successfully extracted 321 records')
 
 
@@ -151,6 +232,7 @@ async def test_extract_async_applies_defaults_and_preserves_error(
         last_year=2026,
         destination_path=None,
         allowed_unc_roots=(),
+        limits=ArchiveSafetyLimits.from_settings(b3.settings.archive),
     )
     extract_use_case.execute.assert_awaited_once_with(
         docs_to_extract=docs,
@@ -158,7 +240,10 @@ async def test_extract_async_applies_defaults_and_preserves_error(
         output_filename='already.parquet',
     )
     assert result['success'] is False
+    assert result['total_files'] == 2
+    assert result['success_count'] == 1
     assert result['error_count'] == 1
+    assert result['total_records'] == 321
     assert result['errors'] == {'input.zip': 'bad member'}
     assert result['message'].startswith('Extraction completed with errors')
 

@@ -8,14 +8,17 @@ from local COTAHIST files (e.g. COTAHIST_A2023.ZIP or .TXT) saved in
 import sys
 from pathlib import Path
 
-# Ensure examples import repository code rather than the installed package.
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'src'))
-
-from globaldatafinance import HistoricalQuotesB3
-
 
 def main() -> None:
     """Run the B3 quickstart example."""
+    # Ensure examples import repository code rather than the installed package.
+    repo_root = Path(__file__).resolve().parent.parent
+    sys.path.insert(0, str(repo_root / 'src'))
+    sys.path.insert(0, str(repo_root))
+
+    from examples.result_validation import require_b3_output
+    from globaldatafinance import HistoricalQuotesB3
+
     # 1. Initialize the B3 public facade
     b3 = HistoricalQuotesB3()
 
@@ -31,6 +34,7 @@ def main() -> None:
     )
 
     # 3. Display final result
+    require_b3_output(resultado)
     print('✓ Extraction completed successfully!')
     print(f'  Generated Parquet file at: {resultado["output_file"]}')
     print(f'  Total processed files: {resultado["total_files"]}')

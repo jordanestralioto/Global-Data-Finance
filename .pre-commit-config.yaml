@@ -72,7 +72,6 @@ repos:
         entry: >-
           uv run --locked --no-sync python
           .agents/skills/agents-md-author/scripts/validate_agents_md.py
-          --strict-governance
         language: system
         files: ^AGENTS\.md$
         pass_filenames: false

@@ -1,10 +1,22 @@
 # Migration: infrastructure clean cut
 
-This major version removes obsolete generic APIs and the automatic Pandas
-dependency. The root facades, public CVM/B3 signatures, output names, Parquet
-schemas, and transactional publication semantics remain unchanged. The cut is
-deliberately incompatible: no alias, warning, shim, or fallback is retained for
-removed names.
+This breaking change belongs to the `0.x` line and is planned for `v0.2.0`, not
+for the patch release `v0.1.5`. Obsolete generic APIs and the automatic Pandas
+dependency have been removed. The root facades, public CVM/B3 signatures,
+output names, Parquet schemas, and transactional publication semantics remain
+unchanged. The cut is deliberately incompatible: no alias, warning, shim, or
+fallback is retained for removed names.
+
+## Version removed from the package root
+
+`globaldatafinance.__version__` is no longer exported. Read the installed
+distribution metadata at runtime instead:
+
+```python
+from importlib.metadata import version
+
+package_version = version('globaldatafinance')
+```
 
 ## Download timeout
 

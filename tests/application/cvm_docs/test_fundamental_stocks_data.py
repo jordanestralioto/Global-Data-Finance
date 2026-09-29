@@ -1,3 +1,4 @@
+from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
@@ -262,6 +263,26 @@ class TestFundamentalStocksData:
 
         call_args = mock_download_instance.execute.call_args
         assert call_args[1]['list_docs'] is None
+
+    @pytest.mark.parametrize('list_docs', [(), '', 0, False])
+    def test_download_rejects_falsy_non_list_before_io(
+        self, tmp_path, list_docs: Any
+    ):
+        destination = tmp_path / 'cvm-output'
+        cvm = FundamentalStocksDataCVM()
+
+        with patch.object(cvm.download_adapter, 'download_docs') as download:
+            with pytest.raises(TypeError, match='list_docs must be a list'):
+                cvm.download(
+                    destination_path=str(destination),
+                    list_docs=list_docs,
+                    initial_year=2023,
+                    last_year=2023,
+                )
+
+            download.assert_not_called()
+
+        assert not destination.exists()
 
     @patch(
         'globaldatafinance.application.cvm_docs.fundamental_stocks_data.DownloadDocumentsUseCaseCVM'

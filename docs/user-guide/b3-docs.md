@@ -53,6 +53,7 @@ Um arquivo selecionado precisa conter ao menos um registro `01`; arquivo vazio o
 ### Exemplo de Início Rápido
 
 ```python
+from pathlib import Path
 from globaldatafinance import HistoricalQuotesB3
 
 b3 = HistoricalQuotesB3()
@@ -64,6 +65,8 @@ result = b3.extract(
     initial_year=2023,
 )
 
+if not result['success']:
+    raise SystemExit(result['errors'])
 print(f"✓ Extraídos {result['total_records']:,} registros")
 ```
 
@@ -143,9 +146,10 @@ result = b3.extract(
     last_year=2023,
 )
 
-if result['success']:
-    print(f"✓ Arquivo gerado: {result['output_file']}")
-    print(f"✓ Total de registros: {result['total_records']:,}")
+if not result['success']:
+    raise SystemExit(result['errors'])
+print(f"✓ Arquivo gerado: {result['output_file']}")
+print(f"✓ Total de registros: {result['total_records']:,}")
 ```
 
 **Exemplo 2: Múltiplas classes de ativos**
@@ -325,6 +329,8 @@ result = b3.extract(
     output_filename="todos_ativos_2023"
 )
 
+if not result['success']:
+    raise SystemExit(result['errors'])
 print(f"✓ Extraídos {result['total_records']:,} registros de {len(all_assets)} classes suportadas")
 ```
 
@@ -332,11 +338,10 @@ print(f"✓ Extraídos {result['total_records']:,} registros de {len(all_assets)
 
 ```python
 from globaldatafinance import HistoricalQuotesB3
-import os
 
 b3 = HistoricalQuotesB3()
 base_path = "/data/cotahist"
-output_path = "/data/cotacoes_extraidas"
+output_dir = "/data/cotacoes_extraidas"
 
 # Extrair cada ano separadamente
 for year in range(2020, 2024):
@@ -344,17 +349,16 @@ for year in range(2020, 2024):
 
     result = b3.extract(
         path_of_docs=base_path,
-        destination_path=output_path,
+        destination_path=output_dir,
         assets_list=["ações"],
         initial_year=year,
         last_year=year,
         output_filename=output_file
     )
 
-    if result['success']:
-        print(f"✓ {year}: {result['total_records']:,} registros")
-    else:
-        print(f"✗ {year}: Erro na extração")
+    if not result['success']:
+        raise SystemExit(result['errors'])
+    print(f"✓ {year}: {result['total_records']:,} registros")
 ```
 
 ### Validação Antes da Extração

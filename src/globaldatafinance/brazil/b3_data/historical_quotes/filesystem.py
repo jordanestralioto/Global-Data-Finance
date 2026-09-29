@@ -9,6 +9,7 @@ from ....core.config import PathSafetySettings
 from ....core.utils.destination_paths import (
     normalize_destination_path,
     prepare_writable_destination,
+    validate_existing_writable_directory,
 )
 from ....macro_exceptions import (
     EmptyDirectoryError,
@@ -76,6 +77,17 @@ class FileSystemServiceB3:
             empty_message='path cannot be empty or whitespace',
             allowed_unc_roots=self._allowed_unc_roots,
         )
+
+    def validate_destination_path(self, path: str) -> Path:
+        """Validate and normalize a destination without creating it."""
+        normalized = normalize_destination_path(
+            path,
+            type_label='Destination path',
+            empty_message='path cannot be empty or whitespace',
+            allowed_unc_roots=self._allowed_unc_roots,
+        )
+        validate_existing_writable_directory(normalized)
+        return normalized
 
     def find_files_by_years(self, directory: Path, years: range) -> set[str]:
         """Find one official COTAHIST input file for each requested year.

@@ -189,9 +189,10 @@ class TestUrlDocs:
         with pytest.raises(InvalidDocumentName):
             get_url_docs(['INVALID_DOC'])
 
-    def test_get_url_docs_with_non_list_parameter(self):
+    @pytest.mark.parametrize('list_docs', ['DFP', (), '', 0, False])
+    def test_get_url_docs_with_non_list_parameter(self, list_docs):
         with pytest.raises(TypeError) as exc_info:
-            get_url_docs('DFP')
+            get_url_docs(list_docs)
 
         assert 'list_docs must be a list of strings or None' in str(
             exc_info.value
@@ -210,6 +211,12 @@ class TestUrlDocs:
 
         assert isinstance(urls, dict)
         assert isinstance(set_docs, set)
+        assert len(urls) == 7
+        assert len(set_docs) == 7
+
+    def test_get_url_docs_with_none_selects_all_docs(self):
+        urls, set_docs = get_url_docs(None)
+
         assert len(urls) == 7
         assert len(set_docs) == 7
 

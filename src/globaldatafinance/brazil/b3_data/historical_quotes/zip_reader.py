@@ -13,8 +13,12 @@ from ....core.archive_safety import (
     validate_zip_crc_with_limits,
 )
 from ....macro_exceptions import CorruptedZipError, ExtractionError
-from .catalog import CotahistCatalogError, validate_cotahist_input
-from .integrity import B3RecordContext
+from .catalog import validate_and_resolve_cotahist_input
+from .integrity import (
+    B3RecordContext,
+    CotahistLineTooLongError,
+    iter_bounded_cotahist_lines,
+)
 
 
 class ZipFileReaderB3:
@@ -50,22 +54,19 @@ class ZipFileReaderB3:
             yield line
 
     def _validate_cotahist_input(self, path: Path) -> str | None:
-        try:
-            return validate_cotahist_input(path, limits=self._limits)
-        except CotahistCatalogError as error:
-            cause = error.__cause__
-            if isinstance(cause, CorruptedZipError):
-                raise cause from error
-            if isinstance(cause, zipfile.BadZipFile):
-                raise CorruptedZipError(str(path), str(cause)) from error
-            raise ExtractionError(str(path), str(error)) from error
+        return validate_and_resolve_cotahist_input(path, limits=self._limits)
 
     def _iter_txt(self, path: Path) -> Iterator[tuple[str, B3RecordContext]]:
         with path.open('rb') as source:
-            for line_number, raw_line in enumerate(source, start=1):
-                yield self._line_with_context(
-                    raw_line, path.name, path.name, line_number
-                )
+            try:
+                for line_number, raw_line in iter_bounded_cotahist_lines(
+                    source
+                ):
+                    yield self._line_with_context(
+                        raw_line, path.name, path.name, line_number
+                    )
+            except CotahistLineTooLongError as error:
+                raise ExtractionError(str(path), str(error)) from error
 
     def _iter_zip(
         self, path: Path, member: str
@@ -84,10 +85,18 @@ class ZipFileReaderB3:
                     archive_path=path,
                     limits=self._limits,
                 ) as source:
-                    for line_number, raw_line in enumerate(source, start=1):
-                        yield self._line_with_context(
-                            raw_line, path.name, member, line_number
-                        )
+                    try:
+                        for (
+                            line_number,
+                            raw_line,
+                        ) in iter_bounded_cotahist_lines(source):
+                            yield self._line_with_context(
+                                raw_line, path.name, member, line_number
+                            )
+                    except CotahistLineTooLongError as error:
+                        raise ExtractionError(
+                            str(path), f'{member}: {error}'
+                        ) from error
         except zipfile.BadZipFile as error:
             raise CorruptedZipError(str(path), str(error)) from error
 

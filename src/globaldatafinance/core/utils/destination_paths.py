@@ -89,12 +89,7 @@ def prepare_writable_destination(
         allowed_unc_roots=allowed_unc_roots,
     )
     if normalized.exists():
-        if not normalized.is_dir():
-            raise PathIsNotDirectoryError(
-                str(normalized), exists=normalized.exists()
-            )
-        if not os.access(str(normalized), os.W_OK):
-            raise PathPermissionError(str(normalized))
+        validate_existing_writable_directory(normalized)
         return normalized
     try:
         normalized.mkdir(parents=True, exist_ok=True)
@@ -109,3 +104,13 @@ def prepare_writable_destination(
     if not os.access(str(normalized), os.W_OK):
         raise PathPermissionError(str(normalized))
     return normalized
+
+
+def validate_existing_writable_directory(path: Path) -> None:
+    """Reject an existing destination that is not a writable directory."""
+    if not path.exists():
+        return
+    if not path.is_dir():
+        raise PathIsNotDirectoryError(str(path), exists=True)
+    if not os.access(str(path), os.W_OK):
+        raise PathPermissionError(str(path))

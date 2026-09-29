@@ -328,21 +328,35 @@ print(df_balance[df_balance['DS_CONTA'].str.contains('Ativo Total')])
 ### 2. Quantitative Strategy Backtesting
 
 ```python
-from globaldatafinance import HistoricalQuotesB3
+from pathlib import Path
 import pandas as pd
+
+from globaldatafinance import HistoricalQuotesB3
 
 # Extract historical stock quotes from official B3 COTAHIST archives
 b3 = HistoricalQuotesB3()
-b3.extract(
+result = b3.extract(
     path_of_docs="./raw_b3_archives",
     destination_path="./market_quotes",
     assets_list=["ações"],
     initial_year=2020,
     processing_mode="fast"
 )
+output_file = result["output_file"]
+output_path = Path(output_file) if output_file else None
+if (
+    not result["success"]
+    or result["total_files"] == 0
+    or result["total_records"] == 0
+    or output_path is None
+    or not output_path.is_file()
+    or output_path.stat().st_size == 0
+):
+    print(f"Incomplete B3 extraction: {result['errors']}")
+    raise SystemExit(1)
 
 # Load normalized quotes dataset
-df = pd.read_parquet("./market_quotes/cotahist_extracted.parquet")
+df = pd.read_parquet(result["output_file"])
 df['data_pregao'] = pd.to_datetime(df['data_pregao'])
 
 # Calculate daily price returns per ticker
@@ -352,8 +366,10 @@ df['daily_return'] = df.groupby('ticker')['preco_fechamento'].pct_change()
 ### 3. Automated Data Ingestion Pipeline
 
 ```python
-from globaldatafinance import FundamentalStocksDataCVM, HistoricalQuotesB3
 import logging
+from pathlib import Path
+
+from globaldatafinance import FundamentalStocksDataCVM, HistoricalQuotesB3
 
 logging.basicConfig(level=logging.INFO)
 
@@ -363,12 +379,18 @@ def financial_data_pipeline():
     # 1. Corporate regulatory filings (CVM)
     print("Ingesting CVM regulatory filings...")
     cvm = FundamentalStocksDataCVM()
-    cvm.download(
+    cvm_result = cvm.download(
         destination_path="./data/cvm",
         list_docs=["DFP", "ITR"],
         initial_year=2023,
         automatic_extractor=True
     )
+    if (
+        cvm_result.error_count_downloads > 0
+        or cvm_result.success_count_downloads == 0
+    ):
+        print(f"Incomplete CVM download: {cvm_result.failed_downloads}")
+        raise SystemExit(1)
 
     # 2. Historical market exchange quotes (B3)
     print("Processing B3 market historical quotes...")
@@ -380,6 +402,18 @@ def financial_data_pipeline():
         initial_year=2023,
         processing_mode="fast"
     )
+    output_file = result["output_file"]
+    output_path = Path(output_file) if output_file else None
+    if (
+        not result["success"]
+        or result["total_files"] == 0
+        or result["total_records"] == 0
+        or output_path is None
+        or not output_path.is_file()
+        or output_path.stat().st_size == 0
+    ):
+        print(f"Incomplete B3 extraction: {result['errors']}")
+        raise SystemExit(1)
 
     print(f"Pipeline execution finished successfully! Total consolidated records: {result['total_records']:,}")
 

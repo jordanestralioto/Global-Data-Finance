@@ -8,6 +8,7 @@ from .client import (
     ExtractHistoricalQuotesUseCaseB3,
     GetAvailableAssetsUseCaseB3,
     GetAvailableYearsUseCaseB3,
+    ValidateCotahistInputUseCaseB3,
     ValidateExtractionConfigUseCaseB3,
     VerifyDestinationPathsUseCaseB3,
 )
@@ -36,6 +37,7 @@ __all__ = [
     'GetAvailableYearsUseCaseB3',
     'ParquetWriterB3',
     'ProcessingModeEnumB3',
+    'ValidateCotahistInputUseCaseB3',
     'ValidateExtractionConfigUseCaseB3',
     'VerifyDestinationPathsUseCaseB3',
     'YearRangeB3',

@@ -1,145 +1,84 @@
-# Descoberta portátil de fontes
+# Descoberta de fontes e instruções ativas
 
-## Sumário
+## Descubra a cadeia da sessão
 
-- Sequência de inspeção sem efeitos colaterais.
-- Matriz de manifests e tooling por ecossistema.
-- Regras para comandos, arquitetura, ownership e navegação.
-- Escopo de monorepos e tratamento de conflitos.
+Comece pelo diretório de início da sessão, não apenas pela raiz Git:
 
-## Sequência de inspeção
+```bash
+pwd
+git rev-parse --show-toplevel
+```
 
-1. Descubra instruções aplicáveis e a forma do repositório:
+Registre o alvo exato e o diretório atual. Leia as instruções que o cliente
+aplica entre a raiz e o diretório de início, além das instruções globais que o
+cliente declara aplicáveis. Confira `AGENTS.override.md` e `AGENTS.md` nos
+diretórios relevantes. A ordem de precedência e o modo como arquivos globais
+entram na cadeia dependem do cliente.
 
-   ```bash
-   rg --files -g 'AGENTS.md' -g 'README*' -g 'CONTRIBUTING*' -g 'CODEOWNERS'
-   ```
+Considere um nome alternativo somente quando a configuração ou a documentação
+do cliente confirma que ele é carregado. No Codex, verifique
+`project_doc_fallback_filenames`; nomes de exemplo incluem `TEAM_GUIDE.md` e
+`.agents.md`. Outros clientes podem reconhecer nomes como `CLAUDE.md`,
+`GEMINI.md` ou `.github/copilot-instructions.md`, mas não os trate como ativos
+sem confirmação para o cliente e repositório alvo. A existência de um arquivo,
+inclusive `CLAUDE.md`, não prova que ele foi carregado ou que é a fonte
+canônica.
 
-2. Liste manifests, task runners, CI e deploy config sem assumir linguagem:
+Identifique o limite de tamanho ou profundidade configurado e o que acontece
+quando a cadeia o alcança. Para Codex, consulte a configuração atual de
+`project_doc_max_bytes`; a documentação oficial informa um padrão de 32 KiB,
+ajustável pela configuração. Não copie esse padrão para outro cliente nem
+declare todo arquivo descoberto como contexto carregado. Consulte
+[Custom instructions with AGENTS.md](https://learn.chatgpt.com/docs/agent-configuration/agents-md)
+para o comportamento e as opções atuais do Codex.
 
-   ```bash
-   rg --files -g 'pyproject.toml' -g 'package.json' -g 'Cargo.toml' -g 'go.mod' -g 'pom.xml' -g 'build.gradle*' -g '*.csproj' -g '*.sln' -g 'Gemfile' -g 'composer.json' -g 'Package.swift' -g 'Makefile' -g 'Taskfile*' -g 'Dockerfile*' -g 'compose*.yml' -g '.github/workflows/*'
-   ```
+Ao editar instruções aninhadas, preserve a herança: o root guarda regras comuns;
+um arquivo local contém apenas diferenças da subárvore. Se a cadeia ativa ou o
+limite de contexto não puderem ser confirmados, descreva a incerteza em vez de
+adivinhar a precedência.
 
-3. Abra apenas os candidatos relevantes. Confirme scripts, entrypoints, versões,
-   paths e ferramentas dentro do arquivo; a presença do manifest identifica um
-   ecossistema, não toda a arquitetura.
+## Confirme fatos do projeto
 
-4. Localize documentação e decisões com `rg --files docs` quando `docs/` existir.
-   Procure portais, arquitetura, operações, testes, runbooks, ADRs, RFCs e regras
-   de governança. Use status e ownership declarados; não presuma canonicalidade
-   por localização.
+Faça uma descoberta limitada ao caminho que a solicitação requer:
 
-5. Confronte comandos declarados com CI e task runners. Não execute comandos com
-   side effects para decidir qual texto escrever. `--help`, listagem de tasks e
-   checks secos são aceitáveis quando o caminho foi inspecionado e é seguro.
+1. Leia o `AGENTS.md` alvo e seus ancestrais aplicáveis antes de propor texto.
+2. Localize README, onboarding, governança e `CODEOWNERS` quando existirem.
+3. Inspecione manifests, lockfiles, configurações, entrypoints, CI e comandos
+   owner para confirmar stack, ownership e validação.
+4. Abra código ou testes apenas para resolver uma afirmação necessária, não para
+   inventariar o repositório inteiro.
+5. Mapeie o caminho inicial, o owner dos detalhes e o próximo documento útil.
 
-6. Monte uma rota de navegação antes de redigir. Para cada pergunta recorrente
-   (`como começar`, `como funciona`, `como executar`, `como testar`, `como operar`,
-   `quem decidiu`), registre o primeiro arquivo, o owner dos detalhes e o próximo
-   nível de leitura. Se não houver fonte, marque a lacuna em vez de preencher a
-   rota com diretórios prováveis.
+Comandos úteis para listar candidatos sem assumir uma stack:
 
-## Matriz por ecossistema
+```bash
+rg --files -g 'AGENTS.md' -g 'AGENTS.override.md' -g 'README*' -g 'CONTRIBUTING*' -g 'CODEOWNERS'
+rg --files -g 'pyproject.toml' -g 'package.json' -g 'Cargo.toml' -g 'go.mod' -g 'pom.xml' -g 'build.gradle*' -g '*.csproj' -g '*.sln' -g 'Gemfile' -g 'composer.json' -g 'Package.swift' -g 'Makefile' -g 'Taskfile*' -g '.github/workflows/*'
+```
 
-| Ecossistema     | Fontes primárias                                     | Confirme                                                             |
-| --------------- | ---------------------------------------------------- | -------------------------------------------------------------------- |
-| Python          | `pyproject.toml`, lockfile, módulos CLI, tox/nox     | versão, manager/runner, framework, entrypoints, lint, types e testes |
-| Node/TypeScript | `package.json`, lockfile, workspace config, tsconfig | scripts, package manager, runtime, framework, build, lint e testes   |
-| Rust            | `Cargo.toml`, `Cargo.lock`, workspace members        | crates, binários, features, framework, fmt, clippy e testes          |
-| Go              | `go.mod`, `go.work`, `cmd/`, CI                      | módulos, framework/router, comandos, geração, lint e testes          |
-| JVM             | `pom.xml`, Gradle files, wrapper, settings           | módulos, JDK, framework, wrapper, tasks, build e testes              |
-| .NET            | solution/project files, props/targets, tool manifest | SDK, projects, framework, run, format e testes                       |
-| Ruby            | `Gemfile`, gemspec, Rakefile                         | versão, framework, executáveis, tasks e testes                       |
-| PHP             | `composer.json`, lockfile, framework console         | versão, manager, framework, autoload, lint e testes                  |
-| Swift           | `Package.swift`, Xcode project/workspace, CI         | platforms, frameworks, schemes, build e testes                       |
-| Infra/data      | Docker, Compose, Terraform, Helm, migration config   | boundaries, state owner, apply/deploy commands e safety gates        |
+Use `--help`, listagem de tasks e checks secos para confirmar sintaxe quando o
+comando for seguro. Não execute build, deploy, migração ou acesso externo só
+para decidir o que escrever.
 
-Um repositório pode combinar várias linhas. Registre evidência por componente em
-vez de escolher uma stack “principal” sem contrato explícito.
+## Fontes por tipo de afirmação
 
-## Como confirmar cada tipo de claim
+| Afirmação               | Fontes fortes                                                         | Não basta isoladamente                            |
+| ----------------------- | --------------------------------------------------------------------- | ------------------------------------------------- |
+| Objetivo e consumidores | README atual, metadados de pacote, entrypoint, configuração de deploy | Nome de diretório                                 |
+| Owner ou boundary       | Governança, `CODEOWNERS`, arquitetura aceita, wiring e testes         | Autor mais frequente no Git                       |
+| Comando oficial         | Manifest ou task runner junto de CI ou documentação operacional atual | Exemplo antigo                                    |
+| Manager e lockfile      | Configuração de workspace, manifest, lockfile e CI                    | Ferramenta instalada localmente                   |
+| Framework atual         | Manifest, imports estruturais, entrypoint e configuração              | Dependência transitiva                            |
+| Idioma de código e docs | Política de contribuição ou decisão explícita                         | Idioma casual da conversa ou maioria dos arquivos |
+| Métrica de qualidade    | SLO, configuração, gate, teste ou observabilidade já adotados         | Sugestão genérica                                 |
+| Documento canônico      | Governança, portal ou metadado de status                              | Estar dentro de `docs/`                           |
 
-| Claim                | Evidência forte                                                 | Evidência insuficiente isoladamente       |
-| -------------------- | --------------------------------------------------------------- | ----------------------------------------- |
-| nome e missão        | package metadata + README vigente + entrypoint                  | nome do diretório                         |
-| owner                | governança, CODEOWNERS, catálogo de serviços, decisão explícita | autor mais frequente do Git               |
-| comando oficial      | manifest/task runner + CI ou doc operacional vigente            | snippet antigo no README                  |
-| dependency manager   | campo de manifest/workspace + lockfile + CI                     | ferramenta instalada localmente           |
-| framework atual      | manifest + entrypoint/imports estruturais + config              | dependência transitiva ou pacote auxiliar |
-| idioma de chat       | preferência explícita do usuário                                | idioma casual de uma mensagem             |
-| idioma de código/Git | política de contribuição ou decisão explícita                   | maioria estatística dos arquivos          |
-| arquitetura          | runtime/entrypoints + ADR/doc aceita                            | nomes de pastas                           |
-| versão               | manifest, lockfile ou CI                                        | versão instalada na máquina do agente     |
-| variável pública     | config code ou env example                                      | valor em `.env` real                      |
-| métrica              | SLO, config, teste de gate ou observabilidade                   | recomendação genérica do setor            |
-| consumidor           | import/dependency, deploy config ou doc aceita                  | comentário isolado                        |
-| documento canônico   | governança, portal ou metadata de status                        | estar dentro de `docs/`                   |
+Arquivos de `.env`, cofres, tokens, chaves e sessões não são fontes para o
+documento. Leia exemplos sem expor valores secretos.
 
-Para transformar esses fatos em regras, aplique
-`references/policy-authoring.md`. Descoberta confirma o estado; autoria de
-política decide como o agente deve agir.
+## Quando fontes divergem
 
-## Mapa de navegação
-
-Construa o mapa por perguntas, não por extensão de arquivo:
-
-| Pergunta                           | Evidência procurada                       | Resultado no AGENTS.md                       |
-| ---------------------------------- | ----------------------------------------- | -------------------------------------------- |
-| O que é o projeto?                 | portal/README + metadata + entrypoint     | identidade e boundaries em `System Overview` |
-| Como o runtime flui?               | entrypoint + wiring + deploy/architecture | fluxo em `Pipeline Architecture`             |
-| Onde altero cada responsabilidade? | docs owner + módulos implementados        | ownership e próximo arquivo a abrir          |
-| Como executo e valido?             | manifest + scripts + CI/harness           | comandos exatos em `Configuration & Runtime` |
-| Como opero ou diagnostico?         | operations, runbooks, observability       | rota em `Related Documentation`              |
-| Qual decisão governa?              | governance + ADR/RFC status               | classe e autoridade da fonte                 |
-
-Um link só entra na rota quando existe e seu propósito foi lido. Ordene fontes
-humanas por progressive disclosure: orientação antes de arquitetura detalhada;
-arquitetura antes de referência especializada; operação antes de incidente
-específico. Código pode ser a autoridade factual, mas não substitui a rota de
-leitura quando documentação owner existe.
-
-## Monorepos e hierarquia
-
-- Leia a cadeia de `AGENTS.md` da raiz até o alvo. A instrução mais próxima só
-  deve especializar o que muda naquela subárvore.
-- Mantenha no root: políticas transversais, mapa macro, comandos globais,
-  perfil operacional compartilhado, navegação e regras de segurança.
-- Mantenha localmente: stack exclusiva, comandos do pacote, ownership local,
-  contratos e riscos que não valem para os demais componentes.
-- Evite copiar o baseline inteiro para cada pacote. O arquivo local herda a
-  política superior e registra somente diferenças.
-- Se duas ferramentas de workspace coexistirem, documente o escopo de cada uma;
-  não escolha uma como padrão global sem evidência.
-- Preferências de idioma e colaboração podem permanecer no root. Manager,
-  framework e comandos pertencem ao menor escopo em que são verdadeiros.
-
-## Conflitos e stop rules
-
-Classifique como `CONFLICT` quando fontes atuais discordarem sobre:
-
-- comando oficial de build, test, deploy ou migration;
-- dependency manager, lockfile owner, framework ou idioma obrigatório;
-- owner ou boundary de componente;
-- status de documento ou decisão;
-- contrato público, persisted format ou política de segurança;
-- runtime, entrypoint ou topologia de produção.
-
-Registre caminho e afirmação de cada fonte. Pare apenas a claim afetada, mantenha
-o documento como `Draft` e peça decisão. Continue coletando fatos independentes
-quando isso não aumentar o risco nem mascarar a divergência.
-
-## Checklist de descoberta
-
-- [ ] cadeia de `AGENTS.md` lida;
-- [ ] orientação e governança inspecionadas;
-- [ ] manifests e lockfiles identificados;
-- [ ] scripts oficiais e CI confrontados;
-- [ ] manager, runner, framework e quality tooling confirmados por escopo;
-- [ ] preferências explícitas do usuário registradas separadamente de fatos;
-- [ ] entrypoints e boundaries confirmados;
-- [ ] config pública inspecionada sem abrir segredos;
-- [ ] testes e gates identificados;
-- [ ] docs e status classificados;
-- [ ] rota de navegação por pergunta materializada;
-- [ ] facts, unknowns e conflicts registrados no ledger.
+Registre cada caminho e a afirmação que ele sustenta. Não escolha silenciosamente
+entre README, manifest, CI ou política concorrentes. Continue fatos independentes
+e explique a divergência que ainda muda a orientação. Peça uma decisão quando
+ela for necessária para escrever a próxima regra corretamente.

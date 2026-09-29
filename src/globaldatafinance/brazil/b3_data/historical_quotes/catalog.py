@@ -13,6 +13,11 @@ from ....core.archive_safety import (
     validate_zip_crc_with_limits,
 )
 from ....macro_exceptions import CorruptedZipError, ExtractionError
+from .integrity import (
+    BoundedLineSource,
+    CotahistLineTooLongError,
+    iter_bounded_cotahist_lines,
+)
 from .member_resolver import resolve_cotahist_member
 
 _COTAHIST_PATTERN = re.compile(
@@ -93,6 +98,28 @@ def validate_cotahist_input(
         match.group('extension').casefold(),
         limits=limits,
     )
+
+
+def validate_and_resolve_cotahist_input(
+    path: str | Path,
+    *,
+    limits: ArchiveSafetyLimits | None = None,
+) -> str | None:
+    """Validate one official COTAHIST input and resolve a ZIP member.
+
+    Translates catalog-level errors into the public ExtractionError or
+    CorruptedZipError hierarchy.
+    """
+    candidate = Path(path)
+    try:
+        return validate_cotahist_input(candidate, limits=limits)
+    except CotahistCatalogError as error:
+        cause = error.__cause__
+        if isinstance(cause, CorruptedZipError):
+            raise cause from error
+        if isinstance(cause, zipfile.BadZipFile):
+            raise CorruptedZipError(str(candidate), str(cause)) from error
+        raise ExtractionError(str(candidate), str(error)) from error
 
 
 def _validate_directory(directory: str | Path) -> Path:
@@ -210,25 +237,46 @@ def _validate_zip(
 
 
 def _require_quote_data_record(
-    lines: Iterable[bytes],
+    lines: BoundedLineSource,
     path: Path,
     member_name: str | None = None,
 ) -> None:
-    """Require one type-01 quote record before an input can be processed."""
+    """Validate all physical lines and require at least one quote record."""
+    input_label = str(path)
+    if member_name is not None:
+        input_label = f'{input_label}!{member_name}'
+    has_quote_record = False
     try:
-        has_quote_record = any(line.startswith(b'01') for line in lines)
+        for line_number, raw_line in iter_bounded_cotahist_lines(lines):
+            content = (
+                raw_line.removesuffix(b'\r\n')
+                .removesuffix(b'\n')
+                .removesuffix(b'\r')
+            )
+            if not content:
+                continue
+            record_type = content[:2]
+            if record_type not in (b'00', b'01', b'99'):
+                raise CotahistCatalogError(
+                    'COTAHIST input contains unsupported record type '
+                    f'{record_type.decode("latin1", errors="replace")!r} '
+                    f'at line {line_number}: {input_label}'
+                )
+            if record_type == b'01':
+                has_quote_record = True
+    except CotahistLineTooLongError as error:
+        raise CotahistCatalogError(
+            f'COTAHIST input contains an oversized physical line: '
+            f'{input_label}: {error}'
+        ) from error
     except OSError as error:
         raise CotahistCatalogError(
             f'COTAHIST input is unreadable: {path}'
         ) from error
-    if has_quote_record:
-        return
-    input_label = str(path)
-    if member_name is not None:
-        input_label = f'{input_label}!{member_name}'
-    raise CotahistCatalogError(
-        f'COTAHIST input has no type-01 quote data record: {input_label}'
-    )
+    if not has_quote_record:
+        raise CotahistCatalogError(
+            f'COTAHIST input has no type-01 quote data record: {input_label}'
+        )
 
 
 def _validate_expected_years(

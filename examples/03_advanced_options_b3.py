@@ -8,14 +8,17 @@ high-performance 'fast' mode.
 import sys
 from pathlib import Path
 
-# Ensure examples import repository code rather than the installed package.
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'src'))
-
-from globaldatafinance import HistoricalQuotesB3
-
 
 def main() -> None:
     """Run the advanced B3 options example."""
+    # Ensure examples import repository code rather than the installed package.
+    repo_root = Path(__file__).resolve().parent.parent
+    sys.path.insert(0, str(repo_root / 'src'))
+    sys.path.insert(0, str(repo_root))
+
+    from examples.result_validation import require_b3_output
+    from globaldatafinance import HistoricalQuotesB3
+
     # 1. Initialize the B3 public facade
     b3 = HistoricalQuotesB3()
 
@@ -32,6 +35,7 @@ def main() -> None:
     )
 
     # 3. Display final result
+    require_b3_output(resultado)
     print('✓ Advanced extraction completed successfully!')
     print(f'  Generated Parquet file at: {resultado["output_file"]}')
 

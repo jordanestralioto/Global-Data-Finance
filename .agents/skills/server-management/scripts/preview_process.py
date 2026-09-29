@@ -11,6 +11,7 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -62,15 +63,16 @@ class _FileTime(ctypes.Structure):
 
 
 def _windows_last_error() -> int:
-    return int(ctypes.get_last_error())  # type: ignore[attr-defined]
+    ctypes_any: Any = ctypes
+    return int(ctypes_any.get_last_error())
 
 
-def _windows_creation_time(kernel32: object, handle: object) -> str:
+def _windows_creation_time(kernel32: Any, handle: object) -> str:
     creation = _FileTime()
     exit_time = _FileTime()
     kernel_time = _FileTime()
     user_time = _FileTime()
-    get_times = kernel32.GetProcessTimes  # type: ignore[attr-defined]
+    get_times = kernel32.GetProcessTimes
     get_times.argtypes = [
         ctypes.c_void_p,
         ctypes.POINTER(_FileTime),
@@ -92,7 +94,8 @@ def _windows_creation_time(kernel32: object, handle: object) -> str:
 
 @contextmanager
 def _open_windows(pid: int) -> Iterator[ProcessHandle]:
-    kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)  # type: ignore[attr-defined]
+    ctypes_any: Any = ctypes
+    kernel32 = ctypes_any.WinDLL('kernel32', use_last_error=True)
     open_process = kernel32.OpenProcess
     open_process.argtypes = [ctypes.c_uint32, ctypes.c_int, ctypes.c_uint32]
     open_process.restype = ctypes.c_void_p

@@ -178,6 +178,9 @@ result = cvm.download(
     last_year=2024,              # End year
     automatic_extractor=True     # Converts ZIP -> Parquet
 )
+if result.error_count_downloads > 0 or result.success_count_downloads == 0:
+    print(f"CVM download incomplete: {result.failed_downloads}")
+    raise SystemExit(1)
 print(f"Successful downloads: {result.success_count_downloads}")
 ```
 
@@ -196,6 +199,7 @@ existing input directory; the library does not populate it automatically. If
 both formats exist for the same year, ZIP takes precedence.
 
 ```python
+from pathlib import Path
 from globaldatafinance import HistoricalQuotesB3
 
 # Initialize client
@@ -209,6 +213,19 @@ result = b3.extract(
     initial_year=2023,
     processing_mode="fast"  # Optimized mode
 )
+
+output_file = result["output_file"]
+output_path = Path(output_file) if output_file else None
+if (
+    not result["success"]
+    or result["total_files"] == 0
+    or result["total_records"] == 0
+    or output_path is None
+    or not output_path.is_file()
+    or output_path.stat().st_size == 0
+):
+    print(f"B3 extraction incomplete: {result['errors']}")
+    raise SystemExit(1)
 
 print(f"Processing completed! Extracted records: {result['total_records']:,}")
 print(f"File saved at: {result['output_file']}")

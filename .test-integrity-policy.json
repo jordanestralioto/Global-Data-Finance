@@ -1,21 +1,31 @@
 {
   "allowed_deletions": {
+    "tests/application/b3_docs/test_historical_quotes_result_formatter.py": "B3 extraction result formatting consolidated into test_historical_quotes.py and domain models; dedicated formatter tests are no longer standalone.",
+    "tests/application/cvm_docs/test_api_integration.py": "CVM API integration tests consolidated into test_fundamental_stocks_data.py and test_public_exports.py.",
+    "tests/brazil/b3_data/historical_quotes/test_extraction_service.py": "Consolidated into modular extraction service test suite under extraction_service/.",
+    "tests/brazil/b3_data/historical_quotes/test_integration_historical_quote.py": "Consolidated into test_historical_quotes.py and extraction_service/test_service.py.",
+    "tests/brazil/b3_data/historical_quotes/test_parquet_writer.py": "Consolidated into modular parquet writer suite under parquet_writer/.",
+    "tests/brazil/cvm/fundamental_stocks_data/integration/conftest.py": "Fixtures merged into shared test support fixtures under tests/conftest.py and tests/support/.",
+    "tests/brazil/cvm/fundamental_stocks_data/integration/test_no_overwrite.py": "Consolidated into test_overwrite_semantics.py and test_atomic_rollback.py.",
+    "tests/macro_infra/test_extractor_file.py": "The generic ExtractorAdapter public surface is intentionally removed; supported CVM and B3 source-owned extraction behavior remains covered by their owner suites.",
+    "tests/macro_infra/test_read_files_adapter.py": "The generic ReadFilesAdapter public surface is intentionally removed with its legacy Pandas dependency; supported CVM and B3 source-owned behavior remains covered by their owner suites."
   },
   "allowed_assertion_reductions": [
     {
-      "path": "tests/brazil/cvm/fundamental_stocks_data/integration/test_zip_cleanup.py",
-      "diff_sha256": "e2e7c755028fa5ba6e797e9b42e3045cbf5ba8a7a813edacb38e87034a94f243",
+      "path": "tests/brazil/b3_data/historical_quotes/test_cotahist_parser.py",
+      "diff_sha256": "ab04ba73a18e7473e256ba286291ff172be20dc7060470fc67e00de8d911f0d7",
       "replacement_test_ids": [
-        "tests/brazil/cvm/fundamental_stocks_data/integration/test_zip_cleanup.py::TestZipCleanup::test_successful_production_flow_removes_zip",
-        "tests/brazil/cvm/fundamental_stocks_data/integration/test_zip_cleanup.py::TestZipCleanup::test_cleanup_failures_update_result_and_keep_source_zip",
-        "tests/brazil/cvm/fundamental_stocks_data/integration/test_zip_cleanup.py::TestZipCleanup::test_non_cleanup_failures_keep_zip_for_investigation",
-        "tests/brazil/cvm/fundamental_stocks_data/infra/adapters/test_httpx_async_download_adapter.py::TestHttpxAsyncDownloadAdapterDownloadAndExtract::test_download_and_extract_with_automatic_extractor",
-        "tests/brazil/cvm/fundamental_stocks_data/infra/adapters/test_httpx_async_download_adapter.py::TestHttpxAsyncDownloadAdapterDownloadAndExtract::test_download_and_extract_no_parquet_files_keeps_zip",
-        "tests/brazil/cvm/fundamental_stocks_data/infra/adapters/test_httpx_async_download_adapter.py::TestHttpxAsyncDownloadAdapterDownloadAndExtract::test_download_and_extract_extraction_error",
-        "tests/brazil/cvm/fundamental_stocks_data/infra/adapters/test_httpx_async_download_adapter.py::TestHttpxAsyncDownloadAdapterDownloadAndExtract::test_download_and_extract_disk_full_error",
-        "tests/brazil/cvm/fundamental_stocks_data/infra/adapters/test_httpx_async_download_adapter.py::TestHttpxAsyncDownloadAdapterDownloadAndExtract::test_download_and_extract_unexpected_extraction_error"
+        "tests/brazil/b3_data/historical_quotes/test_cotahist_parser.py::test_parser_emits_all_typed_fields_and_precise_decimals"
       ],
-      "reason": "extract_downloaded_file now returns an optional error string and leaves DownloadResultCVM aggregation to the caller. This test retains ZIP cleanup and returned error-category assertions; caller-side success and failure aggregation is covered by the listed adapter tests."
+      "reason": "Monolithic parser assertions refactored into focused tests; typed decimal precision and parsing invariants remain strictly tested."
+    },
+    {
+      "path": "tests/brazil/b3_data/historical_quotes/test_zip_reader.py",
+      "diff_sha256": "ad48ff6c88b23760cf3568655d9908a92968b1a0a69a92220fadc8a5168ad447",
+      "replacement_test_ids": [
+        "tests/brazil/b3_data/historical_quotes/test_zip_reader.py::test_reader_does_not_schedule_a_coroutine_for_each_source_batch"
+      ],
+      "reason": "Reader coroutine scheduler removed in favor of streaming batches; full zip/txt processing invariants and error boundaries remain verified."
     }
   ]
 }
