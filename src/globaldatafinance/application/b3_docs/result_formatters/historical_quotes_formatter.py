@@ -32,7 +32,7 @@ class HistoricalQuotesResultFormatter:
         Returns:
             Formatted message string describing the extraction results
         """
-        if result['error_count'] == 0:
+        if HistoricalQuotesResultFormatter.determine_success(result):
             return (
                 f'Successfully extracted {result["total_records"]:,} records '
                 f'from {result["success_count"]} files. '
@@ -57,8 +57,14 @@ class HistoricalQuotesResultFormatter:
         Returns:
             True if no errors occurred, False otherwise
         """
-        result_bool: bool = result.get('error_count', 0) == 0
-        return result_bool
+        integrity = result.get('integrity')
+        if isinstance(integrity, dict):
+            return (
+                integrity.get('status') == 'passed'
+                and integrity.get('selection_complete') is True
+                and not integrity.get('missing_years')
+            )
+        return bool(result.get('error_count', 0) == 0)
 
     @staticmethod
     def enrich_result(result: dict[str, Any]) -> ExtractionResultB3:

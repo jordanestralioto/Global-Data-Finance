@@ -20,6 +20,10 @@ import globaldatafinance
 from globaldatafinance.brazil.b3_data import historical_quotes
 from globaldatafinance.macro_exceptions import ExtractionError
 from scripts import benchmark_corpus, benchmark_ingestion, benchmark_runtime
+from scripts.benchmark_corpus import annual as annual_corpus
+from scripts.benchmark_corpus import synthetic as synthetic_corpus
+from scripts.benchmark_runtime import operations as runtime_operations
+from scripts.benchmark_runtime import output_validation as runtime_validation
 
 
 @pytest.mark.integration
@@ -148,11 +152,11 @@ def test_b3_runtime_scopes_executor_environment_and_restores_it(
     )
     monkeypatch.setattr(globaldatafinance, 'HistoricalQuotesB3', FakeB3)
     monkeypatch.setattr(
-        benchmark_runtime,
+        runtime_validation,
         'validate_b3_output',
         lambda _path, _source: (2, 'schema', True, 10, 'digest'),
     )
-    monkeypatch.setattr(benchmark_runtime, '_last_b3_phase_timings', {})
+    monkeypatch.setattr(runtime_operations, '_last_b3_phase_timings', {})
     monkeypatch.setenv('GDF_B3_EXECUTOR_BACKEND', 'thread')
     monkeypatch.setenv('GDF_B3_WORKER_LIMIT', '7')
 
@@ -199,11 +203,11 @@ def test_annual_b3_runtime_extracts_all_supported_asset_classes(
     )
     monkeypatch.setattr(globaldatafinance, 'HistoricalQuotesB3', FakeB3)
     monkeypatch.setattr(
-        benchmark_runtime,
+        runtime_validation,
         'validate_b3_output',
         lambda _path, _source: (1, 'schema', True, 10, 'digest'),
     )
-    monkeypatch.setattr(benchmark_runtime, '_last_b3_phase_timings', {})
+    monkeypatch.setattr(runtime_operations, '_last_b3_phase_timings', {})
 
     benchmark_runtime.run_b3(
         source,
@@ -329,7 +333,7 @@ def test_b3_middle_row_mutation_fails_logical_validation(
     tmp_path: Path,
 ) -> None:
     """A changed value away from the boundaries cannot pass validation."""
-    rows = [benchmark_corpus._expected_b3_record(index) for index in range(3)]
+    rows = [synthetic_corpus._expected_b3_record(index) for index in range(3)]
     rows[1]['preco_abertura'] = Decimal('9999.99')
     output = tmp_path / 'quotes.parquet'
     pq.write_table(
@@ -360,7 +364,7 @@ def test_annual_b3_output_without_trusted_digest_cannot_report_equivalence(
     tmp_path: Path,
 ) -> None:
     """Annual output needs a full digest before it can pass validation."""
-    rows = [benchmark_corpus._expected_b3_record(index) for index in range(3)]
+    rows = [synthetic_corpus._expected_b3_record(index) for index in range(3)]
     rows[1]['preco_abertura'] = Decimal('9999.99')
     output = tmp_path / 'annual_quotes.parquet'
     pq.write_table(
@@ -397,16 +401,24 @@ def test_annual_corpus_builds_a_full_typed_digest_and_actual_source_count(
             set(available_assets)
         )
     )
-    for index, year in enumerate(benchmark_corpus._ANNUAL_B3_YEARS):
+    for index, year in enumerate(annual_corpus._ANNUAL_B3_YEARS):
         source = tmp_path / f'COTAHIST_A{year}.ZIP'
         records = []
         for market_code in market_codes:
-            record = list(benchmark_corpus.b3_record(index))
-            record[2:10] = f'{year}0115'
+            record = list(benchmark_corpus.b3_record(index, year=year))
             record[24:27] = market_code
             records.append(''.join(record))
-        payload = '\n'.join(
-            ['00COTAHIST BENCHMARK', *records, '99COTAHIST BENCHMARK']
+        payload = (
+            '\n'.join(
+                [
+                    synthetic_corpus._b3_control_record('00', year),
+                    *records,
+                    synthetic_corpus._b3_control_record(
+                        '99', year, record_count=len(records) + 2
+                    ),
+                ]
+            )
+            + '\n'
         )
         with zipfile.ZipFile(source, 'w') as archive:
             archive.writestr(f'COTAHIST_A{year}.TXT', payload)
@@ -415,15 +427,13 @@ def test_annual_corpus_builds_a_full_typed_digest_and_actual_source_count(
         'b3_annual', tmp_path, None, tmp_path
     )
     rows = list(
-        benchmark_corpus._annual_b3_rows(
+        annual_corpus._annual_b3_rows(
             tuple(sorted(tmp_path.glob('COTAHIST_A*.ZIP')))
         )
     )
 
-    assert prepared.source_count == len(benchmark_corpus._ANNUAL_B3_YEARS)
-    assert len(rows) == len(benchmark_corpus._ANNUAL_B3_YEARS) * len(
-        market_codes
-    )
+    assert prepared.source_count == len(annual_corpus._ANNUAL_B3_YEARS)
+    assert len(rows) == len(annual_corpus._ANNUAL_B3_YEARS) * len(market_codes)
     assert {row['tipo_mercado'] for row in rows} == set(market_codes)
     assert prepared.expected_digest == benchmark_corpus.logical_digest(rows)
 

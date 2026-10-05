@@ -15,7 +15,9 @@ from globaldatafinance.macro_exceptions import (
     ExtractionError,
 )
 from tests.support.builders import (
+    build_cotahist_header,
     build_cotahist_record,
+    build_cotahist_trailer,
     build_long_cotahist_line,
     write_cotahist_txt,
     write_cotahist_zip,
@@ -53,7 +55,11 @@ async def test_reader_accepts_modern_and_historical_internal_member_layouts(
 
     lines = await _read_all(ZipFileReaderB3(), archive_path)
 
-    assert lines == [record]
+    assert lines == [
+        build_cotahist_header(year),
+        record,
+        build_cotahist_trailer(year, 1),
+    ]
 
 
 @pytest.mark.asyncio
@@ -69,10 +75,12 @@ async def test_reader_plain_txt_and_zip_preserve_identical_fixed_width_lines(
     txt_lines = await _read_all(reader, txt_path)
     zip_lines = await _read_all(reader, archive_path)
 
-    assert txt_lines == [record]
+    assert txt_lines[1:-1] == [record]
+    assert txt_lines[0].startswith('00COTAHIST.2024')
+    assert txt_lines[-1].startswith('99COTAHIST.2024')
     assert zip_lines == txt_lines
     assert len(zip_lines[0]) == 245
-    assert zip_lines[0].endswith('001')
+    assert zip_lines[1].endswith('001')
 
 
 @pytest.mark.asyncio
@@ -166,21 +174,14 @@ async def test_reader_rejects_nonofficial_external_txt_filename(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ('payload', 'reason'),
-    [
-        (b'', 'empty'),
-        (b'00HEADER\n99TRAILER\n', 'no type-01 quote data record'),
-    ],
-)
-async def test_reader_rejects_txt_without_quote_data_records(
-    tmp_path: Path, payload: bytes, reason: str
+async def test_reader_rejects_empty_txt_before_streaming(
+    tmp_path: Path,
 ) -> None:
-    """A selected TXT cannot silently finish without a type-01 record."""
+    """The byte reader rejects an empty source before yielding any line."""
     txt_path = tmp_path / 'COTAHIST_A2024.TXT'
-    txt_path.write_bytes(payload)
+    txt_path.write_bytes(b'')
 
-    with pytest.raises(ExtractionError, match=reason):
+    with pytest.raises(ExtractionError, match='empty'):
         await _read_all(ZipFileReaderB3(), txt_path)
 
 
@@ -249,4 +250,4 @@ async def test_reader_does_not_schedule_a_coroutine_for_each_source_batch(
     )
     lines = await _read_all(ZipFileReaderB3(), archive_path)
 
-    assert len(lines) == 8_193
+    assert len(lines) == 8_195

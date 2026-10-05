@@ -53,14 +53,16 @@ async def test_fast_scheduler_merges_sources_in_deterministic_input_order(
         {str(second), str(first)}, {'010'}, output
     )
 
-    assert result == {
-        'total_files': 2,
-        'success_count': 2,
-        'error_count': 0,
-        'total_records': 2,
-        'errors': {},
-        'output_file': str(output),
-    }
+    assert result['total_files'] == 2
+    assert result['success_count'] == 2
+    assert result['error_count'] == 0
+    assert result['total_records'] == 2
+    assert result['errors'] == {}
+    assert result['output_file'] == str(output)
+    assert result['schema_version'] == 2
+    assert result['integrity']['status'] == 'passed'
+    assert result['integrity']['selection_complete'] is True
+    assert result['integrity']['source_complete'] is True
     assert pq.ParquetFile(output).read()['ticker'].to_pylist() == [
         'PETR4',
         'VALE3',
@@ -105,7 +107,7 @@ async def test_one_source_reuses_its_validated_staged_artifact(
         pytest.fail('A single validated source must bypass the merge writer')
 
     monkeypatch.setattr(
-        extraction_service.service,
+        extraction_service.service.publication,
         'merge_temp_files_streaming',
         unexpected_merge,
     )

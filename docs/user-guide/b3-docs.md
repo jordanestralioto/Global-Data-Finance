@@ -32,12 +32,15 @@ A B3 disponibiliza cotações históricas para as seguintes classes de ativos:
 | **exercicio_opcoes** | Exercício de Opções | Exercício Compra (012) e Venda (013)      |
 | **forward**          | Contratos forward   | Forward c/ Ganho (050) e Mov. (060)       |
 | **leilao**           | Leilão              | Mercado de leilão (017)                   |
+| **lote_bloco**       | Lote em bloco       | [BBT](https://www.b3.com.br/pt_br/solucoes/negociacao-de-grandes-lotes/book-of-block-trade-bbt/) e [Midpoint](https://www.b3.com.br/pt_br/solucoes/negociacao-de-grandes-lotes/midpoint-order-book/) (021) |
+| **todos**            | Seleção completa    | Todo código TPMERC numérico de 3 dígitos  |
 
 > `ações` e `etf` são aliases de seleção que compartilham os códigos de mercado à vista (010) e fracionário (020).
 
 BDRs e Futures são **Planned** e não são aceitos pelo contrato atual de
-`HistoricalQuotesB3`. As strings em português da tabela são valores canônicos
-da API e devem ser passadas exatamente como mostradas.
+`HistoricalQuotesB3`. A seleção `todos` também preserva TPMERCs numéricos ainda
+desconhecidos e os relata como tal. As strings em português da tabela são
+valores canônicos da API e devem ser passadas exatamente como mostradas.
 
 !!! info "Dados Históricos"
     Cotações históricas da B3 estão disponíveis desde **1986** até o ano atual.
@@ -63,6 +66,7 @@ result = b3.extract(
     path_of_docs="/data/cotahist",
     assets_list=["ações"],
     initial_year=2023,
+    last_year=2023,
 )
 
 if not result['success']:
@@ -84,7 +88,7 @@ Extrai cotações históricas de arquivos COTAHIST (arquivos ZIP ou TXT descompa
 def extract(
     self,
     path_of_docs: str,
-    assets_list: list[str],
+    assets_list: list[str] | None = None,
     initial_year: int | None = None,
     last_year: int | None = None,
     destination_path: str | None = None,
@@ -100,7 +104,7 @@ def extract(
 | Parâmetro          | Tipo          | Obrigatório | Descrição                                             |
 | ------------------ | ------------- | ----------- | ----------------------------------------------------- |
 | `path_of_docs`     | `str`         | ✅ Sim      | Diretório contendo arquivos COTAHIST ZIP ou TXT       |
-| `assets_list`      | `list[str]`   | ✅ Sim      | Lista de classes de ativos a extrair                  |
+| `assets_list`      | `list[str] \| None` | ❌ Não | `None` (`["todos"]`) | Classes a extrair; `"todos"` seleciona cada TPMERC numérico válido |
 | `initial_year`     | `int \| None` | ❌ Não      | Ano inicial (padrão: 1986)                            |
 | `last_year`        | `int \| None` | ❌ Não      | Ano final (padrão: ano atual)                         |
 | `destination_path` | `str \| None` | ❌ Não      | Diretório de saída (padrão: mesmo que `path_of_docs`) |
@@ -123,13 +127,36 @@ def extract(
 | `assets`          | `list[str]`      | Lista de classes de ativos extraídas                  |
 | `processing_mode` | `str`            | Modo de processamento utilizado                       |
 | `elapsed_time`    | `float`          | Tempo total de execução em segundos                   |
+| `schema_version`  | `int`            | Versão do schema Parquet (`2`)                         |
+| `integrity`       | `B3IntegrityReport` | Cobertura, seleção, fontes, verificações, avisos e hash do resultado |
 
-Para um arquivo COTAHIST selecionado, `success=True` exige um Parquet gerado,
-inclusive quando todas as linhas `01` forem filtradas pelas classes solicitadas.
-Nesse caso válido, o Parquet tem o schema B3 explícito e zero linhas. Um arquivo
-sem registro `01` continua inválido; registros `01` selecionados com tamanho,
-data, texto, inteiro ou decimal inválidos falham com `ExtractionError`
-contextual, sem converter valores ausentes em zero ou nulo.
+`assets_list=None` equivale a `["todos"]`. Esse seletor inclui qualquer TPMERC
+de três dígitos ASCII, inclusive códigos numéricos desconhecidos, que também
+aparecem em `integrity.unknown_market_counts`. `lote_bloco` seleciona `021`;
+`ações` e `etf` continuam aliases de seleção para `010` e `020` e não
+classificam independentemente a categoria financeira do ativo. Repetir aliases
+que se sobrepõem não duplica ocorrências.
+
+Cada cotação `01` é validada em todos os campos antes de aplicar um filtro de
+classe. TPMERC inválido e campos malformados falham mesmo quando a cotação seria
+excluída pelo filtro. Linhas vazias e controles `00`/`99` são contados, não
+persistidos. O validador aceita apenas os totais de trailer observados:
+cotações mais os dois controles ou apenas cotações; o segundo caso produz um
+aviso estruturado.
+
+`success=True` exige todos os anos solicitados, fontes validadas, todas as
+linhas selecionadas escritas e verificadas por leitura completa do Parquet e
+publicação concluída. Um ano ausente ou uma verificação incompleta falha sem
+publicar uma nova saída. A saída filtrada válida pode ter zero linhas; o
+relatório distingue `selection_complete` de `source_complete` e registra as
+exclusões intencionais. O resultado informa hashes do ZIP/TXT, do conteúdo
+descompactado e do Parquet publicado.
+
+Consulte [avisos de limpeza e cancelamento](../reference/b3-api.md).
+
+Como os anos padrão continuam sendo 1986 até o ano atual, uma pasta com um
+recorte local deve passar os limites disponíveis explicitamente. A cobertura
+real é a dos arquivos fornecidos e não confirma datas fora deles.
 
 #### Exemplos
 
@@ -221,7 +248,7 @@ from globaldatafinance import HistoricalQuotesB3
 
 b3 = HistoricalQuotesB3()
 assets = b3.get_available_assets()
-# ['ações', 'etf', 'opções', 'termo', 'exercicio_opcoes', 'forward', 'leilao']
+# ['ações', 'etf', 'opções', 'termo', 'exercicio_opcoes', 'forward', 'leilao', 'lote_bloco', 'todos']
 print(f"Disponíveis {len(assets)} classes de ativos")
 ```
 
@@ -261,10 +288,9 @@ A extração suporta dois modos de processamento:
 
 ### Modo Fast (Padrão) ⚡
 
-- **Performance**: Alto desempenho
-- **CPU**: Uso intensivo (multi-core)
-- **RAM**: Maior consumo de memória
-- **Recomendado para**: Máquinas com bons recursos, processamento de grandes volumes
+Usa o parser canônico e escrita Arrow em lotes de até 25.000 registros. Pode
+processar várias fontes em paralelo, conforme CPUs, memória disponível e
+quantidade de arquivos; o limite padrão é de quatro workers.
 
 ```python
 from globaldatafinance import HistoricalQuotesB3
@@ -279,10 +305,9 @@ result = b3.extract(
 
 ### Modo Slow 🐢
 
-- **Performance**: Moderada
-- **CPU**: Uso reduzido (single-core ou poucos cores)
-- **RAM**: Menor consumo de memória
-- **Recomendado para**: Máquinas com recursos limitados, processamento em background
+Usa o mesmo parser canônico e schema, com lotes de até 10.000 registros e um
+worker de extração. Ambos os modos leem a fonte de forma limitada e conferem
+integralmente os dados antes de publicar.
 
 ```python
 from globaldatafinance import HistoricalQuotesB3
@@ -297,7 +322,7 @@ result = b3.extract(
 
 ### Comparação de Performance
 
-*Linha de base v3: 27 arquivos anuais (2000–2026), com 22.303.577 registros. Medida em Python 3.13.7, Linux x86_64, 8 CPUs e 7,55 GB de memória; os valores variam conforme o ambiente. Consulte os [detalhes do benchmark](../dev-guide/benchmarks.md).*
+*Referência histórica da implementação v3: 27 arquivos (2000–2026) e 22.303.577 registros, sem 2.283 cotações TPMERC `021`. Essa medição não representa o schema v2 e não é diretamente comparável. Veja os [detalhes do benchmark](../dev-guide/benchmarks.md).*
 
 | Modo     | Throughput medido | Pico RSS medido | Paralelismo padrão                                  | Cenário Indicado        |
 | -------- | ----------------- | --------------- | --------------------------------------------------- | ----------------------- |
@@ -311,27 +336,25 @@ ______________________________________________________________________
 
 ## Exemplos Avançados
 
-### Todas as Classes Atualmente Suportadas
+### Seleção Completa de Mercados
 
 ```python
 from globaldatafinance import HistoricalQuotesB3
 
 b3 = HistoricalQuotesB3()
 
-# Obter todas as classes de ativos atualmente suportadas
-all_assets = b3.get_available_assets()
-
-# Extrair todas as classes atualmente suportadas
+# `todos` inclui TPMERCs numéricos desconhecidos, além das classes conhecidas
 result = b3.extract(
     path_of_docs="/data/cotahist",
-    assets_list=all_assets,  # Todas as classes suportadas
+    assets_list=["todos"],
     initial_year=2023,
+    last_year=2023,
     output_filename="todos_ativos_2023"
 )
 
 if not result['success']:
     raise SystemExit(result['errors'])
-print(f"✓ Extraídos {result['total_records']:,} registros de {len(all_assets)} classes suportadas")
+print(f"✓ Extraídos {result['total_records']:,} registros; mercados desconhecidos: {result['integrity']['unknown_market_counts']}")
 ```
 
 ### Extração Incremental por Ano
@@ -413,8 +436,11 @@ ______________________________________________________________________
 | `InvalidAssetsName`   | Ativo inválido em `assets_list`    | Verificar com `get_available_assets()` |
 | `InvalidFirstYear`    | `initial_year` fora do intervalo   | Usar 1986 ≤ ano ≤ ano atual            |
 | `InvalidLastYear`     | `last_year` inválido               | Usar `initial_year` ≤ ano ≤ ano atual  |
-| `EmptyDirectoryError` | Ocorre somente se o diretório estiver fisicamente vazio; diretório que não está vazio sem COTAHIST correspondente retorna resultado vazio (`success=True`, contadores 0, `output_file=""`, `errors={}`) | Inspecionar `total_files` e `total_records` |
+| `EmptyDirectoryError` | Diretório de entrada fisicamente vazio | Fornecer um diretório existente com COTAHIST |
 | `ExtractionError`     | Erro ao processar arquivo COTAHIST | Verificar integridade dos arquivos     |
+
+Se faltar um arquivo de qualquer ano solicitado, a API retorna `success=False`,
+lista a lacuna em `integrity.missing_years` e não publica uma nova saída.
 
 ______________________________________________________________________
 
@@ -445,9 +471,9 @@ expansão e compressão; formato inseguro ou corrompido falha com
 
 O parser é estrito: linhas vazias e controles `00`/`99` são apenas contadas;
 um identificador não vazio diferente de `01`, `00` ou `99` aborta a extração.
-O filtro TPMERC é aplicado antes da conversão dos demais campos. Portanto,
-registros fora do filtro são contabilizados como filtrados, enquanto um registro
-selecionado inválido nunca produz um valor financeiro padrão.
+Todos os campos de cada registro `01` são validados antes do filtro TPMERC,
+inclusive em cotações que serão excluídas. Um campo inválido nunca produz um
+valor financeiro padrão.
 
 O texto literal `__GLOBALDATAFINANCE_NULL__` é reservado pelo writer interno e é
 rejeitado como dado de entrada em registros e linhas canônicas. Use `None` para
@@ -458,41 +484,15 @@ ______________________________________________________________________
 
 ## Estrutura do Arquivo Parquet Gerado
 
-### Colunas
+O schema padrão é a versão `2`. Os 20 campos históricos mantêm a mesma ordem;
+a versão acrescenta campos oficiais, tipo de registro, proveniência e os bytes
+originais. Todos são obrigatórios, exceto `data_vencimento`. O footer inclui o
+manifesto de integridade e a impressão digital lógica do schema.
 
-O arquivo Parquet gerado contém as seguintes colunas:
-
-| Coluna                 | Tipo      | Descrição                              |
-| ---------------------- | --------- | -------------------------------------- |
-| `data_pregao`          | `date`    | Data do pregão                         |
-| `codigo_bdi`           | `string`  | Código BDI                             |
-| `ticker`               | `string`  | Código de negociação (ex: PETR4)       |
-| `tipo_mercado`         | `string`  | Tipo de mercado                        |
-| `nome_resumido`        | `string`  | Nome resumido da empresa               |
-| `especificacao_papel`  | `string`  | Especificação do papel (ex: ON, PN)    |
-| `preco_abertura`       | `decimal` | Preço de abertura                      |
-| `preco_maximo`         | `decimal` | Preço máximo do dia                    |
-| `preco_minimo`         | `decimal` | Preço mínimo do dia                    |
-| `preco_medio`          | `decimal` | Preço médio do dia                     |
-| `preco_fechamento`     | `decimal` | Preço de fechamento                    |
-| `melhor_oferta_compra` | `decimal` | Melhor oferta de compra                |
-| `melhor_oferta_venda`  | `decimal` | Melhor oferta de venda                 |
-| `numero_negocios`      | `int`     | Número de negócios efetuados           |
-| `quantidade_total`     | `int`     | Quantidade total de títulos negociados |
-| `volume_total`         | `decimal` | Volume total financeiro                |
-| `data_vencimento`      | `date`    | Data de vencimento (opções/termo)      |
-| `fator_cotacao`        | `int`     | Fator de cotação                       |
-| `codigo_isin`          | `string`  | Código ISIN                            |
-| `numero_distribuicao`  | `int`     | Número de distribuição                 |
-
-### Leitura
-
-Use `pyarrow.parquet.read_table()` ou
-`pyarrow.parquet.ParquetFile(...).iter_batches()` com `batch_size=200_000`
-para limitar memória. PyArrow é o engine produtivo recomendado; Pandas continua
-compatível como leitor downstream, mas precisa ser instalado pelo consumidor.
-
-______________________________________________________________________
+Consulte a [referência técnica do schema v2](../reference/b3-schema-v2.md) para
+a lista completa de campos, tipos, leitura e proveniência. Arquivos de schema
+v1 precisam ser regenerados a partir dos COTAHIST originais conforme o
+[guia de migração da versão 2](migration-pyarrow-integrity.md#b3-schema-v2-e-regeneracao).
 
 Para recomendações de operação, particionamento e consumo dos artefatos, veja
 [Boas práticas B3](b3-operations.md).

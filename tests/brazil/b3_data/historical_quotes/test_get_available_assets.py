@@ -16,6 +16,8 @@ EXPECTED_ASSETS = [
     'exercicio_opcoes',
     'forward',
     'leilao',
+    'lote_bloco',
+    'todos',
 ]
 
 
@@ -23,7 +25,7 @@ class TestGetAvailableAssetsUseCase:
     def test_execute_returns_all_expected_assets(self):
         result = GetAvailableAssetsUseCaseB3.execute()
         assert isinstance(result, list)
-        assert len(result) == 7
+        assert len(result) == 9
         for asset in EXPECTED_ASSETS:
             assert asset in result
 

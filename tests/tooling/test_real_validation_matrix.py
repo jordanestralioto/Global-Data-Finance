@@ -8,15 +8,15 @@ from pathlib import Path
 
 import pytest
 
-from scripts.real_validation_matrix import (
+from scripts import real_validation as cli
+from scripts.real_validation_matrix import build_cases, manifest_for
+from scripts.real_validation_matrix.cases import (
     _normalized_path,
     _selected_documents,
-    build_cases,
     canonical_cvm_case,
-    cases_from_manifest,
-    manifest_for,
 )
-from scripts.real_validation_report import ReportFormatError
+from scripts.real_validation_matrix.manifest import cases_from_manifest
+from scripts.real_validation_report import ReportFormatError, write_json
 from scripts.real_validation_types import ValidationCase
 from tests.support.builders import build_cotahist_record, write_cotahist_zip
 
@@ -66,6 +66,7 @@ def test_cotahist_matrix_builds_fast_parity_and_all_modes(
     assert {case.case_id for case in all_modes} == {
         'cotahist-fast-2024',
         'cotahist-parity-2024',
+        'cotahist-multi-parity-2024-2024',
     }
     assert all(case.input_path == str(archive) for case in all_modes)
     assert all(
@@ -82,7 +83,7 @@ def test_cotahist_matrix_rejects_missing_selected_year(tmp_path: Path) -> None:
         records=[build_cotahist_record(year=2024)],
     )
 
-    with pytest.raises(ValueError, match='missing selected years'):
+    with pytest.raises(ValueError, match='missing years'):
         build_cases(
             source='cotahist',
             initial_year=2023,
@@ -96,9 +97,9 @@ def test_cotahist_matrix_rejects_missing_selected_year(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ('initial_year', 'last_year', 'message'),
     [
-        (1999, 2024, '2000..2024'),
-        (2024, 2025, '2000..2024'),
-        (2024, 2023, '2000..2024'),
+        (1985, 2024, '1986..'),
+        (2024, 2027, '1986..'),
+        (2024, 2023, '1986..'),
     ],
 )
 def test_cotahist_matrix_rejects_invalid_year_ranges(
@@ -142,6 +143,7 @@ def test_all_matrix_combines_one_b3_case_with_one_cvm_case(
 
     assert [case.case_id for case in cases] == [
         'cotahist-fast-2024',
+        'cotahist-multi-parity-2024-2024',
         'cotahist-parity-2024',
         'cvm-DFP-2024',
     ]
@@ -297,3 +299,147 @@ def test_cases_from_manifest_rejects_inconsistent_source_and_mode() -> None:
         cases_from_manifest(
             {'cases': [{**case.to_manifest_dict(), 'mode': 'cvm'}]}
         )
+
+
+@pytest.mark.parametrize('value', ['true', 1, None])
+def test_historical_baseline_manifest_requires_boolean_intent(
+    tmp_path: Path, value
+) -> None:
+    """A malformed baseline flag cannot silently change acceptance."""
+    case = ValidationCase(
+        case_id='cotahist-multi-parity-2000-2026',
+        source='cotahist',
+        year=2000,
+        input_path=str(tmp_path / 'COTAHIST_A2000.ZIP'),
+        output_root='',
+        mode='multi_parity',
+    )
+
+    with pytest.raises(ReportFormatError, match='must be a boolean'):
+        cases_from_manifest(
+            {'cases': [{**case.to_manifest_dict(), 'frozenBaseline': value}]}
+        )
+
+
+def test_legacy_manifest_defaults_to_generic_acceptance(
+    tmp_path: Path,
+) -> None:
+    """Older manifests remain readable without an implicit historical pin."""
+    case = ValidationCase(
+        case_id='cotahist-fast-2024',
+        source='cotahist',
+        year=2024,
+        input_path=str(tmp_path / 'COTAHIST_A2024.ZIP'),
+        output_root='',
+        mode='fast',
+    )
+    legacy = case.to_manifest_dict()
+    legacy.pop('frozenBaseline')
+
+    assert cases_from_manifest({'cases': [legacy]}) == [case]
+
+
+def test_historical_baseline_cannot_be_attached_to_annual_case(
+    tmp_path: Path,
+) -> None:
+    """Historical acceptance belongs to the complete multi-year proof."""
+    case = ValidationCase(
+        case_id='cotahist-fast-2024',
+        source='cotahist',
+        year=2024,
+        input_path=str(tmp_path / 'COTAHIST_A2024.ZIP'),
+        output_root='',
+        mode='fast',
+        frozen_baseline=True,
+    )
+
+    with pytest.raises(ReportFormatError, match='multi-year COTAHIST parity'):
+        cases_from_manifest({'cases': [case.to_manifest_dict()]})
+
+
+@pytest.mark.parametrize('historical', [False, True])
+@pytest.mark.parametrize(
+    'evidence',
+    ['manifest.json', 'results.jsonl', 'summary.json', 'logs', 'work'],
+)
+def test_new_campaign_rejects_existing_evidence_without_modifying_it(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    evidence: str,
+    historical: bool,
+) -> None:
+    """An old generic pass cannot become a new historical acceptance."""
+    report = tmp_path / 'report'
+    report.mkdir()
+    stored = report / evidence
+    if evidence in {'logs', 'work'}:
+        stored.mkdir()
+        stored = stored / 'existing.txt'
+    stored.write_bytes(b'previous campaign evidence\n')
+    previous = stored.read_bytes()
+
+    def unexpected_call(*_args, **_kwargs):
+        pytest.fail('Existing evidence must be rejected before campaign work')
+
+    monkeypatch.setattr(cli, 'build_cases', unexpected_call)
+    monkeypatch.setattr(cli, 'run_campaign', unexpected_call)
+    args = ['--source', 'cotahist', '--report', str(report)]
+    if historical:
+        args.append('--cotahist-frozen-baseline')
+
+    assert cli.main(args) == 3
+    assert 'already contains campaign evidence' in capsys.readouterr().err
+    assert stored.read_bytes() == previous
+    assert sorted(path.name for path in report.iterdir()) == [evidence]
+
+
+def test_resume_cannot_upgrade_a_generic_manifest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A historical resume flag cannot overwrite the persisted intent."""
+    archive = write_cotahist_zip(
+        tmp_path, year=2024, records=[build_cotahist_record()]
+    )
+    cases = build_cases(
+        source='cotahist',
+        initial_year=2024,
+        last_year=2024,
+        document=None,
+        cotahist_path=str(archive.parent),
+        cvm_output=None,
+        cotahist_modes='all',
+    )
+    report = tmp_path / 'report'
+    write_json(
+        report / 'manifest.json',
+        manifest_for(
+            cases,
+            source='cotahist',
+            initial_year=2024,
+            last_year=2024,
+            document=None,
+            cotahist_path=str(archive.parent),
+            cvm_output=None,
+            timeout=300,
+        ),
+    )
+    previous = (report / 'manifest.json').read_bytes()
+
+    def unexpected_run(*_args, **_kwargs):
+        pytest.fail('A generic campaign cannot resume as historical')
+
+    monkeypatch.setattr(cli, 'run_campaign', unexpected_run)
+
+    assert (
+        cli.main(
+            [
+                '--resume',
+                '--report',
+                str(report),
+                '--cotahist-frozen-baseline',
+            ]
+        )
+        == 3
+    )
+    assert (report / 'manifest.json').read_bytes() == previous

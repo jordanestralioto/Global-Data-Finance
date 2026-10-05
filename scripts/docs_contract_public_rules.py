@@ -10,7 +10,7 @@ from scripts.docs_contract_ast import (
     compare_documented_extract_signature,
 )
 from scripts.docs_contract_rules import (
-    B3_MODULE_README,
+    B3_MODULE_READMES,
     PUBLIC_B3_PATHS,
     _matches_public_path,
 )
@@ -147,7 +147,9 @@ def check_b3_internal_readme_contract(
     content: str,
 ) -> list[str]:
     """Check ownership and path semantics for internal B3 objects."""
-    if not _matches_public_path(file_path, B3_MODULE_README):
+    if not any(
+        _matches_public_path(file_path, path) for path in B3_MODULE_READMES
+    ):
         return []
 
     errors: list[str] = []
@@ -252,10 +254,7 @@ def check_public_b3_api_contract(
         contracts.extraction_result_fields,
         'ExtractionResultB3',
     )
-    if not re.search(r'(?i)\b(?:precedência|precedence)\b', content):
-        errors.append(
-            f'{file_path}:1: B3 API documentation must explain ZIP precedence'
-        )
+    errors.extend(_check_b3_catalog_semantics(file_path, content))
 
     output_contract = re.search(
         r'(?is)output_filename.{0,240}basename.{0,240}\.parquet', content
@@ -274,19 +273,52 @@ def check_public_b3_api_contract(
             'extension when .parquet is omitted'
         )
 
-    physical_empty = re.search(
-        r'(?i)(?:physically\s+empty|fisicamente\s+vazio)', content
+    return errors
+
+
+def _check_b3_catalog_semantics(file_path: Path, content: str) -> list[str]:
+    """Require validated duplicate equivalence and explicit empty coverage."""
+    paragraphs = [text for _, text in _normalized_paragraphs(content)]
+    errors: list[str] = []
+    equivalent_inputs = any(
+        re.search(
+            r'(?i)ZIP.{0,200}(?:only|somente).{0,100}(?:identical|idêntic)',
+            paragraph,
+        )
+        and re.search(
+            r'(?i)(?:both|ambos).{0,100}(?:validat|validad)', paragraph
+        )
+        for paragraph in paragraphs
     )
-    non_matching = re.search(
-        r'(?i)(?:not empty|não está vazio|nao esta vazio)', content
-    )
-    empty_result = re.search(
-        r'(?i)(?:empty result|resultado vazio|success\s*=\s*true)', content
-    )
-    if not (physical_empty and non_matching and empty_result):
+    if not equivalent_inputs:
         errors.append(
-            f'{file_path}:1: B3 API docs must distinguish a physically empty '
-            'directory error from an empty result for non-matching inputs'
+            f'{file_path}:1: B3 API docs must require full validation of '
+            'both ZIP/TXT inputs and identical contents before selecting ZIP'
+        )
+    empty_coverage = any(
+        re.search(r'(?i)empty\s+directory|diretório\s+vazio', paragraph)
+        and 'missing_years' in paragraph
+        and 'zero' in paragraph.casefold()
+        and re.search(r'(?i)success\s*=\s*false', paragraph)
+        for paragraph in paragraphs
+    )
+    filtered_empty = any(
+        re.search(
+            r'(?i)sources?.{0,80}valid|valid.{0,80}sources?|'
+            r'fontes.{0,80}válid',
+            paragraph,
+        )
+        and re.search(r'(?i)success\s*=\s*true', paragraph)
+        for paragraph in paragraphs
+    )
+    if (
+        not empty_coverage
+        or not filtered_empty
+        or 'EmptyDirectoryError' in content
+    ):
+        errors.append(
+            f'{file_path}:1: B3 API docs must distinguish missing-year '
+            'failure with zero resolved files from valid filtered empty output'
         )
     return errors
 

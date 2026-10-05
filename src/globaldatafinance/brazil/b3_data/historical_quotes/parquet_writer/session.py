@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import csv
 import io
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from contextlib import suppress
 from datetime import date
 from decimal import Decimal
@@ -113,7 +113,9 @@ class B3ParquetWriterSession:
             records.clear()
             raise
 
-    def write_csv_rows(self, rows: list[tuple[str | None, ...]]) -> None:
+    def write_csv_rows(
+        self, rows: list[tuple[str | bytes | None, ...]]
+    ) -> None:
         """Convert canonical parser rows without rebuilding typed objects."""
         if self._writer is None or self.schema is None:
             raise RuntimeError('B3 Parquet writer session is not open')
@@ -152,7 +154,7 @@ class B3ParquetWriterSession:
 
     @staticmethod
     def _csv_rows_to_batches(
-        rows: Iterable[Iterable[str | None]],
+        rows: Iterable[Iterable[str | bytes | None]],
         schema: Schema,
         *,
         allow_internal_sentinel: bool = False,
@@ -160,11 +162,53 @@ class B3ParquetWriterSession:
         """Feed canonical string rows to Arrow CSV with explicit types."""
         pa, pacsv, _ = _get_arrow()
 
+        binary_indices = [
+            index
+            for index, field in enumerate(schema)
+            if pa.types.is_fixed_size_binary(field.type)
+        ]
+        if len(binary_indices) != 1:
+            raise ExtractionError(
+                'B3 Parquet',
+                'Canonical schema must contain one fixed-size binary field',
+            )
+        binary_index = binary_indices[0]
+        binary_field = schema.field(binary_index)
+        csv_fields = [
+            field
+            for index, field in enumerate(schema)
+            if index != binary_index
+        ]
+        csv_schema = pa.schema(csv_fields)
         buffer = io.StringIO()
         writer = csv.writer(buffer, lineterminator='\n')
-        column_names = tuple(schema.names)
+        column_names = tuple(field.name for field in csv_fields)
+        original_records: list[bytes] = []
         for row_number, row in enumerate(rows, start=1):
             row_values = list(row)
+            if len(row_values) != len(schema.names):
+                raise ExtractionError(
+                    'B3 Parquet',
+                    'Canonical B3 row has an incompatible width: '
+                    f'row={row_number}; expected={len(schema.names)}; '
+                    f'observed={len(row_values)}',
+                )
+            original_record = row_values.pop(binary_index)
+            if not isinstance(original_record, bytes):
+                raise ExtractionError(
+                    'B3 Parquet',
+                    'Original quotation must be a byte string: '
+                    f'row={row_number}',
+                )
+            if len(original_record) != binary_field.type.byte_width:
+                raise ExtractionError(
+                    'B3 Parquet',
+                    'Original quotation has an incompatible byte width: '
+                    f'row={row_number}; '
+                    f'expected={binary_field.type.byte_width}; '
+                    f'observed={len(original_record)}',
+                )
+            original_records.append(original_record)
             if not allow_internal_sentinel:
                 _reject_reserved_sentinel(row_values, column_names, row_number)
             writer.writerow(
@@ -174,18 +218,36 @@ class B3ParquetWriterSession:
         table = pacsv.read_csv(
             pa.py_buffer(buffer.getvalue().encode('utf-8')),
             read_options=pacsv.ReadOptions(
-                column_names=list(schema.names),
+                column_names=list(csv_schema.names),
                 use_threads=False,
             ),
             parse_options=pacsv.ParseOptions(delimiter=','),
             convert_options=pacsv.ConvertOptions(
-                column_types=schema,
+                column_types=csv_schema,
                 null_values=[_NULL_SENTINEL],
                 strings_can_be_null=True,
                 quoted_strings_can_be_null=False,
             ),
         )
-        return list(table.to_batches(max_chunksize=RECORD_BATCH_LIMIT))
+        record_count = table.num_rows
+        binary_values = b''.join(original_records)
+        binary_array = pa.Array.from_buffers(
+            binary_field.type,
+            record_count,
+            [None, pa.py_buffer(binary_values)],
+        )
+        arrays = []
+        csv_index = 0
+        for index in range(len(schema)):
+            if index == binary_index:
+                arrays.append(binary_array)
+            else:
+                arrays.append(table.column(csv_index).combine_chunks())
+                csv_index += 1
+        canonical_table = pa.Table.from_arrays(arrays, schema=schema)
+        return list(
+            canonical_table.to_batches(max_chunksize=RECORD_BATCH_LIMIT)
+        )
 
     def write_batches(self, batches: Iterable[Any]) -> None:
         """Copy already-typed Arrow batches into this bounded session."""
@@ -274,9 +336,9 @@ class B3ParquetWriterSession:
 
 def _serialize_record(
     record: dict[str, object], column_names: Iterable[str]
-) -> list[str]:
+) -> list[str | bytes]:
     """Serialize one typed record for the private Arrow CSV bridge."""
-    values: list[str] = []
+    values: list[str | bytes] = []
     for name in column_names:
         value = record[name]
         if value is None:
@@ -285,6 +347,8 @@ def _serialize_record(
             values.append(value.isoformat())
         elif isinstance(value, Decimal):
             values.append(format(value, 'f'))
+        elif isinstance(value, bytes):
+            values.append(value)
         else:
             serialized = str(value)
             if serialized == _NULL_SENTINEL:
@@ -298,7 +362,9 @@ def _serialize_record(
 
 
 def _reject_reserved_sentinel(
-    values: list[str | None], column_names: Iterable[str], row_number: int
+    values: Sequence[str | bytes | None],
+    column_names: Iterable[str],
+    row_number: int,
 ) -> None:
     """Reject the private null marker when it arrives as real CSV data."""
     names = tuple(column_names)

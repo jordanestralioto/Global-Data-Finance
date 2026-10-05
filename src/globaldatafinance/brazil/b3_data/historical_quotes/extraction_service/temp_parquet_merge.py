@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import contextlib
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 from .....macro_exceptions import ExtractionError, ParquetWriteError
+from ..async_execution import check_phase_cancellation
 from ..parquet_writer.session import ROW_GROUP_LIMIT, B3ParquetWriterSession
 
 if TYPE_CHECKING:
@@ -37,10 +38,11 @@ def merge_temp_files_streaming(
                 expected_schema,
                 None if expected_rows is None else expected_rows[index],
             )
-            written_before = session.rows_written
-            session.write_batches(
-                source.iter_batches(batch_size=ROW_GROUP_LIMIT)
-            )
+            try:
+                written_before = session.rows_written
+                session.write_batches(_cancellable_batches(source))
+            finally:
+                source.close()
             if session.rows_written < written_before:
                 raise ExtractionError(
                     str(temp_file), 'B3 merge row count regressed unexpectedly'
@@ -75,6 +77,12 @@ def _validate_temporary_row_count(
     )
 
 
+def _cancellable_batches(source: Any) -> Iterator[Any]:
+    for batch in source.iter_batches(batch_size=ROW_GROUP_LIMIT):
+        check_phase_cancellation()
+        yield batch
+
+
 def validate_one_temp_file(
     temp_file: Path,
     expected_schema: Schema,
@@ -90,12 +98,15 @@ def validate_one_temp_file(
     source = _open_validated_temporary(
         temp_file, expected_schema, expected_rows
     )
-    metadata = source.metadata
-    if metadata is None:
-        raise ExtractionError(
-            str(temp_file), 'B3 temporary Parquet metadata is missing'
-        )
-    return cast(int, metadata.num_rows)
+    try:
+        metadata = source.metadata
+        if metadata is None:
+            raise ExtractionError(
+                str(temp_file), 'B3 temporary Parquet metadata is missing'
+            )
+        return cast(int, metadata.num_rows)
+    finally:
+        source.close()
 
 
 def _validate_merge_inputs(
@@ -125,14 +136,20 @@ def _open_validated_temporary(
             str(temp_file), 'B3 temporary Parquet artifact is missing'
         )
     source = pq.ParquetFile(temp_file)
-    if source.schema_arrow != expected_schema:
-        raise ExtractionError(
-            str(temp_file), 'B3 temporary Parquet schema is incompatible'
+    try:
+        if source.schema_arrow != expected_schema:
+            raise ExtractionError(
+                str(temp_file), 'B3 temporary Parquet schema is incompatible'
+            )
+        metadata = source.metadata
+        if metadata is None:
+            raise ExtractionError(
+                str(temp_file), 'B3 temporary Parquet metadata is missing'
+            )
+        _validate_temporary_row_count(
+            temp_file, metadata.num_rows, expected_rows=expected_rows
         )
-    metadata = source.metadata
-    if metadata is None:
-        raise ExtractionError(
-            str(temp_file), 'B3 temporary Parquet metadata is missing'
-        )
-    _validate_temporary_row_count(temp_file, metadata.num_rows, expected_rows)
-    return source
+        return source
+    except BaseException:
+        source.close()
+        raise

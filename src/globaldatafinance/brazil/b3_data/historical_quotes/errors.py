@@ -1,8 +1,41 @@
 """Domain exceptions raised while validating B3 historical quote inputs."""
 
+from pathlib import Path
+
+from ....macro_exceptions import ExtractionError
+from .models import CotahistCatalogResolution
+
 
 class B3Error(Exception):
     """Base class for all B3 domain exceptions."""
+
+
+class CotahistCatalogError(ValueError):
+    """Indicate that a caller-owned COTAHIST catalog is not usable."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        source_path: Path | None = None,
+        resolution: CotahistCatalogResolution | None = None,
+        resolved_file_count: int = 0,
+    ) -> None:
+        """Retain an input coordinate when one candidate caused the failure."""
+        super().__init__(message)
+        self.source_path = source_path
+        self.resolution = resolution
+        self.resolved_file_count = resolved_file_count
+
+
+class CotahistPreflightError(ExtractionError):
+    """Preserve catalog observations across the extraction error boundary."""
+
+    def __init__(self, path: str, error: CotahistCatalogError) -> None:
+        """Retain source and coverage observations from failed preflight."""
+        super().__init__(path, str(error))
+        self.resolution = error.resolution or CotahistCatalogResolution((), ())
+        self.resolved_file_count = error.resolved_file_count
 
 
 class InvalidFirstYear(B3Error):

@@ -2,17 +2,17 @@ from __future__ import annotations
 
 import os
 import re
-from collections.abc import Iterator
-from contextlib import contextmanager
 from pathlib import Path
 from typing import NoReturn
 
 import pytest
 
 from globaldatafinance.brazil.b3_data.historical_quotes.catalog import (
-    CotahistCatalogError,
     select_cotahist_file,
     validate_cotahist_catalog,
+)
+from globaldatafinance.brazil.b3_data.historical_quotes.errors import (
+    CotahistCatalogError,
 )
 from globaldatafinance.core import ResourceState
 
@@ -140,19 +140,6 @@ async def resources_available(timeout_seconds: int = 30) -> bool:
     return True
 
 
-@pytest.fixture(autouse=True)
-def suppress_execution_time_logging(monkeypatch):
-    @contextmanager
-    def noop(*_args, **_kwargs) -> Iterator[None]:
-        yield
-
-    monkeypatch.setattr(
-        'globaldatafinance.brazil.b3_data.historical_quotes.extraction_service.service.log_execution_time',
-        noop,
-        raising=False,
-    )
-
-
 @pytest.fixture
 def process_pool_spy(monkeypatch):
     created: list[DummyPool] = []
@@ -163,7 +150,7 @@ def process_pool_spy(monkeypatch):
         return pool
 
     monkeypatch.setattr(
-        'globaldatafinance.brazil.b3_data.historical_quotes.extraction_service.zip_processor.ThreadPoolExecutor',
+        'globaldatafinance.brazil.b3_data.historical_quotes.extraction_service.scheduler.ThreadPoolExecutor',
         factory,
     )
     return created

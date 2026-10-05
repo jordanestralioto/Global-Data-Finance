@@ -27,14 +27,15 @@ from scripts.docs_contract_public_rules import (
     check_public_b3_signature_contract,
     check_public_cvm_api_contract,
 )
-from scripts.docs_contract_rules import KNOWN_IMPORTS as KNOWN_IMPORTS
 from scripts.docs_contract_rules import (
+    BILINGUAL_READMES,
     check_bilingual_contract_markers,
     check_logging_contract,
     check_public_b3_contract,
     check_test_module_commands,
     documentation_files,
 )
+from scripts.docs_contract_rules import KNOWN_IMPORTS as KNOWN_IMPORTS
 
 DOCS_DIR = Path(__file__).resolve().parents[1] / 'docs'
 SOURCE_CONTRACTS = load_source_contracts(DOCS_DIR.parent)
@@ -49,23 +50,39 @@ def check_bilingual_parity(docs_dir: Path) -> list[str]:
 
     for pt_file in sorted(pt_files):
         en_file = pt_file.with_name(pt_file.name[:-3] + '.en.md')
-        if not en_file.exists():
-            errors.append(
-                f'{pt_file}:1: missing English counterpart: {en_file}'
-            )
-            continue
+        errors.extend(check_bilingual_pair(pt_file, en_file))
 
-        pt_content = pt_file.read_text(encoding='utf-8')
-        en_content = en_file.read_text(encoding='utf-8')
-        pt_h2 = len(re.findall(r'^##\s+', pt_content, re.MULTILINE))
-        en_h2 = len(re.findall(r'^##\s+', en_content, re.MULTILINE))
-        if pt_h2 != en_h2:
-            errors.append(
-                f'{pt_file}:1: H2 section count mismatch with EN '
-                f'({pt_h2} vs {en_h2})'
-            )
-        errors.extend(check_bilingual_contract_markers(pt_file, en_file))
+    return errors
 
+
+def check_bilingual_pair(pt_file: Path, en_file: Path) -> list[str]:
+    """Validate counterpart presence, headings, and contract markers."""
+    if not pt_file.exists():
+        return [f'{en_file}:1: missing Portuguese counterpart: {pt_file}']
+    if not en_file.exists():
+        return [f'{pt_file}:1: missing English counterpart: {en_file}']
+    pt_content = pt_file.read_text(encoding='utf-8')
+    en_content = en_file.read_text(encoding='utf-8')
+    pt_h2 = len(re.findall(r'^##\s+', pt_content, re.MULTILINE))
+    en_h2 = len(re.findall(r'^##\s+', en_content, re.MULTILINE))
+    errors = []
+    if pt_h2 != en_h2:
+        errors.append(
+            f'{pt_file}:1: H2 section count mismatch with EN '
+            f'({pt_h2} vs {en_h2})'
+        )
+    errors.extend(check_bilingual_contract_markers(pt_file, en_file))
+    return errors
+
+
+def check_bilingual_readmes(repo_root: Path) -> list[str]:
+    """Enforce the canonical B3 and example README language pairs."""
+    errors = []
+    for relative_path in BILINGUAL_READMES:
+        pt_file = repo_root / relative_path
+        en_file = pt_file.with_name('README.en.md')
+        if pt_file.exists() or en_file.exists():
+            errors.extend(check_bilingual_pair(pt_file, en_file))
     return errors
 
 
@@ -280,6 +297,7 @@ def main() -> int:
         return 1
 
     all_errors.extend(check_bilingual_parity(DOCS_DIR))
+    all_errors.extend(check_bilingual_readmes(repo_root))
 
     for md_file in documentation_files(repo_root):
         content = md_file.read_text(encoding='utf-8')

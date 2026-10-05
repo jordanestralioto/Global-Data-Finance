@@ -3,12 +3,19 @@
 from __future__ import annotations
 
 import hashlib
+import sys
 from pathlib import Path
 from typing import Any
 
 from globaldatafinance.core.utils import assert_path_not_sensitive
 
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+
+
+def emit_progress(message: str) -> None:
+    """Flush human-readable progress without changing JSON stdout."""
+    sys.stderr.write(f'[validation] {message}\n')
+    sys.stderr.flush()
 
 
 def failed_details(public_result: Any, message: str) -> dict[str, Any]:

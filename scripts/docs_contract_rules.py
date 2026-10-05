@@ -97,12 +97,16 @@ KNOWN_IMPORTS: dict[str, set[str]] = {
 B3_MODULE_README = (
     'src/globaldatafinance/brazil/b3_data/historical_quotes/README.md'
 )
+B3_MODULE_READMES = frozenset(
+    {B3_MODULE_README, B3_MODULE_README.removesuffix('.md') + '.en.md'}
+)
+BILINGUAL_READMES = ('examples/README.md', B3_MODULE_README)
 CVM_MODULE_README = (
     'src/globaldatafinance/brazil/cvm/fundamental_stocks_data/README.md'
 )
 ROOT_README = (Path(__file__).resolve().parents[1] / 'README.md').as_posix()
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-PUBLIC_B3_PATHS = frozenset(
+PUBLIC_B3_PATHS = B3_MODULE_READMES | frozenset(
     {
         ROOT_README,
         'docs/index.md',
@@ -121,8 +125,8 @@ PUBLIC_B3_PATHS = frozenset(
         'docs/dev-guide/architecture.en.md',
         'docs/dev-guide/advanced-usage.md',
         'docs/dev-guide/advanced-usage.en.md',
-        B3_MODULE_README,
         'examples/README.md',
+        'examples/README.en.md',
     }
 )
 CONTRACT_MARKERS: dict[str, re.Pattern[str]] = {
@@ -173,9 +177,13 @@ def documentation_files(repo_root: Path) -> list[Path]:
         B3_MODULE_README,
         CVM_MODULE_README,
     ):
-        candidate = repo_root / relative_path
-        if candidate.exists():
-            files.add(candidate)
+        for name in (
+            relative_path,
+            relative_path.removesuffix('.md') + '.en.md',
+        ):
+            candidate = repo_root / name
+            if candidate.exists():
+                files.add(candidate)
     return sorted(files)
 
 

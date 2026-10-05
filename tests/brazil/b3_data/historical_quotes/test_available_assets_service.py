@@ -29,14 +29,16 @@ class TestGetAvailableAssets:
             'exercicio_opcoes',
             'forward',
             'leilao',
+            'lote_bloco',
+            'todos',
         ]
         result = AvailableAssetsServiceB3.get_available_assets()
         for asset in expected_assets:
             assert asset in result
 
-    def test_returns_seven_asset_classes(self):
+    def test_returns_nine_asset_classes(self):
         result = AvailableAssetsServiceB3.get_available_assets()
-        assert len(result) == 7
+        assert len(result) == 9
 
     def test_all_elements_are_strings(self):
         result = AvailableAssetsServiceB3.get_available_assets()
@@ -76,11 +78,13 @@ class TestValidateAndCreateAssetSet:
             'exercicio_opcoes',
             'forward',
             'leilao',
+            'lote_bloco',
+            'todos',
         ]
         result = AvailableAssetsServiceB3.validate_and_create_asset_set(
             assets_list
         )
-        assert len(result) == 7
+        assert len(result) == 9
 
     def test_removes_duplicates_from_list(self):
         assets_list = ['ações', 'ações', 'etf', 'etf']

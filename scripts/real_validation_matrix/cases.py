@@ -1,26 +1,33 @@
-"""Build and decode the deterministic real-validation case matrix."""
+"""Build deterministic real-validation cases for each data source."""
 
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import Literal
 
 from globaldatafinance.brazil.b3_data.historical_quotes.catalog import (
-    CotahistCatalogError,
+    index_cotahist_catalog,
     select_cotahist_file,
-    validate_cotahist_catalog,
+)
+from globaldatafinance.brazil.b3_data.historical_quotes.errors import (
+    CotahistCatalogError,
 )
 
-from .real_validation_report import REPORT_SCHEMA_VERSION, ReportFormatError
-from .real_validation_types import ValidationCase
-from .real_validation_utils import sha256_file
+from ..real_validation_b3.frozen_baseline import _expected_frozen_checksums
+from ..real_validation_types import ValidationCase, ValidationInputSnapshot
+from ..real_validation_utils import sha256_file
 
 Source = Literal['cotahist', 'cvm', 'all']
 
-COTAHIST_START = 2000
-COTAHIST_END = 2024
+COTAHIST_START = 1986
+
+COTAHIST_END = date.today().year
+
 CVM_START = 2010
+
 CVM_END = 2026
+
 CVM_DOCUMENT_WINDOWS: dict[str, tuple[int, int]] = {
     'CGVN': (2018, 2026),
     'FRE': (2010, 2026),
@@ -30,6 +37,7 @@ CVM_DOCUMENT_WINDOWS: dict[str, tuple[int, int]] = {
     'IPE': (2010, 2026),
     'VLMO': (2018, 2026),
 }
+
 _CVM_DOCUMENT_ORDER = tuple(CVM_DOCUMENT_WINDOWS)
 
 
@@ -42,9 +50,17 @@ def build_cases(
     cotahist_path: str | None,
     cvm_output: str | None,
     cotahist_modes: Literal['fast', 'parity', 'all'] = 'all',
+    cotahist_frozen_baseline: bool = False,
 ) -> list[ValidationCase]:
     """Build a stable case matrix without reading environment variables."""
     cases: list[ValidationCase] = []
+    if cotahist_frozen_baseline and (
+        source == 'cvm' or cotahist_modes != 'all'
+    ):
+        raise ValueError(
+            '--cotahist-frozen-baseline requires COTAHIST and '
+            '--cotahist-mode all'
+        )
     if source in {'cotahist', 'all'}:
         cases.extend(
             _build_cotahist_cases(
@@ -52,6 +68,7 @@ def build_cases(
                 initial_year,
                 last_year,
                 cotahist_modes,
+                cotahist_frozen_baseline,
             )
         )
     if source in {'cvm', 'all'}:
@@ -64,45 +81,6 @@ def build_cases(
             )
         )
     return sorted(cases, key=lambda case: case.case_id)
-
-
-def manifest_for(
-    cases: list[ValidationCase],
-    *,
-    source: Source,
-    initial_year: int | None,
-    last_year: int | None,
-    document: str | None,
-    cotahist_path: str | None,
-    cvm_output: str | None,
-    timeout: float,
-) -> dict[str, Any]:
-    """Create the deterministic manifest consumed by ``--resume``."""
-    return {
-        'schemaVersion': REPORT_SCHEMA_VERSION,
-        'campaign': {
-            'source': source,
-            'cotahistPath': _normalized_path(cotahist_path),
-            'cvmOutput': _normalized_path(cvm_output),
-            'initialYear': initial_year,
-            'lastYear': last_year,
-            'document': document,
-            'timeoutSeconds': timeout,
-        },
-        'cases': [case.to_manifest_dict() for case in cases],
-    }
-
-
-def cases_from_manifest(manifest: dict[str, Any]) -> list[ValidationCase]:
-    """Decode and validate the sorted case list from a prior run."""
-    raw_cases = manifest.get('cases')
-    if not isinstance(raw_cases, list) or not raw_cases:
-        raise ReportFormatError('manifest cases must be a non-empty list')
-    cases = [_case_from_dict(item) for item in raw_cases]
-    ids = [case.case_id for case in cases]
-    if ids != sorted(ids) or len(ids) != len(set(ids)):
-        raise ReportFormatError('manifest cases must be unique and sorted')
-    return cases
 
 
 def canonical_cvm_case(
@@ -157,31 +135,52 @@ def _build_cotahist_cases(
     initial_year: int | None,
     last_year: int | None,
     modes: Literal['fast', 'parity', 'all'],
+    frozen_baseline: bool = False,
 ) -> list[ValidationCase]:
     if not raw_path:
         raise ValueError('--cotahist-path is required for COTAHIST cases')
-    start = COTAHIST_START if initial_year is None else initial_year
-    end = COTAHIST_END if last_year is None else last_year
+    if initial_year is None or last_year is None:
+        discovered = index_cotahist_catalog(raw_path)
+        if not discovered:
+            raise CotahistCatalogError(
+                'COTAHIST catalog contains no annual source files'
+            )
+        start = min(discovered) if initial_year is None else initial_year
+        end = max(discovered) if last_year is None else last_year
+    else:
+        start, end = initial_year, last_year
+        discovered = {}
     if start < COTAHIST_START or end > COTAHIST_END or start > end:
-        raise ValueError('COTAHIST years must be within 2000..2024')
-    expected = range(COTAHIST_START, COTAHIST_END + 1)
-    exact = start == COTAHIST_START and end == COTAHIST_END
-    catalog = validate_cotahist_catalog(
-        raw_path, expected_years=expected if exact else None
+        raise ValueError(
+            f'COTAHIST years must be within {COTAHIST_START}..{COTAHIST_END}'
+        )
+    selected_years = tuple(range(start, end + 1))
+    catalog = discovered or index_cotahist_catalog(
+        raw_path, expected_years=selected_years
     )
-    missing = set(range(start, end + 1)) - set(catalog)
+    missing = set(selected_years) - set(catalog)
     if missing:
         raise CotahistCatalogError(
             f'COTAHIST catalog is missing selected years: {sorted(missing)}'
         )
     selected_by_year = {
-        year: select_cotahist_file(catalog, year)
-        for year in range(start, end + 1)
+        year: select_cotahist_file(catalog, year) for year in selected_years
     }
+    _expected_frozen_checksums(
+        tuple(selected_by_year.values()), enabled=frozen_baseline
+    )
+    snapshots = tuple(
+        ValidationInputSnapshot(
+            path=str(path.resolve()),
+            size_bytes=path.stat().st_size,
+            sha256=sha256_file(path),
+        )
+        for path in selected_by_year.values()
+    )
     cases: list[ValidationCase] = []
+    snapshot_by_year = dict(zip(selected_by_year, snapshots, strict=True))
     for year, path in selected_by_year.items():
-        size_bytes = path.stat().st_size
-        file_hash = sha256_file(path)
+        snapshot = snapshot_by_year[year]
         if modes in {'fast', 'all'}:
             cases.append(
                 ValidationCase(
@@ -191,8 +190,11 @@ def _build_cotahist_cases(
                     input_path=str(path),
                     output_root='',
                     mode='fast',
-                    input_size_bytes=size_bytes,
-                    input_sha256=file_hash,
+                    input_size_bytes=snapshot.size_bytes,
+                    input_sha256=snapshot.sha256,
+                    initial_year=year,
+                    last_year=year,
+                    input_files=(snapshot,),
                 )
             )
         if modes in {'parity', 'all'}:
@@ -204,10 +206,32 @@ def _build_cotahist_cases(
                     input_path=str(path),
                     output_root='',
                     mode='parity',
-                    input_size_bytes=size_bytes,
-                    input_sha256=file_hash,
+                    input_size_bytes=snapshot.size_bytes,
+                    input_sha256=snapshot.sha256,
+                    initial_year=year,
+                    last_year=year,
+                    input_files=(snapshot,),
                 )
             )
+    if modes == 'all':
+        first_path = selected_by_year[start]
+        first_snapshot = snapshot_by_year[start]
+        cases.append(
+            ValidationCase(
+                case_id=f'cotahist-multi-parity-{start}-{end}',
+                source='cotahist',
+                year=start,
+                input_path=str(first_path.resolve()),
+                output_root='',
+                mode='multi_parity',
+                input_size_bytes=first_snapshot.size_bytes,
+                input_sha256=first_snapshot.sha256,
+                initial_year=start,
+                last_year=end,
+                input_files=snapshots,
+                frozen_baseline=frozen_baseline,
+            )
+        )
     return cases
 
 
@@ -264,6 +288,9 @@ def _cvm_case_mismatches(
         ('url', actual.url, expected.url),
         ('inputSizeBytes', actual.input_size_bytes, expected.input_size_bytes),
         ('inputSha256', actual.input_sha256, expected.input_sha256),
+        ('initialYear', actual.initial_year, expected.initial_year),
+        ('lastYear', actual.last_year, expected.last_year),
+        ('inputFiles', actual.input_files, expected.input_files),
     )
     return [
         name
@@ -289,78 +316,3 @@ def _selected_documents(document: str | None) -> tuple[str, ...]:
             f'unsupported CVM document {document!r}; available: {available}'
         )
     return (normalized,)
-
-
-def _case_from_dict(value: object) -> ValidationCase:
-    if not isinstance(value, dict):
-        raise ReportFormatError('manifest case must be an object')
-    source = _manifest_choice(value, 'source', {'cotahist', 'cvm'})
-    mode = _manifest_choice(value, 'mode', {'fast', 'parity', 'cvm'})
-    if (source == 'cotahist') != (mode != 'cvm'):
-        raise ReportFormatError(
-            'manifest source and processing mode are inconsistent'
-        )
-    case_id = _manifest_string(value, 'caseId')
-    year = _manifest_integer(value, 'year')
-    input_path = _manifest_string(value, 'inputPath')
-    output_root = _manifest_string(value, 'outputRoot')
-    document = _manifest_optional_string(value, 'document')
-    url = _manifest_optional_string(value, 'url')
-    size = _manifest_optional_integer(value, 'inputSizeBytes')
-    file_hash = _manifest_optional_string(value, 'inputSha256')
-    return ValidationCase(
-        case_id=case_id,
-        source=cast(Literal['cotahist', 'cvm'], source),
-        year=year,
-        input_path=input_path,
-        output_root=output_root,
-        document=document,
-        mode=cast(Literal['fast', 'parity', 'cvm'], mode),
-        url=url,
-        input_size_bytes=size,
-        input_sha256=file_hash,
-    )
-
-
-def _manifest_choice(
-    value: dict[object, object], key: str, choices: set[str]
-) -> str:
-    candidate = value.get(key)
-    if not isinstance(candidate, str) or candidate not in choices:
-        options = ', '.join(sorted(choices))
-        raise ReportFormatError(f'manifest {key} must be one of: {options}')
-    return candidate
-
-
-def _manifest_string(value: dict[object, object], key: str) -> str:
-    candidate = value.get(key)
-    if not isinstance(candidate, str):
-        raise ReportFormatError(f'manifest {key} must be a string')
-    return candidate
-
-
-def _manifest_optional_string(
-    value: dict[object, object], key: str
-) -> str | None:
-    candidate = value.get(key)
-    if candidate is not None and not isinstance(candidate, str):
-        raise ReportFormatError(f'manifest {key} must be a string or null')
-    return candidate
-
-
-def _manifest_integer(value: dict[object, object], key: str) -> int:
-    candidate = value.get(key)
-    if not isinstance(candidate, int) or isinstance(candidate, bool):
-        raise ReportFormatError(f'manifest {key} must be an integer')
-    return candidate
-
-
-def _manifest_optional_integer(
-    value: dict[object, object], key: str
-) -> int | None:
-    candidate = value.get(key)
-    if candidate is not None and (
-        not isinstance(candidate, int) or isinstance(candidate, bool)
-    ):
-        raise ReportFormatError(f'manifest {key} must be an integer or null')
-    return candidate

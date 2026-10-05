@@ -28,11 +28,9 @@ from scripts.real_validation import (
     _validate_report_path,
     main,
 )
-from scripts.real_validation_b3 import _canonical_digest
-from scripts.real_validation_matrix import (
-    CVM_DOCUMENT_WINDOWS,
-    build_cases,
-)
+from scripts.real_validation_b3.frozen_baseline import _ordered_rows_sha256
+from scripts.real_validation_matrix import build_cases
+from scripts.real_validation_matrix.cases import CVM_DOCUMENT_WINDOWS
 from scripts.real_validation_report import (
     ReportFormatError,
     build_summary,
@@ -41,12 +39,14 @@ from scripts.real_validation_report import (
     write_results,
 )
 from scripts.real_validation_runner import resume_cases
-from scripts.real_validation_types import ValidationCase
+from scripts.real_validation_types import (
+    ValidationCase,
+    ValidationInputSnapshot,
+)
 from scripts.real_validation_utils import sha256_file, temporary_paths
 from tests.support.builders import (
     build_cotahist_record,
     write_cotahist_zip,
-    write_zip,
 )
 
 pytestmark = pytest.mark.unit
@@ -55,10 +55,10 @@ pytestmark = pytest.mark.unit
 _REAL_VALIDATION_HOOK_ID = 'real-validation-coverage'
 _REAL_VALIDATION_CI_STEP_NAME = 'Run real-validation executor coverage'
 _REAL_VALIDATION_TEST_TOKEN = re.compile(
-    r'tests/tooling/test_real_validation[^/]*\.py\Z'
+    r'tests/tooling/test_(?:real_validation[^/]*|cotahist_oracle)\.py\Z'
 )
 _REAL_VALIDATION_COVERAGE_TOKEN = re.compile(
-    r'--cov=scripts\.real_validation\w*\Z'
+    r'--cov=scripts\.(?:real_validation\w*|cotahist_oracle)\Z'
 )
 
 
@@ -227,25 +227,38 @@ def test_cvm_matrix_covers_all_document_windows(tmp_path: Path) -> None:
 def test_real_validation_coverage_contract_matches_executor_surface() -> None:
     """The dedicated hook and CI gate cover every executor module and test."""
     repository_root = Path(__file__).resolve().parents[2]
+    scripts_root = repository_root / 'scripts'
     script_modules = sorted(
-        path.stem
-        for path in (repository_root / 'scripts').glob('real_validation*.py')
+        [
+            *(path.stem for path in scripts_root.glob('real_validation*.py')),
+            *(
+                path.name
+                for path in scripts_root.glob('real_validation*')
+                if path.is_dir() and (path / '__init__.py').is_file()
+            ),
+            'cotahist_oracle',
+        ]
     )
     test_modules = sorted(
-        path.stem.removeprefix('test_')
-        for path in (repository_root / 'tests' / 'tooling').glob(
-            'test_real_validation*.py'
-        )
+        [
+            *(
+                path.stem.removeprefix('test_')
+                for path in (repository_root / 'tests' / 'tooling').glob(
+                    'test_real_validation*.py'
+                )
+            ),
+            'cotahist_oracle',
+        ]
     )
 
     assert script_modules
-    assert test_modules == script_modules
+    assert test_modules == sorted([*script_modules, 'real_validation_process'])
 
     expected_coverage_modules = [
         f'scripts.{module}' for module in script_modules
     ]
     expected_test_paths = [
-        f'tests/tooling/test_{module}.py' for module in script_modules
+        f'tests/tooling/test_{module}.py' for module in test_modules
     ]
 
     precommit_command, precommit_commands = (
@@ -379,10 +392,11 @@ def test_manifest_command_describes_public_parity_operations() -> None:
     assert case.command() == [
         'HistoricalQuotesB3.extract_async',
         'path_of_docs=/data',
-        'assets_list=[ações]',
+        'assets_list=[todos]',
         'initial_year=2024',
         'last_year=2024',
         'processing_mode=fast+slow',
+        'independent_raw_reconciliation=True',
         'automatic_network_access=False',
     ]
 
@@ -431,14 +445,14 @@ def test_report_redacts_credential_shaped_values_recursively(
     assert 'secret-value' not in report_path.read_text(encoding='utf-8')
 
 
-def test_cotahist_digest_is_order_independent(tmp_path: Path) -> None:
-    """The bounded fallback digest ignores incidental processing order."""
+def test_cotahist_digest_preserves_ordered_parity(tmp_path: Path) -> None:
+    """The bounded parity digest changes when output order changes."""
     first = tmp_path / 'first.parquet'
     second = tmp_path / 'second.parquet'
     pq.write_table(pa.table({'ticker': ['B', 'A'], 'value': [2, 1]}), first)
     pq.write_table(pa.table({'ticker': ['A', 'B'], 'value': [1, 2]}), second)
 
-    assert _canonical_digest(first) == _canonical_digest(second)
+    assert _ordered_rows_sha256(first) != _ordered_rows_sha256(second)
 
 
 def test_temporary_paths_detect_tmp_suffix(tmp_path: Path) -> None:
@@ -519,7 +533,7 @@ def test_cli_security_error_is_a_deterministic_configuration_failure(
     assert payload == {
         'code': 'invalid_campaign',
         'message': payload['message'],
-        'schemaVersion': 1,
+        'schemaVersion': 2,
     }
     assert 'Security violation' in payload['message']
     assert not report_path.exists()
@@ -559,6 +573,13 @@ def _cotahist_case(
         mode='fast',
         input_size_bytes=archive.stat().st_size,
         input_sha256=sha256_file(archive),
+        input_files=(
+            ValidationInputSnapshot(
+                str(archive.resolve()),
+                archive.stat().st_size,
+                sha256_file(archive),
+            ),
+        ),
     )
 
 
@@ -569,7 +590,7 @@ def _write_resume_manifest(
     write_json(
         report_path / 'manifest.json',
         {
-            'schemaVersion': 1,
+            'schemaVersion': 2,
             'cases': [case.to_manifest_dict() for case in cases],
         },
     )
@@ -665,7 +686,7 @@ def test_resume_rejects_changed_input_size_without_touching_old_results(
         ],
     )
 
-    with pytest.raises(ReportFormatError, match='input_size_bytes'):
+    with pytest.raises(ReportFormatError, match='size or sha256'):
         resume_cases(report_path)
 
     assert results_path.read_text(encoding='utf-8') == original_results
@@ -718,32 +739,25 @@ def test_resume_rejects_same_size_replacement_with_different_hash(
     tmp_path: Path,
 ) -> None:
     """A same-size valid replacement is rejected by its content hash."""
-    archive = tmp_path / 'COTAHIST_A2024.ZIP'
-    write_zip(
-        archive,
-        {
-            'COTAHIST_A2024.TXT': build_cotahist_record(
-                year=2024, ticker='PETR4'
-            ).encode('latin-1')
-        },
+    archive = write_cotahist_zip(
+        tmp_path,
+        year=2024,
+        records=[build_cotahist_record(year=2024, ticker='PETR4')],
         compression=zipfile.ZIP_STORED,
     )
     case = _cotahist_case(archive)
     report_path = tmp_path / 'report'
     _write_resume_manifest(report_path, [case])
     original_size = archive.stat().st_size
-    write_zip(
-        archive,
-        {
-            'COTAHIST_A2024.TXT': build_cotahist_record(
-                year=2024, ticker='VALE3'
-            ).encode('latin-1')
-        },
+    write_cotahist_zip(
+        tmp_path,
+        year=2024,
+        records=[build_cotahist_record(year=2024, ticker='VALE3')],
         compression=zipfile.ZIP_STORED,
     )
 
     assert archive.stat().st_size == original_size
-    with pytest.raises(ReportFormatError, match='input_sha256'):
+    with pytest.raises(ReportFormatError, match='size or sha256'):
         resume_cases(report_path)
 
 
@@ -816,7 +830,7 @@ def test_cli_resume_validates_manifest_output_before_delegating(
     write_json(
         report_path / 'manifest.json',
         {
-            'schemaVersion': 1,
+            'schemaVersion': 2,
             'campaign': {'cvmOutput': str(output_path)},
             'cases': [case.to_manifest_dict()],
         },
@@ -861,7 +875,7 @@ def test_cli_resume_rejects_tampered_cvm_output_root_before_running(
     write_json(
         report_path / 'manifest.json',
         {
-            'schemaVersion': 1,
+            'schemaVersion': 2,
             'campaign': {'cvmOutput': str(trusted_output)},
             'cases': [case.to_manifest_dict()],
         },

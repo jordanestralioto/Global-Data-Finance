@@ -320,7 +320,7 @@ ______________________________________________________________________
 
 !!! tip "Use Fast Mode for Market Data"
 
-    When extracting B3 quotes, `processing_mode="fast"` leverages in-memory parallelization and provides superior processing speed for most standard hardware configurations.
+    For COTAHIST, `processing_mode="fast"` uses bounded batches and allows concurrent sources within available resource limits. `"slow"` uses one source worker and smaller batches. Both preserve the same schema, order, and precision. See the [processing modes](b3-docs.en.md).
 
 !!! tip "Verify Free Disk Space"
 

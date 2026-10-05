@@ -71,11 +71,12 @@ linhas excedentes, cabeçalhos ausentes e estruturas ambíguas falham sem
 publicar. CSV apenas com cabeçalho produz Parquet vazio com campos null, ordem
 do cabeçalho e sem metadata pandas.
 
-B3 aceita somente registros vazios, 00, 99 e registros 01 de exatamente 245
-caracteres. Registros selecionados por TPMERC devem ter datas, textos, inteiros
-e decimais válidos; valores inválidos nunca viram zero, string vazia ou nulo.
-Registros fora do filtro são contados, mas não persistidos. Fontes válidas
-integralmente filtradas publicam Parquet vazio com schema B3 explícito.
+B3 aceita somente linhas vazias, controles 00/99 e registros 01 de exatamente
+245 bytes. Todos os campos de cada cotação são validados antes do filtro
+TPMERC; valores inválidos nunca viram zero, string vazia ou nulo. A seleção
+completa preserva todo código numérico e registra TPMERC desconhecido. O
+contrato atual de persistência e verificação está documentado em
+[COTAHIST complete preservation and verified publication](../dev-guide/architecture.md).
 
 ## Decisões de remediação da revisão
 

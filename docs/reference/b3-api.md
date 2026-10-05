@@ -21,7 +21,7 @@ class HistoricalQuotesB3:
 def extract(
     self,
     path_of_docs: str,
-    assets_list: list[str],
+    assets_list: list[str] | None = None,
     initial_year: int | None = None,
     last_year: int | None = None,
     destination_path: str | None = None,
@@ -44,7 +44,7 @@ inválidos não recebem fallback para zero ou nulo.
 | Nome               | Tipo                | Obrigatório | Padrão                 | Descrição                                                                      |
 | ------------------ | ------------------- | ----------- | ---------------------- | ------------------------------------------------------------------------------ |
 | `path_of_docs`     | `str`               | Sim         | -                      | Diretório contendo arquivos COTAHIST ZIP ou TXT                                 |
-| `assets_list`      | `list[str]`         | Sim         | -                      | Classes de ativos a extrair (ex.: `["ações", "etf"]`)                          |
+| `assets_list`      | `list[str] \| None` | Não         | `None` (`["todos"]`)   | Classes; `todos` seleciona todo TPMERC numérico válido                           |
 | `initial_year`     | `int \| None`       | Não         | `None` (1986)          | Ano inicial da extração (inclusivo, >= 1986)                                   |
 | `last_year`        | `int \| None`       | Não         | `None` (ano atual)     | Ano final da extração (inclusivo)                                              |
 | `destination_path` | `str \| None`       | Não         | `None` (`path_of_docs`)| Diretório de destino do Parquet gerado                                         |
@@ -58,44 +58,89 @@ Objeto `TypedDict` contendo o resultado da extração:
 
 - `success: bool` — Indica se a extração foi concluída com sucesso.
 - `message: str` — Mensagem descritiva com o resumo da execução.
-- `total_files: int` — Quantidade total de arquivos de entrada processados (ZIP ou TXT).
-- `success_count: int` — Quantidade de arquivos processados com sucesso.
-- `error_count: int` — Quantidade de arquivos que falharam no processamento.
-- `total_records: int` — Quantidade total de registros extraídos.
-- `output_file: str` — Caminho completo para o arquivo Parquet gerado.
+- `total_files: int` — Quantidade de entradas anuais resolvidas para a solicitação.
+- `success_count: int` — Quantidade de fontes incluídas na saída publicada.
+- `error_count: int` — Quantidade de entradas em `errors`.
+- `total_records: int` — Quantidade de linhas da saída publicada.
+- `output_file: str` — Caminho da nova saída publicada; vazio em caso de falha.
 - `errors: dict[str, str]` — Dicionário mapeando arquivos com falha para a mensagem de erro (se houver).
 - `assets: list[str]` — Lista de classes de ativos filtradas.
 - `processing_mode: str` — Modo de processamento utilizado (`"fast"` ou `"slow"`).
 - `elapsed_time: float` — Tempo total de execução em segundos.
+- `schema_version: int` — Versão do schema Parquet (`2`).
+- `integrity: B3IntegrityReport` — Cobertura, seleção, fontes, verificações,
+  avisos e hash da saída publicada.
+
+Quando o preflight falha, `integrity` preserva as fontes já validadas, os anos
+ausentes e a seleção normalizada. Os contadores `success_count` e
+`total_records` permanecem zerados. Cada fonte validada inclui hashes da
+entrada e do conteúdo, tamanho descompactado, contagens por mercado,
+controles originais em Base64, data de geração, intervalo de pregões,
+convenção do trailer, linhas vazias, avisos e digests esperados e verificados.
 
 **Semântica de entrada e resultado vazio**:
 
 - A API aceita `COTAHIST_A{YYYY}.ZIP` e `COTAHIST_A{YYYY}.TXT`; quando os dois
-  formatos existem para o mesmo ano, o ZIP tem precedência determinística.
+  formatos existem para o mesmo ano, ambos são validados integralmente. O ZIP
+  é selecionado somente quando os conteúdos descompactados são idênticos;
+  conteúdos diferentes causam falha.
 - `output_filename` deve ser um basename, sem separadores de caminho. O sufixo
   `.parquet` é aceito; quando omitido, é acrescentado automaticamente uma única
   vez.
-- `EmptyDirectoryError` ocorre somente quando o diretório de entrada está
-  fisicamente vazio. Se o diretório não está vazio, mas não contém um COTAHIST
-  correspondente aos anos solicitados, a API retorna um resultado vazio com
-  `success=True`, `total_files=0`, `total_records=0`, `output_file=""` e
-`errors={}`. Inspecione esses contadores quando a presença de dados for
-obrigatória.
+- A falta de qualquer ano solicitado retorna `success=False`, lista o ano em
+  `integrity.missing_years` e não publica uma nova saída. Um diretório vazio
+  informa zero arquivos resolvidos e todos os anos solicitados como ausentes.
+- Se todas as fontes solicitadas são válidas e o filtro exclui todas as suas
+  cotações, a extração publica um resultado vazio (`success=True`).
 
 Se arquivos válidos não tiverem registros após o filtro de ativos, a extração
 continua bem-sucedida e publica Parquet B3 vazio com schema explícito.
+
+`assets_list=None` aplica `todos`, incluindo códigos TPMERC numéricos desconhecidos;
+`lote_bloco` seleciona `021`. A implementação valida todos os campos antes de
+filtrar, exige cada ano solicitado e lê a saída completa antes de publicar.
+Falhas e lacunas de ano retornam `success=False`; `integrity` contém a cobertura
+observada e o motivo. Veja a [referência do schema COTAHIST v2](b3-schema-v2.md)
+e o [guia de migração](../user-guide/migration-pyarrow-integrity.md).
 
 Em um cancelamento assíncrono antes do commit, o serviço aborta a publicação,
 limpa o estado temporário e relança `asyncio.CancelledError`; um artefato final
 anterior permanece intacto.
 
+A preparação, a recuperação e abertura da transação, as verificações dos
+Parquets, a consolidação, a reconferência dos hashes e o rollback executam
+fora da thread do event loop. Trabalhadores de threads e processos recebem
+um sinal de cancelamento próprio de cada execução. O cancelamento
+é observado nos limites de leitura e de lotes. O serviço aguarda o término
+dos leitores e escritores antes de remover seus temporários, inclusive se
+receber pedidos repetidos de cancelamento. Há um ponto de cancelamento
+imediatamente antes da decisão de commit. Depois que essa decisão inicia a
+publicação atômica, novos pedidos de cancelamento aguardam o término e a API
+retorna o resultado da publicação. O commit também executa fora do event loop.
+
+A reconferência final dos arquivos de entrada e a decisão de publicação
+executam no mesmo trabalhador, sem retornar ao event loop entre elas. A leitura
+dos hashes continua cancelável; o trabalhador verifica o cancelamento uma
+última vez antes de iniciar a publicação. Alterações detectadas na fonte falham
+e preservam a saída anterior. O chamador deve manter os ZIP/TXT inalterados
+durante a extração: essa reconferência não bloqueia escritores externos nem
+oferece isolamento absoluto contra modificações concorrentes.
+
+Uma falha de limpeza posterior ao commit durável mantém `success=True`, o
+caminho, as contagens verificadas e o hash da saída publicada. O diagnóstico
+fica em `integrity.warnings`: `PUBLICATION_CLEANUP_RECOVERED` indica que a
+nova tentativa de limpeza funcionou; `PUBLICATION_CLEANUP_PENDING` indica que
+o estado de recuperação foi preservado. Nesses avisos, `source` identifica o
+nome do Parquet publicado. O diagnóstico original também fica no log.
+Falhas anteriores ao commit continuam retornando falha e preservando a saída
+anterior por rollback.
+
 **Exceções**:
 
-- `EmptyAssetListError`: Lista de ativos vazia ou não fornecida.
+- `EmptyAssetListError`: Lista de ativos vazia; `None` seleciona `todos`.
 - `InvalidAssetsName`: Classe de ativo não suportada.
 - `InvalidFirstYear`: Ano inicial fora da faixa válida (1986 até o ano atual).
 - `InvalidLastYear`: Ano final fora da faixa válida ou menor que o ano inicial.
-- `EmptyDirectoryError`: Diretório de entrada fisicamente vazio.
 - `InvalidOutputFilename`: Nome de arquivo de saída inválido (contém barras ou traversal).
 - `ExtractionError`: Erro durante a leitura ou escrita dos dados.
 
@@ -130,7 +175,7 @@ def get_available_assets(self) -> list[str]:
 
 ```python
 assets = b3.get_available_assets()
-# ['ações', 'etf', 'opções', 'termo', 'exercicio_opcoes', 'forward', 'leilao']
+# ['ações', 'etf', 'opções', 'termo', 'exercicio_opcoes', 'forward', 'leilao', 'lote_bloco', 'todos']
 ```
 
 #### `get_available_years()`
@@ -187,6 +232,8 @@ ______________________________________________________________________
 | `exercicio_opcoes`| Exercício de Opções| 012 (Exercício Compra), 013 (Exercício Venda)           |
 | `forward`        | Contratos forward   | 050 (Forward c/ Ganho), 060 (Forward c/ Movimentação)  |
 | `leilao`         | Leilão              | 017 (Mercado de Leilão)                                 |
+| `lote_bloco`     | Lote em bloco       | 021 (BBT e Midpoint)                                    |
+| `todos`          | Seleção completa    | Todo TPMERC numérico válido                             |
 
 As strings em português desta tabela são valores canônicos de `assets_list` e
 devem ser passadas exatamente como mostradas. BDRs e Futures são **Planned** e
@@ -201,9 +248,9 @@ ______________________________________________________________________
 | **fast** | 34.313,8 reg/s    | 429,88 MiB       | Até 4 workers, limitado por CPUs, memória e arquivos-fonte | Priorizar velocidade    |
 | **slow** | 29.759,9 reg/s    | 331,11 MiB       | 1 worker                                            | Reduzir uso de memória  |
 
-*Linha de base em 27 arquivos anuais (2000–2026), 22.303.577 registros,
-Python 3.13.7, Linux x86_64, 8 CPUs e 7,55 GB de memória. Os resultados variam
-conforme o ambiente; consulte os [detalhes do benchmark](../dev-guide/benchmarks.md).*
+*Medição histórica da implementação v3 em 27 arquivos anuais (2000–2026),
+22.303.577 registros e sem 2.283 cotações `021`. Não representa o schema v2 e
+não é comparável diretamente. Consulte os [detalhes do benchmark](../dev-guide/benchmarks.md).*
 
 O modo `fast` coordena o paralelismo por arquivo-fonte. O modo `slow` utiliza um
 único worker para reduzir o consumo de memória.

@@ -31,7 +31,10 @@ globaldatafinance/
 │   ├── __init__.py                  # re-exporta a API pública
 │   ├── application/                 # FACADE PÚBLICO (top-level)
 │   │   ├── b3_docs/
-│   │   │   ├── historical_quotes.py            # HistoricalQuotesB3
+│   │   │   ├── historical_quotes/               # HistoricalQuotesB3 facade package
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── facade.py
+│   │   │   │   └── extraction_flow.py
 │   │   │   ├── extraction_result_formatter.py
 │   │   │   └── result_formatters/
 │   │   └── cvm_docs/
@@ -49,6 +52,8 @@ globaldatafinance/
 │   │   │       ├── errors.py                  # exceções específicas da fonte
 │   │   │       ├── zip_reader.py              # leitura de COTAHIST ZIP/TXT
 │   │   │       ├── catalog.py                 # catálogo caller-owned e validação estrita
+│   │   │       ├── layout.py                  # contrato único de 32 campos B3
+│   │   │       ├── source_validation.py       # validação integral antes do filtro
 │   │   │       ├── cotahist_parser.py         # parser posicional (preservado isolado)
 │   │   │       ├── parquet_writer/            # subpacote: writer Parquet
 │   │   │       └── extraction_service/        # subpacote: orquestração streaming/threadpool
@@ -99,6 +104,34 @@ arquivos. Uma nova fonte pode reutilizar esses limites quando fizer sentido.
 | Catálogo de inputs          | —                                                  | `catalog.py`                                                                           |
 | Helpers de validação        | `download_paths.py`, `download_validation.py`, `download_extraction.py` | embutidos em `filesystem.py` / `client.py`                                             |
 | Exceções                    | `errors.py`                                        | `errors.py`                                                                            |
+
+### Decisão: COTAHIST complete preservation and verified publication
+
+O contrato padrão da B3 é a seleção completa, versionada como Parquet schema
+`2`. `assets_list=None` e `todos` preservam todo registro `01` válido com
+TPMERC numérico, inclusive códigos desconhecidos. O filtro por classe continua
+disponível, mas não reduz a validação dos registros de origem.
+
+Essa decisão segue a auditoria do corpus caller-owned de 2000–2026: havia
+2.283 cotações TPMERC `021` fora da seleção anterior e cinco campos oficiais
+fora do schema lógico. Manter um modo incompleto como padrão ou contrato
+paralelo perpetuaria a omissão e duplicaria regras de persistência. O custo
+aceito é a migração incompatível dos consumidores, regeneração de Parquets e
+leitura integral da saída antes da publicação.
+
+O schema mantém as 20 colunas existentes e acrescenta os cinco campos B3
+ausentes, `tipo_registro`, proveniência e os bytes originais de 245 posições.
+`layout.py` é a fonte de verdade produtiva; `source_validation.py` valida
+controle, campos, contagem de trailer e conteúdo completo antes da seleção.
+`catalog.py` resolve a cobertura anual e conflitos ZIP/TXT. A fachada expõe o
+relatório de integridade; o manifesto persistente fica no footer do Parquet.
+O oráculo de `scripts/` declara offsets independentes e pertence somente à
+validação, sem duplicar a propriedade do layout de produção.
+
+O corpus fornecido mede a cobertura observada, não uma confirmação externa do
+calendário ou cadastro de instrumentos. O range real auditado começa em 2000;
+arquivos anteriores exigem fontes próprias. Reavalie esta decisão se a B3
+alterar largura, posições, escalas ou tipos de registro.
 
 ### Segurança compartilhada e commits de fonte
 

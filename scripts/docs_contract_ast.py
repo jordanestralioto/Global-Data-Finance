@@ -281,7 +281,11 @@ def load_source_contracts(repo_root: Path) -> SourceContracts:
     """Build documentation contracts from the repository's source tree."""
     package_root = repo_root / 'src' / 'globaldatafinance'
     b3_facade = _parse_source(
-        package_root / 'application' / 'b3_docs' / 'historical_quotes.py'
+        package_root
+        / 'application'
+        / 'b3_docs'
+        / 'historical_quotes'
+        / 'facade.py'
     )
     b3_types = _parse_source(
         package_root / 'application' / 'b3_docs' / 'types.py'

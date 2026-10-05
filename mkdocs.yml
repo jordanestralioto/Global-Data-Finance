@@ -126,7 +126,9 @@ plugins:
             : Shared Infrastructure Clean Cut
             API CVM: CVM API
             API B3: B3 API
+            Schema Parquet B3 v2: B3 Parquet Schema v2
             Exceções: Exceptions
+            Auditoria do corpus COTAHIST: COTAHIST Corpus Audit
 
 # Extensions
 markdown_extensions:
@@ -193,4 +195,6 @@ nav:
   - Referência Técnica:
       - API CVM: reference/cvm-api.md
       - API B3: reference/b3-api.md
+      - Schema Parquet B3 v2: reference/b3-schema-v2.md
+      - Auditoria do corpus COTAHIST: reference/cotahist-v2-supplied-corpus.md
       - Exceções: reference/exceptions.md

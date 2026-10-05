@@ -14,11 +14,16 @@ from ....core.archive_safety import ArchiveSafetyLimits
 from ....core.config import PathSafetySettings
 from ....macro_exceptions import InvalidDestinationPathError
 from .assets import AvailableAssetsServiceB3
-from .catalog import validate_and_resolve_cotahist_input
+from .catalog import resolve_cotahist_sources
 from .cotahist_parser import CotahistParserB3
-from .errors import InvalidOutputFilename
+from .errors import (
+    CotahistCatalogError,
+    CotahistPreflightError,
+    InvalidOutputFilename,
+)
 from .extraction_service import ExtractionServiceB3
 from .filesystem import FileSystemServiceB3
+from .input_validation import validate_and_resolve_cotahist_input
 from .models import DocsToExtractorB3
 from .processing import ExtractionConfigServiceB3, ProcessingModeEnumB3
 from .years import YearValidationServiceB3
@@ -155,7 +160,7 @@ class CreateDocsToExtractUseCaseB3:
     def __init__(
         self,
         path_of_docs: str,
-        assets_list: list[str],
+        assets_list: list[str] | None,
         initial_year: int,
         last_year: int,
         destination_path: str | None = None,
@@ -179,7 +184,7 @@ class CreateDocsToExtractUseCaseB3:
             )
 
         self.path_of_docs = path_of_docs
-        self.assets_list = assets_list
+        self.assets_list = ['todos'] if assets_list is None else assets_list
         self.initial_year = initial_year
         self.last_year = last_year
         self.destination_path = (
@@ -203,19 +208,36 @@ class CreateDocsToExtractUseCaseB3:
             self.destination_path,
             allowed_unc_roots=self.allowed_unc_roots,
         )
-        documents_to_download = CreateSetToDownloadUseCaseB3.execute(
-            range_years,
-            self.path_of_docs,
-            allowed_unc_roots=self.allowed_unc_roots,
+        validated_source_directory = FileSystemServiceB3(
+            allowed_unc_roots=self.allowed_unc_roots
+        ).validate_directory_path(self.path_of_docs)
+        all_markets = 'todos' in set_assets
+        target_tpmerc_codes = (
+            AvailableAssetsServiceB3.get_tpmerc_codes_for_assets(set_assets)
         )
-        for document_path in sorted(documents_to_download):
-            ValidateCotahistInputUseCaseB3.execute(
-                document_path, limits=self.limits
+        try:
+            catalog = resolve_cotahist_sources(
+                validated_source_directory,
+                expected_years=range_years,
+                target_tpmerc_codes=target_tpmerc_codes,
+                all_markets=all_markets,
+                limits=self.limits,
             )
-        normalized_destination = destination_paths.execute(
-            str(validated_destination),
-            allowed_unc_roots=self.allowed_unc_roots,
-        )
+        except CotahistCatalogError as error:
+            raise CotahistPreflightError(
+                str(error.source_path or validated_source_directory),
+                error,
+            ) from error
+        documents_to_download = {
+            str(source.path) for source in catalog.sources
+        }
+        if catalog.missing_years:
+            normalized_destination = validated_destination
+        else:
+            normalized_destination = destination_paths.execute(
+                str(validated_destination),
+                allowed_unc_roots=self.allowed_unc_roots,
+            )
         destination_path = (
             str(normalized_destination)
             if normalized_destination is not None
@@ -228,6 +250,12 @@ class CreateDocsToExtractUseCaseB3:
             range_years=range_years,
             destination_path=destination_path,
             documents_to_download=documents_to_download,
+            all_markets=all_markets,
+            target_tpmerc_codes=target_tpmerc_codes,
+            requested_years=tuple(range_years),
+            missing_years=catalog.missing_years,
+            validated_sources=catalog.sources,
+            ignored_duplicate_sources=catalog.ignored_duplicate_sources,
         )
 
 
@@ -280,29 +308,13 @@ class ExtractHistoricalQuotesUseCaseB3:
             executor_backend=self.executor_backend,
         )
 
-        target_tpmerc_codes = (
+        target_tpmerc_codes = docs_to_extract.target_tpmerc_codes or (
             AvailableAssetsServiceB3.get_tpmerc_codes_for_assets(
                 docs_to_extract.set_assets
             )
         )
 
-        zip_files: set[str] = docs_to_extract.documents_to_download
-
-        if not zip_files:
-            self.last_phase_timings = {
-                'source_wall_seconds': 0.0,
-                'merge_wall_seconds': None,
-                'merge_status': 'bypassed',
-                'validation_wall_seconds': 0.0,
-            }
-            return {
-                'total_files': 0,
-                'success_count': 0,
-                'error_count': 0,
-                'total_records': 0,
-                'errors': {},
-                'output_file': '',
-            }
+        zip_files = docs_to_extract.documents_to_download
 
         output_path = Path(docs_to_extract.destination_path) / output_filename
 
@@ -318,6 +330,22 @@ class ExtractHistoricalQuotesUseCaseB3:
             zip_files=zip_files,
             target_tpmerc_codes=target_tpmerc_codes,
             output_path=output_path,
+            validated_sources=(
+                docs_to_extract.validated_sources
+                if docs_to_extract.validated_sources
+                or docs_to_extract.missing_years
+                else None
+            ),
+            all_markets=docs_to_extract.all_markets,
+            requested_years=(
+                docs_to_extract.requested_years
+                or tuple(docs_to_extract.range_years)
+            ),
+            missing_years=docs_to_extract.missing_years,
+            asset_classes=sorted(docs_to_extract.set_assets),
+            ignored_duplicate_sources=(
+                docs_to_extract.ignored_duplicate_sources
+            ),
         )
         self.last_phase_timings = extraction_service.last_phase_timings
         return result

@@ -17,7 +17,7 @@ from globaldatafinance.brazil.cvm.fundamental_stocks_data.errors import (
 )
 from globaldatafinance.macro_exceptions import SecurityError
 
-from .real_validation_matrix import canonical_cvm_case
+from .real_validation_matrix.cases import canonical_cvm_case
 from .real_validation_types import (
     ExternalFailure,
     NotPublished,

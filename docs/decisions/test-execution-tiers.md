@@ -68,9 +68,8 @@ aplica estas regras:
    central directories, limites ZIP e resolução do membro interno, sem
    processar integralmente todos os registros.
 6. A paridade limitada cria uma amostra não vazia de até 20.000 registros
-   reais `01` no `tmp_path` e compara `fast` e `slow` pelas 20 colunas, dtypes
-   e ordenação determinística exatos. Como executa os dois modos, ela é
-   marcada `slow`.
+   reais `01` no `tmp_path` e compara `fast` e `slow` pelos 32 campos Arrow,
+   tipos e valores exatos. Como executa os dois modos, ela é marcada `slow`.
 7. Uma prova anual em `fast` valida o schema Arrow, a contagem de registros e
    os limites de data. Outra prova anual `slow` compara contagens, schema e
    igualdade de tabela ou digest lógico entre `fast` e `slow`.
@@ -101,5 +100,6 @@ fixture de CI, o job correspondente e esta decisão.
 
 Esta decisão torna a seleção de testes previsível, mantém o CI determinístico
 e permite validação de paridade sem incorporar dados financeiros externos ao
-Git. Ela não altera a API pública, assinaturas de facades, semântica de
-extração, nomes de saída ou schema persistido da biblioteca.
+Git. O contrato persistido COTAHIST v2, com 32 campos, é definido pela decisão
+de cutover de integridade PyArrow; esta decisão mantém os dados oficiais como
+opt-in e caller-owned.

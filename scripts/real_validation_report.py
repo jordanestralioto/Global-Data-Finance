@@ -13,7 +13,7 @@ from typing import Any
 
 from .real_validation_types import CaseStatus
 
-REPORT_SCHEMA_VERSION = 1
+REPORT_SCHEMA_VERSION = 2
 _STATUS_ORDER: tuple[CaseStatus, ...] = (
     'passed',
     'failed',

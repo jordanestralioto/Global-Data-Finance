@@ -360,6 +360,40 @@ def test_root_readme_is_in_corpus_without_bilingual_parity_requirement(
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(
+    'relative',
+    [
+        'examples/README.md',
+        'src/globaldatafinance/brazil/b3_data/historical_quotes/README.md',
+    ],
+)
+def test_readme_translations_are_checked_for_presence_and_alignment(
+    checker: Any, tmp_path: Path, relative: str
+) -> None:
+    """Module and example translations cannot escape the native doc gate."""
+    portuguese = tmp_path / relative
+    english = portuguese.with_name('README.en.md')
+    portuguese.parent.mkdir(parents=True)
+    portuguese.write_text('# PT\n\n## COTAHIST ZIP TXT\n', encoding='utf-8')
+
+    errors = checker.check_bilingual_readmes(tmp_path)
+    assert any('missing English counterpart' in error for error in errors)
+
+    english.write_text('# EN\n', encoding='utf-8')
+    errors = checker.check_bilingual_readmes(tmp_path)
+    assert any('H2 section count mismatch' in error for error in errors)
+    assert any('COTAHIST' in error for error in errors)
+
+    english.write_text('# EN\n\n## COTAHIST ZIP TXT\n', encoding='utf-8')
+    assert checker.check_bilingual_readmes(tmp_path) == []
+    assert english in checker.documentation_files(tmp_path)
+
+    portuguese.unlink()
+    errors = checker.check_bilingual_readmes(tmp_path)
+    assert any('missing Portuguese counterpart' in error for error in errors)
+
+
+@pytest.mark.unit
 def test_check_file_contracts(checker: Any) -> None:
     """Checker must validate file-specific contract guarantees."""
     # Non-semantic logging content
@@ -504,6 +538,49 @@ def test_cvm_api_rejects_nonexistent_exception_names(checker: Any) -> None:
     errors = checker.check_file_contracts(path, altered)
 
     assert any('InvalidCVMResponseError' in error for error in errors)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    'relative_path',
+    [
+        'docs/reference/b3-api.md',
+        'docs/reference/b3-api.en.md',
+        'docs/dev-guide/api-reference.md',
+        'docs/dev-guide/api-reference.en.md',
+    ],
+)
+def test_b3_api_docs_enforce_v2_catalog_contract(
+    checker: Any, relative_path: str
+) -> None:
+    """Both translations require content equivalence and explicit gaps."""
+    path = REPOSITORY_ROOT / relative_path
+    content = path.read_text(encoding='utf-8')
+    assert checker.check_file_contracts(path, content) == []
+    altered = content.replace('idênticos', 'diferentes', 1).replace(
+        'identical', 'different', 1
+    )
+    assert altered != content
+
+    errors = checker.check_file_contracts(path, altered)
+
+    assert any('identical contents before selecting ZIP' in e for e in errors)
+
+
+@pytest.mark.unit
+def test_b3_api_docs_reject_obsolete_empty_directory_exception(
+    checker: Any,
+) -> None:
+    """The former empty-directory exception claim contradicts v2 coverage."""
+    path = REPOSITORY_ROOT / 'docs/reference/b3-api.en.md'
+    content = path.read_text(encoding='utf-8')
+    altered = content + '\nAn empty directory raises EmptyDirectoryError.\n'
+
+    errors = checker.check_file_contracts(path, altered)
+
+    assert any(
+        'missing-year failure with zero resolved files' in e for e in errors
+    )
 
 
 @pytest.mark.unit

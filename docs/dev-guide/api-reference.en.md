@@ -137,7 +137,7 @@ Initializes the B3 extraction facade and registers underlying asset classificati
 def extract(
     self,
     path_of_docs: str,
-    assets_list: list[str],
+    assets_list: list[str] | None = None,
     initial_year: int | None = None,
     last_year: int | None = None,
     destination_path: str | None = None,
@@ -153,12 +153,12 @@ Parses COTAHIST ZIP or TXT archives (`COTAHIST_A{YYYY}.ZIP` or `.TXT`), extracts
 **Parameters**:
 
 - `path_of_docs` (`str`): Source directory enclosing target raw COTAHIST archives (`COTAHIST_A{YYYY}.ZIP` or `.TXT`).
-- `assets_list` (`list[str]`): Required asset category filtering tags (e.g., `["ações", "etf"]`).
+- `assets_list` (`list[str] | None`): Asset categories; `None` selects `todos`, every valid numeric TPMERC.
 - `initial_year` (`int`, optional): Historical beginning fiscal year (lower bound floor: 1986).
 - `last_year` (`int`, optional): Ending fiscal year (defaults to current system operational year).
 - `destination_path` (`str`, optional): Custom directory destination for the generated Parquet artifact (defaults to `path_of_docs` when omitted).
 - `output_filename` (`str`): Base output filename for the created Parquet file (must be a basename without path separators; a `.parquet` suffix is optional and is appended when omitted). Default: `"cotahist_extracted"`.
-- `processing_mode` (`str`): Computational execution mode: `"fast"` (multi-threaded in-memory processing) or `"slow"` (minimal RAM incremental stream processing). Default: `"fast"`.
+- `processing_mode` (`str`): Both modes use bounded batches and the same Parquet schema. `"fast"` allows concurrent sources within resource limits; `"slow"` uses one source worker and smaller batches. Default: `"fast"`.
 - `verbose` (`bool`): When `True` (default), prints a formatted summary to stdout.
 
 **Returns**:
@@ -166,32 +166,43 @@ Parses COTAHIST ZIP or TXT archives (`COTAHIST_A{YYYY}.ZIP` or `.TXT`), extracts
 - `ExtractionResultB3` (`TypedDict`): A diagnostic mapping containing runtime confirmation metrics:
   - `success` (`bool`): `True` if extraction completed without errors.
   - `message` (`str`): Human-readable execution outcome summary.
-  - `total_files` (`int`): Total number of input files processed (ZIP or TXT).
-  - `success_count` (`int`): Count of successfully parsed input files.
-  - `error_count` (`int`): Count of input files that failed during processing.
-  - `total_records` (`int`): Total number of transaction rows extracted.
-  - `output_file` (`str`): Absolute filesystem path to generated Parquet file.
+  - `total_files` (`int`): Number of annual inputs resolved for the request.
+  - `success_count` (`int`): Number of sources included in committed output.
+  - `error_count` (`int`): Number of entries in `errors`.
+  - `total_records` (`int`): Committed output row count.
+  - `output_file` (`str`): Newly committed output path; empty on failure.
   - `assets` (`list[str]`): Asset categories filtered during run.
   - `processing_mode` (`str`): Execution mode selected (`"fast"` or `"slow"`).
   - `elapsed_time` (`float`): Elapsed execution time in seconds.
+  - `schema_version` (`int`): Parquet schema version (`2`).
+  - `integrity` (`B3IntegrityReport`): Requested coverage, sources, counts,
+    verification, warnings, and published-artifact hash.
 - `errors` (`dict[str, str]`): Dictionary mapping failed files to failure error messages. The key is always present and may be empty.
 
 Official B3 downloads use ZIP archives, but the API accepts both
 `COTAHIST_A{YYYY}.ZIP` and the uncompressed `COTAHIST_A{YYYY}.TXT`. When both
-formats exist for the same year, ZIP takes deterministic precedence.
+formats exist for the same year, both are fully validated. ZIP is selected
+only when their uncompressed contents are identical; different contents cause
+failure.
 `output_filename` must be a basename without path separators; the `.parquet`
 suffix is optional and is appended only when omitted.
 
-`EmptyDirectoryError` is raised only when the input directory is physically
-empty. If the directory is not empty but contains no COTAHIST file for the
-requested year, the API returns an empty result with `success=True`,
-`total_files=0`, `total_records=0`, `output_file=""`, and `errors={}`. Inspect
-`total_files` and `total_records` when data presence is required.
+A missing requested year returns `success=False`, lists missing years in
+`integrity.missing_years`, and does not publish a new output. An empty directory
+reports zero resolved files and every requested year as missing.
+
+If every requested source is valid and the filter excludes all quotations,
+extraction publishes an empty result (`success=True`). On preflight failure,
+`integrity` retains previously validated sources and missing years;
+`success_count` and `total_records` remain zero.
 
 A valid input whose records are all filtered by the requested TPMERC also
 returns success and publishes an empty Parquet with the B3 schema. In contrast,
-an invalid selected record fails with source, member, line, and field context;
-the parser never turns invalid data into zero or null.
+all `01` records are validated before filtering. TPMERC `021` is selected with
+`lote_bloco`; `todos` also includes unknown numeric codes. Every requested year
+must be present, and the complete output is read back before publication. See
+the [B3 v2 schema reference](../reference/b3-schema-v2.en.md) and
+[migration guide](../user-guide/migration-pyarrow-integrity.en.md).
 
 **`extract_async()`**
 
@@ -199,7 +210,7 @@ the parser never turns invalid data into zero or null.
 async def extract_async(
     self,
     path_of_docs: str,
-    assets_list: list[str],
+    assets_list: list[str] | None = None,
     initial_year: int | None = None,
     last_year: int | None = None,
     destination_path: str | None = None,
@@ -228,6 +239,8 @@ Returns a comprehensive list of permissible asset category string parameters sup
 - `'exercicio_opcoes'`: Options exercise
 - `'forward'`: Forward contracts (TPMERC 050 and 060)
 - `'leilao'`: Auction market
+- `'lote_bloco'`: Block lot (TPMERC `021`)
+- `'todos'`: Every valid numeric TPMERC
 
 The Portuguese strings above are canonical `assets_list` values and must be
 passed exactly as shown. BDRs and Futures are **Planned** and are not accepted

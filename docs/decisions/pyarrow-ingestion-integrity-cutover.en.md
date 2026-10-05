@@ -71,11 +71,12 @@ missing headers, and ambiguous structures fail without publishing. A
 header-only CSV produces an empty Parquet with null fields, header order, and
 no pandas metadata.
 
-B3 accepts only blank, 00, 99, and exactly 245-character 01 records. Records
-selected by TPMERC must have valid dates, text, integers, and decimals; invalid
-values never become zero, an empty string, or null. Records outside the filter
-are counted but not persisted. Fully filtered valid sources publish an empty
-Parquet with the explicit B3 schema.
+B3 accepts only blank lines, 00/99 controls, and type-01 records that are
+exactly 245 bytes. Every quotation field is validated before TPMERC filtering;
+invalid values never become zero, an empty string, or null. Complete selection
+preserves every numeric code and reports unknown TPMERC values. The current
+persistence and verification contract is documented in the [COTAHIST complete
+preservation and verified publication decision](../dev-guide/architecture.en.md).
 
 ## Review-remediation decisions
 

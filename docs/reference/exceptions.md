@@ -94,9 +94,9 @@ class EmptyDirectoryError(Exception):
 ```
 
 - **Quando ocorre**: Somente quando o diretório de entrada está fisicamente vazio.
-  Um diretório que não está vazio, mas não contém COTAHIST correspondente ao
-  ano solicitado, retorna um resultado vazio (`success=True`, `total_files=0`,
-  `total_records=0`, `output_file=""` e `errors={}`).
+  A falta de um COTAHIST para qualquer ano solicitado é uma falha retornada no
+  resultado B3; `integrity.missing_years` lista as lacunas e nenhuma nova saída
+  é publicada.
 
 #### `ExtractionError` e `CorruptedZipError`
 

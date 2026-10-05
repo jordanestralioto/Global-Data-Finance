@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+import hashlib
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Protocol
 
 from ....macro_exceptions import ExtractionError
+from .async_execution import check_phase_cancellation
 
 COTAHIST_RECORD_WIDTH = 245
 _COTAHIST_MAX_PHYSICAL_LINE_CONTENT_BYTES = COTAHIST_RECORD_WIDTH + 2
@@ -28,12 +31,28 @@ class BoundedLineSource(Protocol):
         ...
 
 
+@dataclass(frozen=True)
+class B3RawLine:
+    """Preserve one bounded physical source line and its terminator."""
+
+    content: bytes
+    terminator: bytes
+    context: B3RecordContext
+
+    @property
+    def complete_bytes(self) -> bytes:
+        """Return the exact physical line bytes as read from the source."""
+        return self.content + self.terminator
+
+
 def iter_bounded_cotahist_lines(
     source: BoundedLineSource,
 ) -> Iterator[tuple[int, bytes]]:
     """Read physical records with a byte cap before callers decode them."""
     line_number = 0
     while raw_line := source.readline(_COTAHIST_MAX_PHYSICAL_LINE_BYTES + 1):
+        if line_number % 128 == 0:
+            check_phase_cancellation()
         line_number += 1
         content = raw_line.removesuffix(b'\r\n').removesuffix(b'\n')
         content = content.removesuffix(b'\r')
@@ -89,3 +108,17 @@ class B3RecordContext:
             f'field={self.field_name or "record"}; '
             f'value={self.raw_preview!r}; cause={cause_text}',
         )
+
+
+def sha256_file(
+    path: Path, *, cancellation_check: Callable[[], None] | None = None
+) -> str:
+    """Hash a source artifact using a fixed-size input buffer."""
+    digest = hashlib.sha256()
+    with path.open('rb') as source:
+        while chunk := source.read(1024 * 1024):
+            check_phase_cancellation()
+            if cancellation_check is not None:
+                cancellation_check()
+            digest.update(chunk)
+    return digest.hexdigest()

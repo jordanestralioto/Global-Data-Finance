@@ -8,6 +8,7 @@ from typing import Any
 
 from .....core.archive_safety import ArchiveSafetyLimits
 from ..cotahist_parser import CotahistParserB3
+from ..models import ValidatedCotahistSource
 from ..zip_reader import ZipFileReaderB3
 from .retry import retry_unpublished_io
 from .types import SourceExtractionResult
@@ -44,6 +45,9 @@ def process_source_worker(
     *,
     python_record_limit: int = 25_000,
     archive_safety_limits: ArchiveSafetyLimits | None = None,
+    source_descriptor: ValidatedCotahistSource | None = None,
+    all_markets: bool = False,
+    schema_metadata: dict[bytes, bytes] | None = None,
 ) -> SourceExtractionResult:
     """Execute isolated extraction for one COTAHIST source in a child process.
 
@@ -53,6 +57,9 @@ def process_source_worker(
         temp_output_path: Staging path for the private temporary Parquet file.
         python_record_limit: Maximum buffered records before flushing to Arrow.
         archive_safety_limits: Safety bounds for decompression.
+        source_descriptor: Immutable facts established by catalog preflight.
+        all_markets: Whether every valid numeric TPMERC is selected.
+        schema_metadata: Ordered audit metadata for the output Parquet.
 
     Returns:
         SourceExtractionResult containing classification and output metadata.
@@ -81,5 +88,12 @@ def process_source_worker(
     )
 
     return retry_unpublished_io(
-        lambda: zip_processor.process(source, target_tpmerc_codes, temp_output)
+        lambda: zip_processor.process(
+            source,
+            target_tpmerc_codes,
+            temp_output,
+            source_descriptor=source_descriptor,
+            all_markets=all_markets,
+            schema_metadata=schema_metadata,
+        )
     )

@@ -9,8 +9,11 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from globaldatafinance.application.b3_docs import HistoricalQuotesB3
-from globaldatafinance.application.b3_docs import (
-    historical_quotes as facade_module,
+from globaldatafinance.application.b3_docs.historical_quotes import (
+    extraction_flow,
+)
+from globaldatafinance.application.b3_docs.historical_quotes import (
+    facade as facade_module,
 )
 from globaldatafinance.core.archive_safety import ArchiveSafetyLimits
 from globaldatafinance.macro_exceptions import PathIsNotDirectoryError
@@ -111,7 +114,10 @@ def test_invalid_archive_does_not_create_destination(tmp_path: Path) -> None:
 
     assert result['success'] is False
     assert result['error_count'] == 1
-    assert any('CorruptedZipError' in err for err in result['errors'].values())
+    assert any(
+        'ExtractionError' in error and 'BadZipFile' in error
+        for error in result['errors'].values()
+    )
     assert not destination.exists()
 
 
@@ -144,7 +150,7 @@ def test_invalid_record_after_valid_quote_does_not_create_destination(
     assert not destination.exists()
 
 
-@patch.object(facade_module, 'CreateDocsToExtractUseCaseB3')
+@patch.object(extraction_flow, 'CreateDocsToExtractUseCaseB3')
 @patch.object(facade_module, 'ExtractHistoricalQuotesUseCaseB3')
 def test_extract_forwards_normalized_arguments_and_enriches_result(
     extract_constructor: Mock,
@@ -197,7 +203,7 @@ def test_extract_forwards_normalized_arguments_and_enriches_result(
 
 
 @pytest.mark.asyncio
-@patch.object(facade_module, 'CreateDocsToExtractUseCaseB3')
+@patch.object(extraction_flow, 'CreateDocsToExtractUseCaseB3')
 @patch.object(facade_module, 'ExtractHistoricalQuotesUseCaseB3')
 async def test_extract_async_applies_defaults_and_preserves_error(
     extract_constructor: Mock,
@@ -212,7 +218,7 @@ async def test_extract_async_applies_defaults_and_preserves_error(
     )
     extract_constructor.return_value = extract_use_case
     b3 = HistoricalQuotesB3()
-    b3._available_years_use_case = Mock(
+    b3._extraction_flow._available_years_use_case = Mock(
         get_minimal_year=Mock(return_value=1986),
         get_current_year=Mock(return_value=2026),
     )
@@ -248,7 +254,7 @@ async def test_extract_async_applies_defaults_and_preserves_error(
     assert result['message'].startswith('Extraction completed with errors')
 
 
-@patch.object(facade_module, 'CreateDocsToExtractUseCaseB3')
+@patch.object(extraction_flow, 'CreateDocsToExtractUseCaseB3')
 @patch.object(facade_module, 'ExtractHistoricalQuotesUseCaseB3')
 def test_extract_formats_only_when_verbose(
     extract_constructor: Mock,
@@ -262,7 +268,7 @@ def test_extract_formats_only_when_verbose(
     extract_constructor.return_value = extract_use_case
     b3 = HistoricalQuotesB3()
     formatter = Mock()
-    b3._result_formatter = formatter
+    b3._extraction_flow._result_formatter = formatter
 
     b3.extract(
         path_of_docs='/data/cotahist',
@@ -284,7 +290,7 @@ def test_extract_formats_only_when_verbose(
 
 
 @pytest.mark.asyncio
-@patch.object(facade_module, 'CreateDocsToExtractUseCaseB3')
+@patch.object(extraction_flow, 'CreateDocsToExtractUseCaseB3')
 @patch.object(facade_module, 'ExtractHistoricalQuotesUseCaseB3')
 async def test_extract_async_propagates_use_case_error_once(
     extract_constructor: Mock,

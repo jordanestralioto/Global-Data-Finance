@@ -321,7 +321,7 @@ ______________________________________________________________________
 
 !!! tip "Use Modo Fast"
 
-    Para extração de cotações B3, o modo `"fast"` é recomendado na maioria dos casos, oferecendo melhor performance.
+    Para COTAHIST, `processing_mode="fast"` usa lotes limitados e permite fontes concorrentes conforme os recursos disponíveis. O modo `"slow"` usa um trabalhador de fonte e lotes menores. Ambos preservam o mesmo schema, ordem e precisão. Consulte os [modos de processamento](b3-docs.md).
 
 !!! tip "Verifique Espaço em Disco"
 

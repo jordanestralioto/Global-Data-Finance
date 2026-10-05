@@ -2,22 +2,30 @@
 
 from __future__ import annotations
 
+import json
 import queue as queue_module
 from dataclasses import replace
 from functools import partial
 from os import sep
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
 
 import scripts.real_validation_runner as runner
+from scripts import real_validation as cli
 from scripts.real_validation_report import (
     ReportFormatError,
     read_json,
     write_json,
     write_results,
 )
-from scripts.real_validation_types import CaseStatus, ValidationCase
+from scripts.real_validation_types import (
+    CaseStatus,
+    ValidationCase,
+    ValidationInputSnapshot,
+)
 from scripts.real_validation_utils import sha256_file
 from tests.support.builders import build_cotahist_record, write_cotahist_zip
 
@@ -38,6 +46,83 @@ def _cvm_case(
         mode='cvm',
         url=f'https://example.test/{case_id}.zip',
     )
+
+
+def test_cli_progress_preserves_machine_readable_summary(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Opt-in progress stays on stderr while stdout remains one JSON result."""
+    inputs = tmp_path / 'inputs'
+    inputs.mkdir()
+    write_cotahist_zip(inputs, year=2024, records=[build_cotahist_record()])
+
+    def complete_case(report, case, timeout, *, progress):
+        assert report == tmp_path / 'report'
+        assert timeout == 60.0
+        assert progress is True
+        return runner._control_result(case, 'passed', 'controlled completion')
+
+    monkeypatch.setattr(runner, '_run_isolated_case', complete_case)
+    code = cli.main(
+        [
+            '--source',
+            'cotahist',
+            '--cotahist-path',
+            str(inputs),
+            '--initial-year',
+            '2024',
+            '--last-year',
+            '2024',
+            '--cotahist-mode',
+            'fast',
+            '--report',
+            str(tmp_path / 'report'),
+            '--progress',
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert code == 0
+    assert json.loads(captured.out)['totalApproved'] == 1
+    assert 'Preparing campaign inputs' in captured.err
+    assert 'cotahist-fast-2024: started' in captured.err
+    assert 'cotahist-fast-2024: passed' in captured.err
+
+
+def test_wait_progress_keeps_the_original_deadline(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """An active worker reports elapsed time without extending its deadline."""
+    ticks = iter([0.0, 0.0, 31.0, 31.0])
+    monkeypatch.setattr(
+        runner, 'time', SimpleNamespace(monotonic=lambda: next(ticks))
+    )
+    result = {'status': 'passed'}
+    waits = []
+
+    class ResultQueue:
+        def get(self, *, timeout):
+            waits.append(timeout)
+            if len(waits) == 1:
+                raise queue_module.Empty
+            return result
+
+    observed = runner._receive_worker_result(
+        cast(Any, ResultQueue()),
+        _StubbornProcess(),
+        100.0,
+        progress=True,
+        case_id='cotahist-fast-2024',
+    )
+    captured = capsys.readouterr()
+
+    assert observed == result
+    assert waits == [1.0, 1.0]
+    assert captured.out == ''
+    assert 'cotahist-fast-2024: worker active; elapsed=31s' in captured.err
 
 
 def test_run_campaign_skips_terminal_results_and_persists_pending_case(
@@ -227,7 +312,7 @@ class _FakeQueue:
         self.closed = False
 
     def get(self, *, timeout: float) -> dict[str, object]:
-        assert timeout == 1.0
+        assert 0 < timeout <= 1.0
         if self.empty:
             raise queue_module.Empty
         assert self.result is not None
@@ -414,7 +499,7 @@ def test_resume_rejects_manifest_without_hash_metadata(
     report_path.mkdir()
     write_json(
         report_path / 'manifest.json',
-        {'schemaVersion': 1, 'cases': [case.to_manifest_dict()]},
+        {'schemaVersion': 2, 'cases': [case.to_manifest_dict()]},
     )
 
     with pytest.raises(ReportFormatError, match='manifest_metadata'):
@@ -448,7 +533,14 @@ def test_resume_rejects_inputs_from_multiple_directories(
             output_root='',
             mode='fast',
             input_size_bytes=first.stat().st_size,
-            input_sha256='a' * 64,
+            input_sha256=sha256_file(first),
+            input_files=(
+                ValidationInputSnapshot(
+                    str(first.resolve()),
+                    first.stat().st_size,
+                    sha256_file(first),
+                ),
+            ),
         ),
         ValidationCase(
             case_id='cotahist-fast-2024',
@@ -458,7 +550,14 @@ def test_resume_rejects_inputs_from_multiple_directories(
             output_root='',
             mode='fast',
             input_size_bytes=second.stat().st_size,
-            input_sha256='b' * 64,
+            input_sha256=sha256_file(second),
+            input_files=(
+                ValidationInputSnapshot(
+                    str(second.resolve()),
+                    second.stat().st_size,
+                    sha256_file(second),
+                ),
+            ),
         ),
     ]
     report_path = tmp_path / 'report'
@@ -468,7 +567,7 @@ def test_resume_rejects_inputs_from_multiple_directories(
     write_json(
         report_path / 'manifest.json',
         {
-            'schemaVersion': 1,
+            'schemaVersion': 2,
             'cases': [case.to_manifest_dict() for case in cases],
         },
     )
@@ -506,7 +605,7 @@ def test_resume_rejects_tampered_cvm_url_before_worker_execution(
     write_json(
         report_path / 'manifest.json',
         {
-            'schemaVersion': 1,
+            'schemaVersion': 2,
             'campaign': {'cvmOutput': output_root},
             'cases': [tampered.to_manifest_dict()],
         },
@@ -541,7 +640,7 @@ def test_resume_rejects_cvm_output_root_drift_before_worker_execution(
     write_json(
         report_path / 'manifest.json',
         {
-            'schemaVersion': 1,
+            'schemaVersion': 2,
             'campaign': {'cvmOutput': str(trusted_output)},
             'cases': [case.to_manifest_dict()],
         },
@@ -566,18 +665,25 @@ def test_resume_rejects_cotahist_case_bound_to_a_different_catalog_year(
     case = ValidationCase(
         case_id='cotahist-fast-2023',
         source='cotahist',
-        year=2023,
+        year=2024,
         input_path=str(archive),
         output_root='',
         mode='fast',
         input_size_bytes=archive.stat().st_size,
         input_sha256=sha256_file(archive),
+        input_files=(
+            ValidationInputSnapshot(
+                str(archive.resolve()),
+                archive.stat().st_size,
+                sha256_file(archive),
+            ),
+        ),
     )
     report_path = tmp_path / 'report'
     report_path.mkdir()
     write_json(
         report_path / 'manifest.json',
-        {'schemaVersion': 1, 'cases': [case.to_manifest_dict()]},
+        {'schemaVersion': 2, 'cases': [case.to_manifest_dict()]},
     )
 
     with pytest.raises(ReportFormatError, match='identity'):

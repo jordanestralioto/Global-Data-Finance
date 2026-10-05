@@ -1,4 +1,4 @@
-"""Deterministic CVM and B3 corpora used by the benchmark coordinator."""
+"""Synthetic CVM and B3 corpus generation and expectations."""
 
 from __future__ import annotations
 
@@ -8,37 +8,18 @@ from collections.abc import Iterator
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
 
-from scripts.benchmark_support import (
-    DEFAULT_ROWS,
-    ScenarioInput,
+from scripts.benchmark_corpus.annual import (
+    _ANNUAL_B3_YEARS,
+    annual_corpus_available,
+    expected_b3_annual_digest,
+)
+from scripts.benchmark_support.digests import (
     directory_digest,
     logical_digest,
     sha256_file,
 )
-
-_ANNUAL_B3_YEARS = tuple(range(2000, 2027))
-
-
-def annual_b3_assets() -> list[str]:
-    """Return every supported asset class for the annual B3 benchmark."""
-    from globaldatafinance.brazil.b3_data.historical_quotes.assets import (
-        AvailableAssetsServiceB3,
-    )
-
-    return AvailableAssetsServiceB3.get_available_assets()
-
-
-def b3_extraction_selection(
-    source: ScenarioInput,
-) -> tuple[int, int, list[str]]:
-    """Return the year range and asset scope for a B3 benchmark scenario."""
-    if source.scenario == 'b3_annual':
-        return 2000, 2026, annual_b3_assets()
-    if source.scenario == 'b3_multi_4x25k':
-        return 2021, 2020 + source.source_count, ['ações']
-    return 2024, 2024, ['ações']
+from scripts.benchmark_support.models import DEFAULT_ROWS, ScenarioInput
 
 
 def write_cvm_zip(path: Path, rows: int, *, long_text: bool = False) -> None:
@@ -58,17 +39,17 @@ def write_cvm_zip(path: Path, rows: int, *, long_text: bool = False) -> None:
             raw.write(line.encode('utf-8'))
 
 
-def b3_record(index: int) -> str:
+def b3_record(index: int, *, year: int = 2024) -> str:
     """Build one exact-width, selected type-01 COTAHIST record."""
     record = [' '] * 245
 
     def fill(start: int, end: int, value: str, *, right: bool = False) -> None:
         width = end - start
-        formatted = value.rjust(width) if right else value.ljust(width)
+        formatted = value.rjust(width, '0') if right else value.ljust(width)
         record[start:end] = formatted[:width]
 
     fill(0, 2, '01')
-    fill(2, 10, '20240115')
+    fill(2, 10, f'{year:04d}0115')
     fill(10, 12, '02')
     fill(12, 24, f'GD{index:010d}'[-12:])
     fill(24, 27, '010')
@@ -83,10 +64,13 @@ def b3_record(index: int) -> str:
         (121, 134, 1_000_000 + index),
         (134, 147, 1_000_100 + index),
         (170, 188, 10_000_000 + index),
+        (188, 201, 1_000_300 + index),
+        (217, 230, 1_000_000 + index),
     ):
         fill(start, end, str(value), right=True)
     fill(147, 152, str((index % 99_999) + 1), right=True)
     fill(152, 170, str(1_000_000 + index), right=True)
+    fill(201, 202, '0')
     fill(202, 210, '00000000')
     fill(210, 217, '1', right=True)
     fill(230, 242, f'BRGD{index:08d}'[-12:])
@@ -94,14 +78,39 @@ def b3_record(index: int) -> str:
     return ''.join(record)
 
 
-def write_b3_txt(path: Path, rows: int, *, start_index: int = 0) -> None:
+def _b3_control_record(
+    record_type: str,
+    year: int,
+    *,
+    record_count: int | None = None,
+) -> str:
+    """Build one fixed-width B3 control record for a synthetic corpus."""
+    record = [' '] * 245
+    record[0:2] = list(record_type)
+    record[2:15] = list(f'COTAHIST.{year:04d}')
+    record[15:23] = list('BOVESPA ')
+    record[23:31] = list('20240115')
+    if record_count is not None:
+        record[31:42] = list(f'{record_count:011d}')
+    return ''.join(record)
+
+
+def write_b3_txt(
+    path: Path,
+    rows: int,
+    *,
+    year: int = 2024,
+    start_index: int = 0,
+) -> None:
     """Create a deterministic official-name COTAHIST text input."""
     with path.open('w', encoding='latin-1', newline='') as target:
-        target.write('00COTAHIST BENCHMARK\n')
+        target.write(_b3_control_record('00', year))
+        target.write('\n')
         for index in range(start_index, start_index + rows):
-            target.write(b3_record(index))
+            target.write(b3_record(index, year=year))
             target.write('\n')
-        target.write('99COTAHIST BENCHMARK\n')
+        target.write(_b3_control_record('99', year, record_count=rows + 2))
+        target.write('\n')
 
 
 def expected_cvm_digest(rows: int, *, long_text: bool = False) -> str:
@@ -118,15 +127,44 @@ def expected_cvm_digest(rows: int, *, long_text: bool = False) -> str:
     )
 
 
-def expected_b3_digest(rows: int) -> str:
-    """Return the typed digest expected from one generated B3 corpus."""
-    return logical_digest(_expected_b3_record(index) for index in range(rows))
+def _expected_b3_rows(
+    rows: int,
+    source_count: int,
+    start_year: int,
+) -> Iterator[dict[str, object]]:
+    """Yield generated B3 expectations in source and row order."""
+    if source_count < 1:
+        raise ValueError('source_count must be at least 1')
+    base, remainder = divmod(rows, source_count)
+    start_index = 0
+    for source_index in range(source_count):
+        source_rows = base + (source_index < remainder)
+        for index in range(start_index, start_index + source_rows):
+            record = _expected_b3_record(index, year=start_year + source_index)
+            yield {
+                field: record[field] for field in B3_SYNTHETIC_DIGEST_COLUMNS
+            }
+        start_index += source_rows
 
 
-def _expected_b3_record(index: int) -> dict[str, object]:
+def expected_b3_digest(
+    rows: int,
+    *,
+    source_count: int = 1,
+    start_year: int = 2024,
+) -> str:
+    """Return the typed business-field digest for generated B3 records."""
+    return logical_digest(_expected_b3_rows(rows, source_count, start_year))
+
+
+def _expected_b3_record(
+    index: int,
+    *,
+    year: int = 2024,
+) -> dict[str, object]:
     """Build the logical values represented by :func:`b3_record`."""
     return {
-        'data_pregao': date(2024, 1, 15),
+        'data_pregao': date(year, 1, 15),
         'codigo_bdi': '02',
         'ticker': f'GD{index:010d}'[-12:],
         'tipo_mercado': '010',
@@ -139,6 +177,8 @@ def _expected_b3_record(index: int) -> dict[str, object]:
         'preco_fechamento': Decimal(1_000_050 + index).scaleb(-2),
         'melhor_oferta_compra': Decimal(1_000_000 + index).scaleb(-2),
         'melhor_oferta_venda': Decimal(1_000_100 + index).scaleb(-2),
+        'preco_exercicio': Decimal(1_000_300 + index).scaleb(-2),
+        'preco_exercicio_pontos': Decimal(1_000_000 + index).scaleb(-6),
         'numero_negocios': (index % 99_999) + 1,
         'quantidade_total': 1_000_000 + index,
         'volume_total': Decimal(10_000_000 + index).scaleb(-2),
@@ -146,7 +186,35 @@ def _expected_b3_record(index: int) -> dict[str, object]:
         'fator_cotacao': 1,
         'codigo_isin': f'BRGD{index:08d}'[-12:],
         'numero_distribuicao': (index % 999) + 1,
+        'prazo_termo': '',
+        'moeda_referencia': '',
+        'indicador_correcao': '0',
+        'tipo_registro': '01',
+        'id_fonte': b'\x00' * 32,
+        'arquivo_origem': f'COTAHIST_A{year}.TXT',
+        'membro_origem': '',
+        'ano_origem': year,
+        'linha_origem': index + 2,
+        'registro_original': b3_record(index, year=year).encode('latin-1'),
     }
+
+
+_B3_SYNTHETIC_PROVENANCE_FIELDS = frozenset(
+    {
+        'id_fonte',
+        'arquivo_origem',
+        'membro_origem',
+        'ano_origem',
+        'linha_origem',
+        'registro_original',
+    }
+)
+
+B3_SYNTHETIC_DIGEST_COLUMNS = tuple(
+    field
+    for field in _expected_b3_record(0)
+    if field not in _B3_SYNTHETIC_PROVENANCE_FIELDS
+)
 
 
 def _prepare_b3_multi(
@@ -203,6 +271,7 @@ def _prepare_b3_multi(
         write_b3_txt(
             scenario_dir / f'COTAHIST_A{year}.TXT',
             rows_this_file,
+            year=year,
             start_index=cur_start,
         )
         cur_start += rows_this_file
@@ -213,7 +282,7 @@ def _prepare_b3_multi(
         directory_digest(scenario_dir),
         'GD0000000000',
         f'GD{rows - 1:010d}'[-12:],
-        expected_b3_digest(rows),
+        expected_b3_digest(rows, source_count=count, start_year=2021),
         executor_backend=backend,
         processing_mode=processing_mode,
         source_count=count,
@@ -316,54 +385,3 @@ def prepare_input(
         executor_backend=backend,
         processing_mode=processing_mode,
     )
-
-
-def annual_corpus_available(path: Path | None) -> bool:
-    """Require the complete 27-ZIP annual corpus before timing it."""
-    if path is None or not path.is_dir():
-        return False
-    return len(_annual_b3_source_paths(path)) == len(_ANNUAL_B3_YEARS)
-
-
-def expected_b3_annual_digest(path: Path) -> str:
-    """Build the full typed expectation from the annual source corpus."""
-    sources = _annual_b3_source_paths(path)
-    if len(sources) != len(_ANNUAL_B3_YEARS):
-        raise ValueError(
-            f'B3 annual benchmark requires all {len(_ANNUAL_B3_YEARS)} '
-            'official ZIP files'
-        )
-    return logical_digest(_annual_b3_rows(sources))
-
-
-def _annual_b3_source_paths(path: Path) -> tuple[Path, ...]:
-    """Return canonical annual ZIP paths in the same order as extraction."""
-    paths_by_name = {
-        item.name.casefold(): item for item in path.iterdir() if item.is_file()
-    }
-    return tuple(
-        paths_by_name[f'cotahist_a{year}.zip']
-        for year in _ANNUAL_B3_YEARS
-        if f'cotahist_a{year}.zip' in paths_by_name
-    )
-
-
-def _annual_b3_rows(paths: tuple[Path, ...]) -> Iterator[dict[str, Any]]:
-    """Yield canonical typed equity rows directly from official annual ZIPs."""
-    from globaldatafinance.brazil.b3_data.historical_quotes import (
-        assets,
-        cotahist_parser,
-        zip_reader,
-    )
-
-    target_tpmerc_codes = (
-        assets.AvailableAssetsServiceB3.get_tpmerc_codes_for_assets(
-            set(annual_b3_assets())
-        )
-    )
-    parser = cotahist_parser.CotahistParserB3()
-    reader = zip_reader.ZipFileReaderB3()
-    for path in paths:
-        for line, context in reader.iter_lines(str(path)):
-            if record := parser.parse_line(line, target_tpmerc_codes, context):
-                yield record

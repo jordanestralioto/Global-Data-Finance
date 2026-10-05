@@ -142,7 +142,7 @@ categories.
 | **fast**           | Up to 4, bounded by CPU count, available memory, and source file count | 34,313.8 rows/s      | 429.88 MiB         | Prioritize throughput  |
 | **slow**           | 1 worker                                                   | 29,759.9 rows/s      | 331.11 MiB         | Reduce memory use      |
 
-*Measured on 27 annual files (2000–2026), with 22,303,577 records, using Python 3.13.7, Linux x86_64, 8 CPUs, and 7.55 GB of total memory. Results vary by environment; see the [benchmark details](../dev-guide/benchmarks.en.md).*
+*Historical implementation v3 measurement on 27 files (2000–2026), excluding 2,283 TPMERC `021` rows; it does not describe or directly compare with schema v2. See the [benchmark details](../dev-guide/benchmarks.en.md).*
 
 ```python
 from globaldatafinance import HistoricalQuotesB3
@@ -330,12 +330,12 @@ print(list(docs.keys()))
 
 **Cause**: `EmptyDirectoryError` is raised only when the input directory is
 physically empty. If the directory is not empty but has no COTAHIST file for
-the requested year, the API returns an empty result with `success=True`,
-`total_files=0`, `total_records=0`, `output_file=""`, and `errors={}`.
+any requested year, the API returns `success=False`, lists the year in
+`integrity.missing_years`, and does not publish a new output.
 **Solution**: When the directory is empty, place files matching
 `COTAHIST_A{YYYY}.ZIP` or the uncompressed `.TXT` pattern inside it. For a
-non-empty directory, inspect `total_files` and `total_records` to confirm that
-the requested years contain data.
+non-empty directory, select only the available annual range and inspect
+`integrity.missing_years` if the request fails.
 
 ### Download Failures or Network Timeouts
 

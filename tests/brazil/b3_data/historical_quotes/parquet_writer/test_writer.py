@@ -1,7 +1,5 @@
 """Public B3 writer compatibility tests using Arrow runtime facilities."""
 
-from datetime import date
-from decimal import Decimal
 from pathlib import Path
 
 import pyarrow as pa
@@ -18,35 +16,14 @@ from globaldatafinance.macro_exceptions import ParquetWriteError
 from globaldatafinance.macro_infra.temporary_files import (
     reserve_temporary_path,
 )
+from tests.support.builders import build_b3_typed_record
 
 pytestmark = pytest.mark.integration
 
 
 def _record(ticker: str) -> dict[str, object]:
     """Build one B3 record accepted by the stable public writer."""
-    decimal = Decimal('123.45')
-    return {
-        'data_pregao': date(2024, 1, 2),
-        'codigo_bdi': '02',
-        'ticker': ticker,
-        'tipo_mercado': '010',
-        'nome_resumido': ticker,
-        'especificacao_papel': 'ON',
-        'preco_abertura': decimal,
-        'preco_maximo': decimal,
-        'preco_minimo': decimal,
-        'preco_medio': decimal,
-        'preco_fechamento': decimal,
-        'melhor_oferta_compra': decimal,
-        'melhor_oferta_venda': decimal,
-        'numero_negocios': 1,
-        'quantidade_total': 2,
-        'volume_total': decimal,
-        'data_vencimento': None,
-        'fator_cotacao': 1,
-        'codigo_isin': 'BRTESTE00001',
-        'numero_distribuicao': 1,
-    }
+    return build_b3_typed_record(ticker=ticker)
 
 
 @pytest.mark.asyncio

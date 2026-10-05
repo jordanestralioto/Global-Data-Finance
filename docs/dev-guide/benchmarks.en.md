@@ -7,13 +7,13 @@ machine or dataset.
 
 ## 1. Real-Scale Baseline — B3
 
-### 1.1. Baseline v3 — Full 27 Years (2026-09-16, Revision `f1a2f47`)
+### 1.1. Historical Measurement of Implementation v3 — 27 Years (2026-09-16, Revision `f1a2f47`)
 
 **Environment:** Python 3.13.7 · Linux x86_64 (kernel 6.8) · 8 CPUs · 7.55 GB
 total memory. No network calls; local extraction of official ZIPs only.
 
 - **Dataset:** 27 official ZIP files (2000–2026), 666.00 MB compressed.
-- **Asset scope:** all currently supported asset categories (`ações`, `etf`, `opções`, `termo`, `exercicio_opcoes`, `forward`, `leilao`).
+- **Asset scope:** public categories supported in revision v3; the selection did not include TPMERC `021`.
 - **Errors:** 0 (all 27 files processed successfully).
 - **Consolidated Parquet output:** 481.86 MB per mode (505,265,249 bytes).
 
@@ -35,6 +35,12 @@ total memory. No network calls; local extraction of official ZIPs only.
 > PyArrow writes release the GIL, Python positional slicing and row validation
 > retain the lock). Compared to historical baseline v2 (~4.4 GB), the columnar
 > streaming architecture reduced peak memory by over 90%.
+
+> **Measurement scope:** these are historical figures from before the COTAHIST
+> schema v2 contract. The corpus contained 22,305,860 quotations, and the
+> measurement excluded 2,283 TPMERC `021` rows. It therefore does not measure
+> the current contract's volume, schema, or processing cost and is not directly
+> comparable.
 
 ### 1.2. Historical Baseline v2 — Full 25 Years (2026-09-02, Revision `703d9ab`)
 

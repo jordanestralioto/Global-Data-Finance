@@ -7,13 +7,13 @@ fixo para qualquer hardware.
 
 ## 1. Linha de Base em Escala Real — B3
 
-### 1.1. Linha de Base v3 — 27 Anos Completos (2026-09-16, Revisão `f1a2f47`)
+### 1.1. Medição Histórica da Implementação v3 — 27 Anos (2026-09-16, Revisão `f1a2f47`)
 
 **Ambiente:** Python 3.13.7 · Linux x86_64 (kernel 6.8) · 8 CPUs · 7,55 GB de
 memória total. Sem chamadas de rede; apenas extração local dos ZIPs oficiais.
 
 - **Dataset:** 27 arquivos ZIP oficiais (2000–2026), 666,00 MB comprimido.
-- **Escopo de ativos:** todas as categorias atualmente suportadas (`ações`, `etf`, `opções`, `termo`, `exercicio_opcoes`, `forward`, `leilao`).
+- **Escopo de ativos:** categorias públicas suportadas na revisão v3; a seleção não incluía TPMERC `021`.
 - **Erros:** 0 (todos os 27 arquivos processados com sucesso).
 - **Saída Parquet consolidada:** 481,86 MB por modo (505.265.249 bytes).
 
@@ -36,6 +36,11 @@ memória total. Sem chamadas de rede; apenas extração local dos ZIPs oficiais.
 > a validação posicional e construção de linhas em Python retêm o lock). Em
 > relação à linha de base histórica v2 (~4,4 GB), a arquitetura com streaming
 > colunar PyArrow reduziu o pico de memória em mais de 90%.
+
+> **Escopo da medição:** esses números são uma referência histórica anterior
+> ao contrato COTAHIST schema v2. O corpus continha 22.305.860 cotações e a
+> medição excluiu 2.283 registros TPMERC `021`; portanto, ela não mede o volume,
+> schema ou custo do contrato atual e não deve ser comparada diretamente.
 
 ### 1.2. Linha de Base Histórica v2 — 25 Anos Completos (2026-09-02, Revisão `703d9ab`)
 

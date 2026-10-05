@@ -284,7 +284,9 @@ src/
 └── globaldatafinance/
     ├── application/                       # Public facades and formatters
     │   ├── cvm_docs/fundamental_stocks_data.py
-    │   └── b3_docs/historical_quotes.py
+    │   └── b3_docs/historical_quotes/
+    │       ├── facade.py
+    │       └── extraction_flow.py
     ├── brazil/
     │   ├── cvm/
     │   │   └── fundamental_stocks_data/   # CVM source implementation
@@ -297,7 +299,8 @@ src/
     │       └── historical_quotes/         # B3 source implementation
     │           ├── models.py · filesystem.py · assets.py · processing.py · years.py
     │           ├── client.py · catalog.py · integrity.py · member_resolver.py
-    │           ├── cotahist_parser.py · zip_reader.py · errors.py
+    │           ├── zip_reader.py · errors.py
+    │           ├── cotahist_parser/       # parser.py · field_conversion.py
     │           ├── parquet_writer/        # subpackage (writer/schema/session/...)
     │           └── extraction_service/    # subpackage (service/zip_processor/...)
     ├── core/                              # shared configuration and runtime utilities
@@ -332,12 +335,16 @@ reports `success`, a human-readable `message`, file and record counts, an
 and the `output_file` path. The processed rows are persisted in Parquet; a
 DataFrame is not the primary return contract.
 
-| Method                     | Signature                                                                                                                                                                                                                                                                    | Description                                                                                  |
-| :------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------- |
-| **`extract`**              | `(path_of_docs: str, assets_list: list[str], initial_year: int \| None = None, last_year: int \| None = None, destination_path: str \| None = None, output_filename: str = "cotahist_extracted", processing_mode: str = "fast", verbose: bool = True) -> ExtractionResultB3` | Processes `COTAHIST_A{YYYY}.ZIP` or `.TXT` inputs and generates a consolidated Parquet file. |
-| **`extract_async`**        | `(path_of_docs: str, assets_list: list[str], initial_year: int \| None = None, last_year: int \| None = None, destination_path: str \| None = None, output_filename: str = "cotahist_extracted", processing_mode: str = "fast", verbose: bool = True) -> ExtractionResultB3` | Asynchronous variant of `extract`.                                                           |
-| **`get_available_assets`** | `() -> list[str]`                                                                                                                                                                                                                                                            | Returns supported asset types (e.g., 'ações', 'opções').                                     |
-| **`get_available_years`**  | `() -> dict[str, int]`                                                                                                                                                                                                                                                       | Returns range of available years for historical data.                                        |
+`assets_list=None` is the default and preserves every valid numeric TPMERC,
+including unknown numeric markets. Pass explicit asset classes to request a
+filtered selection.
+
+| Method                     | Signature                                                                                                                                                                                                                                                                                   | Description                                                                                  |
+| :------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------- |
+| **`extract`**              | `(path_of_docs: str, assets_list: list[str] \| None = None, initial_year: int \| None = None, last_year: int \| None = None, destination_path: str \| None = None, output_filename: str = "cotahist_extracted", processing_mode: str = "fast", verbose: bool = True) -> ExtractionResultB3` | Processes `COTAHIST_A{YYYY}.ZIP` or `.TXT` inputs and generates a consolidated Parquet file. |
+| **`extract_async`**        | `(path_of_docs: str, assets_list: list[str] \| None = None, initial_year: int \| None = None, last_year: int \| None = None, destination_path: str \| None = None, output_filename: str = "cotahist_extracted", processing_mode: str = "fast", verbose: bool = True) -> ExtractionResultB3` | Asynchronous variant of `extract`.                                                           |
+| **`get_available_assets`** | `() -> list[str]`                                                                                                                                                                                                                                                                           | Returns supported asset types (e.g., 'ações', 'opções').                                     |
+| **`get_available_years`**  | `() -> dict[str, int]`                                                                                                                                                                                                                                                                      | Returns range of available years for historical data.                                        |
 
 ______________________________________________________________________
 

@@ -18,6 +18,7 @@ from globaldatafinance.brazil.b3_data.historical_quotes import (
 from globaldatafinance.brazil.b3_data.historical_quotes.zip_reader import (
     ZipFileReaderB3,
 )
+from globaldatafinance.macro_exceptions import ExtractionError
 from tests.support.builders import write_cotahist_zip
 
 pytestmark = [pytest.mark.integration, pytest.mark.real_data]
@@ -170,7 +171,10 @@ def _collect_quote_sample(input_file: Path) -> list[str]:
             records.append(line)
             if len(records) == _SAMPLE_RECORD_COUNT:
                 break
-    assert records, f'{input_file} contains no type-01 records for parity'
+    if not records:
+        raise ExtractionError(
+            str(input_file), 'no type-01 quote data record for parity'
+        )
     return records
 
 

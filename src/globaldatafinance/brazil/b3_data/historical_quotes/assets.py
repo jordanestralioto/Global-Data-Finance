@@ -19,6 +19,7 @@ class AvailableAssetsServiceB3:
     - 012: CALL EXERCISE (Exercício de Compra)
     - 013: PUT EXERCISE (Exercício de Venda)
     - 017: AUCTION (Leilão)
+    - 021: BLOCK LOT (Lote em Bloco)
     """
 
     _AVAILABLE_ASSETS_BY_CLASS: ClassVar[dict[str, list[str]]] = {
@@ -29,6 +30,8 @@ class AvailableAssetsServiceB3:
         'exercicio_opcoes': ['012', '013'],
         'forward': ['050', '060'],
         'leilao': ['017'],
+        'lote_bloco': ['021'],
+        'todos': [],
     }
 
     @classmethod
@@ -66,5 +69,6 @@ class AvailableAssetsServiceB3:
         return {
             code
             for asset_class in asset_set
+            if asset_class != 'todos'
             for code in cls._AVAILABLE_ASSETS_BY_CLASS[asset_class]
         }

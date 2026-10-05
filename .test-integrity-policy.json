@@ -12,20 +12,31 @@
   },
   "allowed_assertion_reductions": [
     {
-      "path": "tests/brazil/b3_data/historical_quotes/test_cotahist_parser.py",
-      "diff_sha256": "ab04ba73a18e7473e256ba286291ff172be20dc7060470fc67e00de8d911f0d7",
+      "path": "tests/brazil/b3_data/historical_quotes/extraction_service/test_process_worker.py",
+      "diff_sha256": "c44c72431683c15b6ea6277fc4151e30ba907b18ea579fd4fb27c4996852f31b",
       "replacement_test_ids": [
-        "tests/brazil/b3_data/historical_quotes/test_cotahist_parser.py::test_parser_emits_all_typed_fields_and_precise_decimals"
+        "tests/brazil/b3_data/historical_quotes/extraction_service/test_process_worker.py::test_process_backend_failure_isolation_rolls_back_cleanly",
+        "tests/brazil/b3_data/historical_quotes/extraction_service/test_process_worker.py::test_process_pool_spawn_error_propagation_preserves_b3_cause",
+        "tests/brazil/b3_data/historical_quotes/extraction_service/test_process_worker.py::test_historical_quotes_b3_last_phase_timings_reset_on_missing_year"
       ],
-      "reason": "Monolithic parser assertions refactored into focused tests; typed decimal precision and parsing invariants remain strictly tested."
+      "reason": "Strict byte-width and control preflight changes the expected diagnostics; the old empty-run success is replaced by assertions for missing-year failure and cleared timings."
     },
     {
-      "path": "tests/brazil/b3_data/historical_quotes/test_zip_reader.py",
-      "diff_sha256": "ad48ff6c88b23760cf3568655d9908a92968b1a0a69a92220fadc8a5168ad447",
+      "path": "tests/brazil/b3_data/historical_quotes/integration/test_real_cotahist.py",
+      "diff_sha256": "fb19a825bdeb0b9630e66d37b95c4a5f24b46878d43ef47bf0b51fd7da1b9aaf",
       "replacement_test_ids": [
-        "tests/brazil/b3_data/historical_quotes/test_zip_reader.py::test_reader_does_not_schedule_a_coroutine_for_each_source_batch"
+        "tests/brazil/b3_data/historical_quotes/integration/test_real_cotahist.py::test_real_cotahist_limited_sample_has_fast_slow_arrow_parity"
       ],
-      "reason": "Reader coroutine scheduler removed in favor of streaming batches; full zip/txt processing invariants and error boundaries remain verified."
+      "reason": "An explicit ExtractionError replaces a Python assert in the empty-record helper so the same hard failure remains active under optimized Python."
+    },
+    {
+      "path": "tests/brazil/b3_data/historical_quotes/test_extract_historical_quotes_use_case.py",
+      "diff_sha256": "8d9b3e27b1526e917867742ec027092b337cdfe4b6463c8b639db18fa1568b12",
+      "replacement_test_ids": [
+        "tests/brazil/b3_data/historical_quotes/test_extract_historical_quotes_use_case.py::TestExecuteAsyncMethod::test_execute_returns_missing_year_failure",
+        "tests/brazil/b3_data/historical_quotes/test_extract_historical_quotes_use_case.py::TestExecuteSyncMethod::test_execute_sync_reports_missing_year_failure"
+      ],
+      "reason": "Assertions for prior empty-output success are replaced with explicit missing-year failure and coverage-status checks, including the requested year passed to the source layer."
     }
   ]
 }

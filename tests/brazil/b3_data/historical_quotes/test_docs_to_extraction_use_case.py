@@ -3,6 +3,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from globaldatafinance.brazil.b3_data.historical_quotes import (
+    client as client_module,
+)
 from globaldatafinance.brazil.b3_data.historical_quotes.client import (
     CreateDocsToExtractUseCaseB3,
 )
@@ -13,6 +16,7 @@ from globaldatafinance.brazil.b3_data.historical_quotes.errors import (
     InvalidLastYear,
 )
 from globaldatafinance.brazil.b3_data.historical_quotes.models import (
+    CotahistCatalogResolution,
     DocsToExtractorB3,
 )
 
@@ -74,6 +78,21 @@ class TestCreateDocsToExtractUseCaseInitialization:
 
 
 class TestCreateDocsToExtractUseCaseExecute:
+    @pytest.fixture(autouse=True)
+    def mock_catalog_boundary(self, monkeypatch):
+        """Keep orchestration unit tests independent of caller-owned paths."""
+        monkeypatch.setattr(
+            client_module.FileSystemServiceB3,
+            'validate_directory_path',
+            lambda _service, path: Path(path),
+        )
+        self.catalog_resolver = MagicMock(
+            return_value=CotahistCatalogResolution((), ())
+        )
+        monkeypatch.setattr(
+            client_module, 'resolve_cotahist_sources', self.catalog_resolver
+        )
+
     @patch(
         'globaldatafinance.brazil.b3_data.historical_quotes.client.ValidateCotahistInputUseCaseB3'
     )
@@ -95,7 +114,7 @@ class TestCreateDocsToExtractUseCaseExecute:
         mock_verify_path,
         mock_range_years,
         mock_set_assets,
-        mock_validate_input,
+        _mock_validate_input,
     ):
         mock_set_assets.execute.return_value = {'ações', 'etf'}
         mock_range_years.execute.return_value = range(2020, 2025)
@@ -111,9 +130,7 @@ class TestCreateDocsToExtractUseCaseExecute:
         )
         result = use_case.execute()
         assert isinstance(result, DocsToExtractorB3)
-        mock_validate_input.execute.assert_called_once_with(
-            'COTAHIST_A2020.ZIP', limits=None
-        )
+        self.catalog_resolver.assert_called_once()
 
     @patch(
         'globaldatafinance.brazil.b3_data.historical_quotes.client.CreateSetAssetsUseCaseB3'
@@ -254,8 +271,10 @@ class TestCreateDocsToExtractUseCaseExecute:
             last_year=2024,
         )
         use_case.execute()
-        mock_set_download.execute.assert_called_once_with(
-            year_range, '/path/to/docs', allowed_unc_roots=()
+        self.catalog_resolver.assert_called_once()
+        assert (
+            self.catalog_resolver.call_args.kwargs['expected_years']
+            == year_range
         )
 
     @patch(
@@ -279,7 +298,7 @@ class TestCreateDocsToExtractUseCaseExecute:
         mock_verify_path,
         mock_range_years,
         mock_set_assets,
-        mock_validate_input,
+        _mock_validate_input,
     ):
         mock_set_assets.execute.return_value = {'ações', 'etf'}
         mock_range_years.execute.return_value = range(2020, 2025)
@@ -301,11 +320,8 @@ class TestCreateDocsToExtractUseCaseExecute:
         assert result.set_assets == {'ações', 'etf'}
         assert result.range_years == range(2020, 2025)
         assert result.destination_path == '/output'
-        assert result.documents_to_download == {
-            'COTAHIST_A2020.ZIP',
-            'COTAHIST_A2021.ZIP',
-        }
-        assert mock_validate_input.execute.call_count == 2
+        assert result.documents_to_download == set()
+        self.catalog_resolver.assert_called_once()
 
     @patch(
         'globaldatafinance.brazil.b3_data.historical_quotes.client.CreateSetAssetsUseCaseB3'
@@ -402,7 +418,7 @@ class TestCreateDocsToExtractUseCaseExecute:
         mock_verify_path,
         mock_range_years,
         mock_set_assets,
-        mock_validate_input,
+        _mock_validate_input,
     ):
         mock_set_assets.execute.return_value = {'ações'}
         mock_range_years.execute.return_value = range(2020, 2021)
@@ -418,7 +434,7 @@ class TestCreateDocsToExtractUseCaseExecute:
         result = use_case.execute()
         assert len(result.set_assets) == 1
         assert 'ações' in result.set_assets
-        mock_validate_input.execute.assert_called_once()
+        self.catalog_resolver.assert_called_once()
 
     @patch(
         'globaldatafinance.brazil.b3_data.historical_quotes.client.ValidateCotahistInputUseCaseB3'
@@ -441,7 +457,7 @@ class TestCreateDocsToExtractUseCaseExecute:
         mock_verify_path,
         mock_range_years,
         mock_set_assets,
-        mock_validate_input,
+        _mock_validate_input,
     ):
         call_order = []
         mock_set_assets.execute.return_value = {'ações'}
@@ -453,8 +469,9 @@ class TestCreateDocsToExtractUseCaseExecute:
         )
         mock_verify_path.return_value = mock_verify_instance
         mock_set_download.execute.return_value = {'/docs/COTAHIST_A2020.ZIP'}
-        mock_validate_input.execute.side_effect = lambda *_, **__: (
+        self.catalog_resolver.side_effect = lambda *_, **__: (
             call_order.append('input_validated')
+            or CotahistCatalogResolution((), ())
         )
 
         use_case = CreateDocsToExtractUseCaseB3(
@@ -466,9 +483,7 @@ class TestCreateDocsToExtractUseCaseExecute:
         )
         result = use_case.execute()
         assert call_order == ['input_validated', 'destination_created']
-        mock_validate_input.execute.assert_called_once_with(
-            '/docs/COTAHIST_A2020.ZIP', limits=None
-        )
+        self.catalog_resolver.assert_called_once()
         assert result is not None
 
     @patch(

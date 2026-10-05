@@ -31,7 +31,10 @@ globaldatafinance/
 │   ├── __init__.py                  # public top-level re-exports
 │   ├── application/                 # PUBLIC FACADE LAYER (top-level)
 │   │   ├── b3_docs/
-│   │   │   ├── historical_quotes.py            # HistoricalQuotesB3
+│   │   │   ├── historical_quotes/               # HistoricalQuotesB3 facade package
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── facade.py
+│   │   │   │   └── extraction_flow.py
 │   │   │   ├── extraction_result_formatter.py
 │   │   │   └── result_formatters/
 │   │   └── cvm_docs/
@@ -49,6 +52,8 @@ globaldatafinance/
 │   │   │       ├── errors.py                  # source-specific exception definitions
 │   │   │       ├── zip_reader.py              # COTAHIST ZIP/TXT discovery and streaming
 │   │   │       ├── catalog.py                 # strict caller-owned input catalog
+│   │   │       ├── layout.py                  # single owner for the 32-field B3 contract
+│   │   │       ├── source_validation.py       # complete validation before filtering
 │   │   │       ├── cotahist_parser.py         # fixed-width positional parser (isolated domain module)
 │   │   │       ├── parquet_writer/            # subpackage: Parquet compiler and writer
 │   │   │       └── extraction_service/        # subpackage: thread-pool streaming orchestration
@@ -100,6 +105,34 @@ match them.
 | Input catalog                | —                                                  | `catalog.py`                                                                           |
 | Validation helpers           | `download_paths.py`, `download_validation.py`, `download_extraction.py` | Embedded inside `filesystem.py` / `client.py`                                          |
 | Exception definitions        | `errors.py`                                        | `errors.py`                                                                            |
+
+### Decision: COTAHIST complete preservation and verified publication
+
+The B3 default is complete selection under Parquet schema version `2`.
+`assets_list=None` and `todos` preserve every valid type-`01` record with a
+numeric TPMERC, including unknown codes. Class filtering remains available, but
+it does not reduce source-record validation.
+
+This decision follows the audit of the caller-owned 2000–2026 corpus: 2,283
+TPMERC `021` quotations were omitted by the previous selection and five
+official fields were absent from its logical schema. Keeping an incomplete
+default or a parallel incomplete contract would preserve those omissions and
+duplicate persistence rules. The accepted cost is an incompatible consumer
+migration, Parquet regeneration, and full output readback before publication.
+
+The schema retains its 20 existing columns and adds the five omitted B3 fields,
+`tipo_registro`, provenance, and each quote's original 245 bytes. `layout.py` is
+the production source of truth; `source_validation.py` validates controls, all
+fields, trailer counts, and complete contents before selection. `catalog.py`
+resolves requested annual coverage and ZIP/TXT conflicts. The facade returns
+the integrity report, and the Parquet footer stores the persistent manifest.
+The script-side oracle declares independent offsets and belongs only to
+validation; it does not own or duplicate the production layout.
+
+The supplied corpus measures observed coverage, not an external confirmation
+of a trading calendar or instrument registry. The audited real range starts in
+2000; earlier years require their own source files. Revisit this decision if B3
+changes record width, positions, numeric scales, or record types.
 
 ### Shared safety and source commits
 

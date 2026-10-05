@@ -44,16 +44,113 @@ configuration.
 
 ## B3
 
-Only selected `01` records are converted. Blank lines and `00`/`99` controls
-are counted, while every other nonempty identifier fails. Extraction validates
-width, dates, required texts, integers, and decimals before persistence. `fast`
-and `slow` preserve the same logical schema, order, and values; they differ
-only in concurrency and memory-pressure policy.
+### Notes for the next major release
+
+The text below is the prepared body for the next major GitHub release. The
+existing `.github/workflows/publish.yml` runs gates and publication from the
+published-release event. Version, tag, and publication must await approval of
+the acceptance evidence; this draft does not claim a release was published.
+
+**Breaking COTAHIST contract changes:**
+
+- The default selection now preserves every type-`01` quotation, including
+  TPMERC `021` and unknown numeric markets. Omit `assets_list` or use `todos`;
+  specify classes when a consumer requires a filter.
+- Parquet moves to versioned schema `2` with 32 columns. The original 20 fields
+  retain their order and values; the 12 additions include the omitted official
+  fields, provenance, and the original 245 quotation bytes.
+- Regenerate v1 Parquets from the original ZIP/TXT sources. Append and merge
+  across incompatible schemas fail; converting v1 files cannot recover missing
+  data. Follow the cutover and rollback procedures on this page.
+- Specify an available annual range: any missing requested year or invalid
+  record fails extraction, including a record in a filtered-out market.
+- Publication requires complete staged-output readback and exact data and
+  manifest verification. Failures preserve the previous output; consumers must
+  check `success`, `schema_version`, and `integrity` before switching files.
+
+The local acceptance corpus covers 2000–2026, with a snapshot ending on
+2026-09-02. The release must attach final frozen-corpus evidence and checksum
+manifests. These bounds are not independent confirmation of exchange coverage
+or availability of every historical year.
+
+Every `01` record is validated and converted before market selection. Blank
+lines and `00`/`99` controls are counted, while every other nonempty identifier
+fails. Both modes use canonical conversion and bounded CSV row batches through
+Arrow. `fast` uses batches of up to 25,000 records and can process sources in
+parallel; `slow` uses batches of up to 10,000 records and one worker. Both
+preserve the same logical schema, order, and values.
+
+### B3 schema v2 and regeneration
+
+The persisted COTAHIST contract changed incompatibly to versioned schema `2`.
+The default is now `assets_list=None`, equivalent to `assets_list=["todos"]`:
+all type-`01` quotations with numeric TPMERC codes are preserved, including
+`021` and codes that are not yet known. The output has 32 columns, adding the
+five previously omitted official fields, source coordinates, and the original
+245 bytes of each quote. Financial values use exact decimals;
+`preco_exercicio_pontos` has scale 6.
+
+Version 1 Parquets do not contain TPMERC `021` rows, all official fields, or
+original source bytes. Do not convert or append these files into v2. Regenerate
+from the raw ZIP/TXT sources and validate the output before switching consumers.
+
+Cutover procedure:
+
+1. Preserve the COTAHIST sources and record their hashes.
+2. Choose the annual range actually available. Pass `initial_year` and
+   `last_year`; defaults still cover 1986 through the current year, and any gap
+   inside the requested range fails extraction.
+3. Write to a separate destination using `assets_list=["todos"]` (or omit
+   `assets_list`).
+4. Require `result["success"] is True` and `result["schema_version"] == 2`.
+   Review `selection_complete`, `source_complete`, counts, selected years, and
+   `output_sha256` in `result["integrity"]` for the consumer's requirements.
+5. Read the Arrow schema and adapt consumers to the 12 added columns and exact
+   types in the [B3 v2 schema reference](../reference/b3-schema-v2.en.md).
+6. Switch consumers to the verified output and retain v1 files until the
+   cutover is accepted.
+
+Rollback procedure:
+
+1. Keep the previous package version, consumer configuration, and v1 Parquet
+   paths together until accepting the migration. Record the SHA-256 of each
+   previous output and generate v2 in a separate directory.
+2. If acceptance fails, restore the previous package version and consumer
+   configuration to read the retained v1 paths. Leave the original COTAHIST and
+   separate v2 artifacts available for diagnosis.
+3. Verify the retained v1 checksums and reopen them with the previous consumer.
+   Do not overwrite v2 with v1 or append rows between schema versions.
+
+The library publishes one caller-selected output; changing the consumer's
+chosen path belongs to the application. A failed extraction preserves the
+previous file at that output path and returns `output_file=""`. These guarantees
+are exercised by `tests/application/b3_docs/test_publication_integrity.py` and
+`tests/application/b3_docs/test_schema_migration.py`.
+
+A filtered v2 Parquet may contain zero rows and still be complete for the
+requested selection; review `selection_complete`, `source_complete`, and
+intentional-exclusion counts. `source_complete=True` requires zero exclusions.
+Reports include outer and uncompressed-content hashes, Base64 controls, trailer
+convention, observed dates, row digest, and final Parquet hash. These facts
+attest the supplied files; they do not confirm a trading calendar or instruments
+outside the corpus. Years before 2000 require separate source files and are not
+included in the locally audited corpus.
 
 Integrations that depended on removed internal objects must migrate to the
 facade flow. The B3 session now has an explicit lifecycle (`NEW` → `OPEN` →
 `CLOSED`) and cannot be reopened after closing, including when final
 validation fails.
+
+Internal workers use only the canonical `CotahistParserB3` conversion, including
+source replay and digest verification for subclasses. Custom factories that
+provided only `parse_line()` must implement the complete parser contract; the
+alternative dictionary path was removed. The internal `normalize_decimal_v99`
+helper and unused `ZipProcessingResult`/`ProcessSingleFileResult` types were
+removed. Use `normalize_decimal` with an explicit scale in internal extensions.
+
+Text-reading interfaces and `ParquetWriterB3` with existing callers remain
+available over the current implementation. Module documentation lives in
+`README.md` and `README.en.md`; the stale `README.pt.md` copy was removed.
 
 ## Dependencies and measurement
 

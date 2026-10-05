@@ -8,13 +8,14 @@ from typing import Any
 
 from globaldatafinance.macro_exceptions import SecurityError
 
-from .real_validation_matrix import canonical_cvm_case, cases_from_manifest
+from .real_validation_matrix.cases import canonical_cvm_case
+from .real_validation_matrix.manifest import cases_from_manifest
 from .real_validation_report import (
     REPORT_SCHEMA_VERSION,
     ReportFormatError,
     read_json,
 )
-from .real_validation_types import ValidationCase
+from .real_validation_types import ValidationCase, ValidationInputSnapshot
 from .real_validation_utils import validate_external_directory
 
 
@@ -84,166 +85,179 @@ def _resume_cvm_output(
 def _validate_resume_cotahist_inputs(
     cases: list[ValidationCase], hash_file: Callable[[Path], str]
 ) -> None:
-    normalized_paths = {
-        case.case_id: Path(case.input_path).expanduser().resolve()
-        for case in cases
-    }
+    normalized_paths, snapshots_by_path = _collect_resume_snapshots(cases)
+    year_by_path = _validate_resume_catalog_identity(cases, snapshots_by_path)
+    _validate_resume_case_identity(cases, normalized_paths, year_by_path)
+    _validate_current_resume_snapshots(cases, snapshots_by_path, hash_file)
+
+
+def _collect_resume_snapshots(
+    cases: list[ValidationCase],
+) -> tuple[dict[str, tuple[Path, ...]], dict[Path, ValidationInputSnapshot]]:
+    normalized_paths: dict[str, tuple[Path, ...]] = {}
+    snapshots_by_path: dict[Path, ValidationInputSnapshot] = {}
     for case in cases:
-        path = normalized_paths[case.case_id]
-        if not path.is_file():
+        snapshots = case.input_files
+        if not snapshots:
             raise ReportFormatError(
-                _resume_input_error(case, 'missing', str(path))
+                _resume_input_error(
+                    case, 'manifest_metadata', 'inputFiles is empty'
+                )
             )
-    parent = _resume_input_parent(normalized_paths)
-    catalog = _resume_catalog(cases[0], parent)
-    available = {
-        path.resolve() for paths in catalog.values() for path in paths
-    }
-    _validate_resume_input_paths(cases, normalized_paths, available)
-    _validate_resume_cotahist_identity(cases, normalized_paths, catalog)
-    snapshots = _resume_input_snapshots(cases, normalized_paths, hash_file)
-    _validate_resume_snapshots(cases, normalized_paths, snapshots)
+        paths = tuple(
+            Path(item.path).expanduser().resolve() for item in snapshots
+        )
+        normalized_paths[case.case_id] = paths
+        if Path(case.input_path).expanduser().resolve() != paths[0]:
+            raise ReportFormatError(
+                _resume_input_error(
+                    case,
+                    'identity',
+                    'inputPath does not match the first inputFiles entry',
+                )
+            )
+        for path, snapshot in zip(paths, snapshots, strict=True):
+            existing = snapshots_by_path.get(path)
+            if existing is not None and existing != snapshot:
+                raise ReportFormatError(
+                    _resume_input_error(
+                        case,
+                        'manifest_metadata',
+                        f'conflicting input snapshots for {path}',
+                    )
+                )
+            snapshots_by_path[path] = snapshot
+            if not path.is_file():
+                raise ReportFormatError(
+                    _resume_input_error(case, 'missing', str(path))
+                )
+    return normalized_paths, snapshots_by_path
 
 
-def _resume_input_parent(normalized_paths: dict[str, Path]) -> Path:
-    """Require every COTAHIST case to use one input directory."""
-    parents = {path.parent for path in normalized_paths.values()}
+def _validate_resume_catalog_identity(
+    cases: list[ValidationCase],
+    snapshots_by_path: dict[Path, ValidationInputSnapshot],
+) -> dict[Path, int]:
+    parents = {path.parent for path in snapshots_by_path}
     if len(parents) != 1:
         raise ReportFormatError(
             'resume manifest contains COTAHIST inputs from multiple '
             'directories'
         )
-    return parents.pop()
-
-
-def _resume_catalog(
-    case: ValidationCase, parent: Path
-) -> dict[int, list[Path]]:
-    """Load the current catalog and preserve its diagnostic cause."""
-    from globaldatafinance.brazil.b3_data.historical_quotes.catalog import (
-        CotahistCatalogError,
-        validate_cotahist_catalog,
+    requested_years = sorted(
+        {
+            year
+            for case in cases
+            for year in range(
+                case.initial_year
+                if case.initial_year is not None
+                else case.year,
+                (case.last_year if case.last_year is not None else case.year)
+                + 1,
+            )
+        }
     )
-
-    try:
-        return validate_cotahist_catalog(parent)
-    except CotahistCatalogError as error:
-        raise ReportFormatError(
-            _resume_input_error(
-                case,
-                'catalog_validation',
-                str(error),
-            )
-        ) from error
-
-
-def _validate_resume_input_paths(
-    cases: list[ValidationCase],
-    normalized_paths: dict[str, Path],
-    available: set[Path],
-) -> None:
-    """Reject manifest inputs no longer present in the current catalog."""
-    for case in cases:
-        path = normalized_paths[case.case_id]
-        if path not in available:
-            raise ReportFormatError(
-                _resume_input_error(case, 'missing', str(path))
-            )
-
-
-def _validate_resume_cotahist_identity(
-    cases: list[ValidationCase],
-    normalized_paths: dict[str, Path],
-    catalog: dict[int, list[Path]],
-) -> None:
-    """Bind each persisted COTAHIST case to its current catalogued year."""
+    catalog = _resume_catalog(cases[0], parents.pop(), requested_years)
     year_by_path = {
         path.resolve(): year
         for year, paths in catalog.items()
         for path in paths
     }
+    expected_paths = set(year_by_path)
+    if expected_paths != set(snapshots_by_path):
+        raise ReportFormatError(
+            _resume_input_error(
+                cases[0],
+                'catalog_identity',
+                'manifest inputs do not match the selected annual catalog',
+            )
+        )
+    return year_by_path
+
+
+def _validate_resume_case_identity(
+    cases: list[ValidationCase],
+    normalized_paths: dict[str, tuple[Path, ...]],
+    year_by_path: dict[Path, int],
+) -> None:
     for case in cases:
-        actual_year = year_by_path.get(normalized_paths[case.case_id])
-        expected_id = f'cotahist-{case.mode}-{case.year}'
-        if (
-            actual_year != case.year
-            or case.case_id != expected_id
-            or case.output_root != ''
-            or case.document is not None
-            or case.url is not None
-        ):
+        paths = normalized_paths[case.case_id]
+        first = (
+            case.initial_year if case.initial_year is not None else case.year
+        )
+        last = case.last_year if case.last_year is not None else case.year
+        actual_years = [year_by_path.get(path) for path in paths]
+        expected_id = (
+            f'cotahist-multi-parity-{first}-{last}'
+            if case.mode == 'multi_parity'
+            else f'cotahist-{case.mode}-{case.year}'
+        )
+        first_snapshot = case.input_files[0]
+        identity_matches = (
+            actual_years == list(range(first, last + 1)),
+            case.year == first,
+            case.case_id == expected_id,
+            case.output_root == '',
+            case.document is None,
+            case.url is None,
+            case.input_size_bytes == first_snapshot.size_bytes,
+            case.input_sha256 == first_snapshot.sha256,
+        )
+        if not all(identity_matches):
             raise ReportFormatError(
                 _resume_input_error(
                     case,
                     'identity',
-                    'caseId, year, source fields, outputRoot, or catalogued '
-                    'input year does not match the COTAHIST matrix',
+                    'case range, input files, snapshot, or source fields do '
+                    'not match the COTAHIST matrix',
                 )
             )
 
 
-def _resume_input_snapshots(
+def _validate_current_resume_snapshots(
     cases: list[ValidationCase],
-    normalized_paths: dict[str, Path],
+    snapshots_by_path: dict[Path, ValidationInputSnapshot],
     hash_file: Callable[[Path], str],
-) -> dict[Path, tuple[int, str]]:
-    """Read size and SHA-256 once for every unique manifest input."""
-    case_by_path: dict[Path, ValidationCase] = {}
-    for case in cases:
-        case_by_path.setdefault(normalized_paths[case.case_id], case)
-    snapshots: dict[Path, tuple[int, str]] = {}
-    for path in sorted(set(normalized_paths.values()), key=str):
-        case = case_by_path[path]
+) -> None:
+    for path, snapshot in snapshots_by_path.items():
         try:
-            snapshots[path] = (path.stat().st_size, hash_file(path))
+            current_size = path.stat().st_size
+            current_hash = hash_file(path)
         except OSError as error:
+            case = cases[0]
             raise ReportFormatError(
                 _resume_input_error(case, 'unreadable', f'{path}: {error}')
             ) from error
-    return snapshots
-
-
-def _validate_resume_snapshots(
-    cases: list[ValidationCase],
-    normalized_paths: dict[str, Path],
-    snapshots: dict[Path, tuple[int, str]],
-) -> None:
-    """Compare recorded input size and hash with current content."""
-    for case in cases:
-        path = normalized_paths[case.case_id]
-        current_size, current_hash = snapshots[path]
-        if case.input_size_bytes is None or case.input_sha256 is None:
+        if (
+            current_size != snapshot.size_bytes
+            or current_hash.casefold() != snapshot.sha256.casefold()
+        ):
             raise ReportFormatError(
                 _resume_input_error(
-                    case,
-                    'manifest_metadata',
-                    'input_size_bytes and input_sha256 are required',
+                    cases[0],
+                    'changed',
+                    f'{path}: size or sha256 differs from the manifest',
                 )
             )
-        drift = _resume_snapshot_drift(case, current_size, current_hash)
-        if drift:
-            raise ReportFormatError(
-                _resume_input_error(case, 'changed', '; '.join(drift))
-            )
 
 
-def _resume_snapshot_drift(
-    case: ValidationCase, current_size: int, current_hash: str
-) -> list[str]:
-    """Return stable field-level differences for one input snapshot."""
-    if case.input_size_bytes is None or case.input_sha256 is None:
-        return []
-    drift: list[str] = []
-    if current_size != case.input_size_bytes:
-        drift.append(
-            'input_size_bytes '
-            f'expected={case.input_size_bytes} actual={current_size}'
-        )
-    if current_hash.casefold() != case.input_sha256.casefold():
-        drift.append(
-            f'input_sha256 expected={case.input_sha256} actual={current_hash}'
-        )
-    return drift
+def _resume_catalog(
+    case: ValidationCase, parent: Path, requested_years: list[int]
+) -> dict[int, list[Path]]:
+    """Load the selected catalog and preserve its diagnostic cause."""
+    from globaldatafinance.brazil.b3_data.historical_quotes.catalog import (
+        index_cotahist_catalog,
+    )
+    from globaldatafinance.brazil.b3_data.historical_quotes.errors import (
+        CotahistCatalogError,
+    )
+
+    try:
+        return index_cotahist_catalog(parent, expected_years=requested_years)
+    except CotahistCatalogError as error:
+        raise ReportFormatError(
+            _resume_input_error(case, 'catalog_validation', str(error))
+        ) from error
 
 
 def _resume_input_error(

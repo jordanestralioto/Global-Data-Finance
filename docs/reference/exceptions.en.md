@@ -94,9 +94,9 @@ class EmptyDirectoryError(Exception):
 ```
 
 - **When Raised**: Only when the input directory is physically empty. A
-  directory that is not empty but contains no COTAHIST file for the requested
-  year returns an empty result (`success=True`, `total_files=0`,
-  `total_records=0`, `output_file=""`, and `errors={}`).
+  missing COTAHIST file for any requested year is returned as a B3 result
+  failure; `integrity.missing_years` lists the gaps and no new output is
+  published.
 
 #### `ExtractionError` & `CorruptedZipError`
 

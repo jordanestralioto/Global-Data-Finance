@@ -1,6 +1,5 @@
 """Persistent Arrow session regressions for B3 row groups."""
 
-from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
@@ -12,35 +11,18 @@ from globaldatafinance.brazil.b3_data.historical_quotes import (
     parquet_writer,
 )
 from globaldatafinance.macro_exceptions import ExtractionError
+from tests.support.builders import build_b3_typed_record
 
 pytestmark = pytest.mark.integration
 
 
 def _record(index: int) -> dict[str, object]:
     """Build one canonical B3 data row."""
-    decimal = Decimal(f'{index}.01')
-    return {
-        'data_pregao': date(2024, 1, 2),
-        'codigo_bdi': '02',
-        'ticker': f'T{index:05d}',
-        'tipo_mercado': '010',
-        'nome_resumido': 'TEST',
-        'especificacao_papel': 'ON',
-        'preco_abertura': decimal,
-        'preco_maximo': decimal,
-        'preco_minimo': decimal,
-        'preco_medio': decimal,
-        'preco_fechamento': decimal,
-        'melhor_oferta_compra': decimal,
-        'melhor_oferta_venda': decimal,
-        'numero_negocios': index,
-        'quantidade_total': index,
-        'volume_total': decimal,
-        'data_vencimento': None,
-        'fator_cotacao': 1,
-        'codigo_isin': 'BRTESTE00001',
-        'numero_distribuicao': 1,
-    }
+    return build_b3_typed_record(
+        ticker=f'T{index:05d}',
+        price=Decimal(f'{index}.01'),
+        source_line=index,
+    )
 
 
 def test_session_flushes_bounded_row_groups_and_clears_python_records(
@@ -166,6 +148,7 @@ def test_session_preserves_empty_optional_strings_as_empty_strings(
             'nome_resumido': '',
             'especificacao_papel': '',
             'codigo_isin': '',
+            'data_vencimento': None,
         }
     )
     session = parquet_writer.B3ParquetWriterSession().open(
@@ -204,8 +187,9 @@ def test_public_record_and_canonical_row_reject_reserved_null_sentinel(
     row_session = parquet_writer.B3ParquetWriterSession().open(
         row_output, schema
     )
-    row = [''] * len(schema.names)
+    row: list[str | bytes] = [''] * len(schema.names)
     row[schema.get_field_index('ticker')] = reserved
+    row[schema.get_field_index('registro_original')] = bytes(245)
     with pytest.raises(ExtractionError, match='row=1; column='):
         row_session.write_csv_rows([tuple(row)])
     row_session.close()

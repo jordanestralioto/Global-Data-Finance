@@ -80,6 +80,12 @@ class TestExecuteAsyncMethod:
             zip_files={'COTAHIST_A2020.ZIP'},
             target_tpmerc_codes={'010', '020'},
             output_path=Path('/path/to/output/cotahist_extracted.parquet'),
+            validated_sources=None,
+            all_markets=False,
+            requested_years=(2020,),
+            missing_years=(),
+            asset_classes=['ações'],
+            ignored_duplicate_sources=(),
         )
 
     @pytest.mark.asyncio
@@ -155,10 +161,22 @@ class TestExecuteAsyncMethod:
     @patch(
         'globaldatafinance.brazil.b3_data.historical_quotes.client.AvailableAssetsServiceB3'
     )
-    async def test_execute_returns_empty_result_for_no_files(
+    async def test_execute_returns_missing_year_failure(
         self, mock_assets_service, mock_extraction_service
     ):
         mock_assets_service.get_tpmerc_codes_for_assets.return_value = {'010'}
+        mock_service = AsyncMock()
+        mock_service.extract_from_zip_files.return_value = {
+            'total_files': 0,
+            'success_count': 0,
+            'error_count': 1,
+            'total_records': 0,
+            'errors': {'coverage': 'Missing requested COTAHIST years: [2020]'},
+            'output_file': '',
+            'schema_version': 2,
+            'integrity': {'status': 'failed', 'missing_years': [2020]},
+        }
+        mock_extraction_service.return_value = mock_service
 
         docs = DocsToExtractorB3(
             path_of_docs='/path/to/docs',
@@ -170,13 +188,12 @@ class TestExecuteAsyncMethod:
 
         use_case = ExtractHistoricalQuotesUseCaseB3()
         result = await use_case.execute(docs)
-        assert result['total_files'] == 0
-        assert result['success_count'] == 0
-        assert result['error_count'] == 0
-        assert result['total_records'] == 0
-        assert result['errors'] == {}
-        assert result['output_file'] == ''
-        mock_extraction_service.assert_called_once()
+        assert result['error_count'] == 1
+        assert result['integrity']['status'] == 'failed'
+        mock_service.extract_from_zip_files.assert_awaited_once()
+        assert mock_service.extract_from_zip_files.call_args.kwargs[
+            'requested_years'
+        ] == (2020,)
 
     @pytest.mark.asyncio
     @patch(
@@ -287,6 +304,12 @@ class TestExecuteSyncMethod:
             zip_files={'COTAHIST_A2020.ZIP'},
             target_tpmerc_codes={'010'},
             output_path=Path('/path/to/output/cotahist_extracted.parquet'),
+            validated_sources=None,
+            all_markets=False,
+            requested_years=(2020,),
+            missing_years=(),
+            asset_classes=['ações'],
+            ignored_duplicate_sources=(),
         )
 
     @patch(
@@ -335,6 +358,12 @@ class TestExecuteSyncMethod:
             zip_files={'COTAHIST_A2020.ZIP'},
             target_tpmerc_codes={'010'},
             output_path=Path('/path/to/output') / 'custom.parquet',
+            validated_sources=None,
+            all_markets=False,
+            requested_years=(2020,),
+            missing_years=(),
+            asset_classes=['ações'],
+            ignored_duplicate_sources=(),
         )
 
     @patch(
@@ -343,10 +372,22 @@ class TestExecuteSyncMethod:
     @patch(
         'globaldatafinance.brazil.b3_data.historical_quotes.client.AvailableAssetsServiceB3'
     )
-    def test_execute_sync_handles_empty_files(
+    def test_execute_sync_reports_missing_year_failure(
         self, mock_assets_service, mock_extraction_service
     ):
         mock_assets_service.get_tpmerc_codes_for_assets.return_value = {'010'}
+        mock_service = AsyncMock()
+        mock_service.extract_from_zip_files.return_value = {
+            'total_files': 0,
+            'success_count': 0,
+            'error_count': 1,
+            'total_records': 0,
+            'errors': {'coverage': 'Missing requested COTAHIST years: [2020]'},
+            'output_file': '',
+            'schema_version': 2,
+            'integrity': {'status': 'failed', 'missing_years': [2020]},
+        }
+        mock_extraction_service.return_value = mock_service
 
         docs = DocsToExtractorB3(
             path_of_docs='/path/to/docs',
@@ -358,8 +399,8 @@ class TestExecuteSyncMethod:
 
         use_case = ExtractHistoricalQuotesUseCaseB3()
         result = use_case.execute_sync(docs)
-        assert result['total_files'] == 0
-        assert result['output_file'] == ''
+        assert result['error_count'] == 1
+        assert result['integrity']['status'] == 'failed'
         mock_extraction_service.assert_called_once()
 
 

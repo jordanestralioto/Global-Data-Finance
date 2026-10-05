@@ -14,25 +14,18 @@ usage. Quick start::
 
 import asyncio
 import os
-import time
-from pathlib import Path
 from typing import Any
 
-from ...brazil.b3_data.historical_quotes import (
-    CreateDocsToExtractUseCaseB3,
-    DocsToExtractorB3,
+from ....brazil.b3_data.historical_quotes import (
     ExtractHistoricalQuotesUseCaseB3,
     GetAvailableAssetsUseCaseB3,
     GetAvailableYearsUseCaseB3,
-    ValidateExtractionConfigUseCaseB3,
 )
-from ...core.archive_safety import ArchiveSafetyLimits
-from ...core.config import Settings
-from ...core.logging_config import get_logger
-from ...macro_exceptions import CorruptedZipError, ExtractionError
-from .extraction_result_formatter import ExtractionResultFormatter
-from .result_formatters import HistoricalQuotesResultFormatter
-from .types import ExtractionResultB3
+from ....core.archive_safety import ArchiveSafetyLimits
+from ....core.config import Settings
+from ....core.logging_config import get_logger
+from ..types import ExtractionResultB3
+from .extraction_flow import ExtractionFlowB3
 
 logger = get_logger(__name__)
 
@@ -47,9 +40,10 @@ class HistoricalQuotesB3:
     - Fast mode: High performance with higher CPU/RAM usage (recommended)
     - Slow mode: Resource-efficient with lower CPU/RAM usage.
 
-    Supported asset classes:
-    - 'ações': Stocks (cash and fractional market)
-    - 'etf': Exchange Traded Funds
+    ``assets_list=None`` selects every valid numeric TPMERC. Class filters are
+    also available, including ``lote_bloco`` for ``021``. Every source quote
+    is validated before selection, and the returned report records coverage
+    and complete Parquet readback evidence.
     """
 
     def __init__(self, *, settings: Settings | None = None) -> None:
@@ -77,8 +71,12 @@ class HistoricalQuotesB3:
         )
         self._available_assets_use_case = GetAvailableAssetsUseCaseB3()
         self._available_years_use_case = GetAvailableYearsUseCaseB3()
-        self._validate_config_use_case = ValidateExtractionConfigUseCaseB3()
-        self._result_formatter = ExtractionResultFormatter(use_colors=True)
+        self._extraction_flow = ExtractionFlowB3(
+            extract_use_case=self._extract_use_case,
+            available_years_use_case=self._available_years_use_case,
+            settings=self._settings,
+            allowed_unc_roots=self._allowed_unc_roots,
+        )
 
         logger.info('HistoricalQuotesB3 initialized (backend=%s)', backend)
 
@@ -95,7 +93,7 @@ class HistoricalQuotesB3:
     def extract(
         self,
         path_of_docs: str,
-        assets_list: list[str],
+        assets_list: list[str] | None = None,
         initial_year: int | None = None,
         last_year: int | None = None,
         destination_path: str | None = None,
@@ -105,19 +103,22 @@ class HistoricalQuotesB3:
     ) -> ExtractionResultB3:
         r"""Extract historical quotes from COTAHIST archives to Parquet.
 
-        Validates the asset classes and year range, finds the matching
-        COTAHIST files (ZIP or TXT), parses and filters them, and writes the
-        result to a Parquet file.
+        Resolves the requested annual catalog, validates each complete
+        COTAHIST source, applies market selection, and writes a version 2
+        Parquet only after complete readback verification.
 
         Args:
             path_of_docs: Directory path where COTAHIST files reside
                          (`COTAHIST_A{YYYY}.ZIP` or `COTAHIST_A{YYYY}.TXT`).
                          Example: "/home/user/cotahist_files"
-            assets_list: List of asset class codes to extract.
-                        Valid values: 'ações', 'etf', 'opções', 'termo',
-                                     'exercicio_opcoes', 'forward', 'leilao'
+            assets_list: Optional list of asset class codes. ``None`` selects
+                        every valid numeric TPMERC. Valid values include
+                        'ações',
+                        'etf', 'opções', 'termo', 'exercicio_opcoes',
+                        'forward', 'leilao', 'lote_bloco', and 'todos'.
             initial_year: Starting year (inclusive, >= 1986). Defaults to 1986.
             last_year: Ending year (inclusive). Defaults to current year.
+                       Every year in the resolved range must be available.
             destination_path: Directory path for the generated Parquet file.
                             If None, uses path_of_docs as destination.
             output_filename: Required output basename without path separators.
@@ -143,6 +144,8 @@ class HistoricalQuotesB3:
             - assets (list[str]): Asset classes filtered during extraction
             - processing_mode (str): Processing mode ('fast' or 'slow')
             - elapsed_time (float): Total elapsed execution duration in seconds
+            - schema_version (int): Persisted B3 Parquet schema version (2)
+            - integrity (B3IntegrityReport): Source coverage and readback facts
 
         Raises:
             EmptyAssetListError: If assets_list is empty or not a list.
@@ -180,7 +183,7 @@ class HistoricalQuotesB3:
     async def extract_async(
         self,
         path_of_docs: str,
-        assets_list: list[str],
+        assets_list: list[str] | None = None,
         initial_year: int | None = None,
         last_year: int | None = None,
         destination_path: str | None = None,
@@ -195,133 +198,16 @@ class HistoricalQuotesB3:
         raise ``RuntimeError``. Arguments and return value are identical to
         :meth:`extract`; see that method for full documentation.
         """
-        start_time = time.time()
-        try:
-            docs_to_extract, processing_mode, output_filename_with_ext = (
-                self._prepare_extraction(
-                    path_of_docs=path_of_docs,
-                    assets_list=assets_list,
-                    initial_year=initial_year,
-                    last_year=last_year,
-                    destination_path=destination_path,
-                    output_filename=output_filename,
-                    processing_mode=processing_mode,
-                )
-            )
-        except (CorruptedZipError, ExtractionError) as error:
-            filename = (
-                Path(error.path).name
-                if hasattr(error, 'path') and error.path
-                else 'input'
-            )
-            return self._finalize_result(
-                result={
-                    'total_files': 1,
-                    'success_count': 0,
-                    'error_count': 1,
-                    'total_records': 0,
-                    'errors': {filename: f'{type(error).__name__}: {error}'},
-                    'output_file': '',
-                },
-                assets_list=assets_list,
-                processing_mode=processing_mode,
-                elapsed_time=time.time() - start_time,
-                verbose=verbose,
-            )
-
-        result = await self._extract_use_case.execute(
-            docs_to_extract=docs_to_extract,
-            processing_mode=processing_mode,
-            output_filename=output_filename_with_ext,
-        )
-
-        elapsed_time = time.time() - start_time
-
-        return self._finalize_result(
-            result=result,
-            assets_list=assets_list,
-            processing_mode=processing_mode,
-            elapsed_time=elapsed_time,
-            verbose=verbose,
-        )
-
-    def _prepare_extraction(
-        self,
-        *,
-        path_of_docs: str,
-        assets_list: list[str],
-        initial_year: int | None,
-        last_year: int | None,
-        destination_path: str | None,
-        output_filename: str,
-        processing_mode: str,
-    ) -> tuple[DocsToExtractorB3, str, str]:
-        """Validate config and build the extraction request (no I/O parsing).
-
-        Shared by the sync and async entrypoints. Returns the documents to
-        extract, the normalized processing mode, and the output filename with
-        the ``.parquet`` extension applied.
-        """
-        initial_year = self._resolve_initial_year(initial_year)
-        last_year = self._resolve_last_year(last_year)
-
-        processing_mode, output_filename_with_ext = (
-            self._validate_config_use_case.execute(
-                processing_mode=processing_mode,
-                output_filename=output_filename,
-            )
-        )
-
-        logger.info(
-            f'Extraction requested: path={path_of_docs}, '
-            f'destination={destination_path or path_of_docs}, '
-            f'assets={assets_list}, years={initial_year}-{last_year}, '
-            f'mode={processing_mode}'
-        )
-
-        docs_to_extract: DocsToExtractorB3 = CreateDocsToExtractUseCaseB3(
+        return await self._extraction_flow.execute(
             path_of_docs=path_of_docs,
             assets_list=assets_list,
             initial_year=initial_year,
             last_year=last_year,
             destination_path=destination_path,
-            allowed_unc_roots=self._allowed_unc_roots,
-            limits=ArchiveSafetyLimits.from_settings(self._settings.archive),
-        ).execute()
-
-        logger.info(
-            f'Found {len(docs_to_extract.documents_to_download)} COTAHIST '
-            'input files to process'
+            output_filename=output_filename,
+            processing_mode=processing_mode,
+            verbose=verbose,
         )
-
-        return docs_to_extract, processing_mode, output_filename_with_ext
-
-    def _finalize_result(
-        self,
-        *,
-        result: dict[str, Any],
-        assets_list: list[str],
-        processing_mode: str,
-        elapsed_time: float,
-        verbose: bool,
-    ) -> ExtractionResultB3:
-        """Enrich the raw result, log a summary, and optionally print it."""
-        result['assets'] = assets_list
-        result['processing_mode'] = processing_mode
-        result['elapsed_time'] = elapsed_time
-
-        enriched = HistoricalQuotesResultFormatter.enrich_result(result)
-
-        logger.info(
-            f'Extraction completed: {result["success_count"]} successful, '
-            f'{result["error_count"]} errors, '
-            f'{result["total_records"]} records extracted'
-        )
-
-        if verbose:
-            self._result_formatter.print_result(result)
-
-        return enriched
 
     def get_available_assets(self) -> list[str]:
         """Get all available B3 asset classes that can be extracted.
@@ -338,6 +224,8 @@ class HistoricalQuotesB3:
             - 'exercicio_opcoes': Options exercise
             - 'forward': Forward market
             - 'leilao': Auction market
+            - 'lote_bloco': Block-lot market (TPMERC 021)
+            - 'todos': Complete selection of every valid numeric market
 
         Example:
             >>> b3 = HistoricalQuotesB3()
@@ -374,19 +262,3 @@ class HistoricalQuotesB3:
     def __repr__(self) -> str:
         """Return a string representation of the client."""
         return 'HistoricalQuotesB3()'
-
-    def _resolve_initial_year(self, initial_year: int | None) -> int:
-        """Resolve initial_year, falling back to minimal year if omitted."""
-        if initial_year is None:
-            resolved = self._available_years_use_case.get_minimal_year()
-            logger.debug('initial_year omitted, using min: %s', resolved)
-            return resolved
-        return initial_year
-
-    def _resolve_last_year(self, last_year: int | None) -> int:
-        """Resolve last_year, falling back to current year if omitted."""
-        if last_year is None:
-            resolved = self._available_years_use_case.get_current_year()
-            logger.debug('last_year omitted, using current: %s', resolved)
-            return resolved
-        return last_year

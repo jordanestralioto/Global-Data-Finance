@@ -104,12 +104,14 @@ um ano. Quando existe um único ano, ele pode ser inferido. Com vários anos,
 `COTAHIST_TEST_YEAR` é obrigatório; ela nunca escolhe silenciosamente o maior
 ano. O catálogo valida o central directory e a resolução do membro interno. A
 paridade limitada cria uma amostra real não vazia de até 20.000 registros `01`
-e compara fast/slow nas 20 colunas com tipos e ordenação exatos; como executa
-os dois modos de processamento, ela é marcada `slow`. A prova anual em `fast`
-valida schema Arrow, contagem de registros e limites de data. Outra prova anual
-`slow` compara contagens, schema e igualdade de tabela ou digest lógico entre
-`fast` e `slow`. Todas as provas que processam dados são `slow`; a verificação
-sem `slow` apenas inspeciona uma linha por arquivo no catálogo local.
+e compara fast/slow nos 32 campos Arrow, com tipos e valores exatos; como
+executa os dois modos de processamento, ela é marcada `slow`. A prova anual em
+`fast` valida o schema Arrow v2, contagem de registros e limites de data. Outra
+prova anual `slow` compara contagens, schema e igualdade de tabela ou digest
+lógico entre `fast` e `slow`. A auditoria completa também compara cada campo e
+os bytes originais dos registros COTAHIST ao Parquet usando um decoder
+independente. Todas as provas que processam dados são `slow`; a verificação sem
+`slow` apenas inspeciona uma linha por arquivo no catálogo local.
 
 ```bash
 COTAHIST_PATH=./cotahist_b3 COTAHIST_TEST_YEAR=2000 \
@@ -144,14 +146,60 @@ uv run --locked --no-sync python scripts/real_validation.py \
   --timeout 3600
 ```
 
-`all` cria os 25 anos COTAHIST de 2000 a 2024 e as sete janelas CVM
-documentadas, totalizando 102 combinações CVM. Para cada ano COTAHIST, o
-executor roda `fast` e uma paridade integral `fast`/`slow`; o arquivo local é
-validado e selecionado com precedência ZIP antes do processamento. COTAHIST
-nunca é baixado pelo executor. A matriz CVM acessa somente os URLs oficiais
-explicitamente definidos pelo código e classifica HTTP 404/410 como
+`all` cria casos COTAHIST para cada ano do catálogo local dentro do intervalo
+solicitado (ou de todos os anos disponíveis quando o intervalo é omitido) e
+as combinações válidas das sete janelas documentais CVM, atualmente 102. Anos
+ausentes no intervalo pedido fazem a campanha falhar antes do processamento.
+Com `--cotahist-mode all`, cada ano recebe uma prova `fast` e uma paridade
+integral `fast`/`slow`; a campanha também inclui uma paridade integral
+multi-anual para todo o intervalo. A preparação confere nomes, containers,
+anos e hashes e aplica a precedência ZIP. Representações ZIP/TXT do mesmo ano
+continuam exigindo conteúdo completo equivalente. A validação de todas as
+cotações acontece na API antes da publicação e novamente na reconciliação
+independente; a preparação do manifesto não repete esse parsing completo.
+Um container inválido impede a criação da campanha; campos inválidos nas
+cotações produzem um caso `failed`, sem publicação pela API.
+COTAHIST nunca é baixado pelo executor.
+A matriz CVM acessa somente os URLs oficiais explicitamente definidos pelo
+código e classifica HTTP 404/410 como
 `not_published`, indisponibilidade de rede como `external_failure` e conteúdo
 inválido ou falha de processamento como `failed`.
+
+Por padrão, a campanha COTAHIST reconcilia os arquivos fornecidos com os hashes
+congelados no próprio manifesto da execução. Selecionar 2000–2026 não impõe
+automaticamente o corpus histórico usado na auditoria inicial. Para exigir
+aquele corpus específico, seus 27 checksums e as métricas históricas, selecione
+explicitamente a paridade multi-anual com `--cotahist-frozen-baseline`:
+
+```bash
+uv run --locked --no-sync python scripts/real_validation.py \
+  --source cotahist --cotahist-path /caminho/externo/COTAHIST \
+  --initial-year 2000 --last-year 2026 --cotahist-mode all \
+  --cotahist-frozen-baseline --case cotahist-multi-parity-2000-2026 \
+  --report /caminho/externo/cotahist-historical-acceptance --timeout 43200 --progress
+```
+
+A opção `--progress` escreve em stderr a preparação, o início e o resultado
+dos casos, e uma atualização a cada 30 segundos enquanto o worker está ativo.
+O stdout continua contendo o resumo JSON final. As etapas de extração,
+validação do Parquet e reconciliação aparecem no log individual do caso.
+Uma atualização de atividade não equivale a progresso de linhas nem comprova
+que a etapa atual está livre de bloqueios. A campanha completa lê todas as
+cotações nos dois modos e pode levar horas; não inicie uma segunda execução
+para substituir uma que ainda está ativa.
+
+A opção exige o intervalo completo e a seleção do caso multi-anual. A intenção
+fica em `frozenBaseline` no caso e é preservada por `--resume`; uma retomada
+não troca uma campanha genérica pela aceitação histórica. Para mudar essa
+seleção, use uma nova pasta de relatório. Sem `--resume`, o CLI rejeita pastas
+com evidência de campanha anterior, preservando os arquivos existentes.
+Caminhos de saída são resolvidos de forma
+consistente, inclusive quando a pasta possui um link simbólico na ancestralidade;
+a contenção no destino e a exigência de um único Parquet continuam obrigatórias.
+
+Na campanha COTAHIST, `DiskFullError` e `PathPermissionError` reportados pela
+extração são `external_failure`; os diagnósticos originais permanecem no
+relatório. Conteúdo inválido e divergências de integridade continuam `failed`.
 
 Cada caso roda em um processo isolado. O diretório indicado por `--report`
 contém `manifest.json`, um `results.jsonl` com apenas o resultado atual de cada
@@ -335,6 +383,7 @@ uv run --locked --no-sync pytest -q \
   tests/tooling/test_real_validation_cases.py \
   tests/tooling/test_real_validation_cvm.py \
   tests/tooling/test_real_validation_matrix.py \
+  tests/tooling/test_real_validation_process.py \
   tests/tooling/test_real_validation_report.py \
   tests/tooling/test_real_validation_resume.py \
   tests/tooling/test_real_validation_runner.py \

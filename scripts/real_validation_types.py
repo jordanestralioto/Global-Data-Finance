@@ -13,6 +13,24 @@ CaseStatus = Literal[
     'external_failure',
     'not_published',
 ]
+ValidationMode = Literal['fast', 'parity', 'multi_parity', 'cvm']
+
+
+@dataclass(frozen=True)
+class ValidationInputSnapshot:
+    """One caller-owned source file frozen into a campaign manifest."""
+
+    path: str
+    size_bytes: int
+    sha256: str
+
+    def to_manifest_dict(self) -> dict[str, object]:
+        """Serialize a source identity with stable manifest field names."""
+        return {
+            'path': self.path,
+            'sizeBytes': self.size_bytes,
+            'sha256': self.sha256,
+        }
 
 
 class ExternalFailure(RuntimeError):
@@ -33,10 +51,14 @@ class ValidationCase:
     input_path: str
     output_root: str
     document: str | None = None
-    mode: Literal['fast', 'parity', 'cvm'] = 'cvm'
+    mode: ValidationMode = 'cvm'
     url: str | None = None
     input_size_bytes: int | None = None
     input_sha256: str | None = None
+    initial_year: int | None = None
+    last_year: int | None = None
+    input_files: tuple[ValidationInputSnapshot, ...] = ()
+    frozen_baseline: bool = False
 
     def to_manifest_dict(self) -> dict[str, object]:
         """Serialize the case with stable keys and no runtime state."""
@@ -51,23 +73,37 @@ class ValidationCase:
             'url': self.url,
             'inputSizeBytes': self.input_size_bytes,
             'inputSha256': self.input_sha256,
+            'initialYear': self.initial_year,
+            'lastYear': self.last_year,
+            'inputFiles': [
+                item.to_manifest_dict() for item in self.input_files
+            ],
+            'frozenBaseline': self.frozen_baseline,
         }
 
     def command(self) -> list[str]:
         """Return the public operation represented by this case."""
         if self.source == 'cotahist':
+            first_year = self.initial_year or self.year
+            last_year = self.last_year or self.year
             processing_mode = (
-                'fast+slow' if self.mode == 'parity' else self.mode
+                'fast+slow'
+                if self.mode in {'parity', 'multi_parity'}
+                else self.mode
             )
-            return [
+            command = [
                 'HistoricalQuotesB3.extract_async',
                 f'path_of_docs={Path(self.input_path).parent}',
-                'assets_list=[ações]',
-                f'initial_year={self.year}',
-                f'last_year={self.year}',
+                'assets_list=[todos]',
+                f'initial_year={first_year}',
+                f'last_year={last_year}',
                 f'processing_mode={processing_mode}',
+                'independent_raw_reconciliation=True',
                 'automatic_network_access=False',
             ]
+            if self.frozen_baseline:
+                command.append('historical_frozen_baseline=True')
+            return command
         return [
             'FundamentalStocksDataCVM.download',
             f'destination_path={self.output_root}',

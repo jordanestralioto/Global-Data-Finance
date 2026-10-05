@@ -1,6 +1,5 @@
 """Ordered, non-destructive merge tests for B3 transaction artifacts."""
 
-from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
@@ -13,35 +12,17 @@ from globaldatafinance.brazil.b3_data.historical_quotes import (
     parquet_writer,
 )
 from globaldatafinance.macro_exceptions import ExtractionError
+from tests.support.builders import build_b3_typed_record
 
 pytestmark = pytest.mark.integration
 
 
 def _record(ticker: str) -> dict[str, object]:
     """Build a complete typed record accepted by the canonical B3 schema."""
-    decimal = Decimal('1.23')
-    return {
-        'data_pregao': date(2024, 1, 2),
-        'codigo_bdi': '02',
-        'ticker': ticker,
-        'tipo_mercado': '010',
-        'nome_resumido': ticker,
-        'especificacao_papel': 'ON',
-        'preco_abertura': decimal,
-        'preco_maximo': decimal,
-        'preco_minimo': decimal,
-        'preco_medio': decimal,
-        'preco_fechamento': decimal,
-        'melhor_oferta_compra': decimal,
-        'melhor_oferta_venda': decimal,
-        'numero_negocios': 1,
-        'quantidade_total': 2,
-        'volume_total': decimal,
-        'data_vencimento': None,
-        'fator_cotacao': 1,
-        'codigo_isin': 'BRTESTE00001',
-        'numero_distribuicao': 1,
-    }
+    return build_b3_typed_record(
+        ticker=ticker,
+        price=Decimal('1.23'),
+    )
 
 
 def _write(path: Path, ticker: str) -> None:

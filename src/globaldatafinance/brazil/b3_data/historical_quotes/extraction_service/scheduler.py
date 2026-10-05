@@ -11,9 +11,12 @@ from concurrent.futures import (
     ThreadPoolExecutor,
 )
 from pathlib import Path
+from threading import Event
 from typing import Any, Protocol
 
 from .....core import get_logger
+from ..async_execution import run_blocking_phase
+from ..models import ValidatedCotahistSource
 from ..processing import ProcessingModeEnumB3
 from ..zip_reader import ZipFileReaderB3
 from .process_worker import init_worker, process_source_worker
@@ -85,7 +88,7 @@ class ExtractionSchedulerB3:
                 initargs=(cancel_event,),
             )
             return executor, cancel_event, True
-        return ThreadPoolExecutor(max_workers=worker_limit), None, False
+        return ThreadPoolExecutor(max_workers=worker_limit), Event(), False
 
     def _submit_source(
         self,
@@ -95,6 +98,10 @@ class ExtractionSchedulerB3:
         temp_output: Path,
         *,
         use_processes: bool,
+        cancel_event: Any | None,
+        source_descriptor: ValidatedCotahistSource | None,
+        all_markets: bool,
+        schema_metadata: dict[bytes, bytes] | None,
     ) -> Future[SourceExtractionResult]:
         """Submit one source extraction task to the active executor."""
         if use_processes:
@@ -105,12 +112,19 @@ class ExtractionSchedulerB3:
                 str(temp_output),
                 python_record_limit=self.zip_processor.python_record_limit,
                 archive_safety_limits=self.zip_reader.limits,
+                source_descriptor=source_descriptor,
+                all_markets=all_markets,
+                schema_metadata=schema_metadata,
             )
         return executor.submit(
             self._process_source_with_retry,
             source,
             target_tpmerc_codes,
             temp_output,
+            source_descriptor,
+            all_markets,
+            schema_metadata,
+            cancel_event,
         )
 
     def _drain_completed_tasks(
@@ -152,26 +166,37 @@ class ExtractionSchedulerB3:
         """Join workers without blocking the calling event loop."""
         if cancel_event is not None:
             cancel_event.set()
-        with ThreadPoolExecutor(max_workers=1) as shutdown_executor:
-            shutdown_future = shutdown_executor.submit(
-                executor.shutdown,
-                wait=True,
-                cancel_futures=cancel_futures,
-            )
-            while not shutdown_future.done():
-                await asyncio.sleep(0.01)
-            shutdown_future.result()
+        await run_blocking_phase(
+            executor.shutdown,
+            wait=True,
+            cancel_futures=cancel_futures,
+        )
 
     def _process_source_with_retry(
         self,
         source: str,
         target_tpmerc_codes: set[str],
         temp_output: Path,
+        source_descriptor: ValidatedCotahistSource | None,
+        all_markets: bool,
+        schema_metadata: dict[bytes, bytes] | None,
+        cancel_event: Any | None,
     ) -> SourceExtractionResult:
         """Retry only a transient unpublished source worker operation."""
+        processor = ZipProcessorB3(
+            self.zip_processor.zip_reader,
+            self.zip_processor.parser_factory,
+            python_record_limit=self.zip_processor.python_record_limit,
+            cancel_event=cancel_event,
+        )
         return retry_unpublished_io(
-            lambda: self.zip_processor.process(
-                source, target_tpmerc_codes, temp_output
+            lambda: processor.process(
+                source,
+                target_tpmerc_codes,
+                temp_output,
+                source_descriptor=source_descriptor,
+                all_markets=all_markets,
+                schema_metadata=schema_metadata,
             )
         )
 
@@ -180,6 +205,10 @@ class ExtractionSchedulerB3:
         sources: list[str],
         target_tpmerc_codes: set[str],
         staging_dir: Path,
+        *,
+        source_descriptors: dict[str, ValidatedCotahistSource] | None = None,
+        all_markets: bool = False,
+        schema_metadata: dict[bytes, bytes] | None = None,
     ) -> ExtractionState:
         """Schedule at most the current worker limit without eager tasks."""
         state = ExtractionState()
@@ -219,6 +248,14 @@ class ExtractionSchedulerB3:
                         target_tpmerc_codes,
                         temp_output,
                         use_processes=use_processes,
+                        cancel_event=cancel_event,
+                        source_descriptor=(
+                            source_descriptors.get(source)
+                            if source_descriptors is not None
+                            else None
+                        ),
+                        all_markets=all_markets,
+                        schema_metadata=schema_metadata,
                     )
                     active[future] = (next_index, source)
                     next_index += 1

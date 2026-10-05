@@ -71,7 +71,19 @@ def run_validator(
 ) -> tuple[int, str, dict[str, str]]:
     """Run the extracted validator script in an isolated subprocess."""
     output_file = env.get('GITHUB_OUTPUT')
-    sub_env = dict(os.environ)
+    sub_env = {
+        k: v
+        for k, v in os.environ.items()
+        if not k.startswith('GITHUB_')
+        and k
+        not in {
+            'EVENT_NAME',
+            'RELEASE_TAG',
+            'RELEASE_REF',
+            'IS_PRERELEASE',
+            'DRY_RUN',
+        }
+    }
     if custom_path is not None:
         sub_env['PATH'] = custom_path
     sub_env.update(env)

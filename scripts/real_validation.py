@@ -20,7 +20,10 @@ from scripts.real_validation_report import (
 )
 from scripts.real_validation_runner import resume_cases, run_campaign
 from scripts.real_validation_types import ValidationCase
-from scripts.real_validation_utils import validate_external_directory
+from scripts.real_validation_utils import (
+    emit_progress,
+    validate_external_directory,
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -32,11 +35,21 @@ def main(argv: list[str] | None = None) -> int:
             args.cvm_output, '--cvm-output'
         )
         timeout = _positive_timeout(args.timeout)
+        if args.progress:
+            emit_progress('Preparing campaign inputs and source identities')
         if args.resume:
             cases = resume_cases(report_path)
+            if args.cotahist_frozen_baseline and not any(
+                case.frozen_baseline for case in cases
+            ):
+                raise ValueError(
+                    '--resume preserves the manifest historical baseline '
+                    'selection; start a new campaign to change it'
+                )
             _validate_case_output_roots(cases)
         else:
             source = _required_source(args.source)
+            _require_new_campaign_report(report_path)
             cases = build_cases(
                 source=source,
                 initial_year=args.initial_year,
@@ -45,8 +58,16 @@ def main(argv: list[str] | None = None) -> int:
                 cotahist_path=args.cotahist_path,
                 cvm_output=cvm_output,
                 cotahist_modes=args.cotahist_mode,
+                cotahist_frozen_baseline=args.cotahist_frozen_baseline,
             )
             cases = _filter_cases(cases, args.case)
+            if args.cotahist_frozen_baseline and not any(
+                case.frozen_baseline for case in cases
+            ):
+                raise ValueError(
+                    '--cotahist-frozen-baseline requires selecting the '
+                    'complete multi-year parity case'
+                )
             _validate_case_output_roots(cases)
             write_json(
                 report_path / 'manifest.json',
@@ -61,6 +82,11 @@ def main(argv: list[str] | None = None) -> int:
                     timeout=timeout,
                 ),
             )
+        if args.progress:
+            emit_progress(
+                f'Prepared {len(cases)} case(s); report={report_path}'
+            )
+            return run_campaign(report_path, cases, timeout, progress=True)
         return run_campaign(report_path, cases, timeout)
     except (OSError, ReportFormatError, SecurityError, ValueError) as error:
         _emit_error('invalid_campaign', str(error))
@@ -95,6 +121,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help='COTAHIST cases to include; parity executes fast and slow',
     )
     parser.add_argument(
+        '--cotahist-frozen-baseline',
+        action='store_true',
+        help='opt into the versioned historical 2000-2026 corpus acceptance',
+    )
+    parser.add_argument(
         '--case',
         help='run only this case ID after building the requested matrix',
     )
@@ -114,6 +145,11 @@ def _build_parser() -> argparse.ArgumentParser:
         action='store_true',
         help='resume the case matrix recorded in report/manifest.json',
     )
+    parser.add_argument(
+        '--progress',
+        action='store_true',
+        help='emit case progress to stderr while preserving JSON stdout',
+    )
     return parser
 
 
@@ -131,6 +167,23 @@ def _positive_timeout(value: float) -> float:
 
 def _validate_report_path(raw_path: str) -> Path:
     return _validate_external_directory(raw_path, '--report')
+
+
+def _require_new_campaign_report(report_path: Path) -> None:
+    """Preserve existing evidence and require an explicit campaign resume."""
+    reserved = (
+        'manifest.json',
+        'results.jsonl',
+        'summary.json',
+        'logs',
+        'work',
+    )
+    if any((report_path / name).exists() for name in reserved):
+        raise ValueError(
+            'report directory already contains campaign evidence; use '
+            '--resume to retain its selection or a new report directory '
+            'to start a different campaign'
+        )
 
 
 def _validate_optional_external_directory(

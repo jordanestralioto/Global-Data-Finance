@@ -22,6 +22,7 @@ from globaldatafinance.brazil.b3_data.historical_quotes import (
     extraction_service,
 )
 from globaldatafinance.brazil.b3_data.historical_quotes.integrity import (
+    B3RawLine,
     B3RecordContext,
 )
 from globaldatafinance.brazil.b3_data.historical_quotes.processing import (
@@ -187,7 +188,7 @@ async def test_process_backend_failure_isolation_rolls_back_cleanly(
     err_msg = result['errors']['COTAHIST_A2025.TXT']
     assert 'BrokenProcessPool' not in err_msg
     assert 'ExtractionError' in err_msg
-    assert 'Expected exactly 245 characters' in err_msg
+    assert 'Expected exactly 245 bytes' in err_msg
 
 
 def test_processing_cancelled_pickle_roundtrip() -> None:
@@ -226,7 +227,7 @@ async def test_process_pool_spawn_error_propagation_preserves_b3_cause(
     err_text = result['errors']['COTAHIST_A2024.TXT']
     assert 'BrokenProcessPool' not in err_text
     assert 'ExtractionError' in err_text
-    assert 'no type-01 quote data record' in err_text
+    assert 'Trailer is repeated, misplaced, or has no quotes' in err_text
 
 
 @pytest.mark.asyncio
@@ -405,6 +406,25 @@ class _InstrumentedZipReader(ZipFileReaderB3):
                 self._advanced_beyond_checkpoint_event.set()
             yield line, context
 
+    def iter_raw_lines(
+        self,
+        source_path: str,
+        *,
+        expected_member: str | None = None,
+    ) -> Iterator[B3RawLine]:
+        for line_number, raw_line in enumerate(
+            super().iter_raw_lines(
+                source_path, expected_member=expected_member
+            ),
+            start=1,
+        ):
+            if line_number == self._checkpoint_line:
+                self._checkpoint_reached_event.set()
+                self._cancel_event.wait(timeout=5.0)
+            elif line_number > self._checkpoint_line:
+                self._advanced_beyond_checkpoint_event.set()
+            yield raw_line
+
 
 class _InstrumentedReaderFactory:
     """Pickleable factory for spawn-isolated worker processes."""
@@ -563,10 +583,10 @@ def test_historical_quotes_b3_invalid_backend_fails_fast_without_side_effects(
     assert set(tmp_path.iterdir()) == before_entries
 
 
-def test_historical_quotes_b3_last_phase_timings_reset_on_empty_run(
+def test_historical_quotes_b3_last_phase_timings_reset_on_missing_year(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Phase timings are cleared and isolated between successful and empty."""
+    """Missing-year preflight fails and clears prior phase timings."""
     write_cotahist_txt(
         tmp_path,
         year=2023,
@@ -599,11 +619,9 @@ def test_historical_quotes_b3_last_phase_timings_reset_on_empty_run(
         output_filename='run2.parquet',
         processing_mode='fast',
     )
-    assert res2['success'] is True
-    assert res2['total_files'] == 0
-    assert client._last_phase_timings['merge_status'] == 'bypassed'
-    assert client._last_phase_timings['source_wall_seconds'] == 0.0
-    assert client._last_phase_timings['validation_wall_seconds'] == 0.0
+    assert res2['success'] is False
+    assert res2['integrity']['missing_years'] == [2010]
+    assert client._last_phase_timings == {}
 
 
 @pytest.mark.slow

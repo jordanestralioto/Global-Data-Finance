@@ -2,18 +2,40 @@ from pathlib import Path
 
 import pytest
 
+from globaldatafinance.brazil.b3_data.historical_quotes.errors import (
+    CotahistCatalogError,
+)
 from globaldatafinance.brazil.b3_data.historical_quotes.filesystem import (
     FileSystemServiceB3,
 )
 from globaldatafinance.core.utils import assert_path_not_sensitive
 from globaldatafinance.macro_exceptions import (
-    EmptyDirectoryError,
     InvalidDestinationPathError,
     PathIsNotDirectoryError,
     SecurityError,
 )
+from tests.support.builders import (
+    build_cotahist_record,
+    write_cotahist_txt,
+    write_cotahist_zip,
+)
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.integration
+
+
+def _write_source(path: Path) -> None:
+    """Create a fully valid annual source under the requested test basename."""
+    year = int(path.stem[-4:])
+    writer = (
+        write_cotahist_zip
+        if path.suffix.casefold() == '.zip'
+        else write_cotahist_txt
+    )
+    source = writer(
+        path.parent, year=year, records=[build_cotahist_record(year=year)]
+    )
+    if source != path:
+        source.rename(path)
 
 
 class TestFileSystemService:
@@ -70,12 +92,13 @@ class TestFileSystemService:
         with pytest.raises(PathIsNotDirectoryError):
             service.validate_directory_path(str(file_path))
 
-    def test_validate_directory_path_empty_directory(self, service, tmp_path):
+    def test_validate_directory_path_allows_empty_source_directory(
+        self, service, tmp_path
+    ):
         empty_dir = tmp_path / 'empty'
         empty_dir.mkdir()
 
-        with pytest.raises(EmptyDirectoryError):
-            service.validate_directory_path(str(empty_dir))
+        assert service.validate_directory_path(str(empty_dir)) == empty_dir
 
     def test_validate_directory_path_with_tilde_expansion(
         self, service, tmp_path
@@ -210,9 +233,7 @@ class TestFileSystemServiceSecurityValidation:
 
         traversal_path = str(safe_dir / '..' / '..' / '..' / 'etc')
 
-        with pytest.raises(
-            (PathIsNotDirectoryError, SecurityError, EmptyDirectoryError)
-        ):
+        with pytest.raises((PathIsNotDirectoryError, SecurityError)):
             service.validate_directory_path(traversal_path)
 
 
@@ -225,8 +246,8 @@ class TestFileSystemServiceFindFiles:
         test_dir = tmp_path / 'data'
         test_dir.mkdir()
 
-        (test_dir / 'COTAHIST_A2023.ZIP').write_text('data')
-        (test_dir / 'COTAHIST_A2022.ZIP').write_text('data')
+        _write_source(test_dir / 'COTAHIST_A2023.ZIP')
+        _write_source(test_dir / 'COTAHIST_A2022.ZIP')
 
         years = range(2023, 2024)
         result = service.find_files_by_years(test_dir, years)
@@ -239,11 +260,11 @@ class TestFileSystemServiceFindFiles:
         test_dir = tmp_path / 'data'
         test_dir.mkdir()
 
-        (test_dir / 'COTAHIST_A2020.ZIP').write_text('data')
-        (test_dir / 'COTAHIST_A2021.ZIP').write_text('data')
-        (test_dir / 'COTAHIST_A2022.ZIP').write_text('data')
-        (test_dir / 'COTAHIST_A2023.ZIP').write_text('data')
-        (test_dir / 'COTAHIST_A2024.ZIP').write_text('data')
+        _write_source(test_dir / 'COTAHIST_A2020.ZIP')
+        _write_source(test_dir / 'COTAHIST_A2021.ZIP')
+        _write_source(test_dir / 'COTAHIST_A2022.ZIP')
+        _write_source(test_dir / 'COTAHIST_A2023.ZIP')
+        _write_source(test_dir / 'COTAHIST_A2024.ZIP')
 
         years = range(2021, 2024)
         result = service.find_files_by_years(test_dir, years)
@@ -259,8 +280,8 @@ class TestFileSystemServiceFindFiles:
         test_dir = tmp_path / 'data'
         test_dir.mkdir()
 
-        (test_dir / 'COTAHIST_A2020.ZIP').write_text('data')
-        (test_dir / 'COTAHIST_A2021.ZIP').write_text('data')
+        _write_source(test_dir / 'COTAHIST_A2020.ZIP')
+        _write_source(test_dir / 'COTAHIST_A2021.ZIP')
 
         years = range(2025, 2027)
         result = service.find_files_by_years(test_dir, years)
@@ -282,7 +303,7 @@ class TestFileSystemServiceFindFiles:
         test_dir = tmp_path / 'data'
         test_dir.mkdir()
 
-        (test_dir / 'COTAHIST_A2023.ZIP').write_text('data')
+        _write_source(test_dir / 'COTAHIST_A2023.ZIP')
         subdir = test_dir / 'COTAHIST_A2023'
         subdir.mkdir()
 
@@ -296,8 +317,8 @@ class TestFileSystemServiceFindFiles:
         test_dir = tmp_path / 'data'
         test_dir.mkdir()
 
-        (test_dir / 'COTAHIST_A2023.ZIP').write_text('data')
-        (test_dir / 'COTAHIST_A2023.TXT').write_text('data')
+        _write_source(test_dir / 'COTAHIST_A2023.ZIP')
+        _write_source(test_dir / 'COTAHIST_A2023.TXT')
         # Non-official extension must be ignored.
         (test_dir / 'COTAHIST_A2023.CSV').write_text('data')
 
@@ -312,7 +333,7 @@ class TestFileSystemServiceFindFiles:
         test_dir = tmp_path / 'data'
         test_dir.mkdir()
         txt_path = test_dir / 'COTAHIST_A2023.TXT'
-        txt_path.write_text('data')
+        _write_source(txt_path)
 
         result = service.find_files_by_years(test_dir, range(2023, 2024))
 
@@ -325,19 +346,19 @@ class TestFileSystemServiceFindFiles:
         test_dir.mkdir()
         zip_path = test_dir / 'COTAHIST_A2023.ZIP'
         txt_path = test_dir / 'COTAHIST_A2023.TXT'
-        zip_path.write_text('zip')
-        txt_path.write_text('txt')
+        _write_source(zip_path)
+        _write_source(txt_path)
 
         result = service.find_files_by_years(test_dir, range(2023, 2024))
 
         assert result == {str(zip_path)}
-        assert 'selecting one deterministically' in caplog.text
+        assert 'ignored after complete validation' in caplog.text
         warning = next(
             record
             for record in caplog.records
             if record.levelname == 'WARNING'
         )
-        assert warning.selected_file == str(zip_path)
+        assert warning.selected_files == [str(zip_path)]
         assert warning.ignored_files == [str(txt_path)]
 
     def test_find_files_by_years_is_case_insensitive(self, service, tmp_path):
@@ -346,13 +367,39 @@ class TestFileSystemServiceFindFiles:
 
         lower_case_path = test_dir / 'cotahist_a2023.zip'
         upper_case_path = test_dir / 'CotaHist_A2024.Zip'
-        lower_case_path.write_text('data')
-        upper_case_path.write_text('data')
+        _write_source(lower_case_path)
+        _write_source(upper_case_path)
 
         years = range(2023, 2025)
         result = service.find_files_by_years(test_dir, years)
 
         assert result == {str(lower_case_path), str(upper_case_path)}
+
+    def test_find_files_by_years_rejects_conflicting_duplicate_contents(
+        self, service, tmp_path
+    ):
+        """The filesystem entrypoint cannot bypass catalog conflict checks."""
+        _write_source(tmp_path / 'COTAHIST_A2023.ZIP')
+        write_cotahist_txt(
+            tmp_path,
+            year=2023,
+            records=[build_cotahist_record(year=2023, ticker='VALE3')],
+        )
+
+        with pytest.raises(
+            CotahistCatalogError, match='Conflicting ZIP and TXT'
+        ):
+            service.find_files_by_years(tmp_path, range(2023, 2024))
+
+    def test_find_files_by_years_validates_duplicate_txt_before_ignoring_it(
+        self, service, tmp_path
+    ):
+        """A valid ZIP never hides a corrupt annual TXT representation."""
+        _write_source(tmp_path / 'COTAHIST_A2023.ZIP')
+        (tmp_path / 'COTAHIST_A2023.TXT').write_bytes(b'invalid')
+
+        with pytest.raises(CotahistCatalogError, match=r'COTAHIST_A2023\.TXT'):
+            service.find_files_by_years(tmp_path, range(2023, 2024))
 
     def test_find_files_by_years_ignores_non_cotahist_files(
         self, service, tmp_path
@@ -393,7 +440,7 @@ class TestFileSystemServiceFindFiles:
         test_dir = tmp_path / 'data'
         test_dir.mkdir()
 
-        (test_dir / 'COTAHIST_A2023.ZIP').write_text('data')
+        _write_source(test_dir / 'COTAHIST_A2023.ZIP')
 
         years = range(2023, 2023)
         result = service.find_files_by_years(test_dir, years)
@@ -410,9 +457,9 @@ class TestFileSystemServiceIntegration:
         data_dir = tmp_path / 'cotahist_data'
         data_dir.mkdir()
 
-        (data_dir / 'COTAHIST_A2022.ZIP').write_text('data')
-        (data_dir / 'COTAHIST_A2023.ZIP').write_text('data')
-        (data_dir / 'COTAHIST_A2024.ZIP').write_text('data')
+        _write_source(data_dir / 'COTAHIST_A2022.ZIP')
+        _write_source(data_dir / 'COTAHIST_A2023.ZIP')
+        _write_source(data_dir / 'COTAHIST_A2024.ZIP')
 
         validated_path = service.validate_directory_path(str(data_dir))
 
@@ -456,7 +503,7 @@ class TestFileSystemServiceIntegration:
         data_dir.mkdir()
 
         for year in range(2000, 2025):
-            (data_dir / f'COTAHIST_A{year}.ZIP').write_text('data')
+            _write_source(data_dir / f'COTAHIST_A{year}.ZIP')
 
         validated_path = service.validate_directory_path(str(data_dir))
 
@@ -514,7 +561,7 @@ class TestFileSystemServiceEdgeCases:
         data_dir = tmp_path / 'data'
         data_dir.mkdir()
 
-        (data_dir / 'COTAHIST_A2023.zip').write_text('data')
+        _write_source(data_dir / 'COTAHIST_A2023.zip')
         (data_dir / 'file_2023.zip').write_text('data')
         (data_dir / 'COTAHIST_AXXXX.zip').write_text('data')
 

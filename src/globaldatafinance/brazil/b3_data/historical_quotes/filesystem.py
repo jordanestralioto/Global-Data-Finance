@@ -1,6 +1,5 @@
 """Filesystem validation helpers for B3 historical quotes."""
 
-import re
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -12,16 +11,11 @@ from ....core.utils.destination_paths import (
     validate_existing_writable_directory,
 )
 from ....macro_exceptions import (
-    EmptyDirectoryError,
     PathIsNotDirectoryError,
 )
+from .catalog import resolve_cotahist_sources
 
 logger = get_logger(__name__)
-
-_COTAHIST_YEAR_PATTERN = re.compile(
-    r'^COTAHIST_A(\d{4})\.(?:ZIP|TXT)$',
-    re.IGNORECASE,
-)
 
 
 class FileSystemServiceB3:
@@ -59,9 +53,6 @@ class FileSystemServiceB3:
         if not normalized_path.is_dir():
             raise PathIsNotDirectoryError(str(normalized_path), exists=True)
 
-        if not any(normalized_path.iterdir()):
-            raise EmptyDirectoryError(str(normalized_path))
-
         logger.debug(
             'Directory path validated successfully',
             extra={'normalized_path': str(normalized_path)},
@@ -90,64 +81,24 @@ class FileSystemServiceB3:
         return normalized
 
     def find_files_by_years(self, directory: Path, years: range) -> set[str]:
-        """Find one official COTAHIST input file for each requested year.
+        """Return validated annual inputs selected by the canonical catalog.
 
-        Only files matching the official annual B3 naming contract
-        ``COTAHIST_A{YYYY}.(ZIP|TXT)`` are considered. The four-digit year
-        is extracted from the name and compared against the requested year
-        set, so files like ``data_12020.zip`` no longer match ``2020`` and
-        non-COTAHIST files in the directory are ignored. If both extensions
-        exist for one year, the official ZIP is selected and the TXT is
-        ignored to prevent duplicate records and temporary-file collisions.
-        When multiple matching files have the same extension, the
-        case-insensitive filename order is used for deterministic selection.
-
-        Args:
-            directory: Directory to scan for COTAHIST files.
-            years: Range of years to match against.
-
-        Returns:
-            Set of absolute file paths, with at most one selected file per
-            requested year.
+        Both ZIP and TXT representations pass full source validation before
+        an equivalent TXT can be ignored. Missing years contribute no paths;
+        extraction reports coverage using the full catalog resolution.
         """
-        requested_years = set(years)
-        if not requested_years:
+        if not years:
             return set()
-
-        candidates_by_year: dict[int, list[Path]] = {}
-        for file in directory.iterdir():
-            if not file.is_file():
-                continue
-            match = _COTAHIST_YEAR_PATTERN.match(file.name)
-            if match is None:
-                continue
-            year = int(match.group(1))
-            if year in requested_years:
-                candidates_by_year.setdefault(year, []).append(file)
-
-        matching_files: set[str] = set()
-        for year, candidates in candidates_by_year.items():
-            ordered_candidates = sorted(
-                candidates,
-                key=lambda path: (
-                    path.suffix.lower() != '.zip',
-                    path.name.casefold(),
-                    path.name,
-                ),
+        resolution = resolve_cotahist_sources(directory, expected_years=years)
+        matching_files = {str(source.path) for source in resolution.sources}
+        if resolution.ignored_duplicate_sources:
+            logger.warning(
+                'Equivalent COTAHIST TXT ignored after complete validation',
+                extra={
+                    'selected_files': sorted(matching_files),
+                    'ignored_files': list(
+                        resolution.ignored_duplicate_sources
+                    ),
+                },
             )
-            selected = ordered_candidates[0]
-            matching_files.add(str(selected))
-
-            ignored = ordered_candidates[1:]
-            if ignored:
-                logger.warning(
-                    'Multiple COTAHIST inputs found for year; selecting one '
-                    'deterministically',
-                    extra={
-                        'year': year,
-                        'selected_file': str(selected),
-                        'ignored_files': [str(path) for path in ignored],
-                    },
-                )
-
         return matching_files

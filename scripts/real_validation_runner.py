@@ -25,6 +25,7 @@ from .real_validation_report import (
 from .real_validation_resume import resume_cases as _resume_cases
 from .real_validation_types import CaseStatus, ValidationCase
 from .real_validation_utils import (
+    emit_progress,
     sha256_file,
     temporary_paths,
 )
@@ -52,7 +53,11 @@ def resume_cases(report_path: Path) -> list[ValidationCase]:
 
 
 def run_campaign(
-    report_path: Path, cases: list[ValidationCase], timeout: float
+    report_path: Path,
+    cases: list[ValidationCase],
+    timeout: float,
+    *,
+    progress: bool = False,
 ) -> int:
     """Run pending cases, persist every result, and emit a summary."""
     results_path = report_path / 'results.jsonl'
@@ -67,7 +72,7 @@ def run_campaign(
     for result in results.values():
         validate_status(result.get('status'))
     start_time = time.perf_counter()
-    for case in cases:
+    for index, case in enumerate(cases, start=1):
         previous = results.get(case.case_id)
         if previous is not None and validate_status(
             previous.get('status')
@@ -77,11 +82,24 @@ def run_campaign(
             'skipped',
             'not_published',
         }:
+            if progress:
+                emit_progress(
+                    f'[{index}/{len(cases)}] {case.case_id}: '
+                    f'retained {previous["status"]}'
+                )
             continue
-        result = _run_isolated_case(report_path, case, timeout)
+        if progress:
+            emit_progress(f'[{index}/{len(cases)}] {case.case_id}: started')
+            result = _run_isolated_case(
+                report_path, case, timeout, progress=True
+            )
+        else:
+            result = _run_isolated_case(report_path, case, timeout)
         validate_status(result.get('status'))
         results[case.case_id] = result
         write_results(results_path, results)
+        if progress:
+            emit_progress(f'{case.case_id}: {result["status"]}')
     summary = build_summary(
         expected_case_ids,
         results,
@@ -114,7 +132,11 @@ def _process_check() -> dict[str, Any]:
 
 
 def _run_isolated_case(
-    report_path: Path, case: ValidationCase, timeout: float
+    report_path: Path,
+    case: ValidationCase,
+    timeout: float,
+    *,
+    progress: bool = False,
 ) -> dict[str, Any]:
     workspace_parent = _workspace_parent(report_path, case)
     workspace_parent.mkdir(parents=True, exist_ok=True)
@@ -130,7 +152,15 @@ def _run_isolated_case(
         args=(case, timeout, workspace, log_path, result_queue),
     )
     process.start()
-    process.join(timeout)
+    deadline = time.monotonic() + timeout
+    result = _receive_worker_result(
+        result_queue,
+        process,
+        deadline,
+        progress=progress,
+        case_id=case.case_id,
+    )
+    process.join(timeout=max(0.0, deadline - time.monotonic()))
     if process.is_alive():
         _terminate_process(process)
         result = _control_result(
@@ -139,16 +169,13 @@ def _run_isolated_case(
             f'case exceeded the {timeout:g}s process timeout',
         )
         _append_log(log_path, result['message'])
-    else:
-        try:
-            result = result_queue.get(timeout=1.0)
-        except queue.Empty:
-            result = _control_result(
-                case,
-                'failed',
-                'isolated case exited without evidence '
-                f'(exit code {process.exitcode})',
-            )
+    elif result is None:
+        result = _control_result(
+            case,
+            'failed',
+            'isolated case exited without evidence '
+            f'(exit code {process.exitcode})',
+        )
     result['temporaryFilesAfterCleanup'] = _cleanup_workspace(
         workspace, log_path
     )
@@ -161,6 +188,34 @@ def _run_isolated_case(
     result_queue.close()
     result_queue.join_thread()
     return result
+
+
+def _receive_worker_result(
+    result_queue: multiprocessing.Queue[dict[str, Any]],
+    process: _TerminableProcess,
+    deadline: float,
+    *,
+    progress: bool = False,
+    case_id: str = '',
+) -> dict[str, Any] | None:
+    """Drain evidence before joining the child that flushes the queue."""
+    started = time.monotonic()
+    next_progress = started + 30.0
+    while (remaining := deadline - time.monotonic()) > 0:
+        try:
+            return result_queue.get(timeout=min(1.0, remaining))
+        except queue.Empty:
+            if not process.is_alive():
+                return None
+            if progress:
+                now = time.monotonic()
+                if now >= next_progress:
+                    emit_progress(
+                        f'{case_id}: worker active; '
+                        f'elapsed={now - started:.0f}s'
+                    )
+                    next_progress = now + 30.0
+    return None
 
 
 def _terminate_process(process: _TerminableProcess) -> None:

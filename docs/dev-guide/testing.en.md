@@ -103,13 +103,14 @@ When exactly one year exists, it may be inferred. With multiple years,
 `COTAHIST_TEST_YEAR` is required; the fixture never silently chooses the
 largest year. The catalog validates the central directory and internal-member
 resolution. Limited parity derives a non-empty sample of up to 20,000 real
-`01` records and compares fast/slow across all 20 columns with exact types and
-ordering; because it runs both processing modes, it is marked `slow`. The
-annual `fast` proof validates the Arrow schema, record count, and date bounds.
-Another annual `slow` proof compares counts, schema, and table equality or a
-logical digest between `fast` and `slow`. Every check that processes data is
-marked `slow`; the non-slow check only inspects one line per file in the local
-catalog.
+`01` records and compares fast/slow across all 32 Arrow fields with exact types
+and values; because it runs both processing modes, it is marked `slow`. The
+annual `fast` proof validates the schema v2 Arrow schema, record count, and date
+bounds. Another annual `slow` proof compares counts, schema, and table equality
+or a logical digest between `fast` and `slow`. The complete audit also compares
+every field and the original COTAHIST record bytes with Parquet through an
+independent decoder. Every check that processes data is marked `slow`; the
+non-slow check only inspects one line per file in the local catalog.
 
 ```bash
 COTAHIST_PATH=./cotahist_b3 COTAHIST_TEST_YEAR=2000 \
@@ -144,14 +145,58 @@ uv run --locked --no-sync python scripts/real_validation.py \
   --timeout 3600
 ```
 
-`all` creates the 25 COTAHIST years from 2000 through 2024 and the seven
-document windows, totaling 102 CVM combinations. For each COTAHIST year, the
-executor runs `fast` and a complete `fast`/`slow` parity; the local file is
-validated and ZIP precedence is applied before processing. COTAHIST is never
-downloaded by the executor. The CVM matrix contacts only the official URLs
-defined explicitly in code and classifies HTTP 404/410 as `not_published`,
+`all` creates COTAHIST cases for every local catalog year in the requested
+range (or every available year when the range is omitted) and valid
+combinations in the seven CVM document windows, currently 102. A missing year
+in the requested range fails the campaign before processing. With
+`--cotahist-mode all`, every year gets a `fast` proof and a complete
+`fast`/`slow` parity; the campaign also includes complete multi-year parity
+over the full range. Preparation checks names, containers, years, and hashes
+and applies ZIP precedence. Coexisting ZIP/TXT representations of one year
+still require identical complete contents. Every quotation is validated by
+the API before publication and by independent reconciliation; preparing the
+manifest does not repeat that complete parsing pass. Invalid containers
+prevent campaign creation; invalid quotation fields produce a `failed` case
+without API publication. COTAHIST is never downloaded by the executor. The CVM
+matrix contacts only the official URLs defined explicitly in code and
+classifies HTTP 404/410 as `not_published`,
 network unavailability as `external_failure`, and invalid content or processing
 failures as `failed`.
+
+By default, COTAHIST campaigns reconcile caller-provided inputs against the
+checksums frozen in that run's own manifest. Selecting 2000–2026 does not
+implicitly require the historical corpus used in the initial audit. To require
+that specific corpus, its 27 checksums, and historical metrics, explicitly
+select multi-year parity with `--cotahist-frozen-baseline`:
+
+```bash
+uv run --locked --no-sync python scripts/real_validation.py \
+  --source cotahist --cotahist-path /external/path/COTAHIST \
+  --initial-year 2000 --last-year 2026 --cotahist-mode all \
+  --cotahist-frozen-baseline --case cotahist-multi-parity-2000-2026 \
+  --report /external/path/cotahist-historical-acceptance --timeout 43200 --progress
+```
+
+`--progress` writes preparation, case start/results, and updates every 30
+seconds while the worker is active to stderr. Stdout retains the final JSON
+summary. Extraction, Parquet validation, and reconciliation stages appear in
+the individual case log. Activity updates are not row progress and do not
+prove the current stage is free of blocking. Full campaigns read every
+quotation in both modes and can take hours; do not launch a second campaign
+to replace one that is still active.
+
+The option requires the complete range and selection of the multi-year case.
+The case persists this intent as `frozenBaseline`, preserved by `--resume`;
+resume cannot switch a generic campaign to historical acceptance. Use a new
+report directory to change this selection. Without `--resume`, the CLI rejects
+directories with previous campaign evidence and preserves their files.
+Output paths are resolved consistently,
+including a symlink in directory ancestry; destination containment and the
+exactly-one-Parquet requirement remain mandatory.
+
+In the COTAHIST campaign, extraction-reported `DiskFullError` and
+`PathPermissionError` are `external_failure`; original diagnostics remain in
+the report. Invalid content and integrity mismatches remain `failed`.
 
 Each case runs in an isolated process. The directory supplied to `--report`
 contains `manifest.json`, one current result per case in `results.jsonl`,
@@ -333,6 +378,7 @@ uv run --locked --no-sync pytest -q \
   tests/tooling/test_real_validation_cases.py \
   tests/tooling/test_real_validation_cvm.py \
   tests/tooling/test_real_validation_matrix.py \
+  tests/tooling/test_real_validation_process.py \
   tests/tooling/test_real_validation_report.py \
   tests/tooling/test_real_validation_resume.py \
   tests/tooling/test_real_validation_runner.py \

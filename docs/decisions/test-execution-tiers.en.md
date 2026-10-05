@@ -72,9 +72,8 @@ enforces these rules:
    directories, ZIP limits, and internal-member resolution without processing
    all records in every file.
 6. Limited parity derives a non-empty sample of up to 20,000 real `01` records
-   in `tmp_path` and compares `fast` and `slow` on all 20 columns, exact dtypes,
-   and deterministic ordering. Because it runs both modes, it is marked
-   `slow`.
+   in `tmp_path` and compares `fast` and `slow` across all 32 Arrow fields with
+   exact types and values. Because it runs both modes, it is marked `slow`.
 7. An annual `fast` proof validates the Arrow schema, record count, and date
    bounds. Another annual `slow` proof compares counts, schema, and table
    equality or a logical digest between `fast` and `slow`.
@@ -104,6 +103,7 @@ this decision together.
 ## Consequences and non-goals
 
 This decision makes test selection predictable, keeps CI deterministic, and
-allows parity validation without placing external financial data in Git. It
-does not change the public API, facade signatures, extraction semantics,
-output names, or persisted schema of the library.
+allows parity validation without placing external financial data in Git. The
+persisted COTAHIST v2 contract with 32 fields is defined by the PyArrow
+integrity cutover decision; this decision keeps official data opt-in and
+caller-owned.

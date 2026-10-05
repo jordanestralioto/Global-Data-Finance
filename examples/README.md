@@ -15,12 +15,23 @@ ______________________________________________________________________
 
 Todos os exemplos utilizam a ferramenta `uv` para gerenciar dependências e o ambiente virtual de forma rápida e reprodutível.
 
+Na raiz do repositório, prepare o ambiente uma vez antes de executar os
+exemplos. O parâmetro `--no-sync` das chamadas seguintes pressupõe que essa
+preparação foi concluída:
+
+```bash
+uv sync --locked --all-extras --dev
+```
+
+Consulte o [guia de instalação](../docs/user-guide/installation.md) para
+configurar as dependências e o Python suportado.
+
 ### 1. Início Rápido com CVM (`01_quickstart_cvm.py`)
 
 Baixa as Demonstrações Financeiras Padronizadas (**DFP**) da CVM do ano de 2023 diretamente da internet e converte automaticamente em arquivos Parquet.
 
 ```bash
-uv run python examples/01_quickstart_cvm.py
+uv run --locked --no-sync python examples/01_quickstart_cvm.py
 ```
 
 ______________________________________________________________________
@@ -30,7 +41,7 @@ ______________________________________________________________________
 Lê os arquivos de cotações históricas da B3 (**COTAHIST**) presentes na pasta local `./cotahist_b3`, filtra apenas os negócios com **Ações** e gera um arquivo Parquet consolidado.
 
 ```bash
-uv run python examples/02_quickstart_b3.py
+uv run --locked --no-sync python examples/02_quickstart_b3.py
 ```
 
 ______________________________________________________________________
@@ -40,7 +51,35 @@ ______________________________________________________________________
 Demonstra a extração de múltiplos ativos simultâneos (**Ações, ETFs e Opções**) a partir dos arquivos COTAHIST locais de 2022 e 2023, utilizando o **modo de alto desempenho (`processing_mode="fast"`)**.
 
 ```bash
-uv run python examples/03_advanced_options_b3.py
+uv run --locked --no-sync python examples/03_advanced_options_b3.py
+```
+
+______________________________________________________________________
+
+### 4. Seleção Completa de Mercados da B3
+
+Para preservar todos os mercados presentes na fonte, omita `assets_list` ou
+use `assets_list=["todos"]`. Informe o intervalo que existe na pasta: anos
+solicitados sem arquivo COTAHIST fazem a chamada falhar.
+
+```python
+from globaldatafinance import HistoricalQuotesB3
+
+b3 = HistoricalQuotesB3()
+result = b3.extract(
+    path_of_docs='./cotahist_b3',
+    initial_year=2023,
+    last_year=2023,
+    assets_list=['todos'],
+    destination_path='./dados_b3',
+    output_filename='cotahist_completo_2023',
+    verbose=False,
+)
+
+if not result['success']:
+    raise SystemExit(result['errors'])
+assert result['schema_version'] == 2
+print(result['integrity']['unknown_market_counts'])
 ```
 
 ______________________________________________________________________

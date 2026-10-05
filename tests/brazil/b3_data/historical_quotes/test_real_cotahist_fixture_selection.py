@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import zipfile
 from pathlib import Path
 
 import pytest
@@ -12,6 +11,7 @@ from tests.brazil.b3_data.historical_quotes import conftest as fixture_module
 from tests.brazil.b3_data.historical_quotes.integration import (
     test_real_cotahist as real_cotahist_module,
 )
+from tests.support.builders import build_cotahist_record, write_cotahist_zip
 
 pytestmark = pytest.mark.unit
 
@@ -73,15 +73,19 @@ def test_collect_quote_sample_accepts_fewer_than_the_upper_bound(
     tmp_path: Path,
 ) -> None:
     """A small valid input remains useful for bounded parity coverage."""
-    input_file = tmp_path / 'COTAHIST_A2024.ZIP'
-    with zipfile.ZipFile(input_file, 'w') as archive:
-        archive.writestr(
-            'COTAHIST_A2024.TXT', '99ignored\n01first\n01second\n'
-        )
+    input_file = write_cotahist_zip(
+        tmp_path,
+        year=2024,
+        records=[
+            build_cotahist_record(year=2024, ticker='PETR4'),
+            build_cotahist_record(year=2024, ticker='VALE3'),
+        ],
+    )
 
     sampled = real_cotahist_module._collect_quote_sample(input_file)
 
-    assert sampled == ['01first', '01second']
+    assert len(sampled) == 2
+    assert all(record.startswith('01') for record in sampled)
 
 
 def test_collect_quote_sample_rejects_input_without_type_01_records(
@@ -89,9 +93,7 @@ def test_collect_quote_sample_rejects_input_without_type_01_records(
 ) -> None:
     """An empty parity sample fails instead of silently passing."""
 
-    input_file = tmp_path / 'COTAHIST_A2024.ZIP'
-    with zipfile.ZipFile(input_file, 'w') as archive:
-        archive.writestr('COTAHIST_A2024.TXT', '99header\n')
+    input_file = write_cotahist_zip(tmp_path, year=2024, records=[])
 
     with pytest.raises(ExtractionError, match='no type-01 quote data record'):
         real_cotahist_module._collect_quote_sample(input_file)

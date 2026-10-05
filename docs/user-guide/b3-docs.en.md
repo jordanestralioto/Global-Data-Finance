@@ -9,7 +9,7 @@ The `HistoricalQuotesB3` class provides a high-performance engine capable of ing
 ### Highlights
 
 - ✅ Targeted extraction spanning multiple exchange asset classes
-- ✅ Dual processing engines (in-memory `fast` and incremental `slow` mode)
+- ✅ Processing modes with different batch and concurrency limits
 - ✅ Automatic structural type normalization into Apache Parquet
 - ✅ Deep historical compatibility dating back to fiscal year **1986**
 - ✅ Granular asset filtering syntax to exclude unnecessary instrument types
@@ -28,12 +28,15 @@ B3 archives historical financial transactions under the following standard categ
 | **exercicio_opcoes** | Option Exercises             | Option Exercise Calls (012) and Puts (013)    |
 | **forward**          | Forward Contracts            | Forward c/ Gain (050) and Movement (060)      |
 | **leilao**           | Auction Market Records       | Auction clearing executions (017)             |
+| **lote_bloco**       | Block lot                    | [BBT](https://www.b3.com.br/en_us/solutions/block-trading-solutions/book-of-block-trade-bbt/) and [Midpoint](https://www.b3.com.br/en_us/solutions/block-trading-solutions/midpoint-order-book/) (021) |
+| **todos**            | Complete selection           | Every valid three-digit numeric TPMERC         |
 
 > `ações` and `etf` are selection aliases in the COTAHIST parser sharing spot (010) and fractional (020) TPMERC codes.
 
 BDRs and Futures are **Planned** and are not accepted by the current
-`HistoricalQuotesB3` runtime contract. The Portuguese strings in the table are
-canonical API values and must be passed exactly as shown.
+`HistoricalQuotesB3` runtime contract. The `todos` selector also preserves
+unknown numeric TPMERC codes and reports them as unknown. Portuguese strings
+in the table are canonical API values and must be passed exactly as shown.
 
 !!! info "Historical Depth"
     B3 COTAHIST historical quote archives cover market transaction activity continuously from **1986** through the present day.
@@ -60,6 +63,7 @@ result = b3.extract(
     path_of_docs="/data/cotahist",
     assets_list=["ações"],
     initial_year=2023,
+    last_year=2023,
 )
 
 if not result['success']:
@@ -79,7 +83,7 @@ Parses COTAHIST archives (ZIP bundles or plain positional TXT files) and exports
 def extract(
     self,
     path_of_docs: str,
-    assets_list: list[str],
+    assets_list: list[str] | None = None,
     initial_year: int | None = None,
     last_year: int | None = None,
     destination_path: str | None = None,
@@ -95,7 +99,7 @@ def extract(
 | Parameter          | Type          | Mandatory | Description                                                        |
 | ------------------ | ------------- | --------- | ------------------------------------------------------------------ |
 | `path_of_docs`     | `str`         | ✅ Yes    | Filesystem path pointing to raw COTAHIST archives (ZIP or TXT)     |
-| `assets_list`      | `list[str]`   | ✅ Yes    | Selected asset filtering category strings                          |
+| `assets_list`      | `list[str] \| None` | ❌ No | `None` (`["todos"]`) | Asset classes; `"todos"` selects every valid numeric TPMERC |
 | `initial_year`     | `int \| None` | ❌ No     | Starting historical year (default: 1986)                           |
 | `last_year`        | `int \| None` | ❌ No     | Ending historical year (default: current system year)              |
 | `destination_path` | `str \| None` | ❌ No     | Destination output directory (default: matches `path_of_docs`)     |
@@ -118,14 +122,35 @@ def extract(
 | `assets`          | `list[str]`      | Asset category strings included during extraction    |
 | `processing_mode` | `str`            | Processing mode utilized (`"fast"` or `"slow"`)      |
 | `elapsed_time`    | `float`          | Elapsed execution duration in seconds                |
+| `schema_version`  | `int`            | Parquet schema version (`2`)                         |
+| `integrity`       | `B3IntegrityReport` | Coverage, selection, source, verification, warning, and output-hash evidence |
 
-For a selected COTAHIST input, `success=True` requires a generated Parquet
-artifact, including when every type-`01` record is filtered by the requested
-asset classes. That valid case produces zero rows with the explicit B3 schema.
-An input with no type-`01` record remains invalid; a selected type-`01` record
-with an invalid length, date, text, integer, or decimal fails with contextual
-`ExtractionError` rather than turning an invalid financial value into zero or
-null.
+`assets_list=None` is equivalent to `["todos"]`. This selector includes every
+three-digit ASCII TPMERC, including unknown numeric codes, which are listed in
+`integrity.unknown_market_counts`. `lote_bloco` selects `021`; `ações` and
+`etf` remain selection aliases for `010` and `020`, and do not independently
+classify an instrument's financial category. Overlapping aliases do not
+duplicate source occurrences.
+
+Every field in each `01` quote is validated before applying an asset filter.
+Invalid TPMERC and malformed fields fail even when a quote would be excluded.
+Blank lines and `00`/`99` controls are counted and omitted from the Parquet.
+Only the two observed trailer totals are accepted: quote count plus two control
+records, or quote count alone; the latter produces a structured warning.
+
+`success=True` requires every requested year, validated sources, all selected
+rows written and verified by a complete Parquet readback, and completed
+publication. A missing year or incomplete verification fails without publishing
+a new output. A valid filtered request may produce zero rows; the report
+distinguishes `selection_complete` from `source_complete` and records intentional
+exclusions. Results include input, uncompressed-content, and published-Parquet
+hashes.
+
+See [cleanup warnings and cancellation](../reference/b3-api.en.md).
+
+The default year range remains 1986 through the current year. For a local
+subset, pass its available year range explicitly. Real-data coverage describes
+the files supplied and does not confirm dates outside them.
 
 #### Usage Examples
 
@@ -215,7 +240,7 @@ from globaldatafinance import HistoricalQuotesB3
 
 b3 = HistoricalQuotesB3()
 assets = b3.get_available_assets()
-# ['ações', 'etf', 'opções', 'termo', 'exercicio_opcoes', 'forward', 'leilao']
+# ['ações', 'etf', 'opções', 'termo', 'exercicio_opcoes', 'forward', 'leilao', 'lote_bloco', 'todos']
 print(f"Available {len(assets)} asset classes")
 ```
 
@@ -251,10 +276,9 @@ The extraction pipeline provides distinct computational operational modes:
 
 ### Fast Mode (Default) ⚡
 
-- **Performance Profile**: Maximum analytical speed
-- **CPU Utilization**: Multi-core concurrent vectorization
-- **RAM Allocation**: Higher in-memory footprint
-- **Recommended Use**: Dedicated data processing servers and moderate-to-large analytical jobs
+Uses the canonical parser and Arrow writes in batches of up to 25,000 records.
+It can process sources concurrently, bounded by CPU count, available memory,
+and source file count; the default limit is four workers.
 
 ```python
 from globaldatafinance import HistoricalQuotesB3
@@ -269,10 +293,9 @@ result = b3.extract(
 
 ### Slow Mode 🐢
 
-- **Performance Profile**: Moderated incremental throughput
-- **CPU Utilization**: Low single-core processing
-- **RAM Allocation**: Low stream memory consumption
-- **Recommended Use**: Memory-constrained environments, shared hardware, or background cron processing
+Uses the same canonical parser and schema, with batches of up to 10,000 records
+and one extraction worker. Both modes use bounded source reads and verify all
+data before publication.
 
 ```python
 from globaldatafinance import HistoricalQuotesB3
@@ -287,7 +310,7 @@ result = b3.extract(
 
 ### Performance Benchmark Comparison
 
-*Version 3 baseline: 27 annual files (2000–2026), with 22,303,577 records. Measured with Python 3.13.7, Linux x86_64, 8 CPUs, and 7.55 GB of total memory; results vary by environment. See the [benchmark details](../dev-guide/benchmarks.en.md).*
+*Historical measurement of implementation v3: 27 files (2000–2026) and 22,303,577 records, excluding 2,283 TPMERC `021` quotations. It does not describe schema v2 and is not directly comparable. See the [benchmark details](../dev-guide/benchmarks.en.md).*
 
 | Processing Profile | Measured Throughput | Measured Peak RSS | Default Parallelism                                          | Guidance                |
 | ------------------ | ------------------- | ----------------- | ------------------------------------------------------------ | ----------------------- |
@@ -299,27 +322,25 @@ requirement for every machine or input set.
 
 ## Advanced Recipes & Implementations
 
-### All Currently Supported Asset Categories
+### Complete Market Selection
 
 ```python
 from globaldatafinance import HistoricalQuotesB3
 
 b3 = HistoricalQuotesB3()
 
-# Dynamically fetch all currently supported asset categories
-all_assets = b3.get_available_assets()
-
-# Extract every currently supported category simultaneously
+# `todos` includes unknown numeric TPMERC codes as well as known categories
 result = b3.extract(
     path_of_docs="/data/cotahist",
-    assets_list=all_assets,
+    assets_list=["todos"],
     initial_year=2023,
+    last_year=2023,
     output_filename="complete_market_2023"
 )
 
 if not result['success']:
     raise SystemExit(result['errors'])
-print(f"✓ Extracted {result['total_records']:,} rows spanning {len(all_assets)} supported categories")
+print(f"✓ Extracted {result['total_records']:,} rows; unknown markets: {result['integrity']['unknown_market_counts']}")
 ```
 
 ### Year-by-Year Partitioned Ingestion
@@ -399,8 +420,11 @@ result = b3.extract(
 | `InvalidAssetsName`   | An asset string falls outside whitelist   | Query valid terms via `get_available_assets()` |
 | `InvalidFirstYear`    | `initial_year` parameter below 1986 floor | Specify temporal lower bounds >= 1986          |
 | `InvalidLastYear`     | End year prior to start year              | Confirm monotonic temporal ordering            |
-| `EmptyDirectoryError` | Source folder lacks COTAHIST files        | Inspect folder contents prior to invocation    |
+| `EmptyDirectoryError` | Input directory is physically empty     | Provide an existing directory with COTAHIST files |
 | `ExtractionError`     | Corruption detected in positional layout  | Verify COTAHIST file integrity                 |
+
+If any requested annual file is missing, the API returns `success=False`,
+lists the gap in `integrity.missing_years`, and does not publish a new output.
 
 ## Official COTAHIST File Formats
 
@@ -434,9 +458,9 @@ successful result.
 
 The parser is strict: blank lines and official `00`/`99` controls are counted
 only; a nonempty identifier other than `01`, `00`, or `99` aborts extraction.
-TPMERC filtering happens before conversion of the remaining fields. Records
-outside the filter are counted as filtered, while an invalid selected record
-never yields a default financial value.
+Every field of every `01` quotation is validated before TPMERC filtering,
+including quotations that will be excluded. Invalid data never yields a default
+financial value.
 
 The literal `__GLOBALDATAFINANCE_NULL__` is reserved by the internal writer and
 is rejected as input data in both records and canonical rows. Use `None` for a
@@ -445,40 +469,14 @@ closing, including after a validation failure, it cannot be reopened.
 
 ## Extracted Parquet Schema
 
-### Consolidated Column Architecture
+The default schema is version `2`. The 20 historical fields keep their order;
+v2 adds official fields, the record type, provenance, and original bytes. Every
+field is required except `data_vencimento`. The footer carries the integrity
+manifest and logical schema fingerprint.
 
-The resulting consolidated Parquet file surfaces the following structured schema:
-
-| Column Name            | Data Type | Description                                    |
-| ---------------------- | --------- | ---------------------------------------------- |
-| `data_pregao`          | `date`    | Trading session calendar date                  |
-| `codigo_bdi`           | `string`  | BDI market execution classification code       |
-| `ticker`               | `string`  | Instrument symbol / ticker (e.g., PETR4)       |
-| `tipo_mercado`         | `string`  | Market clearing segment code                   |
-| `nome_resumido`        | `string`  | Corporate issuer short name                    |
-| `especificacao_papel`  | `string`  | Security equity specification (e.g., ON, PN)   |
-| `preco_abertura`       | `decimal` | Session open trading price                     |
-| `preco_maximo`         | `decimal` | Session intraday maximum price                 |
-| `preco_minimo`         | `decimal` | Session intraday minimum price                 |
-| `preco_medio`          | `decimal` | Volume-weighted intraday average price         |
-| `preco_fechamento`     | `decimal` | Session closing execution price                |
-| `melhor_oferta_compra` | `decimal` | Highest bid quotation at session close         |
-| `melhor_oferta_venda`  | `decimal` | Lowest ask quotation at session close          |
-| `numero_negocios`      | `int`     | Cumulative quantity of trade executions        |
-| `quantidade_total`     | `int`     | Cumulative quantity of traded contracts/shares |
-| `volume_total`         | `decimal` | Total monetary session trading turnover        |
-| `data_vencimento`      | `date`    | Contract expiration maturity date              |
-| `fator_cotacao`        | `int`     | Price quotation lot scaling factor             |
-| `codigo_isin`          | `string`  | International Securities Identification Number |
-| `numero_distribuicao`  | `int`     | Corporate action distribution sequence number  |
-
-### Reading
-
-Use `pyarrow.parquet.read_table()` to load a complete table, or use
-`pyarrow.parquet.ParquetFile(...).iter_batches()` for memory-bounded work with
-`batch_size=200_000`. PyArrow is the production engine and the library's
-recommended reader. Pandas remains compatible as an optional downstream
-consumer dependency, but it must be installed separately.
-
+See the [B3 v2 schema reference](../reference/b3-schema-v2.en.md) for the full
+field list, data types, reading guidance, and provenance. Schema v1 files must
+be regenerated from original COTAHIST sources using the
+[v2 migration guide](migration-pyarrow-integrity.en.md#b3-schema-v2-and-regeneration).
 For operational recommendations, partitioning, and artifact consumption, see
 [B3 Operational Practices](b3-operations.en.md).
