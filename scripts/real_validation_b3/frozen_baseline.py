@@ -14,7 +14,7 @@ import pyarrow.parquet as pq
 from ..cotahist_oracle import OracleMismatch
 from ..real_validation_types import ValidationCase
 from ..real_validation_utils import sha256_file
-from .artifact_validation import _BATCH_SIZE
+from .artifact_validation import BATCH_SIZE
 
 _FROZEN_CORPUS_FIRST_YEAR = 2000
 
@@ -30,7 +30,8 @@ _FROZEN_BASELINE = {
 }
 
 
-def _case_source_paths(case: ValidationCase) -> tuple[Path, ...]:
+def case_source_paths(case: ValidationCase) -> tuple[Path, ...]:
+    """Resolve ordered source paths and verify their input snapshots."""
     if case.input_files:
         paths = tuple(
             Path(item.path).expanduser().resolve() for item in case.input_files
@@ -54,14 +55,15 @@ def _case_source_paths(case: ValidationCase) -> tuple[Path, ...]:
     return (Path(case.input_path).expanduser().resolve(),)
 
 
-def _expected_frozen_checksums(
+def expected_frozen_checksums(
     source_paths: Sequence[Path],
     *,
     enabled: bool = False,
 ) -> dict[str, str] | None:
+    """Load the frozen corpus checksums when explicitly enabled."""
     if not enabled:
         return None
-    years = sorted(_path_year(path) for path in source_paths)
+    years = sorted(path_year(path) for path in source_paths)
     if years != list(
         range(_FROZEN_CORPUS_FIRST_YEAR, _FROZEN_CORPUS_LAST_YEAR + 1)
     ):
@@ -82,7 +84,8 @@ def _expected_frozen_checksums(
     return expected
 
 
-def _validate_frozen_baseline(details: Mapping[str, Any]) -> None:
+def validate_frozen_baseline(details: Mapping[str, Any]) -> None:
+    """Require all frozen corpus acceptance observations to match."""
     for key, expected in _FROZEN_BASELINE.items():
         if details.get(key) != expected:
             raise OracleMismatch(
@@ -95,10 +98,11 @@ def _validate_frozen_baseline(details: Mapping[str, Any]) -> None:
         raise OracleMismatch('the previously supported 20 fields changed')
 
 
-def _ordered_rows_sha256(path: Path) -> str:
+def ordered_rows_sha256(path: Path) -> str:
+    """Hash length-prefixed row encodings in persisted row order."""
     digest = hashlib.sha256()
     parquet = pq.ParquetFile(path)
-    for batch in parquet.iter_batches(batch_size=_BATCH_SIZE):
+    for batch in parquet.iter_batches(batch_size=BATCH_SIZE):
         for row in batch.to_pylist():
             encoded = json.dumps(
                 row,
@@ -113,10 +117,11 @@ def _ordered_rows_sha256(path: Path) -> str:
 
 
 def _source_sort_key(path: Path) -> tuple[int, str, str]:
-    return _path_year(path), path.name.casefold(), path.name
+    return path_year(path), path.name.casefold(), path.name
 
 
-def _path_year(path: Path) -> int:
+def path_year(path: Path) -> int:
+    """Extract the year from a valid annual COTAHIST basename."""
     match = re.fullmatch(
         r'COTAHIST_A([0-9]{4})\.(?:ZIP|TXT)', path.name, flags=re.I
     )

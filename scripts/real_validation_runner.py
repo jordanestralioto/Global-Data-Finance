@@ -90,11 +90,11 @@ def run_campaign(
             continue
         if progress:
             emit_progress(f'[{index}/{len(cases)}] {case.case_id}: started')
-            result = _run_isolated_case(
+            result = run_isolated_case(
                 report_path, case, timeout, progress=True
             )
         else:
-            result = _run_isolated_case(report_path, case, timeout)
+            result = run_isolated_case(report_path, case, timeout)
         validate_status(result.get('status'))
         results[case.case_id] = result
         write_results(results_path, results)
@@ -105,16 +105,16 @@ def run_campaign(
         results,
         time.perf_counter() - start_time,
     )
-    summary['processCheck'] = _process_check()
+    summary['processCheck'] = process_check()
     write_json(report_path / 'summary.json', summary)
     output = {'report': str(report_path), **summary}
     sys.stdout.write(
         json.dumps(output, ensure_ascii=True, sort_keys=True) + '\n'
     )
-    return _campaign_exit_code(summary)
+    return campaign_exit_code(summary)
 
 
-def _process_check() -> dict[str, Any]:
+def process_check() -> dict[str, Any]:
     """Confirm that no isolated case process remains alive."""
     active = [
         {
@@ -131,29 +131,30 @@ def _process_check() -> dict[str, Any]:
     }
 
 
-def _run_isolated_case(
+def run_isolated_case(
     report_path: Path,
     case: ValidationCase,
     timeout: float,
     *,
     progress: bool = False,
 ) -> dict[str, Any]:
-    workspace_parent = _workspace_parent(report_path, case)
-    workspace_parent.mkdir(parents=True, exist_ok=True)
+    """Execute a case in a spawned process with bounded cleanup."""
+    parent_directory = workspace_parent(report_path, case)
+    parent_directory.mkdir(parents=True, exist_ok=True)
     workspace = Path(
-        tempfile.mkdtemp(prefix=f'{case.case_id}-', dir=str(workspace_parent))
+        tempfile.mkdtemp(prefix=f'{case.case_id}-', dir=str(parent_directory))
     )
     log_path = report_path / 'logs' / f'{case.case_id}.log'
     log_path.parent.mkdir(parents=True, exist_ok=True)
     context = multiprocessing.get_context('spawn')
     result_queue: multiprocessing.Queue[dict[str, Any]] = context.Queue()
     process = context.Process(
-        target=_case_worker,
+        target=case_worker,
         args=(case, timeout, workspace, log_path, result_queue),
     )
     process.start()
     deadline = time.monotonic() + timeout
-    result = _receive_worker_result(
+    result = receive_worker_result(
         result_queue,
         process,
         deadline,
@@ -162,21 +163,21 @@ def _run_isolated_case(
     )
     process.join(timeout=max(0.0, deadline - time.monotonic()))
     if process.is_alive():
-        _terminate_process(process)
-        result = _control_result(
+        terminate_process(process)
+        result = control_result(
             case,
             'external_failure',
             f'case exceeded the {timeout:g}s process timeout',
         )
         _append_log(log_path, result['message'])
     elif result is None:
-        result = _control_result(
+        result = control_result(
             case,
             'failed',
             'isolated case exited without evidence '
             f'(exit code {process.exitcode})',
         )
-    result['temporaryFilesAfterCleanup'] = _cleanup_workspace(
+    result['temporaryFilesAfterCleanup'] = cleanup_workspace(
         workspace, log_path
     )
     result['temporaryFiles'] = sorted(
@@ -190,7 +191,7 @@ def _run_isolated_case(
     return result
 
 
-def _receive_worker_result(
+def receive_worker_result(
     result_queue: multiprocessing.Queue[dict[str, Any]],
     process: _TerminableProcess,
     deadline: float,
@@ -218,7 +219,7 @@ def _receive_worker_result(
     return None
 
 
-def _terminate_process(process: _TerminableProcess) -> None:
+def terminate_process(process: _TerminableProcess) -> None:
     """Bound process cleanup after a case exceeds its execution timeout."""
     process.terminate()
     process.join(timeout=1.0)
@@ -228,13 +229,14 @@ def _terminate_process(process: _TerminableProcess) -> None:
     process.join(timeout=1.0)
 
 
-def _case_worker(
+def case_worker(
     case: ValidationCase,
     timeout: float,
     workspace: Path,
     log_path: Path,
     result_queue: multiprocessing.Queue[dict[str, Any]],
 ) -> None:
+    """Execute one validation case and send its evidence to the parent."""
     result_queue.put(
         execute_case(
             case,
@@ -245,13 +247,15 @@ def _case_worker(
     )
 
 
-def _workspace_parent(report_path: Path, case: ValidationCase) -> Path:
+def workspace_parent(report_path: Path, case: ValidationCase) -> Path:
+    """Select the caller-owned CVM output or campaign work directory."""
     if case.source == 'cvm':
         return Path(case.output_root).expanduser().resolve()
     return report_path / 'work'
 
 
-def _cleanup_workspace(workspace: Path, log_path: Path) -> list[str]:
+def cleanup_workspace(workspace: Path, log_path: Path) -> list[str]:
+    """Remove case artifacts and report any remaining temporary paths."""
     leftovers = temporary_paths(workspace)
     try:
         shutil.rmtree(workspace)
@@ -261,9 +265,10 @@ def _cleanup_workspace(workspace: Path, log_path: Path) -> list[str]:
     return temporary_paths(workspace)
 
 
-def _control_result(
+def control_result(
     case: ValidationCase, status: CaseStatus, message: str
 ) -> dict[str, Any]:
+    """Build a complete report record for a process control outcome."""
     return {
         'schemaVersion': REPORT_SCHEMA_VERSION,
         'caseId': case.case_id,
@@ -294,7 +299,8 @@ def _append_log(path: Path, message: str) -> None:
         handle.write(message + '\n')
 
 
-def _campaign_exit_code(summary: dict[str, Any]) -> int:
+def campaign_exit_code(summary: dict[str, Any]) -> int:
+    """Map campaign failures and missing evidence to the CLI exit code."""
     if summary['processCheck']['status'] != 'passed':
         return 2
     if summary['totalNotExecuted'] > 0:

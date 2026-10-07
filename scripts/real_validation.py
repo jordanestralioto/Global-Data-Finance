@@ -30,11 +30,11 @@ def main(argv: list[str] | None = None) -> int:
     """Run the requested campaign and return its audit gate exit code."""
     args = _build_parser().parse_args(argv)
     try:
-        report_path = _validate_report_path(args.report)
-        cvm_output = _validate_optional_external_directory(
+        report_path = validate_report_path(args.report)
+        cvm_output = validate_optional_external_directory(
             args.cvm_output, '--cvm-output'
         )
-        timeout = _positive_timeout(args.timeout)
+        timeout = positive_timeout(args.timeout)
         if args.progress:
             emit_progress('Preparing campaign inputs and source identities')
         if args.resume:
@@ -46,9 +46,9 @@ def main(argv: list[str] | None = None) -> int:
                     '--resume preserves the manifest historical baseline '
                     'selection; start a new campaign to change it'
                 )
-            _validate_case_output_roots(cases)
+            validate_case_output_roots(cases)
         else:
-            source = _required_source(args.source)
+            source = required_source(args.source)
             _require_new_campaign_report(report_path)
             cases = build_cases(
                 source=source,
@@ -60,7 +60,7 @@ def main(argv: list[str] | None = None) -> int:
                 cotahist_modes=args.cotahist_mode,
                 cotahist_frozen_baseline=args.cotahist_frozen_baseline,
             )
-            cases = _filter_cases(cases, args.case)
+            cases = filter_cases(cases, args.case)
             if args.cotahist_frozen_baseline and not any(
                 case.frozen_baseline for case in cases
             ):
@@ -68,7 +68,7 @@ def main(argv: list[str] | None = None) -> int:
                     '--cotahist-frozen-baseline requires selecting the '
                     'complete multi-year parity case'
                 )
-            _validate_case_output_roots(cases)
+            validate_case_output_roots(cases)
             write_json(
                 report_path / 'manifest.json',
                 manifest_for(
@@ -153,20 +153,23 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _required_source(value: str | None) -> Source:
+def required_source(value: str | None) -> Source:
+    """Require an explicit source when starting a campaign."""
     if value is None:
         raise ValueError('--source is required unless --resume is used')
     return cast(Source, value)
 
 
-def _positive_timeout(value: float) -> float:
+def positive_timeout(value: float) -> float:
+    """Reject nonpositive process timeout values."""
     if value <= 0:
         raise ValueError('--timeout must be greater than zero')
     return value
 
 
-def _validate_report_path(raw_path: str) -> Path:
-    return _validate_external_directory(raw_path, '--report')
+def validate_report_path(raw_path: str) -> Path:
+    """Validate the caller-owned campaign report directory."""
+    return validate_external_directory(raw_path, '--report')
 
 
 def _require_new_campaign_report(report_path: Path) -> None:
@@ -186,21 +189,17 @@ def _require_new_campaign_report(report_path: Path) -> None:
         )
 
 
-def _validate_optional_external_directory(
+def validate_optional_external_directory(
     raw_path: str | None, label: str
 ) -> str | None:
     """Validate an optional caller-owned output before building cases."""
     if raw_path is None:
         return None
-    return str(_validate_external_directory(raw_path, label))
+    return str(validate_external_directory(raw_path, label))
 
 
-def _validate_external_directory(raw_input: str, label: str) -> Path:
-    """Validate one caller-owned directory before any write."""
-    return validate_external_directory(raw_input, label)
-
-
-def _validate_case_output_roots(cases: list[ValidationCase]) -> None:
+def validate_case_output_roots(cases: list[ValidationCase]) -> None:
+    """Validate each distinct CVM output directory before execution."""
     validated: set[str] = set()
     for case in cases:
         if case.source != 'cvm':
@@ -211,15 +210,16 @@ def _validate_case_output_roots(cases: list[ValidationCase]) -> None:
             )
         if case.output_root in validated:
             continue
-        _validate_external_directory(
+        validate_external_directory(
             case.output_root, f'CVM output for {case.case_id}'
         )
         validated.add(case.output_root)
 
 
-def _filter_cases(
+def filter_cases(
     cases: list[ValidationCase], case_id: str | None
 ) -> list[ValidationCase]:
+    """Select a requested case or preserve the complete campaign."""
     if case_id is None:
         return cases
     selected = [case for case in cases if case.case_id == case_id]

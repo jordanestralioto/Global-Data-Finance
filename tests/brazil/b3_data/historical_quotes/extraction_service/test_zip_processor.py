@@ -129,7 +129,7 @@ def test_parser_subclass_cannot_publish_a_modified_financial_value(
 
         def _select_quote(
             self,
-            values: dict[str, cotahist_parser.field_conversion.CsvValue],
+            values: cotahist_parser.CsvRow,
             market: str,
             target_tpmerc_codes: set[str],
             all_markets: bool,

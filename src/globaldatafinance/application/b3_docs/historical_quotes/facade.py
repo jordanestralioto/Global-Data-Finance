@@ -86,8 +86,8 @@ class HistoricalQuotesB3:
         return self._settings
 
     @property
-    def _last_phase_timings(self) -> dict[str, Any]:
-        """Return private benchmark telemetry from the last extraction run."""
+    def last_phase_timings(self) -> dict[str, Any]:
+        """Return benchmark telemetry from the last extraction run."""
         return self._extract_use_case.last_phase_timings
 
     def extract(

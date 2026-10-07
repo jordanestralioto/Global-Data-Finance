@@ -72,8 +72,8 @@ def test_all_execution_combinations_preserve_selected_occurrences(
     expected_backend = (
         'process' if mode == 'fast' and backend == 'process' else 'thread'
     )
-    assert facade._last_phase_timings['effective_backend'] == expected_backend
-    assert facade._last_phase_timings['effective_worker_limit'] == (
+    assert facade.last_phase_timings['effective_backend'] == expected_backend
+    assert facade.last_phase_timings['effective_worker_limit'] == (
         2 if mode == 'fast' else 1
     )
     reconciliation = reconcile_sources(

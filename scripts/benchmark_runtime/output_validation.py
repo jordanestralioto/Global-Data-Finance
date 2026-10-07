@@ -67,11 +67,11 @@ def validate_b3_output(
             else list(B3_SYNTHETIC_DIGEST_COLUMNS)
         ),
     )
-    from globaldatafinance.brazil.b3_data import historical_quotes
+    import globaldatafinance.brazil.b3_data.historical_quotes as b3_quotes
 
     nr = parquet.metadata.num_rows
     exp_rows = nr == source.row_count if source.row_count else nr > 0
-    schema = historical_quotes.parquet_writer.build_b3_schema()
+    schema = b3_quotes.parquet_writer.build_b3_schema()
     valid = (
         parquet.schema_arrow == schema
         and exp_rows

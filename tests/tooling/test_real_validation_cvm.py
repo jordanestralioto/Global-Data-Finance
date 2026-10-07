@@ -131,7 +131,7 @@ def test_probe_accepts_canonical_http_200_without_persisting_a_body(
     case = _cvm_case()
     clients = _patch_probe_client(monkeypatch, _Response(200))
 
-    cvm._probe_official_endpoint(case, timeout=4.0)
+    cvm.probe_official_endpoint(case, timeout=4.0)
 
     assert clients[0].kwargs['follow_redirects'] is False
     assert clients[0].calls == [('GET', case.url or '')]
@@ -148,7 +148,7 @@ def test_probe_classifies_unpublished_cvm_archives(
     _patch_probe_client(monkeypatch, _Response(status_code))
 
     with pytest.raises(NotPublished, match=str(status_code)):
-        cvm._probe_official_endpoint(case, 4.0)
+        cvm.probe_official_endpoint(case, 4.0)
 
 
 def test_probe_classifies_other_http_status_as_external_failure(
@@ -159,7 +159,7 @@ def test_probe_classifies_other_http_status_as_external_failure(
     clients = _patch_probe_client(monkeypatch, _Response(302))
 
     with pytest.raises(ExternalFailure, match='302'):
-        cvm._probe_official_endpoint(case, 4.0)
+        cvm.probe_official_endpoint(case, 4.0)
 
     assert len(clients) == 1
     assert clients[0].calls == [('GET', case.url or '')]
@@ -192,7 +192,7 @@ def test_probe_classifies_network_and_timeout_failures(
     monkeypatch.setattr(cvm.httpx, 'Client', FailingClient)
 
     with pytest.raises(ExternalFailure, match='endpoint unavailable'):
-        cvm._probe_official_endpoint(case, 4.0)
+        cvm.probe_official_endpoint(case, 4.0)
 
 
 def test_probe_rejects_missing_and_nonofficial_urls_before_http(
@@ -209,7 +209,7 @@ def test_probe_rejects_missing_and_nonofficial_urls_before_http(
     monkeypatch.setattr(cvm.httpx, 'Client', fail_client)
 
     with pytest.raises(ValueError, match='no official endpoint'):
-        cvm._probe_official_endpoint(replace(_cvm_case(), url=None), 4.0)
+        cvm.probe_official_endpoint(replace(_cvm_case(), url=None), 4.0)
     for url in (
         'http://127.0.0.1/metadata',
         (_cvm_case().url or '').replace('https://', 'https://operator@'),
@@ -221,7 +221,7 @@ def test_probe_rejects_missing_and_nonofficial_urls_before_http(
         ),
     ):
         with pytest.raises(ValueError, match='exact official HTTPS origin'):
-            cvm._probe_official_endpoint(replace(_cvm_case(), url=url), 4.0)
+            cvm.probe_official_endpoint(replace(_cvm_case(), url=url), 4.0)
 
     assert constructed is False
 
@@ -257,7 +257,7 @@ def test_execute_cvm_case_records_hash_of_archive_consumed_by_facade(
     case = _cvm_case()
     workspace = tmp_path / 'workspace'
     payload = _valid_zip_bytes()
-    monkeypatch.setattr(cvm, '_probe_official_endpoint', lambda *_args: None)
+    monkeypatch.setattr(cvm, 'probe_official_endpoint', lambda *_args: None)
 
     class Facade:
         instance: Facade
@@ -306,7 +306,7 @@ def test_execute_cvm_case_classifies_facade_errors(
     """Facade failures retain their cause and network classification."""
     case = _cvm_case()
     workspace = tmp_path / 'workspace'
-    monkeypatch.setattr(cvm, '_probe_official_endpoint', lambda *_args: None)
+    monkeypatch.setattr(cvm, 'probe_official_endpoint', lambda *_args: None)
 
     class Facade:
         def __init__(self) -> None:
@@ -331,7 +331,7 @@ def test_execute_cvm_case_classifies_partial_public_result_as_failed(
     """A public result with failed downloads cannot be approved."""
     case = _cvm_case()
     workspace = tmp_path / 'workspace'
-    monkeypatch.setattr(cvm, '_probe_official_endpoint', lambda *_args: None)
+    monkeypatch.setattr(cvm, 'probe_official_endpoint', lambda *_args: None)
 
     class Facade:
         def __init__(self) -> None:
@@ -360,7 +360,7 @@ def test_validate_result_requires_document_after_artifact_checks(
     pq.write_table(pa.table({'id': [1]}), output / 'data.parquet')
     result = DownloadResultCVM(successful_downloads=['unknown'])
 
-    details = cvm._validate_result(result, output, _cvm_case(None))
+    details = cvm.validate_result(result, output, _cvm_case(None))
 
     assert details == {'valid': False, 'message': 'CVM document is missing'}
 
@@ -371,12 +371,12 @@ def test_validate_result_rejects_no_parquet_and_invalid_public_counters(
     """No artifact or failed public counters can be approved."""
     output = tmp_path / 'empty'
     output.mkdir()
-    no_files = cvm._validate_result(
+    no_files = cvm.validate_result(
         DownloadResultCVM(successful_downloads=['DFP_2024']),
         output,
         _cvm_case(),
     )
-    failed_public = cvm._validate_public_result(
+    failed_public = cvm.validate_public_result(
         DownloadResultCVM(failed_downloads={'DFP_2024': 'bad'})
     )
 
@@ -399,7 +399,7 @@ def test_inspect_parquet_files_reads_metadata_and_counts_batches(
     pq.write_table(pa.table({'id': [1, 2]}), first)
     pq.write_table(pa.table({'value': ['x']}), second)
 
-    inspected = cvm._inspect_parquet_files([first, second], output)
+    inspected = cvm.inspect_parquet_files([first, second], output)
 
     assert not isinstance(inspected, str)
     artifacts, records, schema = inspected
@@ -435,14 +435,14 @@ def test_inspect_parquet_files_rejects_invalid_evidence(
         original = cvm.pq.ParquetFile
         cvm.pq.ParquetFile = lambda _candidate: FakeParquet()
         try:
-            inspected = cvm._inspect_parquet_files([path], output)
+            inspected = cvm.inspect_parquet_files([path], output)
         finally:
             cvm.pq.ParquetFile = original
         assert isinstance(inspected, str)
         assert 'row count mismatch' in inspected
         return
 
-    inspected = cvm._inspect_parquet_files([path], output)
+    inspected = cvm.inspect_parquet_files([path], output)
 
     assert isinstance(inspected, str)
     assert 'Invalid or empty' in inspected or 'validation failed' in inspected
@@ -455,11 +455,11 @@ def test_validate_cleanup_rejects_archives_and_temporary_markers(
     output = tmp_path / 'output'
     output.mkdir()
     (output / 'source.zip').touch()
-    assert cvm._validate_cleanup(output) == 'CVM source ZIP was not cleaned up'
+    assert cvm.validate_cleanup(output) == 'CVM source ZIP was not cleaned up'
     (output / 'source.zip').unlink()
     (output / 'staging.tmp').touch()
 
-    cleanup_error = cvm._validate_cleanup(output)
+    cleanup_error = cvm.validate_cleanup(output)
     assert cleanup_error is not None
     assert 'temporary files leaked' in cleanup_error
 
@@ -469,4 +469,4 @@ def test_cvm_sha256_file_is_deterministic(tmp_path: Path) -> None:
     path = tmp_path / 'payload.bin'
     path.write_bytes(b'abc')
 
-    assert cvm._sha256_file(path) == hashlib.sha256(b'abc').hexdigest()
+    assert cvm.sha256_file(path) == hashlib.sha256(b'abc').hexdigest()

@@ -13,6 +13,14 @@ class HistoricalQuotesB3:
     """High-level facade for B3 market quote extraction and normalization."""
 ```
 
+### Execution telemetry
+
+The `last_phase_timings: dict[str, Any]` property exposes telemetry from the
+last extraction for instrumentation and benchmarks. It starts empty and resets
+when a new extraction begins. Observations include the effective backend,
+worker limit, and timings of executed phases. This diagnostic is separate from
+the `ExtractionResultB3` result and Parquet metadata.
+
 ### Public Methods
 
 #### `extract()`
@@ -84,6 +92,10 @@ and verified digests.
   formats exist for the same year, both are fully validated. ZIP is selected
   only when their uncompressed contents are identical; different contents
   cause failure.
+- Each ZIP read verifies the CRC of every member, including unselected ones,
+  and reads the COTAHIST member from the same open, validated archive.
+  Validation is renewed on every pass, preserving decompression limits and
+  source identity checks.
 - `output_filename` must be a basename without path separators. The optional
   `.parquet` suffix is accepted and appended exactly once when omitted.
 - A missing requested year returns `success=False`, lists the year in
@@ -208,13 +220,15 @@ ______________________________________________________________________
 The variables below are resolved when `HistoricalQuotesB3()` is constructed.
 They do not alter an existing instance or add parameters to the public
 constructor. The process backend is experimental and requires explicit opt-in.
-It is not recommended for general operational flows until a measurement on the
-annual corpus meets the promotion criterion documented by the technical decision.
+Measure complete operation time, CPU, and aggregate RSS on the consumer's corpus
+before adopting it. Conditions and measurements are in the
+[COTAHIST performance guide](../dev-guide/cotahist-performance.en.md).
 
 - `GDF_B3_EXECUTOR_BACKEND`: Defines the parallel execution backend in `fast` mode (`"thread"` or `"process"`). Default is `"thread"`.
   - `"thread"`: Uses `ThreadPoolExecutor`. Lower startup overhead and lower global memory consumption. Recommended for most workloads.
   - `"process"`: Uses `ProcessPoolExecutor` with `spawn` context only for controlled experiments. It can reduce measured parent-process RSS by isolating per-file buffers in workers, but it also adds `spawn` cost, can increase summed worker RSS, and offers no guaranteed time improvement.
   - Automatic fallback: If `processing_mode="slow"`, exactly 1 source file is processed, or worker limit is below 2, the system safely falls back to `"thread"`.
+  - Annual preflight: In `fast` with `process`, validation can use processes when the resource policy admits at least two workers and stored annual candidates total at least 64 MiB. Coexisting ZIP and TXT files both count. Smaller workloads and size-read errors use serial validation. Source order, the first error, and its typed causes are preserved; all workers are joined before cancellation or failure completes.
   - Contractual limitations:
     1. Child worker processes instantiate default readers and parsers; internally injected custom collaborators are not serialized across process boundaries in this version.
     2. Multiprocessing with `spawn` requires importable Python modules and does not support interactive execution via `<stdin>` (`python -`).

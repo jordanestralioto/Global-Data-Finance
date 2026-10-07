@@ -66,7 +66,7 @@ def write_json(path: Path, payload: Mapping[str, Any]) -> None:
         )
         + '\n'
     )
-    _atomic_write(path, encoded)
+    atomic_write(path, encoded)
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -95,7 +95,7 @@ def write_results(
         )
         for case_id in sorted(results)
     ]
-    _atomic_write(path, '\n'.join(lines) + ('\n' if lines else ''))
+    atomic_write(path, '\n'.join(lines) + ('\n' if lines else ''))
 
 
 def read_results(path: Path) -> dict[str, dict[str, Any]]:
@@ -174,7 +174,8 @@ def validate_status(value: object) -> CaseStatus:
     return value
 
 
-def _atomic_write(path: Path, content: str) -> None:
+def atomic_write(path: Path, content: str) -> None:
+    """Publish report content through a temporary file and atomic replace."""
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary_name = tempfile.mkstemp(
         prefix=f'.{path.name}.', dir=path.parent

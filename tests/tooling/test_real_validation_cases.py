@@ -168,7 +168,7 @@ def test_case_worker_puts_execute_result_on_queue(
 
     monkeypatch.setattr(runner, 'execute_case', fake_execute)
 
-    runner._case_worker(
+    runner.case_worker(
         case,
         2.0,
         tmp_path / 'workspace',

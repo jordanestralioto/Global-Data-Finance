@@ -18,16 +18,16 @@ from ..cotahist_oracle import OracleMismatch, reconcile_sources
 from ..real_validation_types import ValidationCase
 from ..real_validation_utils import emit_progress, failed_details
 from .artifact_validation import (
-    _BATCH_SIZE,
-    _failed_validation,
-    _passed_details,
-    _validate_result,
+    BATCH_SIZE,
+    failed_validation,
+    passed_details,
+    validate_result,
 )
 from .frozen_baseline import (
-    _case_source_paths,
-    _expected_frozen_checksums,
-    _ordered_rows_sha256,
-    _validate_frozen_baseline,
+    case_source_paths,
+    expected_frozen_checksums,
+    ordered_rows_sha256,
+    validate_frozen_baseline,
 )
 
 
@@ -36,7 +36,7 @@ def execute_cotahist_case(
 ) -> dict[str, Any]:
     """Run an annual or multi-year case with explicit historical acceptance."""
     input_path = Path(case.input_path)
-    source_paths = _case_source_paths(case)
+    source_paths = case_source_paths(case)
     try:
         for path in source_paths:
             input_validation.validate_cotahist_input(path)
@@ -48,16 +48,16 @@ def execute_cotahist_case(
     if case.mode == 'multi_parity':
         return _execute_multi_year_parity(case, source_paths, workspace)
     if case.mode == 'parity':
-        return _execute_parity(case, input_path, workspace)
-    result, details = _execute_mode(
+        return execute_parity(case, input_path, workspace)
+    result, details = execute_mode(
         input_path, case.year, 'fast', workspace / 'fast'
     )
     if not details['valid']:
-        return _failed_validation(result, details)
-    return _passed_details(result, details, 'COTAHIST fast extraction passed')
+        return failed_validation(result, details)
+    return passed_details(result, details, 'COTAHIST fast extraction passed')
 
 
-def _execute_mode(
+def execute_mode(
     input_path: Path,
     year: int,
     mode: str,
@@ -86,11 +86,11 @@ def _execute_mode(
         )
     )
     emit_progress(f'{mode}: validating the published Parquet')
-    structural = _validate_result(result, output_directory, first, last)
+    structural = validate_result(result, output_directory, first, last)
     if not structural['valid']:
         return result, structural
     selected_sources = tuple(source_paths or (input_path,))
-    expected_checksums = _expected_frozen_checksums(
+    expected_checksums = expected_frozen_checksums(
         selected_sources, enabled=frozen_baseline
     )
     try:
@@ -100,10 +100,10 @@ def _execute_mode(
             Path(str(result['output_file'])),
             public_result=dict(result),
             expected_checksums=expected_checksums,
-            batch_size=_BATCH_SIZE,
+            batch_size=BATCH_SIZE,
         )
         if expected_checksums is not None:
-            _validate_frozen_baseline(reconciliation)
+            validate_frozen_baseline(reconciliation)
     except (OracleMismatch, OSError, RuntimeError, ValueError) as error:
         return result, {
             'valid': False,
@@ -112,7 +112,7 @@ def _execute_mode(
     structural.update(
         {
             'raw_reconciliation': reconciliation,
-            'ordered_rows_sha256': _ordered_rows_sha256(
+            'ordered_rows_sha256': ordered_rows_sha256(
                 Path(str(result['output_file']))
             ),
         }
@@ -123,17 +123,17 @@ def _execute_mode(
     return result, structural
 
 
-def _execute_parity(
+def execute_parity(
     case: ValidationCase, input_path: Path, workspace: Path
 ) -> dict[str, Any]:
     """Reconcile both annual modes and compare their complete row order."""
-    fast_result, fast_details = _execute_mode(
+    fast_result, fast_details = execute_mode(
         input_path, case.year, 'fast', workspace / 'fast'
     )
-    slow_result, slow_details = _execute_mode(
+    slow_result, slow_details = execute_mode(
         input_path, case.year, 'slow', workspace / 'slow'
     )
-    return _parity_result(fast_result, fast_details, slow_result, slow_details)
+    return parity_result(fast_result, fast_details, slow_result, slow_details)
 
 
 def _execute_multi_year_parity(
@@ -149,7 +149,7 @@ def _execute_multi_year_parity(
     ):
         return failed_details(None, 'multi-year COTAHIST case lacks its range')
     anchor = source_paths[0]
-    fast_result, fast_details = _execute_mode(
+    fast_result, fast_details = execute_mode(
         anchor,
         case.initial_year,
         'fast',
@@ -159,7 +159,7 @@ def _execute_multi_year_parity(
         last_year=case.last_year,
         frozen_baseline=case.frozen_baseline,
     )
-    slow_result, slow_details = _execute_mode(
+    slow_result, slow_details = execute_mode(
         anchor,
         case.initial_year,
         'slow',
@@ -169,20 +169,21 @@ def _execute_multi_year_parity(
         last_year=case.last_year,
         frozen_baseline=case.frozen_baseline,
     )
-    return _parity_result(fast_result, fast_details, slow_result, slow_details)
+    return parity_result(fast_result, fast_details, slow_result, slow_details)
 
 
-def _parity_result(
+def parity_result(
     fast_result: Mapping[str, Any],
     fast_details: Mapping[str, Any],
     slow_result: Mapping[str, Any],
     slow_details: Mapping[str, Any],
 ) -> dict[str, Any]:
+    """Compare ordered fast and slow results and build parity evidence."""
     public_result = {'fast': dict(fast_result), 'slow': dict(slow_result)}
     if not fast_details.get('valid'):
-        return _failed_validation(public_result, fast_details)
+        return failed_validation(public_result, fast_details)
     if not slow_details.get('valid'):
-        return _failed_validation(public_result, slow_details)
+        return failed_validation(public_result, slow_details)
     compared_keys = (
         'record_count',
         'schema',

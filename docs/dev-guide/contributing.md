@@ -46,6 +46,16 @@ ______________________________________________________________________
 - Docstrings no formato **Google Style**
 - Máximo de 79 caracteres por linha (ruff, Blue-style formatting)
 
+Use o prefixo `_` para auxiliares restritos ao próprio módulo e atributos
+encapsulados de objetos. Funções, tipos e constantes compartilhados entre
+módulos, inclusive auxiliares consumidos diretamente por testes, devem ter
+nomes sem esse prefixo. Mantenha estado mutável privado e ofereça operações
+para acessá-lo quando outro módulo precisar dele. Testes podem inspecionar ou
+substituir atributos privados para comprovar encapsulamento e falhas; isso não
+torna esses atributos uma interface compartilhada. Um nome sem `_` não implica
+exportação na API pública: essa fronteira continua definida pelos exports e
+contratos documentados da biblioteca.
+
 ### Perfis Ruff
 
 O Ruff usa uma seleção base explícita para `src/`, `tests/`, `scripts/` e

@@ -9,11 +9,12 @@ from pathlib import Path
 from ....core.archive_safety import (
     ArchiveSafetyLimits,
     open_limited_zip_member,
-    validate_zip_archive,
-    validate_zip_crc_with_limits,
 )
 from ....macro_exceptions import CorruptedZipError, ExtractionError
-from .input_validation import validate_and_resolve_cotahist_input
+from .input_validation import (
+    open_resolved_cotahist_zip,
+    validate_and_resolve_cotahist_input,
+)
 from .integrity import (
     B3RawLine,
     B3RecordContext,
@@ -44,20 +45,17 @@ class ZipFileReaderB3:
     ) -> Iterator[B3RawLine]:
         """Yield bounded records before decoding, preserving physical bytes."""
         path = Path(source_path)
-        member = self._validate_cotahist_input(path)
-        observed_member = member or ''
-        if expected_member is not None and observed_member != expected_member:
-            raise ExtractionError(
-                str(path),
-                'COTAHIST ZIP member changed since catalog resolution: '
-                f'expected {expected_member!r}, observed {observed_member!r}',
-            )
         if path.suffix.casefold() == '.txt':
+            member = self._validate_cotahist_input(path)
+            _check_expected_member(path, member or '', expected_member)
             yield from self._iter_txt(path)
             return
-        if member is None:
-            raise ExtractionError(str(path), 'COTAHIST ZIP member is missing')
-        yield from self._iter_zip(path, member)
+        with open_resolved_cotahist_zip(path, limits=self._limits) as (
+            archive,
+            member,
+        ):
+            _check_expected_member(path, member, expected_member)
+            yield from self._iter_zip(path, member, archive)
 
     def iter_lines(
         self, source_path: str
@@ -86,35 +84,41 @@ class ZipFileReaderB3:
             except CotahistLineTooLongError as error:
                 raise ExtractionError(str(path), str(error)) from error
 
-    def _iter_zip(self, path: Path, member: str) -> Iterator[B3RawLine]:
+    def _iter_zip(
+        self, path: Path, member: str, archive: zipfile.ZipFile
+    ) -> Iterator[B3RawLine]:
         try:
-            with zipfile.ZipFile(path, 'r') as archive:
-                infos = validate_zip_archive(
-                    path, archive, limits=self._limits
-                )
-                validate_zip_crc_with_limits(
-                    path, archive, infos=infos, limits=self._limits
-                )
-                with open_limited_zip_member(
-                    archive,
-                    member,
-                    archive_path=path,
-                    limits=self._limits,
-                ) as source:
-                    try:
-                        for (
-                            line_number,
-                            raw_line,
-                        ) in iter_bounded_cotahist_lines(source):
-                            yield _raw_line_with_context(
-                                raw_line, path.name, member, line_number
-                            )
-                    except CotahistLineTooLongError as error:
-                        raise ExtractionError(
-                            str(path), f'{member}: {error}'
-                        ) from error
+            with open_limited_zip_member(
+                archive,
+                member,
+                archive_path=path,
+                limits=self._limits,
+            ) as source:
+                try:
+                    for line_number, raw_line in iter_bounded_cotahist_lines(
+                        source
+                    ):
+                        yield _raw_line_with_context(
+                            raw_line, path.name, member, line_number
+                        )
+                except CotahistLineTooLongError as error:
+                    raise ExtractionError(
+                        str(path), f'{member}: {error}'
+                    ) from error
         except zipfile.BadZipFile as error:
             raise CorruptedZipError(str(path), str(error)) from error
+
+
+def _check_expected_member(
+    path: Path, member: str, expected_member: str | None
+) -> None:
+    """Reject member replacement before yielding any quotation bytes."""
+    if expected_member is not None and member != expected_member:
+        raise ExtractionError(
+            str(path),
+            'COTAHIST ZIP member changed since catalog resolution: '
+            f'expected {expected_member!r}, observed {member!r}',
+        )
 
 
 def _raw_line_with_context(

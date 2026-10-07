@@ -18,7 +18,11 @@ from ......macro_infra.transactional_publication import (
 from ...async_execution import run_atomic_phase, run_blocking_phase
 from ...integrity import sha256_file
 from ...models import ValidatedCotahistSource
-from ...parquet_writer.verification import B3ParquetReadback, verify_b3_parquet
+from ...parquet_writer.verification import (
+    B3ParquetReadback,
+    verify_b3_parquet,
+    verify_b3_parquet_metadata,
+)
 from ..retry import retry_unpublished_io
 from ..temp_parquet_merge import merge_temp_files_streaming
 from ..types import SourceExtractionResult
@@ -143,10 +147,13 @@ def verify_private_sources(
     results: list[SourceExtractionResult],
     expected_schema: Schema,
     sources: tuple[ValidatedCotahistSource, ...],
-) -> tuple[dict[str, int], dict[str, str]]:
-    """Check private worker outputs against their source results."""
-    verified_by_source: dict[str, int] = {}
-    verified_digests: dict[str, str] = {}
+) -> None:
+    """Check private worker artifacts' metadata before they are merged.
+
+    Row values, provenance, order, and digests are proven once by the full
+    readback of the staged output. The merge rewrites the footer, so private
+    footer evidence must be validated here, before it can be overwritten.
+    """
     for result in results:
         temp_path = result.temp_path
         if temp_path is None:
@@ -155,26 +162,16 @@ def verify_private_sources(
                     result.source_path.name,
                     'A nonempty B3 source lost its private artifact',
                 )
-            verified_by_source[result.source_path.name] = 0
-            verified_digests[result.source_path.name] = (
-                result.expected_rows_sha256
-            )
             continue
-        verify_source = partial(
-            verify_b3_parquet,
-            temp_path,
-            expected_schema=expected_schema,
-            sources=(result.source,),
-            manifest_sources=sources,
+        retry_unpublished_io(
+            partial(
+                verify_b3_parquet_metadata,
+                temp_path,
+                expected_schema=expected_schema,
+                sources=(result.source,),
+                manifest_sources=sources,
+            )
         )
-        private_readback = retry_unpublished_io(verify_source)
-        verified_by_source[result.source_path.name] = (
-            private_readback.row_count
-        )
-        verified_digests[result.source_path.name] = (
-            private_readback.source_digests[0]
-        )
-    return verified_by_source, verified_digests
 
 
 def merge_and_verify_output(

@@ -29,7 +29,7 @@ def _large_report_worker(
 ) -> None:
     """Publish evidence larger than the process queue pipe buffer."""
     del timeout, workspace, log_path
-    result_queue.put(runner._control_result(case, 'passed', 'x' * 1_048_576))
+    result_queue.put(runner.control_result(case, 'passed', 'x' * 1_048_576))
 
 
 def test_spawned_worker_delivers_large_report_before_process_join(
@@ -44,14 +44,14 @@ def test_spawned_worker_delivers_large_report_before_process_join(
         output_root='',
         mode='fast',
     )
-    monkeypatch.setattr(runner, '_case_worker', _large_report_worker)
+    monkeypatch.setattr(runner, 'case_worker', _large_report_worker)
 
-    result = runner._run_isolated_case(tmp_path / 'report', case, timeout=5)
+    result = runner.run_isolated_case(tmp_path / 'report', case, timeout=5)
 
     assert result['status'] == 'passed'
     assert result['message'] == 'x' * 1_048_576
     assert result['temporaryFilesAfterCleanup'] == []
-    assert runner._process_check() == {
+    assert runner.process_check() == {
         'status': 'passed',
         'activeProcesses': [],
     }

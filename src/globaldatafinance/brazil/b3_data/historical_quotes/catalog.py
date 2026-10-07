@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable, Iterator
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -33,47 +34,72 @@ def resolve_cotahist_sources(
     streams have identical SHA-256 identities. Missing requested years are
     returned explicitly so public extraction can report incomplete coverage.
     """
-    catalog_path = _validate_directory(directory, allow_empty=True)
-    from .source_validation import CotahistDocumentValidator
-    from .zip_reader import ZipFileReaderB3
+    return resolve_catalog_sources(
+        directory,
+        expected_years=expected_years,
+        target_tpmerc_codes=target_tpmerc_codes,
+        all_markets=all_markets,
+        limits=limits,
+        resolve_annual_sources=iter_serial_sources,
+    )
 
-    candidates_by_year, years, missing = _select_candidate_years(
+
+type AnnualResult = tuple[ValidatedCotahistSource, str | None]
+
+
+@dataclass(frozen=True)
+class CatalogSelection:
+    """Carry one deterministic selection to a serial or concurrent resolver."""
+
+    directory: Path
+    candidates: dict[int, list[Path]]
+    years: tuple[int, ...]
+    missing: tuple[int, ...]
+    codes: set[str]
+    all_markets: bool
+    limits: ArchiveSafetyLimits | None
+
+
+def resolve_catalog_sources(
+    directory: str | Path,
+    *,
+    expected_years: Iterable[int] | None,
+    target_tpmerc_codes: set[str] | None,
+    all_markets: bool,
+    limits: ArchiveSafetyLimits | None,
+    resolve_annual_sources: Callable[
+        [CatalogSelection], Iterator[AnnualResult]
+    ],
+) -> CotahistCatalogResolution:
+    """Own discovery, ordered observations and catalog diagnostics once."""
+    catalog_path = _validate_directory(directory, allow_empty=True)
+    candidates, years, missing = _select_candidate_years(
         catalog_path, expected_years
     )
-    reader = ZipFileReaderB3(limits=limits)
-    validator = CotahistDocumentValidator(reader)
+    selection = CatalogSelection(
+        catalog_path,
+        candidates,
+        years,
+        missing,
+        target_tpmerc_codes or set(),
+        all_markets,
+        limits,
+    )
     sources: list[ValidatedCotahistSource] = []
     ignored_duplicates: list[str] = []
-
-    for year in years:
-        candidates = candidates_by_year.get(year, [])
-        if not candidates:
-            continue
-        try:
-            source, duplicate = _resolve_annual_source(
-                candidates,
-                year=year,
-                directory=catalog_path,
-                validator=validator,
-                target_tpmerc_codes=target_tpmerc_codes or set(),
-                all_markets=all_markets,
-                limits=limits,
-            )
-        except CotahistCatalogError as error:
-            error.resolution = CotahistCatalogResolution(
-                sources=tuple(sources),
-                missing_years=missing,
-                ignored_duplicate_sources=tuple(ignored_duplicates),
-            )
-            error.resolved_file_count = sum(
-                bool(candidates_by_year.get(requested_year))
-                for requested_year in years
-            )
-            raise
-        sources.append(source)
-        if duplicate is not None:
-            ignored_duplicates.append(duplicate)
-
+    try:
+        for source, duplicate in resolve_annual_sources(selection):
+            sources.append(source)
+            if duplicate is not None:
+                ignored_duplicates.append(duplicate)
+    except CotahistCatalogError as error:
+        error.resolution = CotahistCatalogResolution(
+            tuple(sources), missing, tuple(ignored_duplicates)
+        )
+        error.resolved_file_count = sum(
+            bool(candidates.get(year)) for year in years
+        )
+        raise
     return CotahistCatalogResolution(
         sources=tuple(
             sorted(
@@ -89,7 +115,30 @@ def resolve_cotahist_sources(
     )
 
 
-def _resolve_annual_source(
+def iter_serial_sources(
+    selection: CatalogSelection,
+) -> Iterator[AnnualResult]:
+    """Use the canonical annual validator without creating an executor."""
+    from .source_validation import CotahistDocumentValidator
+    from .zip_reader import ZipFileReaderB3
+
+    validator = CotahistDocumentValidator(
+        ZipFileReaderB3(limits=selection.limits)
+    )
+    for year in selection.years:
+        if candidates := selection.candidates.get(year):
+            yield resolve_annual_source(
+                candidates,
+                year=year,
+                directory=selection.directory,
+                validator=validator,
+                target_tpmerc_codes=selection.codes,
+                all_markets=selection.all_markets,
+                limits=selection.limits,
+            )
+
+
+def resolve_annual_source(
     candidates: list[Path],
     *,
     year: int,

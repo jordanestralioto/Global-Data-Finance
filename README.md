@@ -104,6 +104,10 @@ categories.
 | **B3 `fast`** |   22,303,577 | 34,313.8 rows/s | 429.88 MiB |        650.50 s |
 | **B3 `slow`** |   22,303,577 | 29,759.9 rows/s | 331.11 MiB |        750.10 s |
 
+The v3 measurement excludes 2,283 TPMERC `021` quotations and predates schema
+v2's full integrity checks, so it is not directly comparable with current
+processing. See the [current COTAHIST measurements and integrity evidence](docs/dev-guide/cotahist-performance.en.md).
+
 ### CVM end-to-end benchmark
 
 Baseline v2 (revision `703d9ab`) includes CVM downloads, downloaded-file

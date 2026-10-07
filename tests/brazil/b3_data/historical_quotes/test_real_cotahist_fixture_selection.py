@@ -25,7 +25,7 @@ def test_missing_dataset_skip_message_has_a_self_contained_command(
     with pytest.raises(
         pytest.skip.Exception, match='COTAHIST_PATH is not set'
     ) as error:
-        fixture_module._configured_dataset_path()
+        fixture_module.configured_dataset_path()
 
     assert (
         'COTAHIST_PATH=./cotahist_b3 COTAHIST_TEST_YEAR=2023 '
@@ -39,7 +39,7 @@ def test_selects_the_only_available_year_without_configuration(
     """A one-year caller dataset remains ergonomic without an env override."""
     monkeypatch.delenv('COTAHIST_TEST_YEAR', raising=False)
 
-    selected_year = fixture_module._selected_year({2000: [Path('2000.zip')]})
+    selected_year = fixture_module.selected_year({2000: [Path('2000.zip')]})
 
     assert selected_year == 2000
 
@@ -50,7 +50,7 @@ def test_selects_the_explicit_year_from_a_multi_year_catalog(
     """An explicit year is propagated rather than selecting the newest file."""
     monkeypatch.setenv('COTAHIST_TEST_YEAR', '2000')
 
-    selected_year = fixture_module._selected_year(
+    selected_year = fixture_module.selected_year(
         {2000: [Path('2000.zip')], 2024: [Path('2024.zip')]}
     )
 
@@ -64,7 +64,7 @@ def test_rejects_ambiguous_catalog_without_an_explicit_year(
     monkeypatch.delenv('COTAHIST_TEST_YEAR', raising=False)
 
     with pytest.raises(pytest.fail.Exception, match='multiple years'):
-        fixture_module._selected_year(
+        fixture_module.selected_year(
             {2000: [Path('2000.zip')], 2024: [Path('2024.zip')]}
         )
 
@@ -82,7 +82,7 @@ def test_collect_quote_sample_accepts_fewer_than_the_upper_bound(
         ],
     )
 
-    sampled = real_cotahist_module._collect_quote_sample(input_file)
+    sampled = real_cotahist_module.collect_quote_sample(input_file)
 
     assert len(sampled) == 2
     assert all(record.startswith('01') for record in sampled)
@@ -96,4 +96,4 @@ def test_collect_quote_sample_rejects_input_without_type_01_records(
     input_file = write_cotahist_zip(tmp_path, year=2024, records=[])
 
     with pytest.raises(ExtractionError, match='no type-01 quote data record'):
-        real_cotahist_module._collect_quote_sample(input_file)
+        real_cotahist_module.collect_quote_sample(input_file)

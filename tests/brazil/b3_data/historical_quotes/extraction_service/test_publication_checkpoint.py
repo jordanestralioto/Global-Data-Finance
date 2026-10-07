@@ -71,7 +71,7 @@ def test_changed_source_cannot_cross_final_publication_decision(
     boundary = extraction_service.service.publication
     try:
         with pytest.raises(ExtractionError, match='source'):
-            async_execution._verify_and_publish(
+            async_execution.verify_and_publish(
                 partial(boundary.verify_source_files, [descriptor]),
                 partial(boundary.mark_validated_and_commit, publication),
                 decision,
@@ -129,10 +129,10 @@ def test_cancellation_and_publication_decision_share_one_transition(
     try:
         with ThreadPoolExecutor(max_workers=2) as executor:
             worker = executor.submit(
-                async_execution._run_phase,
+                async_execution.run_phase,
                 stop,
                 partial(
-                    async_execution._verify_and_publish,
+                    async_execution.verify_and_publish,
                     verify,
                     partial(boundary.mark_validated_and_commit, publication),
                     decision,
@@ -176,10 +176,10 @@ def test_cancel_after_source_check_prevents_publication(
         boundary.verify_source_files([descriptor])
         stop.set()
 
-    token = async_execution._phase_stop.set(stop)
+    token = async_execution.set_phase_cancellation(stop)
     try:
         with pytest.raises(asyncio.CancelledError):
-            async_execution._verify_and_publish(
+            async_execution.verify_and_publish(
                 verify_then_cancel,
                 partial(boundary.mark_validated_and_commit, publication),
                 decision,
@@ -188,7 +188,7 @@ def test_cancel_after_source_check_prevents_publication(
         assert not decision.is_set()
         assert output.read_bytes() == b'previous caller output'
     finally:
-        async_execution._phase_stop.reset(token)
+        async_execution.reset_phase_cancellation(token)
         publication.abort()
     assert sorted(path.name for path in output.parent.iterdir()) == [
         output.name
@@ -203,7 +203,7 @@ def test_verified_source_publishes_exact_staged_bytes(tmp_path: Path) -> None:
     decision = Event()
     boundary = extraction_service.service.publication
     try:
-        warning = async_execution._verify_and_publish(
+        warning = async_execution.verify_and_publish(
             partial(boundary.verify_source_files, [descriptor]),
             partial(boundary.mark_validated_and_commit, publication),
             decision,

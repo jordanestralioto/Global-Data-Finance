@@ -21,7 +21,7 @@ OperationResult = tuple[int, str, bool, int, float, str]
 ChildOperation = Callable[[ScenarioInput, Path], OperationResult]
 
 
-_OPERATIONAL_ERRORS = (
+OPERATIONAL_ERRORS = (
     ExtractionError,
     OSError,
     ValueError,
@@ -30,6 +30,11 @@ _OPERATIONAL_ERRORS = (
 )
 
 _last_b3_phase_timings: dict[str, Any] = {}
+
+
+def get_last_b3_phase_timings() -> dict[str, Any]:
+    """Return a snapshot of the last B3 benchmark phase measurements."""
+    return dict(_last_b3_phase_timings)
 
 
 def run_cvm(source: ScenarioInput, output_dir: Path) -> OperationResult:
@@ -89,7 +94,7 @@ def run_b3(
         if not result['success']:
             raise RuntimeError(f'B3 extraction failed: {result["errors"]}')
         op_sec = time.perf_counter() - started
-        _last_b3_phase_timings = dict(client._last_phase_timings)
+        _last_b3_phase_timings = dict(client.last_phase_timings)
     finally:
         for name, previous_value in previous_environment.items():
             if previous_value is None:

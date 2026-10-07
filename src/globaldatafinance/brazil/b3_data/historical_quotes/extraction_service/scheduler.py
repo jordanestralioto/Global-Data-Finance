@@ -3,19 +3,16 @@
 from __future__ import annotations
 
 import asyncio
-import multiprocessing as mp
 from concurrent.futures import (
     Executor,
     Future,
-    ProcessPoolExecutor,
-    ThreadPoolExecutor,
 )
 from pathlib import Path
-from threading import Event
 from typing import Any, Protocol
 
 from .....core import get_logger
 from ..async_execution import run_blocking_phase
+from ..executors import create_b3_executor
 from ..models import ValidatedCotahistSource
 from ..processing import ProcessingModeEnumB3
 from ..zip_reader import ZipFileReaderB3
@@ -72,23 +69,13 @@ class ExtractionSchedulerB3:
         worker_limit: int,
     ) -> tuple[Executor, Any | None, bool]:
         """Instantiate configured thread or process worker executor."""
-        use_processes = (
-            self.executor_backend == 'process'
-            and self.processing_mode is ProcessingModeEnumB3.FAST
-            and source_count >= 2
-            and worker_limit >= 2
+        return create_b3_executor(
+            source_count,
+            worker_limit,
+            processing_mode=self.processing_mode,
+            executor_backend=self.executor_backend,
+            initializer=init_worker,
         )
-        if use_processes:
-            ctx = mp.get_context('spawn')
-            cancel_event = ctx.Event()
-            executor: Executor = ProcessPoolExecutor(
-                max_workers=worker_limit,
-                mp_context=ctx,
-                initializer=init_worker,
-                initargs=(cancel_event,),
-            )
-            return executor, cancel_event, True
-        return ThreadPoolExecutor(max_workers=worker_limit), Event(), False
 
     def _submit_source(
         self,

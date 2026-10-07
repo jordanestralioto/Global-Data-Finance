@@ -31,11 +31,6 @@ def file_patch_hashes(diff_text: str) -> dict[str, str]:
     return hashes
 
 
-def canonical_patch_sha256(diff_text: str, file_path: str) -> str | None:
-    """Return the canonical hash for one file patch, if it is present."""
-    return file_patch_hashes(diff_text).get(file_path)
-
-
 def _patch_file_path(chunk: str) -> str | None:
     """Extract the post-change path, retaining deletion paths when needed."""
     for line in chunk.splitlines():

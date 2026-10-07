@@ -19,16 +19,16 @@ import scripts.real_validation as cli
 import scripts.real_validation_runner as runner
 from globaldatafinance.macro_exceptions import SecurityError
 from scripts.real_validation import (
-    _filter_cases,
-    _positive_timeout,
-    _required_source,
-    _validate_case_output_roots,
-    _validate_external_directory,
-    _validate_optional_external_directory,
-    _validate_report_path,
+    filter_cases,
     main,
+    positive_timeout,
+    required_source,
+    validate_case_output_roots,
+    validate_external_directory,
+    validate_optional_external_directory,
+    validate_report_path,
 )
-from scripts.real_validation_b3.frozen_baseline import _ordered_rows_sha256
+from scripts.real_validation_b3.frozen_baseline import ordered_rows_sha256
 from scripts.real_validation_matrix import build_cases
 from scripts.real_validation_matrix.cases import CVM_DOCUMENT_WINDOWS
 from scripts.real_validation_report import (
@@ -452,7 +452,7 @@ def test_cotahist_digest_preserves_ordered_parity(tmp_path: Path) -> None:
     pq.write_table(pa.table({'ticker': ['B', 'A'], 'value': [2, 1]}), first)
     pq.write_table(pa.table({'ticker': ['A', 'B'], 'value': [1, 2]}), second)
 
-    assert _ordered_rows_sha256(first) != _ordered_rows_sha256(second)
+    assert ordered_rows_sha256(first) != ordered_rows_sha256(second)
 
 
 def test_temporary_paths_detect_tmp_suffix(tmp_path: Path) -> None:
@@ -501,13 +501,13 @@ def test_cli_destination_policy_rejects_privileged_and_untrusted_paths(
 ) -> None:
     """CLI destinations use the shared POSIX, drive, and UNC policy."""
     with pytest.raises(SecurityError, match='Security violation'):
-        _validate_external_directory(raw_path, 'destination')
+        validate_external_directory(raw_path, 'destination')
 
 
 def test_cli_destination_policy_allows_tmp_without_creating_it() -> None:
     """The external scratch root is allowed without being touched."""
     tmp_root = Path('/', 'tmp')
-    assert _validate_external_directory(str(tmp_root), 'destination') == (
+    assert validate_external_directory(str(tmp_root), 'destination') == (
         tmp_root
     )
 
@@ -903,12 +903,12 @@ def test_cli_validation_helpers_reject_invalid_inputs_and_filter_cases(
     file_path = tmp_path / 'not-a-directory'
     file_path.write_text('x', encoding='utf-8')
     with pytest.raises(ValueError, match='must be a directory'):
-        _validate_report_path(str(file_path))
+        validate_report_path(str(file_path))
     with pytest.raises(ValueError, match='outside the repository'):
-        _validate_external_directory(str(Path.cwd()), 'destination')
-    assert _validate_optional_external_directory(None, 'destination') is None
+        validate_external_directory(str(Path.cwd()), 'destination')
+    assert validate_optional_external_directory(None, 'destination') is None
     with pytest.raises(ValueError, match='no output directory'):
-        _validate_case_output_roots(
+        validate_case_output_roots(
             [
                 ValidationCase(
                     case_id='cvm-bad',
@@ -931,14 +931,14 @@ def test_cli_validation_helpers_reject_invalid_inputs_and_filter_cases(
         document='DFP',
         mode='cvm',
     )
-    assert _filter_cases([case], 'case-a') == [case]
+    assert filter_cases([case], 'case-a') == [case]
     with pytest.raises(ValueError, match='unknown validation case'):
-        _filter_cases([case], 'case-b')
+        filter_cases([case], 'case-b')
 
 
 def test_cli_requires_source_and_positive_timeout() -> None:
     """Non-resume invocations require a source and positive timeout."""
     with pytest.raises(ValueError, match='source is required'):
-        _required_source(None)
+        required_source(None)
     with pytest.raises(ValueError, match='greater than zero'):
-        _positive_timeout(0)
+        positive_timeout(0)

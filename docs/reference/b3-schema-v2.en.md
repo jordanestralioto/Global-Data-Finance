@@ -65,6 +65,30 @@ This distinguishes null from empty text and preserves order and repeated
 occurrences. The oracle implements this contract independently and compares
 the digests and other manifest facts with reconciled raw source data.
 
+Preflight, replay, and verification readback use the same digest
+implementation. Preflight and replay group framing by row. Verification
+readback uses Arrow operations to group canonical columns into bounded
+segments, preserving the exact version 2 byte stream. Each segment ends
+at its source boundary; sources with no selected quotations also have
+their digest checked.
+
+Common length headers use bounded constant tables. These tables contain
+only tags and lengths, without retaining financial values or source content.
+
+Before merging, each temporary Parquet is checked for schema, complete
+footer, manifest, and row count. The merge repeats schema and metadata
+validation when opening each temporary. The final artifact undergoes one
+complete readback in bounded batches to verify values, provenance, order,
+and per-source digests before transactional publication. Replay and source
+identity checks remain mandatory.
+
+Verification readback converts dates, integers, and decimals to canonical
+strings by column with Arrow, preserving decimal scale without floating
+point. Column framing also uses Arrow operations, with standard Base64
+for original bytes. All 32 columns participate in the digest. Provenance,
+date, null, order, and count checks continue to cover every row, including
+batches that cross source boundaries.
+
 ### Reading
 
 Source numeric fields must contain only ASCII digits across their full width;

@@ -1,0 +1,155 @@
+{
+  "schemaVersion": 1,
+  "reportKind": "cotahist-final-acceptance",
+  "status": "passed",
+  "fullCorpus": {
+    "sourceCount": 27,
+    "dateRange": [
+      "2000-01-03",
+      "2026-09-02"
+    ],
+    "campaignDurationSeconds": 12861.443012,
+    "modes": {
+      "fast": {
+        "elapsedSeconds": 2989.7760767936707,
+        "rawQuotes": 22305860,
+        "selectedQuotes": 22305860,
+        "writtenRows": 22305860,
+        "verifiedRows": 22305860,
+        "intentionalExclusions": 0,
+        "missingYears": []
+      },
+      "slow": {
+        "elapsedSeconds": 2297.3417263031006,
+        "rawQuotes": 22305860,
+        "selectedQuotes": 22305860,
+        "writtenRows": 22305860,
+        "verifiedRows": 22305860,
+        "intentionalExclusions": 0,
+        "missingYears": []
+      }
+    },
+    "comparisonMethod": "independent ordered raw-to-Parquet equality",
+    "modeParity": "exact ordered rows",
+    "physicalParquetsEqualBetweenModes": true,
+    "physicalParquetsMatchHistoricalAcceptance": true,
+    "sourceChecksumsMatchedFrozenManifest": true,
+    "previousSupportedRows": 22303577,
+    "previousTwentyFieldsEqual": true,
+    "blockLotRowsByYear": {
+      "2023": 30,
+      "2024": 346,
+      "2025": 539,
+      "2026": 1368
+    },
+    "blockLotDistinctTradingCodes": 345,
+    "blockLotVolumeTotal": "57359085637.97",
+    "temporaryFilesAfterCleanup": [],
+    "activeProcessesAfterCleanup": [],
+    "runtimeBinding": {
+      "frozenFileCount": 323,
+      "immutableSnapshotUnchanged": true,
+      "currentDifferences": [
+        "src/globaldatafinance/brazil/b3_data/historical_quotes/preflight.py",
+        "tests/application/b3_docs/test_async_phase_cancellation.py"
+      ]
+    }
+  },
+  "correctedProcessAcceptance": {
+    "sourceCount": 2,
+    "dateRange": [
+      "2002-01-02",
+      "2003-12-30"
+    ],
+    "campaignDurationSeconds": 415.257772,
+    "modes": {
+      "fast": {
+        "elapsedSeconds": 67.74933338165283,
+        "rawQuotes": 278085,
+        "selectedQuotes": 278085,
+        "writtenRows": 278085,
+        "verifiedRows": 278085,
+        "intentionalExclusions": 0,
+        "missingYears": []
+      },
+      "slow": {
+        "elapsedSeconds": 115.4601571559906,
+        "rawQuotes": 278085,
+        "selectedQuotes": 278085,
+        "writtenRows": 278085,
+        "verifiedRows": 278085,
+        "intentionalExclusions": 0,
+        "missingYears": []
+      }
+    },
+    "modeParity": "exact ordered rows",
+    "physicalParquetsMatchEarlierProcessAcceptance": true,
+    "temporaryFilesAfterCleanup": [],
+    "activeProcessesAfterCleanup": [],
+    "runtimeBinding": {
+      "frozenFileCount": 324,
+      "immutableSnapshotUnchanged": true,
+      "currentDifferences": [
+        "tests/application/b3_docs/test_async_phase_cancellation.py"
+      ]
+    }
+  },
+  "historicalFullCorpusComparison": {
+    "fast": {
+      "earlierElapsedSeconds": 3895.087864637375,
+      "currentElapsedSeconds": 2989.7760767936707,
+      "observedTimeReductionPercent": 23.24239707306287
+    },
+    "slow": {
+      "earlierElapsedSeconds": 3350.5052230358124,
+      "currentElapsedSeconds": 2297.3417263031006,
+      "observedTimeReductionPercent": 31.432975823821153
+    }
+  },
+  "localSupportedPythonGates": {
+    "312": {
+      "status": "passed",
+      "deterministicTests": 2330,
+      "optInDeselected": 8,
+      "productBranchCoveragePercent": 91.22,
+      "executorTests": 200,
+      "executorBranchCoveragePercent": 91.12,
+      "auditedPackages": 116,
+      "log": ".benchmarks/cotahist-optimization-20261006/pre-push-handshake-python312.log"
+    },
+    "313": {
+      "status": "passed",
+      "deterministicTests": 2330,
+      "optInDeselected": 8,
+      "productBranchCoveragePercent": 91.22,
+      "executorTests": 200,
+      "executorBranchCoveragePercent": 91.12,
+      "auditedPackages": 116,
+      "log": ".benchmarks/cotahist-optimization-20261006/pre-push-handshake-python313.log"
+    },
+    "314": {
+      "status": "passed",
+      "deterministicTests": 2330,
+      "optInDeselected": 8,
+      "productBranchCoveragePercent": 91.12,
+      "executorTests": 200,
+      "executorBranchCoveragePercent": 91.12,
+      "auditedPackages": 116,
+      "log": ".benchmarks/cotahist-optimization-20261006/pre-push-handshake-python314.log"
+    }
+  },
+  "proofBoundary": {
+    "fullCorpusUsesDefaultThreadBackend": true,
+    "allOtherPreflightModuleAstEqual": true,
+    "changedFunction": "_await_preflight",
+    "functionNotCalledByThreadOrSlowPreflight": true,
+    "cancellationChangeIsTestOnly": true,
+    "entireCurrentProductMatchesCorrectedProcessSnapshot": true
+  },
+  "limitations": [
+    "Historical full-corpus runs occurred on different days and machine loads; these are observations, not a controlled causal estimate.",
+    "Repeated paired 500k results are documented separately and must not be extrapolated to the entire annual corpus.",
+    "The full default-thread campaign snapshot differs from the final tree only in an unused process waiter and test synchronization.",
+    "Remote CI and external publication were not executed."
+  ]
+}

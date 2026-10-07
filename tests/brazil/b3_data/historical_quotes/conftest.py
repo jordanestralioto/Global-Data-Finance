@@ -166,7 +166,7 @@ def _fail(message: str) -> NoReturn:
     pytest.fail(message, pytrace=False)
 
 
-def _configured_dataset_path() -> Path:
+def configured_dataset_path() -> Path:
     """Return the configured dataset directory or skip the opt-in suite."""
     configured_path = os.environ.get('COTAHIST_PATH')
     if not configured_path:
@@ -177,7 +177,7 @@ def _configured_dataset_path() -> Path:
     return Path(configured_path).expanduser().resolve()
 
 
-def _selected_year(files_by_year: dict[int, list[Path]]) -> int:
+def selected_year(files_by_year: dict[int, list[Path]]) -> int:
     """Resolve an exact configured year or infer the sole available year."""
     configured_year = os.environ.get('COTAHIST_TEST_YEAR')
     if configured_year is not None:
@@ -201,7 +201,7 @@ def _select_file(files_by_year: dict[int, list[Path]], year: int) -> Path:
 @pytest.fixture(scope='session')
 def local_cotahist_catalog() -> dict[int, list[Path]]:
     """Index valid caller-owned COTAHIST inputs without processing rows."""
-    dataset_path = _configured_dataset_path()
+    dataset_path = configured_dataset_path()
     try:
         return validate_cotahist_catalog(dataset_path)
     except CotahistCatalogError as error:
@@ -214,7 +214,7 @@ def local_cotahist(
 ) -> tuple[Path, int]:
     """Resolve exactly one local year for an opt-in extraction test."""
     files_by_year = local_cotahist_catalog
-    year = _selected_year(files_by_year)
+    year = selected_year(files_by_year)
     if year not in files_by_year:
         available_years = ', '.join(
             str(available_year) for available_year in sorted(files_by_year)

@@ -16,9 +16,6 @@ from scripts.staged_changes import (
     get_staged_changes,
     status_for_path,
 )
-from scripts.staged_changes import (
-    _parse_name_status as _parse_staged_name_status,
-)
 from scripts.workspace_members import (
     GitInspectionError,
     index_file_exists,
@@ -30,26 +27,6 @@ MANIFEST_LOCKFILE_PAIRS: dict[str, tuple[str, ...]] = {
     'pyproject.toml': ('uv.lock',),
 }
 LOCKFILE_UPDATED_STATUSES = frozenset({'A', 'M', 'R', 'C'})
-
-
-def _parse_name_status(output: str) -> list[StagedChange]:
-    """Keep the parser available for callers of the original CLI module."""
-    return _parse_staged_name_status(output)
-
-
-def get_staged_file_statuses(
-    repo_root: Path | None = None,
-) -> dict[str, str]:
-    """Return a path-to-status compatibility view of staged changes."""
-    return {
-        change.new_path: change.status
-        for change in get_staged_changes(repo_root)
-    }
-
-
-def get_staged_files(repo_root: Path | None = None) -> list[str]:
-    """Return paths currently staged in Git."""
-    return [change.new_path for change in get_staged_changes(repo_root)]
 
 
 def _lockfile_path(manifest_dir: Path, lock_name: str) -> str:

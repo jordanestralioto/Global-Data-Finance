@@ -50,11 +50,9 @@ def test_public_storage_failures_keep_diagnostics_and_classification(
     """Environment prerequisites remain distinct from corrupted data."""
     public = {'success': False, 'errors': {'transaction': diagnostic}}
 
-    details = artifact_validation._validate_result(
-        public, tmp_path, 2024, 2024
-    )
-    failure = artifact_validation._failed_validation(public, details)
-    parity = executor._parity_result(public, details, public, {'valid': True})
+    details = artifact_validation.validate_result(public, tmp_path, 2024, 2024)
+    failure = artifact_validation.failed_validation(public, details)
+    parity = executor.parity_result(public, details, public, {'valid': True})
 
     assert failure['status'] == parity['status'] == status
     assert diagnostic in failure['message']
@@ -172,7 +170,7 @@ def test_validate_result_accepts_schema_rows_metadata_and_dates(
     output_path = output_directory / 'cotahist.parquet'
     _write_b3_parquet(output_path)
 
-    details = artifact_validation._validate_result(
+    details = artifact_validation.validate_result(
         _b3_result(output_path), output_directory, 2024, 2024
     )
 
@@ -204,7 +202,7 @@ def test_execute_fast_case_uses_public_mode_and_returns_evidence(
     monkeypatch.setattr(
         input_validation, 'validate_cotahist_input', fake_validate
     )
-    monkeypatch.setattr(executor, '_execute_mode', fake_execute)
+    monkeypatch.setattr(executor, 'execute_mode', fake_execute)
 
     result = b3.execute_cotahist_case(case, tmp_path / 'workspace')
 
@@ -248,7 +246,7 @@ def test_execute_fast_case_retains_public_failure_details(
     )
     monkeypatch.setattr(
         executor,
-        '_execute_mode',
+        'execute_mode',
         lambda *_args: (
             {'success': False},
             {'valid': False, 'message': 'schema mismatch'},
@@ -278,7 +276,7 @@ def test_execute_parity_compares_both_public_modes(
         calls.append(mode)
         return {'mode': mode}, _mode_details(artifact=f'{mode}.parquet')
 
-    monkeypatch.setattr(executor, '_execute_mode', fake_execute)
+    monkeypatch.setattr(executor, 'execute_mode', fake_execute)
     result = b3.execute_cotahist_case(case, tmp_path / 'workspace')
 
     assert result['status'] == 'passed'
@@ -315,8 +313,8 @@ def test_parity_stops_when_one_mode_is_invalid(
         )
         return {'mode': mode}, details
 
-    monkeypatch.setattr(executor, '_execute_mode', fake_execute)
-    result = executor._execute_parity(case, Path(case.input_path), tmp_path)
+    monkeypatch.setattr(executor, 'execute_mode', fake_execute)
+    result = executor.execute_parity(case, Path(case.input_path), tmp_path)
 
     assert result['status'] == 'failed'
     assert result['message'] == message
@@ -346,7 +344,7 @@ def test_parity_rejects_cross_mode_evidence_mismatches(
     fast_details = _mode_details()
     slow_details = {**fast_details, field: value}
 
-    result = executor._parity_result(
+    result = executor.parity_result(
         {'mode': 'fast'}, fast_details, {'mode': 'slow'}, slow_details
     )
 
@@ -361,9 +359,9 @@ def test_ordered_rows_digest_detects_row_reordering(tmp_path: Path) -> None:
     pq.write_table(pa.table({'ticker': ['B', 'A'], 'value': [2, 1]}), first)
     pq.write_table(pa.table({'ticker': ['A', 'B'], 'value': [1, 2]}), second)
 
-    assert frozen_baseline._ordered_rows_sha256(
+    assert frozen_baseline.ordered_rows_sha256(
         first
-    ) != frozen_baseline._ordered_rows_sha256(second)
+    ) != frozen_baseline.ordered_rows_sha256(second)
 
 
 @pytest.mark.parametrize(
@@ -384,7 +382,7 @@ def test_validate_result_rejects_public_or_counter_mismatch(
     output_path = output_directory / 'cotahist.parquet'
     _write_b3_parquet(output_path)
 
-    details = artifact_validation._validate_result(
+    details = artifact_validation.validate_result(
         result_factory(output_path), output_directory, 2024, 2024
     )
 
@@ -403,7 +401,7 @@ def test_validate_result_rejects_wrong_schema_and_output_inventory(
     extra = output_directory / 'extra.parquet'
     extra.write_bytes(output_path.read_bytes())
 
-    details = artifact_validation._validate_result(
+    details = artifact_validation.validate_result(
         _b3_result(output_path), output_directory, 2024, 2024
     )
 
@@ -421,7 +419,7 @@ def test_validate_result_reports_temporary_leaks_and_wrong_dates(
     _write_b3_parquet(output_path, year=2023)
     (output_directory / 'staging.tmp').touch()
 
-    details = artifact_validation._validate_result(
+    details = artifact_validation.validate_result(
         _b3_result(output_path), output_directory, 2024, 2024
     )
 
@@ -429,7 +427,7 @@ def test_validate_result_reports_temporary_leaks_and_wrong_dates(
     assert 'temporary files leaked' in details['message']
 
     (output_directory / 'staging.tmp').unlink()
-    details = artifact_validation._validate_result(
+    details = artifact_validation.validate_result(
         _b3_result(output_path), output_directory, 2024, 2024
     )
     assert details['valid'] is False
@@ -442,14 +440,14 @@ def test_validate_metadata_reports_empty_or_unreadable_outputs(
     """Low-level metadata validation classifies invalid Parquet outputs."""
     output = tmp_path / 'output.parquet'
     _write_b3_parquet(output)
-    assert artifact_validation._validate_metadata(output) is None
+    assert artifact_validation.validate_metadata(output) is None
 
     empty = tmp_path / 'empty.parquet'
     pq.write_table(
         pa.table({'data_pregao': pa.array([None], type=pa.date32())}), empty
     )
     assert (
-        artifact_validation._validate_metadata(empty)
+        artifact_validation.validate_metadata(empty)
         == 'B3 schema version metadata is invalid'
     )
 
@@ -464,7 +462,7 @@ def test_validate_metadata_reports_empty_or_unreadable_outputs(
         ),
     )
     assert (
-        artifact_validation._validate_metadata(output)
+        artifact_validation.validate_metadata(output)
         == 'B3 schema version metadata is invalid'
     )
 
@@ -477,14 +475,14 @@ def test_frozen_checksum_manifest_only_applies_to_full_supplied_range() -> (
         Path(f'/data/COTAHIST_A{year}.ZIP') for year in range(2000, 2027)
     )
 
-    assert frozen_baseline._expected_frozen_checksums(paths) is None
-    checksums = frozen_baseline._expected_frozen_checksums(paths, enabled=True)
+    assert frozen_baseline.expected_frozen_checksums(paths) is None
+    checksums = frozen_baseline.expected_frozen_checksums(paths, enabled=True)
 
     assert checksums is not None
     assert len(checksums) == 27
-    assert frozen_baseline._expected_frozen_checksums(paths[:-1]) is None
+    assert frozen_baseline.expected_frozen_checksums(paths[:-1]) is None
     with pytest.raises(ValueError, match='complete 2000-2026 range'):
-        frozen_baseline._expected_frozen_checksums(paths[:-1], enabled=True)
+        frozen_baseline.expected_frozen_checksums(paths[:-1], enabled=True)
 
 
 def test_frozen_baseline_rejects_any_raw_oracle_drift() -> None:
@@ -499,7 +497,7 @@ def test_frozen_baseline_rejects_any_raw_oracle_drift() -> None:
         'intentionalExclusions': 0,
         'previousTwentyFieldsEqual': True,
     }
-    frozen_baseline._validate_frozen_baseline(details)
+    frozen_baseline.validate_frozen_baseline(details)
 
     raw_quote_count = details['rawQuotes']
     assert isinstance(raw_quote_count, int)
@@ -507,7 +505,7 @@ def test_frozen_baseline_rejects_any_raw_oracle_drift() -> None:
     with pytest.raises(
         AssertionError, match='frozen corpus acceptance mismatch'
     ):
-        frozen_baseline._validate_frozen_baseline(details)
+        frozen_baseline.validate_frozen_baseline(details)
 
 
 def test_case_source_paths_validates_snapshot_size_and_checksum(
@@ -528,14 +526,14 @@ def test_case_source_paths_validates_snapshot_size_and_checksum(
             'input_files': (snapshot,),
         }
     )
-    assert frozen_baseline._case_source_paths(case) == (source.resolve(),)
+    assert frozen_baseline.case_source_paths(case) == (source.resolve(),)
 
     changed = ValidationInputSnapshot(
         snapshot.path, snapshot.size_bytes + 1, snapshot.sha256
     )
     bad_size = ValidationCase(**{**case.__dict__, 'input_files': (changed,)})
     with pytest.raises(ValueError, match='size changed'):
-        frozen_baseline._case_source_paths(bad_size)
+        frozen_baseline.case_source_paths(bad_size)
 
     bad_hash = ValidationInputSnapshot(
         snapshot.path, snapshot.size_bytes, '0' * 64
@@ -544,7 +542,7 @@ def test_case_source_paths_validates_snapshot_size_and_checksum(
         **{**case.__dict__, 'input_files': (bad_hash,)}
     )
     with pytest.raises(ValueError, match='checksum changed'):
-        frozen_baseline._case_source_paths(bad_checksum)
+        frozen_baseline.case_source_paths(bad_checksum)
 
 
 def test_execute_multi_year_parity_forwards_the_full_source_range(
@@ -592,7 +590,7 @@ def test_execute_multi_year_parity_forwards_the_full_source_range(
         assert frozen_baseline is False
         return {'mode': mode}, _mode_details()
 
-    monkeypatch.setattr(executor, '_execute_mode', fake_execute)
+    monkeypatch.setattr(executor, 'execute_mode', fake_execute)
     result = b3.execute_cotahist_case(case, tmp_path / 'workspace')
 
     assert result['status'] == 'passed'
@@ -635,7 +633,7 @@ def test_execute_mode_runs_facade_and_independent_reconciliation(
         records=[build_cotahist_record(year=2024)],
     )
 
-    result, details = executor._execute_mode(
+    result, details = executor.execute_mode(
         source, 2024, 'fast', tmp_path / 'campaign-output'
     )
 
@@ -661,7 +659,7 @@ def test_validate_result_rejects_invalid_frame_contents(
     output_path = output_directory / 'cotahist.parquet'
     _write_b3_parquet(output_path, market=market)
 
-    details = artifact_validation._validate_result(
+    details = artifact_validation.validate_result(
         _b3_result(output_path, records=records), output_directory, 2024, 2024
     )
 
@@ -676,7 +674,7 @@ def test_validate_result_reports_missing_and_escaped_outputs(
     output_directory = tmp_path / 'output'
     output_directory.mkdir()
     missing = output_directory / 'missing.parquet'
-    details = artifact_validation._validate_result(
+    details = artifact_validation.validate_result(
         _b3_result(missing), output_directory, 2024, 2024
     )
     assert details['valid'] is False
@@ -684,7 +682,7 @@ def test_validate_result_reports_missing_and_escaped_outputs(
 
     escaped = tmp_path / 'outside.parquet'
     _write_b3_parquet(escaped)
-    details = artifact_validation._validate_result(
+    details = artifact_validation.validate_result(
         _b3_result(escaped), output_directory, 2024, 2024
     )
     assert details['valid'] is False
@@ -705,7 +703,7 @@ def test_validate_result_catches_frame_reader_errors(
         lambda *_args: (_ for _ in ()).throw(OSError('reader failed')),
     )
 
-    details = artifact_validation._validate_result(
+    details = artifact_validation.validate_result(
         _b3_result(output_path), output_directory, 2024, 2024
     )
 
@@ -720,7 +718,7 @@ def test_validate_schema_and_metadata_reject_v1_contracts(
     old_schema = tmp_path / 'old-schema.parquet'
     pq.write_table(pa.table({'ticker': ['PETR4']}), old_schema)
     assert (
-        artifact_validation._validate_schema(old_schema)
+        artifact_validation.validate_schema(old_schema)
         == 'B3 schema differs from v2 oracle'
     )
 
@@ -734,16 +732,16 @@ def test_validate_schema_and_metadata_reject_v1_contracts(
         ),
         missing_manifest,
     )
-    assert artifact_validation._validate_metadata(missing_manifest) == (
+    assert artifact_validation.validate_metadata(missing_manifest) == (
         'B3 integrity footer manifest is missing'
     )
 
 
 def test_path_year_is_case_insensitive_and_rejects_other_names() -> None:
     """The validator recognizes only the annual COTAHIST filename contract."""
-    assert frozen_baseline._path_year(Path('cotahist_a2024.txt')) == 2024
+    assert frozen_baseline.path_year(Path('cotahist_a2024.txt')) == 2024
     with pytest.raises(ValueError, match='invalid COTAHIST annual filename'):
-        frozen_baseline._path_year(Path('quotes.zip'))
+        frozen_baseline.path_year(Path('quotes.zip'))
 
 
 def test_validate_result_accepts_one_file_through_symlink_ancestry(
@@ -759,7 +757,7 @@ def test_validate_result_accepts_one_file_through_symlink_ancestry(
     output = output_directory / 'cotahist.parquet'
     _write_b3_parquet(output)
 
-    details = artifact_validation._validate_result(
+    details = artifact_validation.validate_result(
         _b3_result(output.resolve()), output_directory, 2024, 2024
     )
 
@@ -780,7 +778,7 @@ def test_symlink_directory_still_rejects_two_actual_parquets(
     _write_b3_parquet(first)
     _write_b3_parquet(physical / 'second.parquet')
 
-    details = artifact_validation._validate_result(
+    details = artifact_validation.validate_result(
         _b3_result(first), alias, 2024, 2024
     )
 

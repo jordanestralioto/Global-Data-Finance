@@ -39,6 +39,15 @@ uv run --locked --no-sync python examples/02_quickstart_b3.py
 ```
 
 This processes only the selected stock markets for the explicit year 2023.
+The default input is `./cotahist_b3`, with output
+`./dados_b3/cotacoes_acoes_2023.parquet`. To use another directory or range,
+pass command-line options; the output basename follows the selected years:
+
+```bash
+uv run --locked --no-sync python examples/02_quickstart_b3.py \
+  --path-of-docs /path/to/COTAHIST \
+  --initial-year 2000 --last-year 2026 --destination-path ./dados_b3
+```
 
 ### B3 selected classes
 

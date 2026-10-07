@@ -90,22 +90,23 @@ def test_oracle_detects_a_production_parser_offset_regression(
     )
     output_directory = tmp_path / 'output'
     output_directory.mkdir()
-    layout = list(cotahist_parser.parser.B3_QUOTATION_LAYOUT)
+    plan = list(cotahist_parser.field_conversion.FIELD_PLAN)
     price_index = next(
         index
-        for index, field in enumerate(layout)
+        for index, (field, _source_slice, _normalizer) in enumerate(plan)
         if field.name == 'preco_abertura'
     )
-    price_start = layout[price_index].start
-    price_stop = layout[price_index].stop
+    definition, _source_slice, normalizer = plan[price_index]
+    price_start = definition.start
+    price_stop = definition.stop
     assert price_start is not None and price_stop is not None
-    layout[price_index] = replace(
-        layout[price_index],
-        start=price_start + 1,
-        stop=price_stop + 1,
+    plan[price_index] = (
+        replace(definition, start=price_start + 1, stop=price_stop + 1),
+        slice(price_start + 1, price_stop + 1),
+        normalizer,
     )
     monkeypatch.setattr(
-        cotahist_parser.parser, 'B3_QUOTATION_LAYOUT', tuple(layout)
+        cotahist_parser.field_conversion, 'FIELD_PLAN', tuple(plan)
     )
 
     result = _extract_all_markets(tmp_path, output_directory)

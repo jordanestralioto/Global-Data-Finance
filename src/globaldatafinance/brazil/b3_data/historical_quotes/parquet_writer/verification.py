@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
 from datetime import date
-from decimal import Decimal
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -13,12 +11,7 @@ from .....macro_exceptions import ExtractionError
 from ..async_execution import check_phase_cancellation
 from ..models import ValidatedCotahistSource
 from ..row_digest import B3OrderedRowDigest
-from .audit_metadata import (
-    B3_AUDIT_METADATA_KEY,
-    B3_SCHEMA_FINGERPRINT_METADATA_KEY,
-    B3_SCHEMA_VERSION_METADATA_KEY,
-)
-from .schema import B3_SCHEMA_VERSION, schema_fingerprint
+from .metadata_verification import open_verified_parquet, verify_row_count
 from .session import RECORD_BATCH_LIMIT
 
 if TYPE_CHECKING:
@@ -48,6 +41,7 @@ class _ReadbackState:
     observed_rows: int = 0
     first_date: date | None = None
     last_date: date | None = None
+    expected_coordinates: dict[str, object] = field(default_factory=dict)
 
 
 def verify_b3_parquet(
@@ -58,11 +52,32 @@ def verify_b3_parquet(
     manifest_sources: tuple[ValidatedCotahistSource, ...] | None = None,
 ) -> B3ParquetReadback:
     """Read every row and prove schema, provenance, and source order."""
-    parquet, actual_schema = _validate_parquet_contract(
+    parquet, actual_schema = open_verified_parquet(
         path, expected_schema, sources, manifest_sources
     )
     try:
         return _read_open_parquet(path, parquet, actual_schema, sources)
+    finally:
+        parquet.close()
+
+
+def verify_b3_parquet_metadata(
+    path: Path,
+    *,
+    expected_schema: Schema,
+    sources: tuple[ValidatedCotahistSource, ...],
+    manifest_sources: tuple[ValidatedCotahistSource, ...] | None = None,
+) -> int:
+    """Prove schema, footer manifest, and row count without reading rows.
+
+    This is the metadata half of ``verify_b3_parquet``. It does not establish
+    values, provenance, order, or digests; those require the full readback.
+    """
+    parquet, _ = open_verified_parquet(
+        path, expected_schema, sources, manifest_sources
+    )
+    try:
+        return verify_row_count(path, parquet, sources)
     finally:
         parquet.close()
 
@@ -73,15 +88,7 @@ def _read_open_parquet(
     actual_schema: Schema,
     sources: tuple[ValidatedCotahistSource, ...],
 ) -> B3ParquetReadback:
-    file_metadata = parquet.metadata
-    expected_rows = sum(source.selected_quotes for source in sources)
-    if file_metadata is None or file_metadata.num_rows != expected_rows:
-        observed = None if file_metadata is None else file_metadata.num_rows
-        raise ExtractionError(
-            str(path),
-            'B3 Parquet row count readback failed: '
-            f'expected={expected_rows}; observed={observed}',
-        )
+    expected_rows = verify_row_count(path, parquet, sources)
     field_indices = {
         name: actual_schema.get_field_index(name)
         for name in (
@@ -113,39 +120,6 @@ def _read_open_parquet(
     )
 
 
-def _validate_parquet_contract(
-    path: Path,
-    expected_schema: Schema,
-    sources: tuple[ValidatedCotahistSource, ...],
-    manifest_sources: tuple[ValidatedCotahistSource, ...] | None,
-) -> tuple[Any, Schema]:
-    import pyarrow.parquet as pq
-
-    parquet = pq.ParquetFile(path)
-    try:
-        actual_schema = parquet.schema_arrow
-        if not actual_schema.remove_metadata().equals(
-            expected_schema.remove_metadata(), check_metadata=True
-        ):
-            raise ExtractionError(
-                str(path), 'B3 Parquet schema readback failed'
-            )
-        metadata = actual_schema.metadata or {}
-        _verify_footer_metadata(
-            metadata,
-            expected_schema,
-            sources if manifest_sources is None else manifest_sources,
-        )
-        if b'pandas' in metadata:
-            raise ExtractionError(
-                str(path), 'B3 Parquet unexpectedly contains pandas metadata'
-            )
-        return parquet, actual_schema
-    except BaseException:
-        parquet.close()
-        raise
-
-
 def _verify_parquet_batches(
     path: Path,
     parquet: Any,
@@ -157,14 +131,31 @@ def _verify_parquet_batches(
     for batch in parquet.iter_batches(batch_size=RECORD_BATCH_LIMIT):
         check_phase_cancellation()
         _validate_batch(path, batch, actual_schema)
-        columns = [
-            batch.column(index).to_pylist()
-            for index in range(batch.num_columns)
-        ]
-        for row_index in range(batch.num_rows):
-            _record_readback_row(
-                path, columns, row_index, field_indices, sources, state
+        columns = canonical_columns(batch)
+        coordinates = {
+            name: batch.column(index).to_pylist()
+            for name, index in field_indices.items()
+        }
+        offset = 0
+        while offset < batch.num_rows:
+            _finish_complete_sources(path, sources, state)
+            if state.source_index >= len(sources):
+                raise ExtractionError(
+                    str(path), 'B3 Parquet contains rows beyond source bounds'
+                )
+            source = sources[state.source_index]
+            length = min(
+                batch.num_rows - offset,
+                source.selected_quotes - state.source_rows,
             )
+            for row_index in range(offset, offset + length):
+                _record_readback_row(
+                    path, row_index, coordinates, sources, state
+                )
+            state.source_digest.update_columns(
+                [column.slice(offset, length) for column in columns]
+            )
+            offset += length
     _finish_remaining_sources(path, sources, state)
     return state
 
@@ -183,24 +174,24 @@ def _validate_batch(path: Path, batch: Any, actual_schema: Schema) -> None:
 
 def _record_readback_row(
     path: Path,
-    columns: list[list[Any]],
     row_index: int,
-    field_indices: dict[str, int],
+    coordinates: dict[str, list[Any]],
     sources: tuple[ValidatedCotahistSource, ...],
     state: _ReadbackState,
 ) -> None:
-    _finish_complete_sources(path, sources, state)
-    if state.source_index >= len(sources):
-        raise ExtractionError(
-            str(path), 'B3 Parquet contains rows beyond source bounds'
-        )
-    row = [column[row_index] for column in columns]
     source = sources[state.source_index]
-    _verify_source_coordinates(path, row, field_indices, source)
-    state.source_digest.update(
-        tuple(_canonical_arrow_value(value) for value in row)
+    if not state.expected_coordinates:
+        state.expected_coordinates = {
+            'tipo_registro': '01',
+            'id_fonte': source.content_sha256,
+            'arquivo_origem': source.path.name,
+            'membro_origem': source.member,
+            'ano_origem': source.year,
+        }
+    _verify_source_coordinates(
+        path, coordinates, row_index, source, state.expected_coordinates
     )
-    trading_date = row[field_indices['data_pregao']]
+    trading_date = coordinates['data_pregao'][row_index]
     if not isinstance(trading_date, date):
         raise ExtractionError(
             str(path), 'B3 Parquet trading date has an invalid type'
@@ -252,83 +243,19 @@ def _finish_source(
     state.source_index += 1
     state.source_rows = 0
     state.source_digest = B3OrderedRowDigest()
-
-
-def _verify_footer_metadata(
-    metadata: dict[bytes, bytes],
-    expected_schema: Schema,
-    sources: tuple[ValidatedCotahistSource, ...],
-) -> None:
-    """Validate the complete footer against the preflighted run manifest."""
-    expected_fingerprint = schema_fingerprint(expected_schema)
-    if metadata.get(B3_SCHEMA_VERSION_METADATA_KEY) != str(
-        B3_SCHEMA_VERSION
-    ).encode('ascii'):
-        raise ExtractionError(
-            'B3 Parquet', 'Schema version metadata is invalid'
-        )
-    if metadata.get(B3_SCHEMA_FINGERPRINT_METADATA_KEY) != (
-        expected_fingerprint.encode('ascii')
-    ):
-        raise ExtractionError(
-            'B3 Parquet', 'Logical schema fingerprint metadata is invalid'
-        )
-    raw_manifest = metadata.get(B3_AUDIT_METADATA_KEY)
-    if raw_manifest is None:
-        raise ExtractionError(
-            'B3 Parquet', 'Integrity footer manifest is missing'
-        )
-    try:
-        manifest = json.loads(raw_manifest)
-    except (UnicodeDecodeError, json.JSONDecodeError) as error:
-        raise ExtractionError(
-            'B3 Parquet', 'Integrity footer manifest is invalid'
-        ) from error
-    if not isinstance(manifest, dict):
-        raise ExtractionError(
-            'B3 Parquet', 'Integrity footer manifest is invalid'
-        )
-    if (
-        manifest.get('schema_version') != B3_SCHEMA_VERSION
-        or manifest.get('logical_schema_fingerprint') != expected_fingerprint
-    ):
-        raise ExtractionError(
-            'B3 Parquet', 'Integrity footer manifest schema is incompatible'
-        )
-    expected_digests = [
-        {
-            'year': source.year,
-            'source': source.path.name,
-            'rows_sha256': source.expected_rows_sha256,
-        }
-        for source in sources
-    ]
-    if manifest.get('ordered_content_digests') != expected_digests:
-        raise ExtractionError(
-            'B3 Parquet', 'Integrity footer ordered digests are incompatible'
-        )
-    if metadata != (expected_schema.metadata or {}):
-        raise ExtractionError(
-            'B3 Parquet', 'Integrity footer metadata differs from preflight'
-        )
+    state.expected_coordinates = {}
 
 
 def _verify_source_coordinates(
     path: Path,
-    row: list[object],
-    field_indices: dict[str, int],
+    columns: dict[str, list[Any]],
+    row_index: int,
     source: ValidatedCotahistSource,
+    expected: dict[str, object],
 ) -> None:
     """Require each row to remain inside its preflighted source boundary."""
-    expected = {
-        'tipo_registro': '01',
-        'id_fonte': source.content_sha256,
-        'arquivo_origem': source.path.name,
-        'membro_origem': source.member,
-        'ano_origem': source.year,
-    }
     for name, value in expected.items():
-        actual = row[field_indices[name]]
+        actual = columns[name][row_index]
         if actual != value:
             raise ExtractionError(
                 str(path),
@@ -336,18 +263,18 @@ def _verify_source_coordinates(
                 f'year={source.year}; field={name}; expected={value!r}; '
                 f'observed={actual!r}',
             )
-    physical_line = row[field_indices['linha_origem']]
+    physical_line = columns['linha_origem'][row_index]
     if not isinstance(physical_line, int) or physical_line < 1:
         raise ExtractionError(
             str(path),
             f'Invalid one-based COTAHIST line coordinate: {physical_line!r}',
         )
-    original_record = row[field_indices['registro_original']]
+    original_record = columns['registro_original'][row_index]
     if not isinstance(original_record, bytes) or len(original_record) != 245:
         raise ExtractionError(
             str(path), 'B3 Parquet original quotation bytes are invalid'
         )
-    trading_date = row[field_indices['data_pregao']]
+    trading_date = columns['data_pregao'][row_index]
     if not isinstance(trading_date, date) or trading_date.year != source.year:
         raise ExtractionError(
             str(path), 'B3 Parquet source trading year is invalid'
@@ -377,18 +304,27 @@ def _finish_source_readback(
         )
 
 
-def _canonical_arrow_value(value: object) -> str | bytes | None:
-    """Encode Arrow scalar values with the source parser's canonical forms."""
-    if value is None or isinstance(value, (str, bytes)):
-        return value
-    if isinstance(value, date):
-        return value.isoformat()
-    if isinstance(value, Decimal):
-        return format(value, 'f')
-    if isinstance(value, int):
-        return str(value)
-    raise ExtractionError(
-        'B3 Parquet',
-        f'Unsupported Arrow value type during digest readback: '
-        f'{type(value).__name__}',
-    )
+def canonical_columns(batch: Any) -> list[Any]:
+    """Convert each bounded Arrow column to its exact digest representation."""
+    import pyarrow as pa
+    import pyarrow.compute as pc
+
+    columns = []
+    for array in batch.columns:
+        kind = array.type
+        if (
+            pa.types.is_date32(kind)
+            or pa.types.is_decimal(kind)
+            or pa.types.is_integer(kind)
+        ):
+            array = pc.cast(array, pa.large_string(), safe=True)
+        elif not (
+            pa.types.is_large_string(kind)
+            or pa.types.is_fixed_size_binary(kind)
+        ):
+            raise ExtractionError(
+                'B3 Parquet',
+                f'Unsupported Arrow value type during digest readback: {kind}',
+            )
+        columns.append(array)
+    return columns

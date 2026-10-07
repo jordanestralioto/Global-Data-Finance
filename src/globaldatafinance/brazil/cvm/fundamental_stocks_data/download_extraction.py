@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 ParquetArtifactStateCVM = dict[Path, tuple[int, int]]
 
 
-class _ParquetExtractor(Protocol):
+class ParquetExtractor(Protocol):
     """Minimal deferred CVM extraction collaborator contract."""
 
     def extract(self, source_path: str, destination_path: str) -> None:
@@ -27,11 +27,11 @@ class _ParquetExtractor(Protocol):
 
 
 def resolve_parquet_extractor(
-    repository: _ParquetExtractor | None,
+    repository: ParquetExtractor | None,
     *,
     archive_limits: ArchiveSafetyLimits,
     allowed_unc_roots: Sequence[str],
-) -> _ParquetExtractor:
+) -> ParquetExtractor:
     """Return a supplied extractor or lazily create the CVM implementation."""
     if repository is not None:
         return repository
@@ -45,7 +45,7 @@ def resolve_parquet_extractor(
 
 
 def extract_downloaded_file(
-    file_extractor_repository: _ParquetExtractor,
+    file_extractor_repository: ParquetExtractor,
     filepath: str,
     dest_path: str,
     doc_name: str,

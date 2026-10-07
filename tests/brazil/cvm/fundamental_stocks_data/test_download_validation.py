@@ -144,7 +144,7 @@ def test_has_valid_zip_contents_corrupt_zip(
     corrupt_zip.write_text('not a zip')
 
     with caplog.at_level('ERROR'):
-        result = download_validation._has_valid_zip_contents(str(corrupt_zip))
+        result = download_validation.has_valid_zip_contents(str(corrupt_zip))
 
     assert result is False
     assert any(
@@ -158,7 +158,7 @@ def test_has_valid_zip_contents_empty_zip(tmp_path: Path) -> None:
     with zipfile.ZipFile(empty_zip, 'w'):
         pass
 
-    assert download_validation._has_valid_zip_contents(str(empty_zip)) is False
+    assert download_validation.has_valid_zip_contents(str(empty_zip)) is False
 
 
 def test_has_valid_zip_contents_no_csv(tmp_path: Path) -> None:
@@ -166,9 +166,7 @@ def test_has_valid_zip_contents_no_csv(tmp_path: Path) -> None:
     with zipfile.ZipFile(no_csv_zip, 'w') as zf:
         zf.writestr('doc.txt', 'hello')
 
-    assert (
-        download_validation._has_valid_zip_contents(str(no_csv_zip)) is False
-    )
+    assert download_validation.has_valid_zip_contents(str(no_csv_zip)) is False
 
 
 def test_has_valid_zip_contents_rejects_unsafe_member_before_crc(
@@ -179,9 +177,7 @@ def test_has_valid_zip_contents_rejects_unsafe_member_before_crc(
         tmp_path / 'unsafe.zip', {'../outside.csv': 'a;b\n1;2\n'}
     )
 
-    assert (
-        download_validation._has_valid_zip_contents(str(unsafe_zip)) is False
-    )
+    assert download_validation.has_valid_zip_contents(str(unsafe_zip)) is False
 
 
 def test_validate_parquet_files_empty_list_returns_false() -> None:
@@ -232,7 +228,7 @@ def test_validate_downloaded_file_propagates_unexpected_validation_error(
         raise RuntimeError('unexpected validator failure')
 
     monkeypatch.setattr(
-        download_validation, '_has_valid_zip_contents', fail_zip_validation
+        download_validation, 'has_valid_zip_contents', fail_zip_validation
     )
 
     with pytest.raises(RuntimeError, match='unexpected validator failure'):

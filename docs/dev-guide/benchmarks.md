@@ -5,6 +5,9 @@ módulos da B3 e da CVM. Os números são evidência de um cenário de referênc
 servem como métrica para regressão de performance, não uma promessa de tempo
 fixo para qualquer hardware.
 
+As otimizações COTAHIST de 06/10/2026, suas comparações e condições de uso estão
+no [guia de performance e integridade](cotahist-performance.md).
+
 ## 1. Linha de Base em Escala Real — B3
 
 ### 1.1. Medição Histórica da Implementação v3 — 27 Anos (2026-09-16, Revisão `f1a2f47`)
@@ -215,6 +218,19 @@ ______________________________________________________________________
 - Ao atualizar os números reprodutíveis, preserve: dataset, checksum, hardware,
   versão do Python, revisão do código, número de repetições e definição de cada
   métrica.
+- Para atribuir um ganho à refatoração, congele duas versões distintas e registre
+  os hashes dos módulos de produto e validação. Execuções com os mesmos módulos
+  medem a variação da máquina. Compare versões com os mesmos dados, dependências,
+  mercados, backend e limites efetivos de recursos, alternando a ordem em processos
+  novos e preservando todas as amostras.
+- O tempo da operação inclui preflight, workers, merge e leitura final completa;
+  a auditoria independente posterior tem seu próprio tempo. Registre carga e
+  atividade de swap, além do RSS agregado. Quando medir CPU, some pai e workers
+  encerrados e informe essa métrica separadamente do tempo de parede.
+- Tempos instrumentados por profiler localizam gargalos, mas não comprovam ganho
+  de throughput. Um ganho de microbenchmark precisa de confirmação na operação
+  completa; resultados de uma carga sintética não podem ser extrapolados para
+  todos os anos oficiais.
 
 ______________________________________________________________________
 
@@ -238,6 +254,11 @@ quantidade exata de fontes; o corpus anual usa sempre suas 27 fontes.
 `GDF_B3_WORKER_LIMIT`; o JSON registra tanto o valor solicitado quanto o valor
 efetivo depois da política de recursos e do fallback de backend.
 
+A referência anual usa o decoder independente de COTAHIST e inclui os 32 campos,
+com o hash textual do conteúdo descomprimido, ano da fonte, linha física e bytes
+originais. O marcador `todos` também preserva cotações de mercados sem uma classe
+mapeada. A preparação desse digest fica fora do tempo da extração.
+
 ```bash
 # Medição pequena para verificar o protocolo JSON
 uv run --locked --no-sync python scripts/benchmark_ingestion.py \
@@ -257,7 +278,7 @@ uv run --locked --no-sync python scripts/benchmark_ingestion.py \
   --scenario b3_multi_4x25k --rows 100 --source-count 2 --worker-limit 1 \
   --backend process --processing-mode fast
 
-# Executa apenas slow nas sete categorias; o corpus precisa dos 27 ZIPs
+# Executa apenas slow em todos os mercados; o corpus precisa dos 27 ZIPs
 mkdir -p .benchmarks
 uv run --locked --no-sync python scripts/benchmark_ingestion.py \
   --scenario b3_annual --cotahist-path /caminho/COTAHIST \

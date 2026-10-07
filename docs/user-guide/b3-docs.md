@@ -329,8 +329,8 @@ result = b3.extract(
 | **fast** | 34.313,8 reg/s    | 429,88 MiB      | Até 4 workers, limitado por CPUs, memória e arquivos-fonte | ✅ Priorizar velocidade |
 | **slow** | 29.759,9 reg/s    | 331,11 MiB      | 1 worker                                            | Reduzir uso de memória  |
 
-O pico RSS é o observado nesse benchmark, não uma garantia de consumo para
-qualquer máquina ou conjunto de arquivos.
+RSS e tempo dependem da carga; `fast` não garante menor tempo que `slow`.
+Veja as [medições atuais e condições de uso](../dev-guide/cotahist-performance.md).
 
 ______________________________________________________________________
 

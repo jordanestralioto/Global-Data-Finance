@@ -44,6 +44,16 @@ Lê os arquivos de cotações históricas da B3 (**COTAHIST**) presentes na past
 uv run --locked --no-sync python examples/02_quickstart_b3.py
 ```
 
+O padrão é o ano de 2023, com saída `cotacoes_acoes_2023.parquet` em
+`./dados_b3`. Para usar outra pasta ou intervalo, passe as opções de linha de
+comando; o nome da saída acompanha os anos selecionados:
+
+```bash
+uv run --locked --no-sync python examples/02_quickstart_b3.py \
+  --path-of-docs /caminho/para/COTAHIST \
+  --initial-year 2000 --last-year 2026 --destination-path ./dados_b3
+```
+
 ______________________________________________________________________
 
 ### 3. Extração Avançada da B3 (`03_advanced_options_b3.py`)

@@ -93,7 +93,7 @@ async def test_real_cotahist_limited_sample_has_fast_slow_arrow_parity(
     write_cotahist_zip(
         sample_input,
         year=year,
-        records=_collect_quote_sample(input_file),
+        records=collect_quote_sample(input_file),
         compression=zipfile.ZIP_STORED,
     )
     fast = await _extract_local_data(
@@ -163,7 +163,7 @@ async def test_real_cotahist_full_year_fast_slow_have_same_digest(
         assert _canonical_digest(fast_path) == _canonical_digest(slow_path)
 
 
-def _collect_quote_sample(input_file: Path) -> list[str]:
+def collect_quote_sample(input_file: Path) -> list[str]:
     """Read a bounded collection of real type-01 lines for parity."""
     records: list[str] = []
     for line, _context in ZipFileReaderB3().iter_lines(str(input_file)):

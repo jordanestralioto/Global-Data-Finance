@@ -44,6 +44,16 @@ ______________________________________________________________________
 - Format module docstrings adhering to **Google Style** documentation layouts
 - Enforce a hard line length boundary of **79 characters** (evaluated via Ruff Blue-style rules)
 
+Use the `_` prefix for helpers confined to their own module and encapsulated
+object attributes. Functions, types, and constants shared between modules,
+including helpers consumed directly by tests, must use names without this
+prefix. Keep mutable state private and provide operations to access it when
+another module needs it. Tests may inspect or replace private attributes to
+prove encapsulation and failure behavior; this does not make those attributes
+a shared interface. A name without `_` does not imply a public API export:
+that boundary remains defined by the library's exports and documented
+contracts.
+
 ### Ruff Profiles
 
 Ruff uses an explicit base selection for `src/`, `tests/`, `scripts/`, and

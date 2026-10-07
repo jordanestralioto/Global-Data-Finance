@@ -370,7 +370,7 @@ def test_historical_quotes_b3_facade_extract_with_process_backend(
     output_path = tmp_path / out_name
     assert output_path.exists()
     assert pq.ParquetFile(output_path).metadata.num_rows == 2
-    assert client._last_phase_timings['merge_status'] == 'completed'
+    assert client.last_phase_timings['merge_status'] == 'completed'
 
 
 class _InstrumentedZipReader(ZipFileReaderB3):
@@ -608,8 +608,8 @@ def test_historical_quotes_b3_last_phase_timings_reset_on_missing_year(
         processing_mode='fast',
     )
     assert res1['success'] is True
-    assert client._last_phase_timings['merge_status'] == 'completed'
-    assert client._last_phase_timings['source_wall_seconds'] > 0.0
+    assert client.last_phase_timings['merge_status'] == 'completed'
+    assert client.last_phase_timings['source_wall_seconds'] > 0.0
 
     res2 = client.extract(
         path_of_docs=str(tmp_path),
@@ -621,7 +621,7 @@ def test_historical_quotes_b3_last_phase_timings_reset_on_missing_year(
     )
     assert res2['success'] is False
     assert res2['integrity']['missing_years'] == [2010]
-    assert client._last_phase_timings == {}
+    assert client.last_phase_timings == {}
 
 
 @pytest.mark.slow

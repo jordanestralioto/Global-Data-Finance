@@ -11,9 +11,9 @@ import pytest
 from scripts import real_validation as cli
 from scripts.real_validation_matrix import build_cases, manifest_for
 from scripts.real_validation_matrix.cases import (
-    _normalized_path,
-    _selected_documents,
     canonical_cvm_case,
+    normalized_path,
+    selected_documents,
 )
 from scripts.real_validation_matrix.manifest import cases_from_manifest
 from scripts.real_validation_report import ReportFormatError, write_json
@@ -180,20 +180,20 @@ def test_manifest_round_trip_normalizes_campaign_paths(tmp_path: Path) -> None:
         (tmp_path / 'output').resolve()
     )
     assert decoded == [case]
-    assert _normalized_path(None) is None
+    assert normalized_path(None) is None
 
 
 def test_selected_documents_accepts_case_insensitive_names() -> None:
     """Document selection accepts the public spelling and preserves order."""
-    assert _selected_documents(None)[0] == 'CGVN'
-    assert _selected_documents('all')[-1] == 'VLMO'
-    assert _selected_documents('dfp') == ('DFP',)
+    assert selected_documents(None)[0] == 'CGVN'
+    assert selected_documents('all')[-1] == 'VLMO'
+    assert selected_documents('dfp') == ('DFP',)
 
 
 def test_selected_documents_rejects_unknown_document() -> None:
     """An unknown document cannot silently produce an empty matrix."""
     with pytest.raises(ValueError, match='unsupported CVM document'):
-        _selected_documents('unknown')
+        selected_documents('unknown')
 
 
 def test_cvm_matrix_rejects_missing_output_and_invalid_years() -> None:

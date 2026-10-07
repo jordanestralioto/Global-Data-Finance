@@ -20,7 +20,7 @@ from ....macro_exceptions import DownloadTimeoutError, NetworkError
 from ....macro_infra import RequestsAdapter
 from .core import DownloadResultCVM
 from .download_extraction import (
-    _ParquetExtractor,
+    ParquetExtractor,
     resolve_parquet_extractor,
 )
 from .download_finalization import (
@@ -42,7 +42,7 @@ class AsyncDownloadAdapterCVM:
 
     def __init__(
         self,
-        file_extractor_repository: _ParquetExtractor | None,
+        file_extractor_repository: ParquetExtractor | None,
         max_concurrent: int = 10,
         chunk_size: int = 8192,
         timeout: float = 180.0,

@@ -7,7 +7,7 @@ from _thread import LockType
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import nullcontext
-from contextvars import ContextVar, copy_context
+from contextvars import ContextVar, Token, copy_context
 from functools import partial
 from threading import Event, Lock
 
@@ -17,6 +17,16 @@ _phase_stop: ContextVar[Event | None] = ContextVar(
     'b3_phase_stop', default=None
 )
 logger = get_logger(__name__)
+
+
+def set_phase_cancellation(stop: Event | None) -> Token[Event | None]:
+    """Bind cooperative cancellation to the current execution context."""
+    return _phase_stop.set(stop)
+
+
+def reset_phase_cancellation(token: Token[Event | None]) -> None:
+    """Restore the cancellation context that preceded the binding."""
+    _phase_stop.reset(token)
 
 
 def check_phase_cancellation() -> None:
@@ -51,19 +61,20 @@ async def run_publication_phase[T](
     decision = Event()
     decision_lock = Lock()
     return await _run_joined_phase(
-        partial(_verify_and_publish, verify, publish, decision, decision_lock),
+        partial(verify_and_publish, verify, publish, decision, decision_lock),
         cancellable=True,
         publication_started=decision,
         publication_lock=decision_lock,
     )
 
 
-def _verify_and_publish[T](
+def verify_and_publish[T](
     verify: Callable[[], None],
     publish: Callable[[], T],
     decision: Event,
     decision_lock: LockType,
 ) -> T:
+    """Verify cancellably and record the atomic publication decision."""
     verify()
     with decision_lock:
         check_phase_cancellation()
@@ -85,7 +96,7 @@ async def _run_joined_phase[T](
     with ThreadPoolExecutor(
         max_workers=1, thread_name_prefix='gdf-b3-phase'
     ) as executor:
-        submitted = executor.submit(context.run, _run_phase, stop, operation)
+        submitted = executor.submit(context.run, run_phase, stop, operation)
         future = asyncio.wrap_future(submitted)
         try:
             if not cancellable:
@@ -128,7 +139,8 @@ def _consume_cancellations(
         task.uncancel()
 
 
-def _run_phase[T](stop: Event, operation: Callable[[], T]) -> T:
+def run_phase[T](stop: Event, operation: Callable[[], T]) -> T:
+    """Run an operation with scoped cooperative cancellation."""
     token = _phase_stop.set(stop)
     try:
         return operation()

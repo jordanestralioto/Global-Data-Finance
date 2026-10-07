@@ -11,7 +11,7 @@ from typing import Any
 
 import scripts.benchmark_runtime.operations as operations
 from scripts.benchmark_runtime.operations import (
-    _OPERATIONAL_ERRORS,
+    OPERATIONAL_ERRORS,
     ChildOperation,
     execute_child_operation,
 )
@@ -61,8 +61,8 @@ def run_child(
             'operation': op_sec,
             'validation': max(0.0, elapsed - op_sec),
         }
-        phase_seconds.update(operations._last_b3_phase_timings)
-        b3_t = operations._last_b3_phase_timings
+        b3_t = operations.get_last_b3_phase_timings()
+        phase_seconds.update(b3_t)
         pqs = list(out_dir.glob('*.parquet')) if out_dir.is_dir() else []
         parquet = pqs[0] if len(pqs) == 1 else None
         art_sha = sha256_file(parquet) if parquet and parquet.is_file() else ''
@@ -89,7 +89,7 @@ def run_child(
             record['reason'] = (
                 'output not logically equivalent to benchmark expectation'
             )
-    except _OPERATIONAL_ERRORS as error:
+    except OPERATIONAL_ERRORS as error:
         elapsed = time.perf_counter() - started
         after = sampler.stop()
         record = unmeasured_record(

@@ -8,16 +8,17 @@ from typing import Any, cast
 
 from .....macro_exceptions import ExtractionError
 from ..integrity import COTAHIST_RECORD_WIDTH, B3RecordContext
-from ..layout import B3_QUOTATION_LAYOUT
+from ..layout import B3_FIELD_NAMES
 from .field_conversion import (
     CsvRow,
-    CsvValue,
+    canonical_row,
     field_error,
-    field_value,
     typed_record,
 )
 
 _EXPECTED_LENGTH = COTAHIST_RECORD_WIDTH
+_MARKET_INDEX = B3_FIELD_NAMES.index('tipo_mercado')
+_TRADING_DATE_INDEX = B3_FIELD_NAMES.index('data_pregao')
 
 _KNOWN_TPMERC_CODES = frozenset(
     {
@@ -164,18 +165,15 @@ class CotahistParserB3:
             ) from error
 
         source_context = context or B3RecordContext('', '', 0, 0)
-        values: dict[str, CsvValue] = {}
-        for definition in B3_QUOTATION_LAYOUT:
-            values[definition.name] = field_value(
-                definition,
-                normalized,
-                original_record,
-                source_context,
-                source_year,
-                source_sha256,
-            )
+        values = canonical_row(
+            normalized,
+            original_record,
+            source_context,
+            source_year,
+            source_sha256,
+        )
 
-        market = cast(str, values['tipo_mercado'])
+        market = cast(str, values[_MARKET_INDEX])
         self.metrics.market_counts[market] = (
             self.metrics.market_counts.get(market, 0) + 1
         )
@@ -184,7 +182,9 @@ class CotahistParserB3:
                 self.metrics.unknown_market_counts.get(market, 0) + 1
             )
         if source_year is not None:
-            trading_date = date.fromisoformat(cast(str, values['data_pregao']))
+            trading_date = date.fromisoformat(
+                cast(str, values[_TRADING_DATE_INDEX])
+            )
             if trading_date.year != source_year:
                 raise field_error(
                     context,
@@ -200,7 +200,7 @@ class CotahistParserB3:
 
     def _select_quote(
         self,
-        values: dict[str, CsvValue],
+        values: CsvRow,
         market: str,
         target_tpmerc_codes: set[str],
         all_markets: bool,
@@ -211,7 +211,7 @@ class CotahistParserB3:
             return None
         self.metrics.selected_records += 1
         self.metrics.parsed_records += 1
-        return tuple(values[field.name] for field in B3_QUOTATION_LAYOUT)
+        return values
 
     @staticmethod
     def _record_error(

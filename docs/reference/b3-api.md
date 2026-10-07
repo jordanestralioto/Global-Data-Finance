@@ -13,6 +13,14 @@ class HistoricalQuotesB3:
     """Interface de alto nível para cotações B3."""
 ```
 
+### Telemetria de execução
+
+A propriedade `last_phase_timings: dict[str, Any]` disponibiliza a telemetria
+da última extração para instrumentação e benchmarks. Ela começa vazia e é
+reiniciada quando uma nova extração começa. As observações incluem o backend
+efetivo, o limite de workers e os tempos das fases executadas. Esse diagnóstico
+é separado do resultado `ExtractionResultB3` e dos metadados Parquet.
+
 ### Métodos
 
 #### `extract()`
@@ -84,6 +92,10 @@ convenção do trailer, linhas vazias, avisos e digests esperados e verificados.
   formatos existem para o mesmo ano, ambos são validados integralmente. O ZIP
   é selecionado somente quando os conteúdos descompactados são idênticos;
   conteúdos diferentes causam falha.
+- Cada leitura de ZIP verifica o CRC de todos os membros, inclusive os não
+  selecionados, e lê o membro COTAHIST no mesmo arquivo aberto e validado.
+  As validações são renovadas a cada passagem, com os limites de descompressão
+  e as verificações de identidade da fonte preservados.
 - `output_filename` deve ser um basename, sem separadores de caminho. O sufixo
   `.parquet` é aceito; quando omitido, é acrescentado automaticamente uma única
   vez.
@@ -207,13 +219,15 @@ ______________________________________________________________________
 As variáveis abaixo são resolvidas ao construir `HistoricalQuotesB3()`. Elas não
 alteram uma instância já existente, nem adicionam parâmetros ao construtor
 público. O backend por processos é experimental e requer ativação explícita.
-Ele não é recomendado para fluxos operacionais gerais até que uma medição no
-corpus anual cumpra o critério de promoção documentado na decisão técnica.
+Avalie o tempo completo, CPU e RSS agregado no corpus do consumidor antes de
+adotá-lo. As condições e medições estão no
+[guia de performance COTAHIST](../dev-guide/cotahist-performance.md).
 
 - `GDF_B3_EXECUTOR_BACKEND`: Define o backend executor de paralelismo no modo `fast` (`"thread"` ou `"process"`). O padrão é `"thread"`.
   - `"thread"`: Utiliza `ThreadPoolExecutor`. Menor sobrecarga de inicialização e menor consumo global de memória. Recomendado para a maioria dos fluxos.
   - `"process"`: Utiliza `ProcessPoolExecutor` com contexto `spawn` somente para experimentos controlados. Ele pode reduzir o RSS medido do processo pai ao isolar buffers de cada arquivo em processos separados, mas também acrescenta custo de `spawn`, pode aumentar a soma de RSS dos workers e não oferece ganho de tempo garantido.
   - Fallback automático: Se `processing_mode="slow"`, houver apenas 1 arquivo de entrada ou o limite de workers for inferior a 2, o sistema realiza fallback seguro para `"thread"`.
+  - Preflight anual: Em `fast` com `process`, a validação pode usar processos quando a política admite pelo menos dois workers e os candidatos anuais somam pelo menos 64 MiB armazenados. ZIP e TXT coexistentes entram na soma. Cargas menores e erros de leitura do tamanho seguem a validação serial. A ordem das fontes, o primeiro erro e suas causas tipadas são preservados; todos os workers são encerrados antes de concluir um cancelamento ou uma falha.
   - Limitações de contrato:
     1. Os workers filhos criam instâncias padrão de leitor e parser; colaboradores customizados injetados internamente não são serializados entre processos nesta versão.
     2. O multiprocessing via `spawn` requer módulos Python importáveis e não oferece suporte à execução interativa via `<stdin>` (`python -`).

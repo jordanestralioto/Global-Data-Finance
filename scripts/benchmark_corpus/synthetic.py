@@ -10,7 +10,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from scripts.benchmark_corpus.annual import (
-    _ANNUAL_B3_YEARS,
+    ANNUAL_B3_YEARS,
     annual_corpus_available,
     expected_b3_annual_digest,
 )
@@ -78,7 +78,7 @@ def b3_record(index: int, *, year: int = 2024) -> str:
     return ''.join(record)
 
 
-def _b3_control_record(
+def b3_control_record(
     record_type: str,
     year: int,
     *,
@@ -104,12 +104,12 @@ def write_b3_txt(
 ) -> None:
     """Create a deterministic official-name COTAHIST text input."""
     with path.open('w', encoding='latin-1', newline='') as target:
-        target.write(_b3_control_record('00', year))
+        target.write(b3_control_record('00', year))
         target.write('\n')
         for index in range(start_index, start_index + rows):
             target.write(b3_record(index, year=year))
             target.write('\n')
-        target.write(_b3_control_record('99', year, record_count=rows + 2))
+        target.write(b3_control_record('99', year, record_count=rows + 2))
         target.write('\n')
 
 
@@ -140,7 +140,7 @@ def _expected_b3_rows(
     for source_index in range(source_count):
         source_rows = base + (source_index < remainder)
         for index in range(start_index, start_index + source_rows):
-            record = _expected_b3_record(index, year=start_year + source_index)
+            record = expected_b3_record(index, year=start_year + source_index)
             yield {
                 field: record[field] for field in B3_SYNTHETIC_DIGEST_COLUMNS
             }
@@ -157,7 +157,7 @@ def expected_b3_digest(
     return logical_digest(_expected_b3_rows(rows, source_count, start_year))
 
 
-def _expected_b3_record(
+def expected_b3_record(
     index: int,
     *,
     year: int = 2024,
@@ -212,7 +212,7 @@ _B3_SYNTHETIC_PROVENANCE_FIELDS = frozenset(
 
 B3_SYNTHETIC_DIGEST_COLUMNS = tuple(
     field
-    for field in _expected_b3_record(0)
+    for field in expected_b3_record(0)
     if field not in _B3_SYNTHETIC_PROVENANCE_FIELDS
 )
 
@@ -314,13 +314,13 @@ def prepare_input(
         if source_count is not None:
             raise ValueError(
                 'source_count is not supported for b3_annual; it always '
-                f'uses all {len(_ANNUAL_B3_YEARS)} source files'
+                f'uses all {len(ANNUAL_B3_YEARS)} source files'
             )
         if worker_limit is not None and worker_limit < 1:
             raise ValueError(
                 f'worker_limit must be at least 1, got {worker_limit}'
             )
-        effective_sources = len(_ANNUAL_B3_YEARS)
+        effective_sources = len(ANNUAL_B3_YEARS)
         effective_limit = (
             worker_limit
             if worker_limit is not None

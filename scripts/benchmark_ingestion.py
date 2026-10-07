@@ -26,15 +26,15 @@ ScenarioInput = _support.ScenarioInput
 RssSampler = _support.RssSampler
 _SCENARIOS = _support.SCENARIOS
 _SCHEMA_VERSION = _support.SCHEMA_VERSION
-_sha256_file = _support.sha256_file
-_write_cvm_zip = _corpus.write_cvm_zip
+sha256_file = _support.sha256_file
+write_cvm_zip = _corpus.write_cvm_zip
 _prepare_input = _corpus.prepare_input
-_run_parent_scenario = _runtime.run_parent_scenario
-_median_records = _runtime.median_records
+run_parent_scenario = _runtime.run_parent_scenario
+median_records = _runtime.median_records
 _write_json = _support.write_json
 
 
-def _current_git_provenance() -> tuple[str, str]:
+def current_git_provenance() -> tuple[str, str]:
     """Return revision and a content digest when the worktree is dirty."""
     try:
         result = run_process(
@@ -67,13 +67,8 @@ def _current_git_provenance() -> tuple[str, str]:
         candidate = root / relative_path
         digest.update(relative_path.encode('utf-8'))
         if candidate.is_file() and candidate.resolve().is_relative_to(root):
-            digest.update(_sha256_file(candidate).encode('ascii'))
+            digest.update(sha256_file(candidate).encode('ascii'))
     return f'{sha}-dirty', digest.hexdigest()
-
-
-def _current_git_sha() -> str:
-    """Read the current revision through the approved process boundary."""
-    return _current_git_provenance()[0]
 
 
 def _selected_scenarios(values: list[str]) -> tuple[str, ...]:
@@ -189,7 +184,7 @@ def _prepare_parent_source(
         raise SystemExit(str(error)) from None
 
 
-def _run_child(
+def run_child(
     source: ScenarioInput,
     repeat_index: int,
     result_path: Path,
@@ -211,28 +206,28 @@ def main() -> int:
     selected = _selected_scenarios(arguments.scenario or ['import_root'])
     _validate_arguments(arguments, selected)
     if arguments.child:
-        _run_child(
+        run_child(
             _child_source(arguments),
             arguments.repeat_index,
             arguments.result_path,
         )
         return 0
 
-    git_sha, worktree_sha256 = _current_git_provenance()
+    git_sha, worktree_sha256 = current_git_provenance()
     records: list[dict[str, Any]] = []
     with tempfile.TemporaryDirectory(prefix='gdf-benchmark-') as temporary:
         root = Path(temporary)
         for scenario in selected:
             source = _prepare_parent_source(scenario, root, arguments)
             records.extend(
-                _run_parent_scenario(
+                run_parent_scenario(
                     source, arguments.repeats, root, git_sha, worktree_sha256
                 )
             )
     payload = {
         'schema_version': _SCHEMA_VERSION,
         'results': records,
-        'medians': _median_records(records),
+        'medians': median_records(records),
         'status': (
             'passed'
             if records

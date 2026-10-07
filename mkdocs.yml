@@ -111,6 +111,7 @@ plugins:
             Referência da API: API Reference
             Como Contribuir: Contributing
             Testes: Testing
+            Performance COTAHIST: COTAHIST Performance
             Uso Avançado: Advanced Usage
             Sistema de Logging: Logging System
             Monitoramento de Recursos: Resource Monitoring
@@ -181,6 +182,7 @@ nav:
       - Como Contribuir: dev-guide/contributing.md
       - Testes: dev-guide/testing.md
       - Benchmarks: dev-guide/benchmarks.md
+      - Performance COTAHIST: dev-guide/cotahist-performance.md
       - Decisões Técnicas:
           - Níveis de Execução de Testes: decisions/test-execution-tiers.md
           - Campanha Real Auditável: decisions/real-validation-campaign.md

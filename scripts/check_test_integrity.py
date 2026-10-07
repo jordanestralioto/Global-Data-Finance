@@ -20,7 +20,6 @@ from scripts.git_changes import (
     get_base_staged_deleted_paths,
     get_base_staged_diff,
     get_diff,
-    read_git_file,
 )
 from scripts.integrity_policy import (
     file_patch_hashes,
@@ -80,22 +79,6 @@ def is_test_file(file_path: str) -> bool:
         or '/tests/' in posix_path
         or '/__tests__/' in posix_path
         or posix_path.startswith(('tests/', 'test/'))
-    )
-
-
-def read_staged_git_file(
-    file_path: str, repo_root: Path | None = None
-) -> str | None:
-    """Read an indexed file, returning ``None`` only when it is absent."""
-    return read_git_file(file_path, repo_root=repo_root)
-
-
-def get_staged_diff(target_files: list[str] | None = None) -> str:
-    """Retrieve a non-renamed staged diff for direct script callers."""
-    return get_diff(
-        context_lines=1,
-        target_files=target_files,
-        no_renames=True,
     )
 
 

@@ -19,7 +19,12 @@ import pytest
 import globaldatafinance
 from globaldatafinance.brazil.b3_data import historical_quotes
 from globaldatafinance.macro_exceptions import ExtractionError
-from scripts import benchmark_corpus, benchmark_ingestion, benchmark_runtime
+from scripts import (
+    benchmark_corpus,
+    benchmark_ingestion,
+    benchmark_runtime,
+    benchmark_support,
+)
 from scripts.benchmark_corpus import annual as annual_corpus
 from scripts.benchmark_corpus import synthetic as synthetic_corpus
 from scripts.benchmark_runtime import operations as runtime_operations
@@ -32,20 +37,20 @@ def test_synthetic_cvm_benchmark_emits_a_fresh_child_median(
 ) -> None:
     """A small deterministic CVM corpus produces a logically valid median."""
     source_path = tmp_path / 'cvm.zip'
-    benchmark_ingestion._write_cvm_zip(source_path, 3)
+    benchmark_ingestion.write_cvm_zip(source_path, 3)
     source = benchmark_ingestion.ScenarioInput(
         scenario='cvm',
         path=source_path,
         row_count=3,
-        input_sha256=benchmark_ingestion._sha256_file(source_path),
+        input_sha256=benchmark_ingestion.sha256_file(source_path),
         expected_first='0',
         expected_last='2',
     )
 
-    records = benchmark_ingestion._run_parent_scenario(
+    records = benchmark_ingestion.run_parent_scenario(
         source, repeats=1, root=tmp_path, git_sha='test-sha'
     )
-    medians = benchmark_ingestion._median_records(records)
+    medians = benchmark_ingestion.median_records(records)
 
     assert records[0]['status'] == 'passed'
     assert records[0]['logical_equivalence'] is True
@@ -70,20 +75,20 @@ def test_synthetic_cvm_text_benchmark_emits_a_fresh_child_median(
 ) -> None:
     """Wide-text CVM corpus runs safely end-to-end and validates."""
     source_path = tmp_path / 'cvm_text.zip'
-    benchmark_ingestion._write_cvm_zip(source_path, 5, long_text=True)
+    benchmark_ingestion.write_cvm_zip(source_path, 5, long_text=True)
     source = benchmark_ingestion.ScenarioInput(
         scenario='cvm_text',
         path=source_path,
         row_count=5,
-        input_sha256=benchmark_ingestion._sha256_file(source_path),
+        input_sha256=benchmark_ingestion.sha256_file(source_path),
         expected_first='0',
         expected_last='4',
     )
 
-    records = benchmark_ingestion._run_parent_scenario(
+    records = benchmark_ingestion.run_parent_scenario(
         source, repeats=1, root=tmp_path, git_sha='test-sha'
     )
-    medians = benchmark_ingestion._median_records(records)
+    medians = benchmark_ingestion.median_records(records)
 
     assert records[0]['status'] == 'passed'
     assert records[0]['logical_equivalence'] is True
@@ -135,13 +140,13 @@ def test_b3_runtime_scopes_executor_environment_and_restores_it(
             """Capture the variables observed by facade construction."""
             observed['backend'] = os.environ['GDF_B3_EXECUTOR_BACKEND']
             observed['workers'] = os.environ['GDF_B3_WORKER_LIMIT']
-            self._last_phase_timings: dict[str, Any] = {}
+            self.last_phase_timings: dict[str, Any] = {}
 
         def extract(self, **_kwargs: object) -> dict[str, object]:
             """Return the minimum successful facade result."""
             return {'success': True, 'output_file': str(tmp_path / 'quotes')}
 
-    source = benchmark_corpus.ScenarioInput(
+    source = benchmark_support.ScenarioInput(
         'b3_multi_4x25k',
         tmp_path,
         2,
@@ -186,13 +191,13 @@ def test_annual_b3_runtime_extracts_all_supported_asset_classes(
         """Capture annual scenario arguments at the public facade boundary."""
 
         def __init__(self) -> None:
-            self._last_phase_timings: dict[str, Any] = {}
+            self.last_phase_timings: dict[str, Any] = {}
 
         def extract(self, **kwargs: object) -> dict[str, object]:
             observed.update(kwargs)
             return {'success': True, 'output_file': str(tmp_path / 'quotes')}
 
-    source = benchmark_corpus.ScenarioInput(
+    source = benchmark_support.ScenarioInput(
         'b3_annual',
         tmp_path,
         0,
@@ -245,7 +250,7 @@ def test_benchmark_cli_returns_non_zero_when_scenario_fails(
     }
     monkeypatch.setattr(
         benchmark_ingestion,
-        '_run_parent_scenario',
+        'run_parent_scenario',
         lambda *_args, **_kwargs: [failed_record],
     )
 
@@ -262,11 +267,11 @@ def test_non_equivalent_child_output_cannot_report_pass(
     result_path = tmp_path / 'result.json'
 
     def non_equivalent_op(
-        _src: benchmark_corpus.ScenarioInput, _out: Path
+        _src: benchmark_support.ScenarioInput, _out: Path
     ) -> benchmark_runtime.OperationResult:
         return 1, 'schema', False, 1, 0.1, ''
 
-    benchmark_ingestion._run_child(
+    benchmark_ingestion.run_child(
         source, 0, result_path, operation=non_equivalent_op
     )
     payload = json.loads(result_path.read_text(encoding='utf-8'))
@@ -284,7 +289,7 @@ def test_missing_annual_corpus_is_explicitly_skipped(tmp_path: Path) -> None:
     source = benchmark_ingestion.ScenarioInput('b3_annual', None, 0, '')
     result_path = tmp_path / 'annual.json'
 
-    benchmark_ingestion._run_child(source, 0, result_path)
+    benchmark_ingestion.run_child(source, 0, result_path)
     payload = json.loads(result_path.read_text(encoding='utf-8'))
 
     assert payload['status'] == 'skipped'
@@ -312,11 +317,11 @@ def test_changed_benchmark_input_cannot_report_pass(tmp_path: Path) -> None:
     """The child rejects an input modified after its checksum was recorded."""
     source_path = tmp_path / 'cvm.zip'
     benchmark_corpus.write_cvm_zip(source_path, 1)
-    source = benchmark_corpus.ScenarioInput(
+    source = benchmark_support.ScenarioInput(
         'cvm',
         source_path,
         1,
-        benchmark_corpus.sha256_file(source_path),
+        benchmark_support.sha256_file(source_path),
     )
     source_path.write_bytes(b'changed')
     result_path = tmp_path / 'result.json'
@@ -333,7 +338,7 @@ def test_b3_middle_row_mutation_fails_logical_validation(
     tmp_path: Path,
 ) -> None:
     """A changed value away from the boundaries cannot pass validation."""
-    rows = [synthetic_corpus._expected_b3_record(index) for index in range(3)]
+    rows = [synthetic_corpus.expected_b3_record(index) for index in range(3)]
     rows[1]['preco_abertura'] = Decimal('9999.99')
     output = tmp_path / 'quotes.parquet'
     pq.write_table(
@@ -364,7 +369,7 @@ def test_annual_b3_output_without_trusted_digest_cannot_report_equivalence(
     tmp_path: Path,
 ) -> None:
     """Annual output needs a full digest before it can pass validation."""
-    rows = [synthetic_corpus._expected_b3_record(index) for index in range(3)]
+    rows = [synthetic_corpus.expected_b3_record(index) for index in range(3)]
     rows[1]['preco_abertura'] = Decimal('9999.99')
     output = tmp_path / 'annual_quotes.parquet'
     pq.write_table(
@@ -373,7 +378,7 @@ def test_annual_b3_output_without_trusted_digest_cannot_report_equivalence(
         ),
         output,
     )
-    source = benchmark_corpus.ScenarioInput(
+    source = benchmark_support.ScenarioInput(
         scenario='b3_annual',
         path=None,
         row_count=0,
@@ -401,7 +406,7 @@ def test_annual_corpus_builds_a_full_typed_digest_and_actual_source_count(
             set(available_assets)
         )
     )
-    for index, year in enumerate(annual_corpus._ANNUAL_B3_YEARS):
+    for index, year in enumerate(annual_corpus.ANNUAL_B3_YEARS):
         source = tmp_path / f'COTAHIST_A{year}.ZIP'
         records = []
         for market_code in market_codes:
@@ -411,9 +416,9 @@ def test_annual_corpus_builds_a_full_typed_digest_and_actual_source_count(
         payload = (
             '\n'.join(
                 [
-                    synthetic_corpus._b3_control_record('00', year),
+                    synthetic_corpus.b3_control_record('00', year),
                     *records,
-                    synthetic_corpus._b3_control_record(
+                    synthetic_corpus.b3_control_record(
                         '99', year, record_count=len(records) + 2
                     ),
                 ]
@@ -427,26 +432,26 @@ def test_annual_corpus_builds_a_full_typed_digest_and_actual_source_count(
         'b3_annual', tmp_path, None, tmp_path
     )
     rows = list(
-        annual_corpus._annual_b3_rows(
+        annual_corpus.annual_b3_rows(
             tuple(sorted(tmp_path.glob('COTAHIST_A*.ZIP')))
         )
     )
 
-    assert prepared.source_count == len(annual_corpus._ANNUAL_B3_YEARS)
-    assert len(rows) == len(annual_corpus._ANNUAL_B3_YEARS) * len(market_codes)
+    assert prepared.source_count == len(annual_corpus.ANNUAL_B3_YEARS)
+    assert len(rows) == len(annual_corpus.ANNUAL_B3_YEARS) * len(market_codes)
     assert {row['tipo_mercado'] for row in rows} == set(market_codes)
-    assert prepared.expected_digest == benchmark_corpus.logical_digest(rows)
+    assert prepared.expected_digest == benchmark_support.logical_digest(rows)
 
 
 @pytest.mark.unit
 def test_run_child_accepts_injected_operation(tmp_path: Path) -> None:
     """An explicitly injected child operation is called without globals."""
-    source = benchmark_corpus.ScenarioInput('import_root', None, 0, '')
+    source = benchmark_support.ScenarioInput('import_root', None, 0, '')
     result_path = tmp_path / 'injected.json'
     called: list[str] = []
 
     def custom_op(
-        src: benchmark_corpus.ScenarioInput, _out: Path
+        src: benchmark_support.ScenarioInput, _out: Path
     ) -> benchmark_runtime.OperationResult:
         called.append(src.scenario)
         return 0, 'custom_fp', True, 0, 0.05, 'custom_digest'
@@ -476,11 +481,11 @@ def test_run_child_normalizes_operational_exceptions(
     message: str,
 ) -> None:
     """Operational failures are normalized to failed status with reason."""
-    source = benchmark_corpus.ScenarioInput('cvm', None, 0, '')
+    source = benchmark_support.ScenarioInput('cvm', None, 0, '')
     result_path = tmp_path / 'operational_error.json'
 
     def failing_op(
-        _src: benchmark_corpus.ScenarioInput, _out: Path
+        _src: benchmark_support.ScenarioInput, _out: Path
     ) -> benchmark_runtime.OperationResult:
         if exception_cls is ExtractionError:
             raise ExtractionError('/fake/path.zip', message)
@@ -498,11 +503,11 @@ def test_run_child_normalizes_operational_exceptions(
 @pytest.mark.unit
 def test_run_child_propagates_unexpected_exceptions(tmp_path: Path) -> None:
     """Unexpected programming bugs propagate uncaught instead of failing."""
-    source = benchmark_corpus.ScenarioInput('cvm', None, 0, '')
+    source = benchmark_support.ScenarioInput('cvm', None, 0, '')
     result_path = tmp_path / 'unexpected_error.json'
 
     def bug_op(
-        _src: benchmark_corpus.ScenarioInput, _out: Path
+        _src: benchmark_support.ScenarioInput, _out: Path
     ) -> benchmark_runtime.OperationResult:
         raise KeyError('unhandled_programming_bug')
 
@@ -628,11 +633,11 @@ def test_benchmark_record_exact_keys_for_passed_failed_and_skipped(
     }
     expected_unmeasured_keys = expected_passed_keys | {'reason'}
 
-    source_pass = benchmark_corpus.ScenarioInput('import_root', None, 0, '')
+    source_pass = benchmark_support.ScenarioInput('import_root', None, 0, '')
     pass_file = tmp_path / 'pass.json'
 
     def pass_op(
-        _src: benchmark_corpus.ScenarioInput, _out: Path
+        _src: benchmark_support.ScenarioInput, _out: Path
     ) -> benchmark_runtime.OperationResult:
         return 0, 'dummy_fp', True, 10, 0.01, 'dummy_digest'
 
@@ -644,7 +649,7 @@ def test_benchmark_record_exact_keys_for_passed_failed_and_skipped(
     fail_file = tmp_path / 'fail.json'
 
     def fail_op(
-        _src: benchmark_corpus.ScenarioInput, _out: Path
+        _src: benchmark_support.ScenarioInput, _out: Path
     ) -> benchmark_runtime.OperationResult:
         raise ValueError('operational boom')
 
@@ -653,7 +658,7 @@ def test_benchmark_record_exact_keys_for_passed_failed_and_skipped(
     assert set(fail_payload.keys()) == expected_unmeasured_keys
     assert fail_payload['status'] == 'failed'
 
-    source_skip = benchmark_corpus.ScenarioInput('b3_annual', None, 0, '')
+    source_skip = benchmark_support.ScenarioInput('b3_annual', None, 0, '')
     skip_file = tmp_path / 'skip.json'
     benchmark_runtime.run_child(source_skip, 0, skip_file)
     skip_payload = json.loads(skip_file.read_text(encoding='utf-8'))
@@ -699,7 +704,7 @@ def test_benchmark_cli_returns_zero_when_scenarios_pass_or_skip(
     ]
     monkeypatch.setattr(
         benchmark_ingestion,
-        '_run_parent_scenario',
+        'run_parent_scenario',
         lambda *_args, **_kwargs: records,
     )
 
@@ -897,10 +902,10 @@ def test_dirty_git_provenance_includes_diff_and_untracked_content(
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(benchmark_ingestion, 'run_process', fake_run_process)
     monkeypatch.setattr(
-        benchmark_ingestion, '_sha256_file', lambda _path: 'content-digest'
+        benchmark_ingestion, 'sha256_file', lambda _path: 'content-digest'
     )
 
-    git_sha, worktree_sha256 = benchmark_ingestion._current_git_provenance()
+    git_sha, worktree_sha256 = benchmark_ingestion.current_git_provenance()
 
     expected = hashlib.sha256()
     expected.update(status.encode('utf-8'))

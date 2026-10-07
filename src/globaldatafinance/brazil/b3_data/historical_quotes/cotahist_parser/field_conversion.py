@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date
 from decimal import Decimal
+from functools import partial
 from typing import Any, cast
 
 from .....macro_exceptions import ExtractionError
@@ -11,32 +13,29 @@ from ..integrity import B3RecordContext
 from ..layout import B3_QUOTATION_LAYOUT, B3FieldDefinition
 
 
-def field_value(
-    definition: B3FieldDefinition,
+def canonical_row(
     line: str,
     original_record: bytes,
     context: B3RecordContext,
     source_year: int | None,
     source_sha256: str,
-) -> CsvValue:
-    """Convert one canonical field using its source-owned definition."""
-    if definition.kind in {
-        'sha256',
-        'source_filename',
-        'source_member',
-        'source_year',
-        'source_line',
-        'original_record',
-    }:
-        return provenance_value(
-            definition,
-            context,
-            source_year,
-            source_sha256,
-            original_record,
+) -> CsvRow:
+    """Apply the layout-derived scalar conversion plan in canonical order."""
+    values: list[CsvValue] = []
+    for definition, source_slice, normalizer in FIELD_PLAN:
+        value = (
+            provenance_value(
+                definition,
+                context,
+                source_year,
+                source_sha256,
+                original_record,
+            )
+            if normalizer is None
+            else normalizer(line[source_slice], context)
         )
-    field_text = slice_field(definition, line)
-    return convert_field_value(definition, field_text, context)
+        values.append(value)
+    return tuple(values)
 
 
 def provenance_value(
@@ -62,35 +61,6 @@ def provenance_value(
     raise RuntimeError(f'Unsupported B3 provenance kind: {definition.kind}')
 
 
-def convert_field_value(
-    definition: B3FieldDefinition,
-    raw_value: str,
-    context: B3RecordContext,
-) -> CsvValue:
-    """Convert a raw quotation field to its canonical CSV value."""
-    if definition.kind == 'record_type':
-        return raw_value
-    if definition.kind == 'date':
-        return normalize_required_date(
-            raw_value, context, field_name=definition.name
-        )
-    if definition.kind == 'optional_date':
-        return normalize_optional_date(
-            raw_value, context, field_name=definition.name
-        )
-    if definition.kind in {'decimal', 'integer'}:
-        return numeric_value(definition, raw_value, context)
-    if definition.kind == 'required_text':
-        return normalize_required_text(
-            raw_value, context, field_name=definition.name
-        )
-    if definition.kind in {'market_code', 'numeric_code'}:
-        return normalize_numeric_code(definition, raw_value, context)
-    if definition.kind == 'string':
-        return raw_value.strip(' ') if definition.trim else raw_value
-    raise RuntimeError(f'Unsupported B3 conversion kind: {definition.kind}')
-
-
 def normalize_numeric_code(
     definition: B3FieldDefinition,
     raw_value: str,
@@ -107,31 +77,6 @@ def normalize_numeric_code(
         )
         raise field_error(context, definition.name, raw_value, cause)
     return raw_value
-
-
-def numeric_value(
-    definition: B3FieldDefinition,
-    raw_value: str,
-    context: B3RecordContext,
-) -> str:
-    """Normalize one integral or fixed-scale decimal field."""
-    if definition.kind == 'integer':
-        return normalize_int(raw_value, context, field_name=definition.name)
-    if definition.scale is None:
-        raise RuntimeError(f'Missing decimal scale for {definition.name}')
-    return normalize_decimal(
-        raw_value,
-        definition.scale,
-        context,
-        field_name=definition.name,
-    )
-
-
-def slice_field(definition: B3FieldDefinition, line: str) -> str:
-    """Extract one field using its validated fixed-width offsets."""
-    if definition.start is None or definition.stop is None:
-        raise RuntimeError(f'Missing source offsets for {definition.name}')
-    return line[definition.start : definition.stop]
 
 
 def typed_record(row: CsvRow) -> dict[str, Any]:
@@ -295,3 +240,77 @@ CsvRow = tuple[CsvValue, ...]
 def is_ascii_digits(value: str) -> bool:
     """Accept only decimal ASCII digits in fixed-width numeric fields."""
     return value.isascii() and value.isdecimal()
+
+
+FieldNormalizer = Callable[[str, B3RecordContext], CsvValue]
+
+
+def _string_value(
+    raw_value: str, _context: B3RecordContext, *, trim: bool
+) -> str:
+    return raw_value.strip(' ') if trim else raw_value
+
+
+def _decimal_value(
+    raw_value: str,
+    context: B3RecordContext,
+    *,
+    scale: int,
+    field_name: str,
+) -> str:
+    return normalize_decimal(raw_value, scale, context, field_name=field_name)
+
+
+def _field_normalizer(
+    definition: B3FieldDefinition,
+) -> FieldNormalizer | None:
+    """Bind source-owned scalar rules once instead of dispatching per value."""
+    if definition.kind in _PROVENANCE_KINDS:
+        return None
+    if definition.start is None or definition.stop is None:
+        raise RuntimeError(f'Missing source offsets for {definition.name}')
+    if definition.kind == 'decimal':
+        if definition.scale is None:
+            raise RuntimeError(f'Missing decimal scale for {definition.name}')
+        return partial(
+            _decimal_value, scale=definition.scale, field_name=definition.name
+        )
+    if definition.kind in {'market_code', 'numeric_code'}:
+        return partial(normalize_numeric_code, definition)
+    if definition.kind in {'string', 'record_type'}:
+        return partial(
+            _string_value,
+            trim=definition.trim and definition.kind != 'record_type',
+        )
+    normalizers = {
+        'date': normalize_required_date,
+        'optional_date': normalize_optional_date,
+        'integer': normalize_int,
+        'required_text': normalize_required_text,
+    }
+    normalizer = normalizers.get(definition.kind)
+    if normalizer is None:
+        raise RuntimeError(
+            f'Unsupported B3 conversion kind: {definition.kind}'
+        )
+    return partial(normalizer, field_name=definition.name)
+
+
+_PROVENANCE_KINDS = frozenset(
+    {
+        'sha256',
+        'source_filename',
+        'source_member',
+        'source_year',
+        'source_line',
+        'original_record',
+    }
+)
+FIELD_PLAN = tuple(
+    (
+        definition,
+        slice(definition.start, definition.stop),
+        _field_normalizer(definition),
+    )
+    for definition in B3_QUOTATION_LAYOUT
+)

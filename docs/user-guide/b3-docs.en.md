@@ -317,8 +317,8 @@ result = b3.extract(
 | **fast**           | 34,313.8 rows/s     | 429.88 MiB        | Up to 4 workers, bounded by CPU count, available memory, and source files | ✅ Prioritize throughput |
 | **slow**           | 29,759.9 rows/s     | 331.11 MiB        | 1 worker                                                     | Reduce memory use       |
 
-Peak RSS is the value observed in this benchmark, not a guaranteed memory
-requirement for every machine or input set.
+RSS and time depend on the workload; `fast` does not guarantee a shorter time
+than `slow`. See [current measurements and conditions](../dev-guide/cotahist-performance.en.md).
 
 ## Advanced Recipes & Implementations
 

@@ -167,6 +167,8 @@ class CreateDocsToExtractUseCaseB3:
         *,
         allowed_unc_roots: Sequence[str] | None = None,
         limits: ArchiveSafetyLimits | None = None,
+        processing_mode: ProcessingModeEnumB3 = ProcessingModeEnumB3.FAST,
+        executor_backend: str = 'thread',
     ):
         """Store raw inputs before validating them in ``execute``."""
         if not isinstance(path_of_docs, str):
@@ -194,6 +196,8 @@ class CreateDocsToExtractUseCaseB3:
             allowed_unc_roots
         )
         self.limits = limits
+        self.processing_mode = processing_mode
+        self.executor_backend = executor_backend
 
     def execute(self) -> DocsToExtractorB3:
         """Create and return a validated DocsToExtractorB3 entity."""
@@ -215,13 +219,27 @@ class CreateDocsToExtractUseCaseB3:
         target_tpmerc_codes = (
             AvailableAssetsServiceB3.get_tpmerc_codes_for_assets(set_assets)
         )
+        resolver = resolve_cotahist_sources
+        options: dict[str, Any] = {}
+        if (
+            self.executor_backend == 'process'
+            and self.processing_mode is ProcessingModeEnumB3.FAST
+        ):
+            from .preflight import resolve_extraction_sources
+
+            resolver = resolve_extraction_sources
+            options = {
+                'processing_mode': self.processing_mode,
+                'executor_backend': self.executor_backend,
+            }
         try:
-            catalog = resolve_cotahist_sources(
+            catalog = resolver(
                 validated_source_directory,
                 expected_years=range_years,
                 target_tpmerc_codes=target_tpmerc_codes,
                 all_markets=all_markets,
                 limits=self.limits,
+                **options,
             )
         except CotahistCatalogError as error:
             raise CotahistPreflightError(

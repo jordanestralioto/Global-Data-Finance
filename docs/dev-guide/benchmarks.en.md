@@ -5,6 +5,9 @@ across the B3 and CVM modules. The numbers are evidence from a reference
 scenario and serve as a regression metric, not a fixed-time promise for every
 machine or dataset.
 
+The 2026-10-06 COTAHIST optimizations, comparisons, and operating conditions are
+documented in the [performance and integrity guide](cotahist-performance.en.md).
+
 ## 1. Real-Scale Baseline — B3
 
 ### 1.1. Historical Measurement of Implementation v3 — 27 Years (2026-09-16, Revision `f1a2f47`)
@@ -214,6 +217,18 @@ ______________________________________________________________________
   asset mix of a real B3 year.
 - When updating reproducible numbers, preserve: dataset, checksum, hardware,
   Python version, code revision, repetition count, and metric definitions.
+- To attribute an improvement to refactoring, freeze two distinct versions and
+  record product and validation module hashes. Runs with identical modules
+  measure host variability. Compare versions with the same data, dependencies,
+  markets, backend, and effective resource limits, alternating fresh-process
+  order and retaining every sample.
+- Operation time includes preflight, workers, merge, and complete final readback;
+  the subsequent independent audit has its own timer. Record host load and swap
+  activity as well as aggregate RSS. When measuring CPU, add parent and completed
+  worker CPU and report it separately from wall time.
+- Profiler timings locate bottlenecks but do not establish throughput gains.
+  A microbenchmark improvement requires confirmation in the complete operation;
+  synthetic workload results cannot be extrapolated to all official years.
 
 ______________________________________________________________________
 
@@ -238,6 +253,11 @@ the exact number of sources; the annual corpus always uses its 27 sources.
 `GDF_B3_WORKER_LIMIT`; JSON records both requested and effective values after
 resource policy and backend fallback.
 
+The annual reference uses the independent COTAHIST decoder and includes all 32
+fields, with the textual uncompressed-content hash, source year, physical line,
+and original bytes. The `todos` marker also preserves quotations from markets
+without a mapped asset class. Preparing this digest is outside extraction timing.
+
 ```bash
 # Small measurement to verify the JSON protocol
 uv run --locked --no-sync python scripts/benchmark_ingestion.py \
@@ -257,7 +277,7 @@ uv run --locked --no-sync python scripts/benchmark_ingestion.py \
   --scenario b3_multi_4x25k --rows 100 --source-count 2 --worker-limit 1 \
   --backend process --processing-mode fast
 
-# Run only slow across all seven asset classes; all 27 ZIPs are required
+# Run only slow across all markets; all 27 ZIPs are required
 mkdir -p .benchmarks
 uv run --locked --no-sync python scripts/benchmark_ingestion.py \
   --scenario b3_annual --cotahist-path /path/to/COTAHIST \

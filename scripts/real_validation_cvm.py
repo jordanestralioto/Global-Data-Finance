@@ -50,7 +50,7 @@ class _EvidenceCapturingExtractor:
         source = Path(source_path)
         self.evidence = {
             'size_bytes': source.stat().st_size,
-            'sha256': _sha256_file(source),
+            'sha256': sha256_file(source),
         }
         self._extractor.extract(source_path, destination_path)
 
@@ -60,7 +60,7 @@ def execute_cvm_case(
 ) -> dict[str, Any]:
     """Probe one canonical endpoint, then validate the public facade result."""
     case = canonical_cvm_case(case, case.output_root)
-    _probe_official_endpoint(case, timeout)
+    probe_official_endpoint(case, timeout)
     output_directory = workspace / 'output'
     facade = FundamentalStocksDataCVM()
     evidence_extractor = _configure_campaign_facade(facade)
@@ -99,7 +99,7 @@ def execute_cvm_case(
         'error_count_downloads': result.error_count_downloads,
         'elapsed_time': result.elapsed_time,
     }
-    details = _validate_result(result, output_directory, case)
+    details = validate_result(result, output_directory, case)
     if not details['valid']:
         status = (
             'external_failure'
@@ -138,7 +138,7 @@ def _configure_campaign_facade(
     return extractor
 
 
-def _probe_official_endpoint(case: ValidationCase, timeout: float) -> None:
+def probe_official_endpoint(case: ValidationCase, timeout: float) -> None:
     """Classify publication status without downloading an archive body."""
     url = case.url
     if not url:
@@ -202,20 +202,21 @@ def _evidence_fields(
     }
 
 
-def _validate_result(
+def validate_result(
     result: Any, output_directory: Path, case: ValidationCase
 ) -> dict[str, Any]:
-    public_error = _validate_public_result(result)
+    """Reconcile the public CVM result with persisted Parquet artifacts."""
+    public_error = validate_public_result(result)
     if public_error:
         return {'valid': False, 'message': public_error}
     parquet_files = sorted(output_directory.rglob('*.parquet'))
     if not parquet_files:
         return {'valid': False, 'message': 'CVM produced no Parquet files'}
-    inspected = _inspect_parquet_files(parquet_files, output_directory)
+    inspected = inspect_parquet_files(parquet_files, output_directory)
     if isinstance(inspected, str):
         return {'valid': False, 'message': inspected}
     artifacts, record_count, schema = inspected
-    cleanup_error = _validate_cleanup(output_directory)
+    cleanup_error = validate_cleanup(output_directory)
     if cleanup_error:
         return {'valid': False, 'message': cleanup_error}
     if not case.document:
@@ -229,7 +230,7 @@ def _validate_result(
     }
 
 
-def _validate_public_result(result: Any) -> str | None:
+def validate_public_result(result: Any) -> str | None:
     """Validate the public CVM counters and failed-download collection."""
     if (
         result.success_count_downloads != 1
@@ -243,7 +244,7 @@ def _validate_public_result(result: Any) -> str | None:
     return None
 
 
-def _inspect_parquet_files(
+def inspect_parquet_files(
     parquet_files: list[Path], output_directory: Path
 ) -> tuple[list[dict[str, Any]], int, dict[str, str]] | str:
     """Read every CVM Parquet through PyArrow and collect evidence."""
@@ -280,7 +281,7 @@ def _inspect_parquet_files(
     return artifacts, record_count, schema
 
 
-def _validate_cleanup(output_directory: Path) -> str | None:
+def validate_cleanup(output_directory: Path) -> str | None:
     """Ensure source archives and staging artifacts are gone from output."""
     if list(output_directory.rglob('*.zip')):
         return 'CVM source ZIP was not cleaned up'
@@ -290,7 +291,8 @@ def _validate_cleanup(output_directory: Path) -> str | None:
     return None
 
 
-def _sha256_file(path: Path) -> str:
+def sha256_file(path: Path) -> str:
+    """Hash file bytes in bounded chunks."""
     digest = hashlib.sha256()
     with path.open('rb') as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b''):

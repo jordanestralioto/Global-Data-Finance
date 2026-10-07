@@ -397,3 +397,126 @@ def test_commit_marker_write_failure_still_rolls_back(
     assert output.read_bytes() == before
     assert publication.manifest.phase == 'ROLLED_BACK'
     assert not list(output.parent.glob('.globaldatafinance-transaction*'))
+
+
+def _write_two_sources(root: Path) -> None:
+    for year in (2023, 2024):
+        write_cotahist_txt(
+            root,
+            year=year,
+            records=[
+                build_cotahist_record(year=year),
+                build_cotahist_record(year=year, ticker='VALE3'),
+            ],
+        )
+
+
+def _corrupt_private_artifact(
+    monkeypatch: pytest.MonkeyPatch, mutation: str
+) -> None:
+    """Corrupt the first private artifact right after its worker closes it."""
+    processor = extraction_service.zip_processor.ZipProcessorB3
+    process_source = processor.process
+    corrupted: list[Path] = []
+
+    def corrupt_first_private_output(self, *args, **kwargs):
+        result = process_source(self, *args, **kwargs)
+        if corrupted or result.temp_path is None:
+            return result
+        corrupted.append(result.temp_path)
+        table = pq.read_table(result.temp_path)
+        if mutation == 'footer':
+            metadata = dict(table.schema.metadata or {})
+            metadata[b'UNEXPECTED_METADATA'] = b'changed'
+            table = table.replace_schema_metadata(metadata)
+        elif mutation == 'reorder':
+            table = table.take(pa.array([1, 0]))
+        elif mutation == 'repeat':
+            table = table.take(pa.array([0, 0]))
+        elif mutation == 'drop':
+            table = table.slice(0, 1)
+        else:
+            rows = table.to_pylist()
+            if mutation == 'provenance':
+                rows[0]['id_fonte'] = '0' * 64
+            else:
+                rows[0]['preco_abertura'] = Decimal('999.99')
+            table = pa.Table.from_pylist(rows, schema=table.schema)
+        pq.write_table(table, result.temp_path)
+        return result
+
+    monkeypatch.setattr(processor, 'process', corrupt_first_private_output)
+
+
+@pytest.mark.parametrize('mode', ['fast', 'slow'])
+@pytest.mark.parametrize(
+    ('mutation', 'expected'),
+    [
+        ('footer', 'metadata differs'),
+        ('price', 'digest'),
+        ('reorder', 'digest'),
+        ('repeat', 'digest'),
+        ('drop', 'row count'),
+        ('provenance', 'source boundary'),
+    ],
+)
+def test_two_source_private_corruption_never_replaces_previous_output(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mode: str,
+    mutation: str,
+    expected: str,
+) -> None:
+    """Merge rewrites the footer, so private footers and values both fail."""
+    sources = tmp_path / 'sources'
+    sources.mkdir()
+    _write_two_sources(sources)
+    output, before = _previous_output(tmp_path / 'output')
+    _corrupt_private_artifact(monkeypatch, mutation)
+
+    result = HistoricalQuotesB3().extract(
+        path_of_docs=str(sources),
+        initial_year=2023,
+        last_year=2024,
+        destination_path=str(output.parent),
+        output_filename=output.name,
+        processing_mode=mode,
+        verbose=False,
+    )
+
+    _assert_failed_publication(dict(result), output, before)
+    assert expected in ' '.join(result['errors'].values())
+
+
+@pytest.mark.parametrize('mode', ['fast', 'slow'])
+def test_single_source_footer_corruption_is_rejected_before_publication(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mode: str,
+) -> None:
+    """The unmerged one-source path validates the footer it publishes."""
+    sources = tmp_path / 'sources'
+    sources.mkdir()
+    write_cotahist_txt(
+        sources,
+        year=2024,
+        records=[
+            build_cotahist_record(),
+            build_cotahist_record(ticker='VALE3'),
+        ],
+    )
+    output, before = _previous_output(tmp_path / 'output')
+    _corrupt_private_artifact(monkeypatch, 'footer')
+
+    result = HistoricalQuotesB3().extract(
+        path_of_docs=str(sources),
+        initial_year=2024,
+        last_year=2024,
+        destination_path=str(output.parent),
+        output_filename=output.name,
+        processing_mode=mode,
+        verbose=False,
+    )
+
+    _assert_failed_publication(dict(result), output, before)
+    assert 'metadata differs' in ' '.join(result['errors'].values())

@@ -41,11 +41,6 @@ from scripts.git_changes import (
 )
 
 
-def get_staged_diff(target_files: list[str] | None = None) -> str:
-    """Retrieve the staged diff for direct script callers."""
-    return get_diff(context_lines=0, target_files=target_files)
-
-
 def scan_diff(
     diff_text: str,
     check_bypasses: bool = True,

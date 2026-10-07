@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import re
 import zipfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Never
 
 from ....core.archive_safety import (
     ArchiveSafetyLimits,
@@ -27,6 +30,14 @@ def validate_cotahist_input(
     limits: ArchiveSafetyLimits | None = None,
 ) -> str | None:
     """Validate an input filename/container and return a ZIP member name."""
+    candidate = _validate_input_path(path)
+    if candidate.suffix.casefold() == '.txt':
+        return None
+    return _validate_zip(candidate, limits=limits)
+
+
+def _validate_input_path(path: str | Path) -> Path:
+    """Validate the annual filename and nonempty regular input before I/O."""
     candidate = Path(path).expanduser().resolve()
     match = COTAHIST_FILENAME_PATTERN.fullmatch(candidate.name)
     if match is None:
@@ -45,9 +56,7 @@ def validate_cotahist_input(
         raise CotahistCatalogError(
             f'COTAHIST input is unreadable: {candidate}'
         ) from error
-    if match.group('extension').casefold() == 'txt':
-        return None
-    return _validate_zip(candidate, limits=limits)
+    return candidate
 
 
 def validate_and_resolve_cotahist_input(
@@ -60,12 +69,33 @@ def validate_and_resolve_cotahist_input(
     try:
         return validate_cotahist_input(candidate, limits=limits)
     except CotahistCatalogError as error:
-        cause = error.__cause__
-        if isinstance(cause, CorruptedZipError):
-            raise cause from error
-        if isinstance(cause, zipfile.BadZipFile):
-            raise CorruptedZipError(str(candidate), str(cause)) from error
-        raise ExtractionError(str(candidate), str(error)) from error
+        _raise_public_input_error(candidate, error)
+
+
+@contextmanager
+def open_resolved_cotahist_zip(
+    path: Path,
+    *,
+    limits: ArchiveSafetyLimits | None = None,
+) -> Iterator[tuple[zipfile.ZipFile, str]]:
+    """Keep the fully validated archive open for bounded member reading."""
+    try:
+        with _open_validated_zip(path, limits=limits) as validated:
+            yield validated
+    except CotahistCatalogError as error:
+        _raise_public_input_error(path, error)
+
+
+def _raise_public_input_error(
+    path: Path, error: CotahistCatalogError
+) -> Never:
+    """Preserve container causes in the public B3 exception hierarchy."""
+    cause = error.__cause__
+    if isinstance(cause, CorruptedZipError):
+        raise cause from error
+    if isinstance(cause, zipfile.BadZipFile):
+        raise CorruptedZipError(str(path), str(cause)) from error
+    raise ExtractionError(str(path), str(error)) from error
 
 
 def _validate_zip(
@@ -74,29 +104,43 @@ def _validate_zip(
     limits: ArchiveSafetyLimits | None = None,
 ) -> str:
     """Validate archive safety and resolve the unique annual member."""
+    with _open_validated_zip(path, limits=limits) as (_archive, member):
+        return member
+
+
+@contextmanager
+def _open_validated_zip(
+    path: Path,
+    *,
+    limits: ArchiveSafetyLimits | None = None,
+) -> Iterator[tuple[zipfile.ZipFile, str]]:
+    """Validate every member once on the archive handle used by the reader."""
+    candidate = _validate_input_path(path)
+    archive: zipfile.ZipFile | None = None
     try:
-        with zipfile.ZipFile(path, 'r') as zip_file:
-            infos = validate_zip_archive(path, zip_file, limits=limits)
-            validate_zip_crc_with_limits(
-                path,
-                zip_file,
-                infos=infos,
-                limits=limits,
+        archive = zipfile.ZipFile(candidate, 'r')
+        infos = validate_zip_archive(candidate, archive, limits=limits)
+        validate_zip_crc_with_limits(
+            candidate, archive, infos=infos, limits=limits
+        )
+        member = resolve_cotahist_member(candidate, infos)
+        if archive.getinfo(member).file_size == 0:
+            raise CotahistCatalogError(
+                f'COTAHIST member is empty: {candidate}!{member}'
             )
-            member = resolve_cotahist_member(path, infos)
-            if zip_file.getinfo(member).file_size == 0:
-                raise CotahistCatalogError(
-                    f'COTAHIST member is empty: {path}!{member}'
-                )
-            return member
-    except CotahistCatalogError:
+    except BaseException as error:
+        if archive is not None:
+            archive.close()
+        if isinstance(
+            error,
+            (CorruptedZipError, ExtractionError, OSError, zipfile.BadZipFile),
+        ):
+            raise CotahistCatalogError(
+                f'Invalid COTAHIST ZIP {candidate}: '
+                f'{type(error).__name__}: {error}'
+            ) from error
         raise
-    except (
-        CorruptedZipError,
-        ExtractionError,
-        OSError,
-        zipfile.BadZipFile,
-    ) as error:
-        raise CotahistCatalogError(
-            f'Invalid COTAHIST ZIP {path}: {type(error).__name__}: {error}'
-        ) from error
+    try:
+        yield archive, member
+    finally:
+        archive.close()

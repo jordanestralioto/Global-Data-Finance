@@ -14,7 +14,7 @@ from globaldatafinance.brazil.b3_data.historical_quotes.errors import (
     CotahistCatalogError,
 )
 
-from ..real_validation_b3.frozen_baseline import _expected_frozen_checksums
+from ..real_validation_b3.frozen_baseline import expected_frozen_checksums
 from ..real_validation_types import ValidationCase, ValidationInputSnapshot
 from ..real_validation_utils import sha256_file
 
@@ -166,7 +166,7 @@ def _build_cotahist_cases(
     selected_by_year = {
         year: select_cotahist_file(catalog, year) for year in selected_years
     }
-    _expected_frozen_checksums(
+    expected_frozen_checksums(
         tuple(selected_by_year.values()), enabled=frozen_baseline
     )
     snapshots = tuple(
@@ -243,7 +243,7 @@ def _build_cvm_cases(
 ) -> list[ValidationCase]:
     if not raw_output:
         raise ValueError('--cvm-output is required for CVM cases')
-    output_root = _normalized_path(raw_output)
+    output_root = normalized_path(raw_output)
     if output_root is None:
         raise ValueError('--cvm-output is required for CVM cases')
     start = CVM_START if initial_year is None else initial_year
@@ -251,7 +251,7 @@ def _build_cvm_cases(
     if start < CVM_START or end > CVM_END or start > end:
         raise ValueError('CVM years must be within 2010..2026')
     cases: list[ValidationCase] = []
-    for item in _selected_documents(document):
+    for item in selected_documents(document):
         first_valid, last_valid = CVM_DOCUMENT_WINDOWS[item]
         for year in range(max(start, first_valid), min(end, last_valid) + 1):
             url = (
@@ -299,14 +299,15 @@ def _cvm_case_mismatches(
     ]
 
 
-def _normalized_path(raw_path: str | None) -> str | None:
+def normalized_path(raw_path: str | None) -> str | None:
     """Return an absolute caller path without creating or inspecting it."""
     if raw_path is None:
         return None
     return str(Path(raw_path).expanduser().resolve())
 
 
-def _selected_documents(document: str | None) -> tuple[str, ...]:
+def selected_documents(document: str | None) -> tuple[str, ...]:
+    """Resolve the requested CVM document selection in canonical order."""
     if document is None or document.casefold() == 'all':
         return _CVM_DOCUMENT_ORDER
     normalized = document.strip().upper()

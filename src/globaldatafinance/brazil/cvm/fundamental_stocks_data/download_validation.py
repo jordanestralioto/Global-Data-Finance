@@ -33,7 +33,7 @@ def validate_downloaded_file(
         ):
             return False
 
-        return _has_valid_zip_contents(filepath, limits=limits)
+        return has_valid_zip_contents(filepath, limits=limits)
 
     except OSError as error:
         logger.error(
@@ -159,9 +159,10 @@ def _has_valid_size(path: Path, expected_size: int) -> bool:
     return True
 
 
-def _has_valid_zip_contents(
+def has_valid_zip_contents(
     filepath: str, *, limits: ArchiveSafetyLimits | None = None
 ) -> bool:
+    """Check archive safety, member integrity, and CSV presence."""
     try:
         with zipfile.ZipFile(filepath, 'r') as zip_file:
             infos = validate_zip_archive(filepath, zip_file, limits=limits)

@@ -62,9 +62,9 @@ def test_cli_progress_preserves_machine_readable_summary(
         assert report == tmp_path / 'report'
         assert timeout == 60.0
         assert progress is True
-        return runner._control_result(case, 'passed', 'controlled completion')
+        return runner.control_result(case, 'passed', 'controlled completion')
 
-    monkeypatch.setattr(runner, '_run_isolated_case', complete_case)
+    monkeypatch.setattr(runner, 'run_isolated_case', complete_case)
     code = cli.main(
         [
             '--source',
@@ -110,7 +110,7 @@ def test_wait_progress_keeps_the_original_deadline(
                 raise queue_module.Empty
             return result
 
-    observed = runner._receive_worker_result(
+    observed = runner.receive_worker_result(
         cast(Any, ResultQueue()),
         _StubbornProcess(),
         100.0,
@@ -162,9 +162,9 @@ def test_run_campaign_skips_terminal_results_and_persists_pending_case(
         _report: Path, case: ValidationCase, _timeout: float
     ) -> dict[str, object]:
         called.append(case.case_id)
-        return runner._control_result(case, 'passed', 'done')
+        return runner.control_result(case, 'passed', 'done')
 
-    monkeypatch.setattr(runner, '_run_isolated_case', fake_run)
+    monkeypatch.setattr(runner, 'run_isolated_case', fake_run)
 
     exit_code = runner.run_campaign(report_path, cases, timeout=2.0)
     summary = read_json(report_path / 'summary.json')
@@ -195,9 +195,9 @@ def test_run_campaign_maps_new_case_status_to_exit_code(
     def fake_run(
         _report: Path, current: ValidationCase, _timeout: float
     ) -> dict[str, object]:
-        return runner._control_result(current, status, status)
+        return runner.control_result(current, status, status)
 
-    monkeypatch.setattr(runner, '_run_isolated_case', fake_run)
+    monkeypatch.setattr(runner, 'run_isolated_case', fake_run)
 
     assert (
         runner.run_campaign(report_path, [case], timeout=2.0) == expected_code
@@ -236,19 +236,17 @@ def test_campaign_exit_code_is_fail_closed_for_process_and_incomplete_states():
     }
 
     assert (
-        runner._campaign_exit_code(
+        runner.campaign_exit_code(
             {**base, 'processCheck': {'status': 'failed'}}
         )
         == 2
     )
-    assert runner._campaign_exit_code({**base, 'totalNotExecuted': 1}) == 2
+    assert runner.campaign_exit_code({**base, 'totalNotExecuted': 1}) == 2
     assert (
-        runner._campaign_exit_code({**base, 'totalFunctionalFailures': 1}) == 1
+        runner.campaign_exit_code({**base, 'totalFunctionalFailures': 1}) == 1
     )
-    assert (
-        runner._campaign_exit_code({**base, 'totalExternalFailures': 1}) == 2
-    )
-    assert runner._campaign_exit_code(base) == 0
+    assert runner.campaign_exit_code({**base, 'totalExternalFailures': 1}) == 2
+    assert runner.campaign_exit_code(base) == 0
 
 
 def test_process_check_reports_active_children(
@@ -270,7 +268,7 @@ def test_process_check_reports_active_children(
         lambda: [ActiveChild()],
     )
 
-    check = runner._process_check()
+    check = runner.process_check()
 
     assert check == {
         'status': 'failed',
@@ -295,10 +293,10 @@ def test_workspace_parent_selects_caller_output_only_for_cvm(
     )
 
     assert (
-        runner._workspace_parent(tmp_path / 'report', cvm_case)
+        runner.workspace_parent(tmp_path / 'report', cvm_case)
         == (tmp_path / 'cvm').resolve()
     )
-    assert runner._workspace_parent(tmp_path / 'report', b3_case) == (
+    assert runner.workspace_parent(tmp_path / 'report', b3_case) == (
         tmp_path / 'report' / 'work'
     )
 
@@ -392,7 +390,7 @@ class _FakeContext:
     def Process(
         self, target: object, args: tuple[object, ...]
     ) -> _FakeProcess:
-        assert target is runner._case_worker
+        assert target is runner.case_worker
         assert args[0] == self.case
         return self.process
 
@@ -419,7 +417,7 @@ def test_run_isolated_case_handles_result_timeout_and_missing_worker_evidence(
         output_root = tmp_path / label / 'output'
         case = _cvm_case(label, str(output_root))
         queue = _FakeQueue(
-            runner._control_result(case, 'passed', 'worker result'), empty
+            runner.control_result(case, 'passed', 'worker result'), empty
         )
         process = _FakeProcess(alive)
         workspace = output_root / 'known-workspace'
@@ -437,7 +435,7 @@ def test_run_isolated_case_handles_result_timeout_and_missing_worker_evidence(
             ),
         )
 
-        result = runner._run_isolated_case(report_path, case, timeout=0.1)
+        result = runner.run_isolated_case(report_path, case, timeout=0.1)
 
         assert result['status'] == expected_status
         assert result['temporaryFilesAfterCleanup'] == []
@@ -451,7 +449,7 @@ def test_terminate_process_never_uses_an_unbounded_join() -> None:
     """A stuck timeout cleanup escalates to kill with finite grace periods."""
     process = _StubbornProcess()
 
-    runner._terminate_process(process)
+    runner.terminate_process(process)
 
     assert process.terminated is True
     assert process.killed is True
@@ -472,7 +470,7 @@ def test_cleanup_workspace_preserves_leftovers_when_removal_fails(
 
     monkeypatch.setattr(runner.shutil, 'rmtree', fail_rmtree)
 
-    leftovers = runner._cleanup_workspace(workspace, log_path)
+    leftovers = runner.cleanup_workspace(workspace, log_path)
 
     assert leftovers == ['staging.tmp']
     assert 'workspace cleanup failed' in log_path.read_text(encoding='utf-8')

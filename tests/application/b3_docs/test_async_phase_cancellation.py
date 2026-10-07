@@ -123,6 +123,8 @@ async def test_cancellation_in_heavy_phase_joins_work_and_preserves_output(
     pq.write_table(pa.table({'previous': [1]}), output)
     previous = output.read_bytes()
     loop = asyncio.get_running_loop()
+    started = asyncio.Event()
+    release = threading.Event()
     finished = threading.Event()
     target, name = _phase_boundary(phase)
     operation = getattr(target, name)
@@ -130,8 +132,9 @@ async def test_cancellation_in_heavy_phase_joins_work_and_preserves_output(
     def request_cancel_during_actual_phase(*args, **kwargs):
         if not _is_selected_call(phase, kwargs):
             return operation(*args, **kwargs)
-        loop.call_soon_threadsafe(task.cancel)
+        loop.call_soon_threadsafe(started.set)
         try:
+            assert release.wait(timeout=5)
             return operation(*args, **kwargs)
         finally:
             finished.set()
@@ -148,8 +151,16 @@ async def test_cancellation_in_heavy_phase_joins_work_and_preserves_output(
         )
     )
 
-    with pytest.raises(asyncio.CancelledError):
-        await asyncio.wait_for(task, timeout=5)
+    try:
+        await asyncio.wait_for(started.wait(), timeout=5)
+        task.cancel()
+        await asyncio.sleep(0)
+        assert not task.done()
+        assert not finished.is_set()
+    finally:
+        release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(task, timeout=5)
 
     assert finished.is_set()
     assert output.read_bytes() == previous

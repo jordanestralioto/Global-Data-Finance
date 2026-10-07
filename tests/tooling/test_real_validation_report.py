@@ -11,7 +11,7 @@ import pytest
 from scripts.real_validation_report import (
     REPORT_SCHEMA_VERSION,
     ReportFormatError,
-    _atomic_write,
+    atomic_write,
     build_summary,
     read_json,
     read_results,
@@ -169,6 +169,6 @@ def test_atomic_write_removes_partial_file_after_replace_failure(
     monkeypatch.setattr(Path, 'replace', fail_replace)
 
     with pytest.raises(OSError, match='cannot replace'):
-        _atomic_write(destination, '{}\n')
+        atomic_write(destination, '{}\n')
 
     assert list(tmp_path.iterdir()) == []

@@ -27,6 +27,9 @@ from ....brazil.b3_data.historical_quotes.integrity_report import (
 from ....brazil.b3_data.historical_quotes.models import (
     CotahistCatalogResolution,
 )
+from ....brazil.b3_data.historical_quotes.processing import (
+    ProcessingModeEnumB3,
+)
 from ....core.archive_safety import ArchiveSafetyLimits
 from ....core.config import Settings
 from ....core.logging_config import get_logger
@@ -213,6 +216,15 @@ class ExtractionFlowB3:
             f'assets={assets_list}, years={initial_year}-{last_year}, '
             f'mode={processing_mode}'
         )
+        preflight_options: dict[str, Any] = {}
+        if (
+            processing_mode == 'fast'
+            and self._extract_use_case.executor_backend == 'process'
+        ):
+            preflight_options = {
+                'processing_mode': ProcessingModeEnumB3.FAST,
+                'executor_backend': 'process',
+            }
         docs_to_extract = CreateDocsToExtractUseCaseB3(
             path_of_docs=path_of_docs,
             assets_list=assets_list,
@@ -221,6 +233,7 @@ class ExtractionFlowB3:
             destination_path=destination_path,
             allowed_unc_roots=self._allowed_unc_roots,
             limits=ArchiveSafetyLimits.from_settings(self._settings.archive),
+            **preflight_options,
         ).execute()
         logger.info(
             f'Found {len(docs_to_extract.documents_to_download)} COTAHIST '

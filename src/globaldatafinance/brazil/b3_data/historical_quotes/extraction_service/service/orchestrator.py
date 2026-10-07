@@ -213,7 +213,7 @@ class ExtractionServiceB3:
             validate_source_results(
                 ordered_results, expected_fingerprint, sources
             )
-            verified_by_source, verified_digests = await run_blocking_phase(
+            await run_blocking_phase(
                 verify_private_sources,
                 ordered_results,
                 expected_schema,

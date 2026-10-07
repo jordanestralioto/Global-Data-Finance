@@ -106,3 +106,27 @@ def test_merge_rejects_a_temporary_row_count_mismatch(
 
     assert source.exists()
     assert output.exists() is False
+
+
+def test_merge_rejects_footer_mutation_after_private_validation(
+    tmp_path: Path,
+) -> None:
+    """Reopening a temporary must detect metadata the merge would replace."""
+    source = tmp_path / 'source.parquet'
+    output = tmp_path / 'merged.parquet'
+    _write(source, 'PETR4')
+    table = pq.read_table(source)
+    metadata = dict(table.schema.metadata or {})
+    metadata[b'UNEXPECTED_METADATA'] = b'changed'
+    pq.write_table(table.replace_schema_metadata(metadata), source)
+
+    with pytest.raises(ExtractionError, match='metadata differs'):
+        extraction_service.merge_temp_files_streaming(
+            [source],
+            output,
+            parquet_writer.build_b3_schema(),
+            expected_rows=[1],
+        )
+
+    assert source.exists()
+    assert not output.exists()

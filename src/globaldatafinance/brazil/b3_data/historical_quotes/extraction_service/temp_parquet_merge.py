@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 from .....macro_exceptions import ExtractionError, ParquetWriteError
 from ..async_execution import check_phase_cancellation
+from ..parquet_writer.metadata_verification import open_verified_parquet
 from ..parquet_writer.session import ROW_GROUP_LIMIT, B3ParquetWriterSession
 
 if TYPE_CHECKING:
@@ -129,18 +130,16 @@ def _open_validated_temporary(
     expected_rows: int | None,
 ) -> Any:
     """Open a private source artifact only after its invariants hold."""
-    import pyarrow.parquet as pq
-
     if not temp_file.is_file():
         raise ExtractionError(
             str(temp_file), 'B3 temporary Parquet artifact is missing'
         )
-    source = pq.ParquetFile(temp_file)
+    source, _ = open_verified_parquet(
+        temp_file,
+        expected_schema,
+        schema_error='B3 temporary Parquet schema is incompatible',
+    )
     try:
-        if source.schema_arrow != expected_schema:
-            raise ExtractionError(
-                str(temp_file), 'B3 temporary Parquet schema is incompatible'
-            )
         metadata = source.metadata
         if metadata is None:
             raise ExtractionError(

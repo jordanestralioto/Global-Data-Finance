@@ -65,6 +65,31 @@ Isso mantém nulo distinto de vazio e preserva ordem e ocorrências repetidas.
 O oracle implementa esse contrato independentemente e compara os digests e
 as demais informações do manifesto aos dados brutos reconciliados.
 
+Preflight, replay e leitura de verificação usam a mesma implementação de
+digest. Preflight e replay agrupam o framing por linha. A leitura de
+verificação usa operações Arrow para agrupar as colunas canônicas em
+segmentos limitados, preservando exatamente o fluxo de bytes da versão 2.
+Cada segmento termina na fronteira da fonte correspondente; fontes sem
+cotações selecionadas também têm seu digest conferido.
+
+Os cabeçalhos de comprimento mais frequentes usam tabelas constantes de
+tamanho limitado. Essas tabelas contêm somente tags e comprimentos, sem
+armazenar valores financeiros ou conteúdo das fontes.
+
+Antes do merge, cada Parquet temporário tem seu schema, footer completo,
+manifesto e contagem conferidos. O merge reaplica a validação de schema e
+metadados ao abrir cada temporário. O arquivo final recebe uma leitura
+completa, em lotes limitados, para conferir valores, proveniência, ordem e
+digests por fonte antes da publicação transacional. As verificações de
+replay e identidade das fontes continuam obrigatórias.
+
+A leitura de verificação converte datas, inteiros e decimais em strings
+canônicas por coluna com Arrow, preservando a escala decimal e sem usar
+ponto flutuante. O framing dessas colunas também usa operações Arrow, com
+Base64 padrão para os bytes originais. Todas as 32 colunas participam do
+digest. As verificações de proveniência, datas, nulidade, ordem e contagens
+continuam cobrindo cada linha, inclusive quando um lote atravessa fontes.
+
 ### Leitura
 
 Campos numéricos de origem devem conter somente dígitos ASCII em toda a largura;

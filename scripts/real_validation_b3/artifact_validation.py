@@ -17,10 +17,10 @@ from ..real_validation_utils import (
 
 B3_SCHEMA = {field.name: str(field.type) for field in independent_schema()}
 
-_BATCH_SIZE = 8_192
+BATCH_SIZE = 8_192
 
 
-def _validate_result(
+def validate_result(
     result: Mapping[str, Any],
     output_directory: Path,
     initial_year: int,
@@ -40,10 +40,10 @@ def _validate_result(
         return {'valid': False, 'message': 'B3 output escaped its directory'}
     if sorted(output_directory.glob('*.parquet')) != [output_path]:
         return {'valid': False, 'message': 'B3 output file count is not one'}
-    schema_error = _validate_schema(output_path)
+    schema_error = validate_schema(output_path)
     if schema_error:
         return {'valid': False, 'message': schema_error}
-    metadata_error = _validate_metadata(output_path)
+    metadata_error = validate_metadata(output_path)
     if metadata_error:
         return {'valid': False, 'message': metadata_error}
     leftovers = temporary_paths(output_directory)
@@ -102,7 +102,7 @@ def _public_failure(result: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def _failed_validation(
+def failed_validation(
     result: Mapping[str, Any], details: Mapping[str, Any]
 ) -> dict[str, Any]:
     """Carry validation failure classification into campaign evidence."""
@@ -139,7 +139,7 @@ def _validate_frame(
     row_count = 0
     first_date = None
     last_date = None
-    for batch in parquet.iter_batches(batch_size=_BATCH_SIZE):
+    for batch in parquet.iter_batches(batch_size=BATCH_SIZE):
         dates = batch.column('data_pregao').to_pylist()
         markets = batch.column('tipo_mercado').to_pylist()
         if not dates or not markets:
@@ -179,7 +179,8 @@ def _validate_frame(
     }
 
 
-def _validate_schema(output_path: Path) -> str | None:
+def validate_schema(output_path: Path) -> str | None:
+    """Compare persisted fields with the independent B3 v2 schema."""
     parquet = pq.ParquetFile(output_path)
     actual = [
         (field.name, str(field.type), field.nullable)
@@ -193,7 +194,8 @@ def _validate_schema(output_path: Path) -> str | None:
     return None if actual == expected else 'B3 schema differs from v2 oracle'
 
 
-def _validate_metadata(output_path: Path) -> str | None:
+def validate_metadata(output_path: Path) -> str | None:
+    """Check the schema version and integrity manifest metadata."""
     metadata = pq.ParquetFile(output_path).schema_arrow.metadata or {}
     if metadata.get(b'globaldatafinance.b3.schema_version') != b'2':
         return 'B3 schema version metadata is invalid'
@@ -202,9 +204,10 @@ def _validate_metadata(output_path: Path) -> str | None:
     return None
 
 
-def _passed_details(
+def passed_details(
     result: Mapping[str, Any], details: Mapping[str, Any], message: str
 ) -> dict[str, Any]:
+    """Build successful validation evidence from reconciled artifacts."""
     reconciliation = dict(details['raw_reconciliation'])
     return {
         'status': 'passed',

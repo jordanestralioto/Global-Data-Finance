@@ -6,7 +6,7 @@ from typing import Any, Literal, cast
 
 from ..real_validation_report import REPORT_SCHEMA_VERSION, ReportFormatError
 from ..real_validation_types import ValidationCase, ValidationInputSnapshot
-from .cases import Source, _normalized_path
+from .cases import Source, normalized_path
 
 
 def manifest_for(
@@ -25,8 +25,8 @@ def manifest_for(
         'schemaVersion': REPORT_SCHEMA_VERSION,
         'campaign': {
             'source': source,
-            'cotahistPath': _normalized_path(cotahist_path),
-            'cvmOutput': _normalized_path(cvm_output),
+            'cotahistPath': normalized_path(cotahist_path),
+            'cvmOutput': normalized_path(cvm_output),
             'initialYear': initial_year,
             'lastYear': last_year,
             'document': document,
