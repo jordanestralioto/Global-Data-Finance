@@ -4,29 +4,31 @@
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import json
 import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from types import ModuleType
-from typing import Any, cast
 
-from harness.paths import repo_root as current_repo_root
+from harness import paths
+from harness.sync_specs_provenance import SyncIssue, decision_preflight
+from harness.sync_specs_sections import (
+    PLACEHOLDER_RE,
+    PURPOSE_RE,
+    REQUIREMENTS_RE,
+    normalize_block,
+    parse_purpose_operation,
+    replace_purpose,
+    section_body,
+    with_provenance,
+)
 
 OPERATION_RE = re.compile(
     r'^##\s+(ADDED|MODIFIED|REMOVED|RENAMED)\s+Requirements\s*$', re.I
 )
 REQUIREMENT_RE = re.compile(r'^###\s+Requirement:\s*(.+?)\s*$')
-PURPOSE_RE = re.compile(r'^##\s+Purpose\s*$', re.I)
-REQUIREMENTS_RE = re.compile(r'^##\s+Requirements\s*$', re.I)
 RENAME_RE = re.compile(
     r'^-\s+(FROM|TO):\s+`?(?:###\s+Requirement:\s*)?(.+?)`?\s*$', re.I
-)
-PLACEHOLDER_RE = re.compile(r'\b(?:TBD|TODO|FIXME|XXX)\b|<[^>]+>', re.I)
-DECISION_SOURCE_RE = re.compile(
-    r'^[ \t]*Decision source:[ \t]*(.+?)[ \t]*$', re.MULTILINE
 )
 
 
@@ -43,39 +45,7 @@ class DeltaSpec:
     modified: tuple[RequirementBlock, ...]
     removed: tuple[str, ...]
     renamed: tuple[tuple[str, str], ...]
-
-
-@dataclass(frozen=True)
-class SyncIssue:
-    capability: str
-    code: str
-    message: str
-
-
-def _normalize_block(lines: list[str]) -> str:
-    cleaned = [line.rstrip() for line in lines]
-    while cleaned and not cleaned[-1]:
-        cleaned.pop()
-    return '\n'.join(cleaned)
-
-
-def _section_body(lines: list[str], heading: re.Pattern[str]) -> str:
-    start: int | None = None
-    for index, line in enumerate(lines):
-        if heading.match(line):
-            start = index + 1
-            break
-    if start is None:
-        return ''
-    end = next(
-        (
-            index
-            for index in range(start, len(lines))
-            if lines[index].startswith('## ')
-        ),
-        len(lines),
-    )
-    return _normalize_block(lines[start:end]).strip()
+    modified_purpose: str | None = None
 
 
 def _requirement_blocks(lines: list[str]) -> tuple[RequirementBlock, ...]:
@@ -92,7 +62,7 @@ def _requirement_blocks(lines: list[str]) -> tuple[RequirementBlock, ...]:
             else len(lines)
         )
         result.append(
-            RequirementBlock(name, _normalize_block(lines[start:end]))
+            RequirementBlock(name, normalize_block(lines[start:end]))
         )
     return tuple(result)
 
@@ -133,7 +103,7 @@ def parse_delta(text: str) -> DeltaSpec:
     if pending_from is not None:
         raise ValueError('RENAMED contains a FROM without a matching TO')
     return DeltaSpec(
-        purpose=_section_body(lines, PURPOSE_RE),
+        purpose=section_body(lines, PURPOSE_RE),
         added=_requirement_blocks(sections.get('added', [])),
         modified=_requirement_blocks(sections.get('modified', [])),
         removed=tuple(
@@ -141,6 +111,7 @@ def parse_delta(text: str) -> DeltaSpec:
             for block in _requirement_blocks(sections.get('removed', []))
         ),
         renamed=tuple(rename_pairs),
+        modified_purpose=parse_purpose_operation(text),
     )
 
 
@@ -162,91 +133,8 @@ def _main_parts(text: str) -> tuple[str, list[RequirementBlock]]:
         if REQUIREMENT_RE.match(lines[index])
     ]
     first = starts[0] if starts else len(lines)
-    prefix = _normalize_block(lines[:first])
+    prefix = normalize_block(lines[:first])
     return prefix, list(_requirement_blocks(lines[first:]))
-
-
-def _load_opsx(repo_root: Path) -> ModuleType:
-    module_path = Path(__file__).with_name('opsx.py')
-    spec = importlib.util.spec_from_file_location(
-        f'opsx_sync_preflight_{id(repo_root)}', module_path
-    )
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f'Unable to load decision preflight: {module_path}')
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    opsx_module = cast(Any, module)
-    opsx_module.REPO_ROOT = repo_root
-    opsx_module.CHANGES_ROOT = repo_root / 'openspec/changes'
-    return module
-
-
-def _decision_preflight(
-    repo_root: Path, change_name: str
-) -> tuple[tuple[str, ...], list[SyncIssue]]:
-    try:
-        opsx = _load_opsx(repo_root)
-        source, findings = opsx.validate_decision_source(
-            repo_root / 'openspec/changes' / change_name
-        )
-    except (OSError, RuntimeError, ValueError) as exc:
-        return (), [SyncIssue('manifest', 'sync-provenance-error', str(exc))]
-    if findings:
-        return (), [
-            SyncIssue(
-                'manifest',
-                'sync-provenance-error',
-                f'{item["code"]}: {item["message"]}',
-            )
-            for item in findings
-        ]
-    if source is None:
-        return (), [
-            SyncIssue(
-                'manifest',
-                'sync-provenance-error',
-                'decision-source preflight returned no source envelope',
-            )
-        ]
-    raw_ids = source.get('decision_ids')
-    if not isinstance(raw_ids, list) or not all(
-        isinstance(item, str) for item in raw_ids
-    ):
-        return (), [
-            SyncIssue(
-                'manifest',
-                'sync-provenance-error',
-                'decision-source preflight returned invalid decision IDs',
-            )
-        ]
-    return tuple(raw_ids), []
-
-
-def _with_provenance(prefix: str, decision_ids: tuple[str, ...]) -> str:
-    lines = prefix.splitlines()
-    heading = next(
-        i for i, line in enumerate(lines) if REQUIREMENTS_RE.match(line)
-    )
-    prefix_text = '\n'.join(lines[:heading])
-    existing_ids = DECISION_SOURCE_RE.findall(prefix_text)
-    source_ids = set(re.findall(r'Q\d+', ','.join(existing_ids)))
-    merged_ids = sorted(
-        source_ids | set(decision_ids), key=lambda item: int(item[1:])
-    )
-    clean_prefix = (
-        DECISION_SOURCE_RE.sub('', prefix_text).rstrip().splitlines()
-    )
-    provenance = [f'Decision source: {item}' for item in merged_ids]
-    return _normalize_block(
-        [
-            *clean_prefix,
-            '',
-            *provenance,
-            '',
-            *lines[heading:],
-        ]
-    )
 
 
 def _new_prefix(
@@ -324,14 +212,20 @@ def render_sync(
     decision_ids: tuple[str, ...],
 ) -> str:
     if current is None:
+        if delta.modified_purpose is not None:
+            raise ValueError(
+                'MODIFIED Purpose requires an existing capability'
+            )
         prefix = _new_prefix(capability, delta, decision_ids)
         blocks: list[RequirementBlock] = []
     else:
         prefix, blocks = _main_parts(current)
-        purpose = _section_body(current.splitlines(), PURPOSE_RE)
+        purpose = section_body(current.splitlines(), PURPOSE_RE)
         if not purpose or PLACEHOLDER_RE.search(purpose):
             raise ValueError('canonical spec Purpose is missing or unresolved')
-        prefix = _with_provenance(prefix, decision_ids)
+        prefix = with_provenance(prefix, decision_ids)
+        if delta.modified_purpose is not None:
+            prefix = replace_purpose(prefix, delta.modified_purpose)
 
     for block in delta.added:
         index = _find_requirement_index(blocks, block.name)
@@ -359,7 +253,7 @@ def sync_change(
     repo_root: Path, change_name: str, *, write: bool
 ) -> tuple[list[dict[str, object]], list[SyncIssue]]:
     change_root = repo_root / 'openspec/changes' / change_name
-    decision_ids, issues = _decision_preflight(repo_root, change_name)
+    decision_ids, issues = decision_preflight(repo_root, change_name)
     operations: list[dict[str, object]] = []
     if issues:
         return operations, issues
@@ -391,6 +285,7 @@ def sync_change(
             {
                 'capability': capability,
                 'changed': changed,
+                'purpose_modified': delta.modified_purpose is not None,
                 'added': [item.name for item in delta.added],
                 'modified': [item.name for item in delta.modified],
                 'removed': list(delta.removed),
@@ -435,7 +330,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    repo_root = args.repo_root or current_repo_root()
+    repo_root = args.repo_root or paths.repo_root()
     operations, issues = sync_change(
         repo_root.resolve(), args.change, write=not args.check
     )

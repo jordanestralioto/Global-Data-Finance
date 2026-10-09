@@ -12,6 +12,7 @@ from scripts.real_validation_report import (
     REPORT_SCHEMA_VERSION,
     ReportFormatError,
     atomic_write,
+    build_case_result,
     build_summary,
     read_json,
     read_results,
@@ -20,6 +21,7 @@ from scripts.real_validation_report import (
     write_json,
     write_results,
 )
+from scripts.real_validation_types import ValidationCase
 
 pytestmark = pytest.mark.unit
 
@@ -172,3 +174,57 @@ def test_atomic_write_removes_partial_file_after_replace_failure(
         atomic_write(destination, '{}\n')
 
     assert list(tmp_path.iterdir()) == []
+
+
+def test_build_case_result_returns_independent_complete_records(
+    tmp_path: Path,
+) -> None:
+    """Case results contain 20 canonical keys with isolated containers."""
+    case = ValidationCase(
+        case_id='cvm-DFP-2024',
+        source='cvm',
+        year=2024,
+        input_path='https://example.test/dfp.zip',
+        output_root=str(tmp_path / 'cvm-output'),
+        document='DFP',
+        mode='cvm',
+        url='https://example.test/dfp.zip',
+    )
+    result_default = build_case_result(case)
+    assert result_default['schemaVersion'] == REPORT_SCHEMA_VERSION
+    assert result_default['caseId'] == 'cvm-DFP-2024'
+    assert result_default['source'] == 'cvm'
+    assert result_default['document'] == 'DFP'
+    assert result_default['year'] == 2024
+    assert result_default['inputPath'] == 'https://example.test/dfp.zip'
+    assert result_default['inputSizeBytes'] is None
+    assert result_default['inputSha256'] is None
+    assert result_default['command'] == case.command()
+    assert result_default['published'] is None
+    assert result_default['publicResult'] is None
+    assert result_default['artifactCount'] == 0
+    assert result_default['artifacts'] == []
+    assert result_default['recordCount'] == 0
+    assert result_default['schema'] == {}
+    assert result_default['temporaryFiles'] == []
+    assert result_default['temporaryFilesAfterCleanup'] == []
+    assert result_default['status'] == 'failed'
+    assert result_default['message'] == 'case did not produce a result'
+    assert result_default['durationSeconds'] == 0.0
+    assert len(result_default) == 20
+
+    result_custom = build_case_result(
+        case, status='passed', message='completed normally'
+    )
+    assert result_custom['status'] == 'passed'
+    assert result_custom['message'] == 'completed normally'
+
+    result_default['artifacts'].append('file.parquet')
+    result_default['schema']['col'] = 'int'
+    result_default['temporaryFiles'].append('temp.tmp')
+    result_default['temporaryFilesAfterCleanup'].append('leaked.tmp')
+
+    assert result_custom['artifacts'] == []
+    assert result_custom['schema'] == {}
+    assert result_custom['temporaryFiles'] == []
+    assert result_custom['temporaryFilesAfterCleanup'] == []

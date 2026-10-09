@@ -12,6 +12,7 @@
 | **`[SYNTAX]`**                | Fast parse/compilation check                                                                  | `python -m py_compile`                                               | `tsc --noEmit`                                                                | `go vet` / `cargo check`                                                                               |
 | **`[FORMATTER]`**             | Deterministic code formatting (auto-fix)                                                      | `ruff format`                                                        | `prettier --write` / `biome format`                                           | `gofmt -w` / `cargo fmt`                                                                               |
 | **`[LINTER]`**                | Code quality plus structural complexity, nesting, flow, error handling, and routine scope     | `ruff check` or configured equivalent                                | `eslint` / `biome lint` or configured equivalent                              | `golangci-lint` / `cargo clippy` or configured equivalent                                              |
+| **`[DEAD_CODE]`**             | Assess unused code and obsolete compatibility per capability                                  | Native local lint; Vulture candidates                                | Knip with explicit entries/workspaces and analysis modes                      | Configured Staticcheck/U1000; compiler unused-code diagnostics                                         |
 | **`[TYPE_CHECK]`**            | Static typing validation                                                                      | `mypy` / `pyright`                                                   | `tsc --noEmit`                                                                | Built-in                                                                                               |
 | **`[CIRCULAR_DEPENDENCIES]`** | Detect import cycles when the project requires an acyclic graph; identify historical findings | `import-linter` / `pycycle`                                          | `madge --circular` / `dependency-cruiser`                                     | Go compiler / configured architecture check                                                            |
 | **`[SECRETS]`**               | Prevent committing credentials/keys                                                           | Official Gitleaks hook / `gitleaks git --pre-commit --staged`        | Official Gitleaks hook / `gitleaks git --pre-commit --staged`                 | Official Gitleaks hook / `gitleaks git --pre-commit --staged`                                          |
@@ -98,6 +99,10 @@ meaning across every framework.
    or require another language runtime in a consumer.
 
 ## 5. Tool Selection Rules
+
+Assess `[DEAD_CODE]` in every setup or review. Apply the per-capability statuses,
+snapshot contract, selection procedure, findings policy, and example report in
+[dead-code-policy.md](dead-code-policy.md). A generic linter is not full coverage.
 
 1. **Prefer project-native tools**: If the repository configures a tool via `pyproject.toml` or `package.json`, execute it via the project's package manager (`uv run`, `pnpm exec`).
 2. **Use the published line gate when its policy fits**: In a consumer of the

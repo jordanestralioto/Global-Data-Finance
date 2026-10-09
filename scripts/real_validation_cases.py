@@ -36,7 +36,7 @@ from globaldatafinance.macro_exceptions import (
 
 from .real_validation_b3 import execute_cotahist_case
 from .real_validation_cvm import execute_cvm_case
-from .real_validation_report import REPORT_SCHEMA_VERSION
+from .real_validation_report import build_case_result
 from .real_validation_types import (
     ExternalFailure,
     NotPublished,
@@ -122,25 +122,4 @@ def execute_case(
 
 
 def _base_result(case: ValidationCase) -> dict[str, Any]:
-    return {
-        'schemaVersion': REPORT_SCHEMA_VERSION,
-        'caseId': case.case_id,
-        'source': case.source,
-        'document': case.document,
-        'year': case.year,
-        'inputPath': case.input_path,
-        'inputSizeBytes': case.input_size_bytes,
-        'inputSha256': case.input_sha256,
-        'command': case.command(),
-        'published': None,
-        'publicResult': None,
-        'artifactCount': 0,
-        'artifacts': [],
-        'recordCount': 0,
-        'schema': {},
-        'temporaryFiles': [],
-        'temporaryFilesAfterCleanup': [],
-        'status': 'failed',
-        'message': 'case did not produce a result',
-        'durationSeconds': 0.0,
-    }
+    return build_case_result(case)

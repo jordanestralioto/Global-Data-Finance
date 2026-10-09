@@ -14,6 +14,7 @@ from typing import Any
 
 from scripts.cotahist_oracle.errors import OracleMismatch
 from scripts.cotahist_oracle.row_digest import new_rows_digest
+from scripts.file_digests import sha256_file
 
 _FILE_PATTERN = re.compile(r'^COTAHIST_A(?P<year>[0-9]{4})\.(ZIP|TXT)$', re.I)
 
@@ -208,12 +209,3 @@ def source_sort_key(path: Path) -> tuple[int, str, str]:
     match = _FILE_PATTERN.fullmatch(path.name)
     year = int(match.group('year')) if match else 9999
     return year, path.name.casefold(), path.name
-
-
-def sha256_file(path: Path) -> str:
-    """Hash a source file in bounded chunks."""
-    digest = hashlib.sha256()
-    with path.open('rb') as stream:
-        while chunk := stream.read(1024 * 1024):
-            digest.update(chunk)
-    return digest.hexdigest()

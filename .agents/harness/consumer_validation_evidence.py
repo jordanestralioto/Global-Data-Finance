@@ -8,35 +8,16 @@ from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
-from harness import consumer_validation_evidence_schema as _schema
-from harness import consumer_validation_snapshot as _snapshot
 from harness.consumer_types import ContractError
 from harness.consumer_validation import verify_path_confinement
-
-CHECK_SCHEMA_VERSION = _schema.CHECK_SCHEMA_VERSION
-CURRENT_PROFILE = _schema.CURRENT_PROFILE
-CURRENT_PROTOCOL_VERSION = _schema.CURRENT_PROTOCOL_VERSION
-PROFILE_COMPATIBILITY_REGISTRY = _schema.PROFILE_COMPATIBILITY_REGISTRY
-PROFILE_REGISTRY = _schema.PROFILE_REGISTRY
-PROTOCOL_COMPATIBILITY_REGISTRY = _schema.PROTOCOL_COMPATIBILITY_REGISTRY
-PROTOCOL_REGISTRY = _schema.PROTOCOL_REGISTRY
-SNAPSHOT_COMPATIBILITY_REGISTRY = _schema.SNAPSHOT_COMPATIBILITY_REGISTRY
-SNAPSHOT_DATA_PARSERS = _schema.SNAPSHOT_DATA_PARSERS
-SNAPSHOT_FIELDS = _schema.SNAPSHOT_FIELDS
-SNAPSHOT_REGISTRY = _schema.SNAPSHOT_REGISTRY
-SNAPSHOT_VERSION = _schema.SNAPSHOT_VERSION
-CompatibilityEntry = _schema.CompatibilityEntry
-is_valid_snapshot_document = _schema.is_valid_snapshot_document
-normalized_request = _schema.normalized_request
-override_compatibility_registries = _schema.override_compatibility_registries
-request_identity = _schema.request_identity
-temporary_registry_override = _schema.temporary_registry_override
-validate_snapshot_document = _schema.validate_snapshot_document
-EVIDENCE_VALIDATOR_ID = _snapshot.EVIDENCE_VALIDATOR_ID
-SNAPSHOT_RELATIVE_PATH = _snapshot.SNAPSHOT_RELATIVE_PATH
-SnapshotCheck = _snapshot.SnapshotCheck
-SnapshotReadError = _snapshot.SnapshotReadError
-snapshot_from_result = _snapshot.snapshot_from_result
+from harness.consumer_validation_evidence_schema import (
+    serialize_canonical,
+    validate_snapshot_document,
+)
+from harness.consumer_validation_snapshot import (
+    SNAPSHOT_RELATIVE_PATH,
+    snapshot_from_result,
+)
 
 
 class SnapshotWriteError(ContractError):
@@ -46,7 +27,7 @@ class SnapshotWriteError(ContractError):
 def serialize_snapshot(snapshot: dict[str, Any]) -> bytes:
     """Serialize a validated snapshot with exactly one final LF."""
     validate_snapshot_document(snapshot)
-    return _schema.serialize_canonical(snapshot)
+    return serialize_canonical(snapshot)
 
 
 def snapshot_path(root: Path) -> Path:
@@ -111,10 +92,3 @@ def publish_snapshot(
 ) -> bytes:
     """Build and atomically publish a snapshot for a passing result."""
     return write_snapshot(root, snapshot_from_result(request_data, result))
-
-
-def check_snapshot(
-    root: Path, request_data: dict[str, Any], result: dict[str, Any]
-) -> SnapshotCheck:
-    """Classify existing evidence without writing or invoking old executors."""
-    return _snapshot.check_snapshot(root, request_data, result)

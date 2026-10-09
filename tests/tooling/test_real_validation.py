@@ -55,10 +55,10 @@ pytestmark = pytest.mark.unit
 _REAL_VALIDATION_HOOK_ID = 'real-validation-coverage'
 _REAL_VALIDATION_CI_STEP_NAME = 'Run real-validation executor coverage'
 _REAL_VALIDATION_TEST_TOKEN = re.compile(
-    r'tests/tooling/test_(?:real_validation[^/]*|cotahist_oracle)\.py\Z'
+    r'tests/tooling/test_(?:real_validation[^/]*|cotahist_oracle|file_digests)\.py\Z'
 )
 _REAL_VALIDATION_COVERAGE_TOKEN = re.compile(
-    r'--cov=scripts\.(?:real_validation\w*|cotahist_oracle)\Z'
+    r'--cov=scripts\.(?:real_validation\w*|cotahist_oracle|file_digests)\Z'
 )
 
 
@@ -237,6 +237,7 @@ def test_real_validation_coverage_contract_matches_executor_surface() -> None:
                 if path.is_dir() and (path / '__init__.py').is_file()
             ),
             'cotahist_oracle',
+            'file_digests',
         ]
     )
     test_modules = sorted(
@@ -248,6 +249,7 @@ def test_real_validation_coverage_contract_matches_executor_surface() -> None:
                 )
             ),
             'cotahist_oracle',
+            'file_digests',
         ]
     )
 

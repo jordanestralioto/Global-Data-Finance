@@ -123,6 +123,15 @@ framework. Keep assertion design under `[TEST_INTEGRITY]` and use the
 `testing-patterns` skill for non-tautological behavior checks; do not claim
 that `[LINTER]` or a generic regex can detect every hollow test.
 
+### 1.11 Dead Code and Obsolete Compatibility Paths
+
+Unused imports, definitions, files, and exports require capability-specific
+analysis. Review test-only references, aliases, wrappers, and compatibility
+branches against their consumers and accepted contracts. A referenced alias
+can still be obsolete. Follow [dead-code-policy.md](dead-code-policy.md) for
+snapshots, ambiguous findings, specific exceptions, and read-only enforcement;
+do not extend the diff-text scanner into a pretend reachability analyzer.
+
 ## 2. Detection Strategy in Diff
 
 Diff-oriented gates must analyze lines starting with `+` in

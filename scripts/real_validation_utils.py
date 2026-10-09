@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import hashlib
 import sys
 from pathlib import Path
 from typing import Any
 
 from globaldatafinance.core.utils import assert_path_not_sensitive
+from scripts.file_digests import sha256_file as sha256_file
 
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
@@ -54,15 +54,6 @@ def temporary_paths(root: Path) -> list[str]:
         for path in root.rglob('*')
         if any(marker in path.name.casefold() for marker in markers)
     )
-
-
-def sha256_file(path: Path) -> str:
-    """Hash one input in bounded chunks for the evidence record."""
-    digest = hashlib.sha256()
-    with path.open('rb') as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b''):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def validate_external_directory(raw_input: str, label: str) -> Path:

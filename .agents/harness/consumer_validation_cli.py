@@ -21,11 +21,13 @@ from harness.consumer_validation import (
     verify_path_confinement,
 )
 from harness.consumer_validation_evidence import (
-    CHECK_SCHEMA_VERSION,
-    SnapshotReadError,
     SnapshotWriteError,
-    check_snapshot,
     publish_snapshot,
+)
+from harness.consumer_validation_evidence_schema import CHECK_SCHEMA_VERSION
+from harness.consumer_validation_snapshot import (
+    SnapshotReadError,
+    check_snapshot,
 )
 from harness.paths import GitRootError, strict_repo_root
 

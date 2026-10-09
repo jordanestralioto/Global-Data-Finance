@@ -11,7 +11,7 @@ from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
-from .real_validation_types import CaseStatus
+from .real_validation_types import CaseStatus, ValidationCase
 
 REPORT_SCHEMA_VERSION = 2
 _STATUS_ORDER: tuple[CaseStatus, ...] = (
@@ -129,6 +129,36 @@ def read_results(path: Path) -> dict[str, dict[str, Any]]:
             )
         results[case_id] = value
     return results
+
+
+def build_case_result(
+    case: ValidationCase,
+    status: CaseStatus = 'failed',
+    message: str = 'case did not produce a result',
+) -> dict[str, Any]:
+    """Build a complete report record with fresh mutable containers."""
+    return {
+        'schemaVersion': REPORT_SCHEMA_VERSION,
+        'caseId': case.case_id,
+        'source': case.source,
+        'document': case.document,
+        'year': case.year,
+        'inputPath': case.input_path,
+        'inputSizeBytes': case.input_size_bytes,
+        'inputSha256': case.input_sha256,
+        'command': case.command(),
+        'published': None,
+        'publicResult': None,
+        'artifactCount': 0,
+        'artifacts': [],
+        'recordCount': 0,
+        'schema': {},
+        'temporaryFiles': [],
+        'temporaryFilesAfterCleanup': [],
+        'status': status,
+        'message': message,
+        'durationSeconds': 0.0,
+    }
 
 
 def build_summary(

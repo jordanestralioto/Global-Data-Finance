@@ -44,6 +44,23 @@ repos:
   #       pass_filenames: false
   #       always_run: true
 
+  # Optional [DEAD_CODE]: assess every capability in dead-code-policy.md.
+  # Replace with the project's pinned, read-only analyzer and declared full
+  # project/workspace scope, including cross-package consumers. Run on deletions
+  # and entry/configuration changes. Verify index isolation, including untracked
+  # inputs; working-tree analysis alone is partial coverage. Interpret native
+  # exit codes; preserve strict profiles and dependency policy. No installation,
+  # updates, automatic exclusions, baseline expansion, or code deletion here.
+  # Measure placement; use pre-push/delegated enforcement when justified.
+  # - repo: local
+  #   hooks:
+  #     - id: dead-code
+  #       name: Dead Code Policy
+  #       entry: REPLACE_WITH_PROJECT_DEAD_CODE_COMMAND
+  #       language: system
+  #       pass_filenames: false
+  #       always_run: true
+
   # Optional [TESTS_FAST]: select a measured fast tier and declare its scope.
   # It does not replace the full pre-push suite or delegated CI coverage.
   # - repo: local

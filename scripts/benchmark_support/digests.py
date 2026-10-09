@@ -10,16 +10,9 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from scripts.file_digests import sha256_file
+
 from .models import ScenarioInput
-
-
-def sha256_file(path: Path) -> str:
-    """Return a streaming SHA-256 digest without retaining the input."""
-    digest = hashlib.sha256()
-    with path.open('rb') as source:
-        while chunk := source.read(1024 * 1024):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def directory_digest(path: Path) -> str:

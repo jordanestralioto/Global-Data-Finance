@@ -14,8 +14,8 @@ from typing import Any, Protocol, cast
 
 from .real_validation_cases import execute_case
 from .real_validation_report import (
-    REPORT_SCHEMA_VERSION,
     ReportFormatError,
+    build_case_result,
     build_summary,
     read_results,
     validate_status,
@@ -269,28 +269,7 @@ def control_result(
     case: ValidationCase, status: CaseStatus, message: str
 ) -> dict[str, Any]:
     """Build a complete report record for a process control outcome."""
-    return {
-        'schemaVersion': REPORT_SCHEMA_VERSION,
-        'caseId': case.case_id,
-        'source': case.source,
-        'document': case.document,
-        'year': case.year,
-        'inputPath': case.input_path,
-        'inputSizeBytes': case.input_size_bytes,
-        'inputSha256': case.input_sha256,
-        'command': case.command(),
-        'published': None,
-        'publicResult': None,
-        'artifactCount': 0,
-        'artifacts': [],
-        'recordCount': 0,
-        'schema': {},
-        'temporaryFiles': [],
-        'temporaryFilesAfterCleanup': [],
-        'status': status,
-        'message': message,
-        'durationSeconds': 0.0,
-    }
+    return build_case_result(case, status=status, message=message)
 
 
 def _append_log(path: Path, message: str) -> None:

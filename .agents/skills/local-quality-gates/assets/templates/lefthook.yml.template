@@ -24,6 +24,17 @@ pre-commit:
     # check-max-lines:
     #   run: python .agents/scripts/check-max-lines.py
 
+    # Optional [DEAD_CODE]: assess every capability in dead-code-policy.md.
+    # Replace with the project's pinned, read-only analyzer and declared full
+    # project/workspace scope, including cross-package consumers. Run on deletions
+    # and entry/configuration changes. Verify index isolation, including untracked
+    # inputs; working-tree analysis alone is partial coverage. Interpret native
+    # exit codes; preserve strict profiles and dependency policy. No installation,
+    # updates, automatic exclusions, baseline expansion, or code deletion here.
+    # Measure placement; use pre-push/delegated enforcement when justified.
+    # dead-code:
+    #   run: REPLACE_WITH_PROJECT_DEAD_CODE_COMMAND
+
     # Optional [TESTS_FAST]: select a measured fast tier and declare scope.
     # It does not replace full pre-push tests or delegated CI coverage.
     # project-fast-tests:

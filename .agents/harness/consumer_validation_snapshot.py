@@ -8,9 +8,22 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from harness import consumer_validation_evidence_schema as _schema
 from harness.consumer_types import ContractError, Diagnostic
 from harness.consumer_validation import verify_path_confinement
+from harness.consumer_validation_evidence_schema import (
+    CURRENT_PROFILE,
+    CURRENT_PROTOCOL_VERSION,
+    PROFILE_COMPATIBILITY_REGISTRY,
+    PROTOCOL_COMPATIBILITY_REGISTRY,
+    SNAPSHOT_COMPATIBILITY_REGISTRY,
+    SNAPSHOT_DATA_PARSERS,
+    SNAPSHOT_FIELDS,
+    SNAPSHOT_VERSION,
+    CompatibilityEntry,
+    request_identity,
+    serialize_canonical,
+    validate_snapshot_document,
+)
 
 SNAPSHOT_RELATIVE_PATH = '.agents/validation/snapshot.json'
 EVIDENCE_VALIDATOR_ID = 'consumer-validation.evidence'
@@ -64,11 +77,11 @@ def snapshot_from_result(
         )
     ]
     snapshot = {
-        'snapshotVersion': _schema.SNAPSHOT_VERSION,
+        'snapshotVersion': SNAPSHOT_VERSION,
         'protocolVersion': result['protocolVersion'],
         'profile': result['profile'],
         'executorVersion': result['executorVersion'],
-        'requestIdentity': _schema.request_identity(request_data),
+        'requestIdentity': request_identity(request_data),
         'effectiveScopes': scopes,
         'validators': sorted(
             result['validators'], key=lambda item: item['id']
@@ -80,24 +93,24 @@ def snapshot_from_result(
         'exitCode': 0,
         'stableContentIdentity': result['stableContentIdentity'],
     }
-    return _schema.validate_snapshot_document(snapshot)
+    return validate_snapshot_document(snapshot)
 
 
 def _entry(
     registry: Mapping[str, Any], version: Any
-) -> _schema.CompatibilityEntry | None:
+) -> CompatibilityEntry | None:
     if not isinstance(version, str) or not version:
         return None
     raw = registry.get(version)
-    if isinstance(raw, _schema.CompatibilityEntry):
+    if isinstance(raw, CompatibilityEntry):
         return raw
     if isinstance(raw, str):
-        return _schema.CompatibilityEntry(raw)
+        return CompatibilityEntry(raw)
     if isinstance(raw, Mapping):
         status = raw.get('status')
         parser = raw.get('parser')
         if isinstance(status, str) and (parser is None or callable(parser)):
-            return _schema.CompatibilityEntry(status, parser)
+            return CompatibilityEntry(status, parser)
     return None
 
 
@@ -131,9 +144,9 @@ def _read_snapshot(root: Path) -> tuple[Any, bytes] | None:
 
 def _version_diagnostic(field: str, value: Any) -> dict[str, str]:
     expected = {
-        'snapshotVersion': _schema.SNAPSHOT_VERSION,
-        'protocolVersion': _schema.CURRENT_PROTOCOL_VERSION,
-        'profile': _schema.CURRENT_PROFILE,
+        'snapshotVersion': SNAPSHOT_VERSION,
+        'protocolVersion': CURRENT_PROTOCOL_VERSION,
+        'profile': CURRENT_PROFILE,
     }.get(field, 'a registered value')
     return _diagnostic(
         'evidence.snapshot.invalid',
@@ -145,7 +158,7 @@ def _version_diagnostic(field: str, value: Any) -> dict[str, str]:
 def _first_difference(
     expected: dict[str, Any], observed: dict[str, Any]
 ) -> tuple[str, Any, Any]:
-    for field in _schema.SNAPSHOT_FIELDS:
+    for field in SNAPSHOT_FIELDS:
         if expected.get(field) != observed.get(field):
             return field, expected.get(field), observed.get(field)
     return 'snapshot', expected, observed
@@ -154,7 +167,7 @@ def _first_difference(
 def _canonical_snapshot(candidate: dict[str, Any]) -> bytes | None:
     """Return canonical bytes unless the document exceeds serializer limits."""
     try:
-        return _schema.serialize_canonical(candidate)
+        return serialize_canonical(candidate)
     except (RecursionError, TypeError, ValueError):
         return None
 
@@ -221,7 +234,8 @@ def check_snapshot(
 
     snapshot_version = candidate.get('snapshotVersion')
     snapshot_entry = _entry(
-        _schema.SNAPSHOT_COMPATIBILITY_REGISTRY, snapshot_version
+        SNAPSHOT_COMPATIBILITY_REGISTRY,
+        snapshot_version,
     )
     if snapshot_entry is None or snapshot_entry.status not in (
         'current',
@@ -236,8 +250,9 @@ def check_snapshot(
             'invalid',
             (_version_diagnostic('snapshotVersion', snapshot_version),),
         )
-    parser = snapshot_entry.parser or _schema.SNAPSHOT_DATA_PARSERS.get(
-        snapshot_version, _schema.validate_snapshot_document
+    parser = snapshot_entry.parser or SNAPSHOT_DATA_PARSERS.get(
+        snapshot_version,
+        validate_snapshot_document,
     )
     try:
         parsed = parser(candidate)
@@ -255,8 +270,14 @@ def check_snapshot(
         )
 
     for field, registry in (
-        ('protocolVersion', _schema.PROTOCOL_COMPATIBILITY_REGISTRY),
-        ('profile', _schema.PROFILE_COMPATIBILITY_REGISTRY),
+        (
+            'protocolVersion',
+            PROTOCOL_COMPATIBILITY_REGISTRY,
+        ),
+        (
+            'profile',
+            PROFILE_COMPATIBILITY_REGISTRY,
+        ),
     ):
         entry = _entry(registry, candidate.get(field))
         if entry is None or entry.status not in ('current', 'compatible'):

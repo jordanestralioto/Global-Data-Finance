@@ -39,7 +39,7 @@
     },
     {
       "hasScripts": true,
-      "hash": "sha256:aafc98c6ee96f39ea10f3caf2b5d0d52da4669d0abfea6ec4af4d04b13c81d4b",
+      "hash": "sha256:569ebccfb135b9adf37bfe01dd3bf64cf9503d5c4f412452212da23f482d6cdd",
       "id": "skills/local-quality-gates",
       "selectedBy": "manifest"
     },

@@ -19,24 +19,23 @@ O schema mora em `openspec/schema/` e pertence a este repositorio.
 from __future__ import annotations
 
 import argparse
-import datetime as dt
-import hashlib
+import datetime
 import json
 import re
-import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from harness import handoff as GATE
-from harness import sabatina
+from harness import change_manifest, decision_provenance, handoff
+from harness.change_manifest import load_change_manifest
+from harness.decision_source import DATE_RE
 from harness.paths import HARNESS_ROOT
 
-REPO_ROOT: Path = GATE.REPO_ROOT
-CHANGES_ROOT: Path = GATE.CHANGES_ROOT
-NON_CHANGE_DIRS: frozenset[str] = frozenset(GATE.NON_CHANGE_DIRS)
-SUPPORTED_SCHEMA: str = GATE.SUPPORTED_SCHEMA
+REPO_ROOT: Path = handoff.REPO_ROOT
+CHANGES_ROOT: Path = handoff.CHANGES_ROOT
+NON_CHANGE_DIRS: frozenset[str] = frozenset(handoff.NON_CHANGE_DIRS)
+SUPPORTED_SCHEMA: str = handoff.SUPPORTED_SCHEMA
 
 SPECS_ROOT = REPO_ROOT / 'openspec' / 'specs'
 # The schema ships with the harness; specs and config belong to the
@@ -51,12 +50,6 @@ WHEN_RE = re.compile(r'\bWHEN\b')
 THEN_RE = re.compile(r'\bTHEN\b')
 NORMATIVE_RE = re.compile(r'\b(SHALL|MUST)\b')
 MISPLACED_SCENARIO_RE = re.compile(r'^###\s+Scenario:', re.I)
-DATE_RE = re.compile(r'^\d{4}-\d{2}-\d{2}$')
-DECISION_ID_RE = re.compile(r'^Q\d+$')
-SHA256_RE = re.compile(r'^[0-9a-f]{64}$', re.I)
-ARCHIVED_CHANGE_RE = re.compile(r'^\d{4}-\d{2}-\d{2}-(.+)$')
-SourceNamespace = tuple[str, str, str]
-Descriptor = tuple[str, SourceNamespace | None, dict[str, object], list[str]]
 
 EXIT_OK = 0
 EXIT_FINDINGS = 1
@@ -263,35 +256,7 @@ def unlocked_by(schema: dict[str, Any], artifact_id: str) -> list[str]:
 
 
 def iter_change_dirs() -> list[Path]:
-    if not CHANGES_ROOT.is_dir():
-        return []
-    return sorted(
-        path
-        for path in CHANGES_ROOT.iterdir()
-        if path.is_dir() and path.name not in NON_CHANGE_DIRS
-    )
-
-
-def iter_decision_change_dirs() -> list[Path]:
-    """Return active and archived decision owners.
-
-    Archive is terminal lifecycle state, not deletion from the ownership
-    registry.  Paused changes remain excluded because they are not terminal.
-    """
-    result = iter_change_dirs()
-    archive_root = CHANGES_ROOT / 'archive'
-    if archive_root.is_dir():
-        result.extend(
-            path for path in sorted(archive_root.iterdir()) if path.is_dir()
-        )
-    return result
-
-
-def _logical_change_name(change_dir: Path) -> str:
-    if change_dir.parent.name != 'archive':
-        return change_dir.name
-    match = ARCHIVED_CHANGE_RE.fullmatch(change_dir.name)
-    return match.group(1) if match else change_dir.name
+    return change_manifest.iter_change_dirs(CHANGES_ROOT)
 
 
 def resolve_change(name: str) -> Path:
@@ -301,451 +266,18 @@ def resolve_change(name: str) -> Path:
     return path
 
 
-def _manifest_value(raw: str) -> object:
-    value = raw.strip()
-    if value.startswith('[') and value.endswith(']'):
-        inner = value[1:-1].strip()
-        if not inner:
-            return []
-        return [
-            item.strip().strip('"\'')
-            for item in inner.split(',')
-            if item.strip()
-        ]
-    return value.strip('"\'')
-
-
-def load_change_manifest(change_dir: Path) -> dict[str, object]:
-    """Read the small YAML subset used by a change manifest."""
-    path = change_dir / '.openspec.yaml'
-    if not path.is_file():
-        return {}
-    manifest: dict[str, object] = {}
-    nested: dict[str, object] | None = None
-    for raw_line in path.read_text(encoding='utf-8').splitlines():
-        if not raw_line.strip() or raw_line.lstrip().startswith('#'):
-            continue
-        indent = len(raw_line) - len(raw_line.lstrip())
-        stripped = raw_line.strip()
-        key, separator, raw_value = stripped.partition(':')
-        if not separator:
-            continue
-        if indent == 0:
-            if raw_value.strip():
-                manifest[key] = _manifest_value(raw_value)
-                nested = None
-            else:
-                nested = {}
-                manifest[key] = nested
-        elif indent == 2 and nested is not None:
-            nested[key] = _manifest_value(raw_value)
-    return manifest
-
-
-def _provenance_finding(code: str, message: str) -> dict[str, str]:
-    return {'code': code, 'message': message}
-
-
-def _unverifiable_owner(change_dir: Path, reason: str) -> dict[str, str]:
-    return {
-        'code': 'decision-owner-unverifiable',
-        'message': f'{_logical_change_name(change_dir)} cannot prove its decision ownership ({reason}).',
-    }
-
-
-def _resolve_source_path(
-    raw_path: object, findings: list[dict[str, str]]
-) -> Path | None:
-    if not isinstance(raw_path, str) or not raw_path.strip():
-        findings.append(
-            _provenance_finding(
-                'decision-source-path',
-                'decision_source.path must be a repository-relative path.',
-            )
-        )
-        return None
-    candidate = Path(raw_path)
-    try:
-        resolved = (REPO_ROOT / candidate).resolve()
-        resolved.relative_to(REPO_ROOT.resolve())
-    except (OSError, ValueError):
-        findings.append(
-            _provenance_finding(
-                'decision-source-path',
-                'decision_source.path must remain inside the repository.',
-            )
-        )
-        return None
-    if candidate.is_absolute():
-        findings.append(
-            _provenance_finding(
-                'decision-source-path',
-                'decision_source.path must be repository-relative.',
-            )
-        )
-    return resolved
-
-
-def _normalize_decision_ids(
-    raw_ids: object, findings: list[dict[str, str]]
-) -> list[str]:
-    if not isinstance(raw_ids, list) or not raw_ids:
-        findings.append(
-            _provenance_finding(
-                'decision-source-ids',
-                'decision_source.decision_ids must be a nonempty list.',
-            )
-        )
-        return []
-    normalized = [str(item) for item in raw_ids]
-    invalid = [
-        item for item in normalized if not DECISION_ID_RE.fullmatch(item)
-    ]
-    if invalid:
-        findings.append(
-            _provenance_finding(
-                'decision-source-ids',
-                'Invalid decision IDs: ' + ', '.join(invalid) + '.',
-            )
-        )
-    if len(set(normalized)) != len(normalized):
-        findings.append(
-            _provenance_finding(
-                'decision-source-ids',
-                'decision_source.decision_ids must not contain duplicates.',
-            )
-        )
-    return normalized
-
-
-def _normalize_dependencies(
-    raw_dependencies: object,
-    change_dir: Path,
-    findings: list[dict[str, str]],
-) -> list[str]:
-    if not isinstance(raw_dependencies, list) or not all(
-        isinstance(item, str) and item.strip() for item in raw_dependencies
-    ):
-        findings.append(
-            _provenance_finding(
-                'decision-source-dependencies',
-                'decision_source.depends_on must be a list of change names.',
-            )
-        )
-        return []
-    normalized = [str(item) for item in raw_dependencies]
-    if _logical_change_name(change_dir) in normalized:
-        findings.append(
-            _provenance_finding(
-                'decision-source-dependencies',
-                'A change cannot depend on itself.',
-            )
-        )
-    return normalized
-
-
-def _validate_source_file(
-    source_type: object,
-    source_path: Path | None,
-    digest: object,
-    decision_ids: list[str],
-    findings: list[dict[str, str]],
-) -> None:
-    if source_path is None:
-        return
-    if not source_path.is_file():
-        findings.append(
-            _provenance_finding(
-                'decision-source-missing',
-                f'Source file does not exist: {source_path.relative_to(REPO_ROOT)}.',
-            )
-        )
-        return
-    source_bytes = source_path.read_bytes()
-    actual_digest = hashlib.sha256(source_bytes).hexdigest()
-    if isinstance(digest, str) and actual_digest != digest.lower():
-        findings.append(
-            _provenance_finding(
-                'decision-source-digest-mismatch',
-                f'Expected {digest}, found {actual_digest}.',
-            )
-        )
-    source_text = source_bytes.decode('utf-8', errors='replace')
-    missing_ids = [
-        decision_id
-        for decision_id in decision_ids
-        if not re.search(
-            rf'(?<![A-Z0-9]){re.escape(decision_id)}(?![A-Z0-9])',
-            source_text,
-        )
-    ]
-    findings.extend(
-        _provenance_finding(
-            'decision-id-not-found',
-            f'{decision_id} does not occur in {source_path.relative_to(REPO_ROOT)}.',
-        )
-        for decision_id in missing_ids
-    )
-    if source_type == 'sabatina':
-        _validate_closed_sabatina(source_path, findings)
-
-
-def _validate_sabatina_ownership(
-    source_path: Path,
-    change_name: str,
-    decision_ids: list[str],
-    findings: list[dict[str, str]],
-    dependencies: list[str] | None = None,
-) -> None:
-    validator = sabatina
-    document = validator.parse_document(source_path)
-    body = validator._subsection_body(
-        document, 'handoff', validator.HANDOFF_ROUTE_SECTION
-    )
-    table = validator._find_table(validator._tables(body), 'ids')
-    units = validator._decomposition_units(table) if table else []
-    unit = next((item for item in units if item.name == change_name), None)
-    if unit is None:
-        findings.append(
-            _provenance_finding(
-                'decision-owner-not-declared',
-                f'{change_name} is absent from the sabatina decomposition.',
-            )
-        )
-        return
-    declared = list(unit.owned)
-    if declared != decision_ids:
-        findings.append(
-            _provenance_finding(
-                'decision-owner-mismatch',
-                f'{change_name} declares {decision_ids}, but the sabatina '
-                f'assigns {declared}.',
-            )
-        )
-    if dependencies is not None and list(unit.dependencies) != dependencies:
-        findings.append(
-            _provenance_finding(
-                'decision-dependency-mismatch',
-                f'{change_name} declares dependencies {dependencies}, but '
-                f'the sabatina assigns {list(unit.dependencies)}.',
-            )
-        )
-
-
-def _validate_closed_sabatina(
-    source_path: Path, findings: list[dict[str, str]]
-) -> None:
-    result = subprocess.run(
-        [
-            sys.executable,
-            '-m',
-            'harness.sabatina',
-            '--document',
-            str(source_path),
-            '--phase',
-            'closed',
-            '--json',
-        ],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        detail = result.stdout.strip() or result.stderr.strip()
-        findings.append(
-            _provenance_finding(
-                'sabatina-not-closed',
-                f'Closed sabatina validation failed: {detail[-500:]}.',
-            )
-        )
-
-
-def _source_descriptor(
-    change_dir: Path,
-) -> tuple[
-    dict[str, object] | None, SourceNamespace | None, list[dict[str, str]]
-]:
-    raw_source = load_change_manifest(change_dir).get('decision_source')
-    if not isinstance(raw_source, dict):
-        missing = _provenance_finding(
-            'decision-source-missing',
-            'Change must declare a decision_source envelope in .openspec.yaml.',
-        )
-        return None, None, [missing]
-    findings: list[dict[str, str]] = []
-    source = dict(raw_source)
-    source_type = source.get('type')
-    if source_type not in {'sabatina', 'user-contract'}:
-        findings.append(
-            _provenance_finding(
-                'decision-source-type',
-                "decision_source.type must be 'sabatina' or 'user-contract'.",
-            )
-        )
-    source_path = _resolve_source_path(source.get('path'), findings)
-    digest = source.get('sha256')
-    if not isinstance(digest, str) or not SHA256_RE.fullmatch(digest):
-        findings.append(
-            _provenance_finding(
-                'decision-source-digest',
-                'decision_source.sha256 must be a 64-character SHA-256 digest.',
-            )
-        )
-    confirmed = source.get('confirmed_on')
-    if not isinstance(confirmed, str) or not DATE_RE.fullmatch(confirmed):
-        findings.append(
-            _provenance_finding(
-                'decision-source-confirmation',
-                'decision_source.confirmed_on must use YYYY-MM-DD.',
-            )
-        )
-    decision_ids = _normalize_decision_ids(
-        source.get('decision_ids'), findings
-    )
-    if 'depends_on' not in source:
-        findings.append(
-            _provenance_finding(
-                'decision-source-dependencies-missing',
-                'decision_source.depends_on is required; declare [] for a root '
-                'change.',
-            )
-        )
-        dependencies = []
-    else:
-        dependencies = _normalize_dependencies(
-            source.get('depends_on'), change_dir, findings
-        )
-    _validate_source_file(
-        source_type, source_path, digest, decision_ids, findings
-    )
-    if source_type == 'sabatina' and source_path and source_path.is_file():
-        _validate_sabatina_ownership(
-            source_path,
-            _logical_change_name(change_dir),
-            decision_ids,
-            findings,
-            dependencies,
-        )
-    source['decision_ids'] = decision_ids
-    source['depends_on'] = dependencies
-    namespace = None
-    if (
-        source_type in ('sabatina', 'user-contract')
-        and source_path is not None
-        and isinstance(digest, str)
-        and SHA256_RE.fullmatch(digest)
-    ):
-        namespace = (
-            str(source_type),
-            source_path.relative_to(REPO_ROOT.resolve()).as_posix(),
-            digest.lower(),
-        )
-    return source, namespace, findings
-
-
-def _dependency_cycle(graph: dict[str, list[str]]) -> list[str] | None:
-    visiting: set[str] = set()
-    visited: set[str] = set()
-    stack: list[str] = []
-
-    def visit(name: str) -> list[str] | None:
-        if name in visiting:
-            return [*stack[stack.index(name) :], name]
-        if name in visited:
-            return None
-        visiting.add(name)
-        stack.append(name)
-        for dependency in graph.get(name, []):
-            if cycle := visit(dependency):
-                return cycle
-        stack.pop()
-        visiting.remove(name)
-        visited.add(name)
-        return None
-
-    for name in sorted(graph):
-        if cycle := visit(name):
-            return cycle
-    return None
-
-
-def _str_list(value: object) -> list[str]:
-    return [str(item) for item in value] if isinstance(value, list) else []
-
-
 def validate_decision_source(
     change_dir: Path, change_dirs: list[Path] | None = None
 ) -> tuple[dict[str, object] | None, list[dict[str, str]]]:
-    """Validate one source envelope and its durable ownership graph."""
+    """Bind shared provenance validation to the CLI's target repository."""
     decision_dirs = (
-        change_dirs if change_dirs is not None else iter_decision_change_dirs()
+        change_dirs
+        if change_dirs is not None
+        else change_manifest.iter_decision_change_dirs(CHANGES_ROOT)
     )
-    source, source_namespace, findings = _source_descriptor(change_dir)
-    descriptors: list[Descriptor] = []
-    for candidate in decision_dirs:
-        candidate_source, namespace, candidate_findings = _source_descriptor(
-            candidate
-        )
-        if candidate_source is None:
-            if 'decision_source' in load_change_manifest(candidate):
-                findings.append(
-                    _unverifiable_owner(candidate, 'decision-source-missing')
-                )
-            continue
-        if (
-            candidate_findings
-            and candidate.resolve() != change_dir.resolve()
-            and namespace in (None, source_namespace)
-        ):
-            codes = ', '.join(
-                sorted({item['code'] for item in candidate_findings})
-            )
-            findings.append(_unverifiable_owner(candidate, codes))
-        ids = _str_list(candidate_source.get('decision_ids'))
-        descriptors.append(
-            (_logical_change_name(candidate), namespace, candidate_source, ids)
-        )
-    if source is not None:
-        owners: dict[tuple[tuple[str, str, str], str], list[str]] = {}
-        for name, namespace, _descriptor, ids in descriptors:
-            if namespace is None:
-                continue
-            for decision_id in ids:
-                owners.setdefault((namespace, decision_id), []).append(name)
-        for (_, decision_id), names in sorted(owners.items()):
-            # Ownership is exclusive; dependencies never grant co-ownership.
-            if len(names) > 1:
-                findings.append(
-                    _provenance_finding(
-                        'decision-id-duplicate-owner',
-                        f'{decision_id} is owned by sibling changes:'
-                        f' {", ".join(names)}.',
-                    )
-                )
-    graph: dict[str, list[str]] = {}
-    known_names = {name for name, _, _, _ in descriptors}
-    for name, _, descriptor, _ in descriptors:
-        dependencies = _str_list(descriptor.get('depends_on'))
-        if unknown := sorted(set(dependencies) - known_names):
-            findings.append(
-                _provenance_finding(
-                    'decision-dependency-unknown',
-                    f'{name} depends on unknown changes: {", ".join(unknown)}.',
-                )
-            )
-        graph[name] = [item for item in dependencies if item in known_names]
-    cycle = _dependency_cycle(graph)
-    if cycle:
-        findings.append(
-            _provenance_finding(
-                'decision-dependency-cycle',
-                'Decision-source dependency cycle: '
-                + ' -> '.join(cycle)
-                + '.',
-            )
-        )
-    return source, findings
+    return decision_provenance.validate_decision_source(
+        REPO_ROOT, change_dir, decision_dirs
+    )
 
 
 def cmd_preflight(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
@@ -766,8 +298,8 @@ def cmd_fingerprint(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
     change_dir = resolve_change(args.change)
     return EXIT_OK, {
         'changeName': change_dir.name,
-        'repositoryFingerprint': GATE.current_repository_fingerprint(
-            exclude_paths=GATE.evidence_exclusions()
+        'repositoryFingerprint': handoff.current_repository_fingerprint(
+            exclude_paths=handoff.evidence_exclusions()
         ),
     }
 
@@ -1005,7 +537,7 @@ def cmd_new(args: argparse.Namespace) -> tuple[int, dict[str, Any]]:
         raise ValueError(
             'OpenSpec changes require type, path, sha256, confirmed_on, and at least one decision_id'
         )
-    created = dt.datetime.now(dt.UTC).date().isoformat()
+    created = datetime.datetime.now(datetime.UTC).date().isoformat()
     manifest_lines = [
         f'schema: {schema["name"]}',
         f'created: {created}',
@@ -1057,11 +589,11 @@ def parse_spec_blocks(lines: list[str]) -> list[SpecRequirement]:
     """Divide a spec em requisitos, cada um com preambulo e cenarios."""
     blocks: list[SpecRequirement] = []
     for line in lines:
-        if match := GATE.REQUIREMENT_RE.match(line):
+        if match := handoff.REQUIREMENT_RE.match(line):
             blocks.append(SpecRequirement(name=match.group(1)))
         elif not blocks:
             continue
-        elif match := GATE.SCENARIO_RE.match(line):
+        elif match := handoff.SCENARIO_RE.match(line):
             blocks[-1].scenarios.append((match.group(1), []))
         elif blocks[-1].scenarios:
             blocks[-1].scenarios[-1][1].append(line)

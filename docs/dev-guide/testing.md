@@ -378,6 +378,8 @@ estágio `pre-push`, executa os testes determinísticos do executor e exige
 
 ```bash
 uv run --locked --no-sync pytest -q \
+  tests/tooling/test_cotahist_oracle.py \
+  tests/tooling/test_file_digests.py \
   tests/tooling/test_real_validation.py \
   tests/tooling/test_real_validation_b3.py \
   tests/tooling/test_real_validation_cases.py \
@@ -389,6 +391,8 @@ uv run --locked --no-sync pytest -q \
   tests/tooling/test_real_validation_runner.py \
   tests/tooling/test_real_validation_types.py \
   tests/tooling/test_real_validation_utils.py \
+  --cov=scripts.cotahist_oracle \
+  --cov=scripts.file_digests \
   --cov=scripts.real_validation \
   --cov=scripts.real_validation_b3 \
   --cov=scripts.real_validation_cases \

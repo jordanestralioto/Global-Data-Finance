@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 from pathlib import Path
 from typing import Any, Protocol, cast
 from urllib.parse import urlsplit
@@ -26,6 +25,7 @@ from .real_validation_types import (
 from .real_validation_utils import (
     failed_details,
     is_external_message,
+    sha256_file,
     temporary_paths,
 )
 
@@ -289,12 +289,3 @@ def validate_cleanup(output_directory: Path) -> str | None:
     if temporary:
         return f'CVM temporary files leaked: {temporary}'
     return None
-
-
-def sha256_file(path: Path) -> str:
-    """Hash file bytes in bounded chunks."""
-    digest = hashlib.sha256()
-    with path.open('rb') as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b''):
-            digest.update(chunk)
-    return digest.hexdigest()

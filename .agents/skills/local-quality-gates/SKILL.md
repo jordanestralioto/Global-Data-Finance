@@ -6,17 +6,18 @@ description: >-
   hooks Git", "cria um pre-push", "arruma meu pre-commit", "bloqueia debug no
   commit", "valida o lockfile", "limita linhas por arquivo", "limita
   complexidade no linter", "audita dependências no push", "divide testes entre
-  commit e push" ou "adiciona um atualizador de dependências ao pre-commit". Cobre escolha de runner e estágio,
+  commit e push", "bloqueia código morto antes do commit" ou "adiciona um
+  atualizador de dependências ao pre-commit". Cobre escolha de runner e estágio,
   segurança de auto-fix, baseline, validação do estado staged, instalação e
   teste dos hooks. Não use para pipeline remota, E2E de navegador, auditoria
-  manual de segurança ou validação pesada de dados de produção.
+  manual de segurança, remoção de código obsoleto da aplicação sem configurar
+  gates ou validação pesada de dados de produção.
 ---
 
 # Local Quality Gates Architect
 
-Build deterministic local gates whose cost fits the repository. Start with
-focused checks, measure the cycle, and move expensive checks to pre-push or CI
-when their latency harms the workflow or encourages bypasses.
+Build deterministic local gates, measure their cost, and choose commit,
+push, or delegated enforcement from the project contract.
 
 ## Contrato portátil e política do projeto
 
@@ -36,8 +37,6 @@ when their latency harms the workflow or encourages bypasses.
 5. Escolha a ferramenta nativa ou já instalada antes de copiar helpers desta
    skill. Um hook local que chama `python` exige Python no `PATH`; declare e
    prove esse requisito mesmo em projetos Node, Go, Rust ou poliglotas.
-
-______________________________________________________________________
 
 ## Catálogo de gates locais
 
@@ -61,6 +60,10 @@ ______________________________________________________________________
     exclusões fixas forem compatíveis com a política local. O gate mede linhas
     físicas dos arquivos elegíveis rastreados; não substitui limite em bytes
     nem análise de rotinas por AST.
+11. **Dead Code**: Assess `[DEAD_CODE]` in every setup or review. Record each
+    capability and its actual coverage; selected blocking rules require
+    automatic enforcement. Review obsolete compatibility contracts separately.
+    Read [dead-code-policy.md](references/dead-code-policy.md).
 
 ### Política transversal de dependências (todas as stacks)
 
@@ -83,15 +86,10 @@ de “sincronizar dependências”:
    o lockfile. É uma alteração deliberada, que precisa ser revisada, testada e
    auditada fora do hook de commit.
 
-Como regra normativa, `pre-commit` **não deve** executar resolvers,
-updaters, installers ou sincronizadores que possam modificar o lockfile, o
-manifesto, o ambiente do projeto ou a árvore de dependências. Isso inclui, por
-exemplo, `uv lock --upgrade`, `uv sync --locked`, `poetry update`, `npm update`,
-`pnpm update`, `yarn up`, `bun update`, `cargo update`, `go get -u` e
-`composer update`. Só inclua um comando de gerenciador quando ele for uma
-verificação somente leitura comprovada pelo próprio projeto; efeitos em cache
-ou artefatos temporários são aceitáveis quando fazem parte desse contrato e o
-custo observado cabe no hook.
+Keep resolvers, updaters, installers, and environment synchronization outside
+`pre-commit`. See [stack-detection.md](references/stack-detection.md#11-dependency-lifecycle-classification).
+Accept only verified read-only commands; cache/build effects require a declared
+contract and measured cost that fits the hook.
 
 Um prefixo usado apenas para invocar uma ferramenta já fixada do gate, como
 `uv run --locked`, não é um updater por si só. Mantenha-o somente quando fizer
@@ -107,39 +105,27 @@ resultado é `ERROR`, código 2, conforme a política fail-closed.
 
 ### Fronteira entre documentação e supressão executável
 
-O `diff-sanity` classifica a extensão do arquivo, não o diretório que o
-contém. Em `.md`, `.markdown`, `.rst` e `.txt`, uma ocorrência de marcador de
-supressão pode ser uma citação explicativa em prosa ou em um bloco de código
-documental. Essa exceção também cobre Markdown em mudanças OpenSpec e arquivos
-sob `tools/` ou projeções, desde que o formato seja documental.
-
-Em qualquer outro formato textual, os mesmos marcadores são tratados como
-supressão executável e bloqueados, mesmo dentro de uma string, docstring,
-fixture, configuração ou manifesto. A análise de debuggers e stubs permanece
-restrita a arquivos de código; a análise de operações perigosas permanece
-universal e lê o texto bruto adicionado. Assim, o conteúdo explicativo não
-permite transformar uma operação de bypass em uma exceção.
+Classify suppression citations by extension, not directory. `.md`, `.markdown`,
+`.rst`, and `.txt` permit explanatory citations, including documentary code
+blocks, OpenSpec, tools, and projections. Other textual formats reject markers
+in strings, docstrings, fixtures, configuration, and manifests. Debug/stub scans
+cover code; operational safety scans raw added text in every textual format.
+Documentation never authorizes an operational bypass. Read
+[agent-anti-patterns.md](references/agent-anti-patterns.md).
 
 ### Pre-push e CI
 
-- **Pre-push**: Suítes de testes, typecheck do projeto e auditorias quando o
-  tempo medido e as dependências locais forem adequados. Execute sobre o
-  snapshot que será enviado ou identifique claramente quando o resultado
-  cobre apenas o working tree. Scripts de diff staged não validam commits já
-  feitos; não os reutilize como evidência de pre-push.
-- **Testes por estágio**: `[TESTS_FAST]` no pre-commit só quando forem rápidos e
-  cobrirem o escopo declarado; `[TESTS_FULL]` no pre-push executa a suíte local
-  completa, sem usar apenas testes afetados como prova de cobertura total.
-- **Auditoria de dependências**: Quando selecionada, use scanner fixado e
-  somente leitura sobre dependências resolvidas; declare fonte, escopo,
-  política de achados e indisponibilidade. Não confunda ausência de consulta
-  com auditoria limpa. Consulte [gate-catalog.md](references/gate-catalog.md).
-- **CI / Pipelines Remotas**: Testes E2E com navegador, integrações pesadas,
-  builds e scans profundos que dependam de infraestrutura. Gates essenciais
-  para aceitar mudanças precisam de proteção remota equivalente, pois hooks
-  locais podem ser ignorados ou não instalados.
-
-______________________________________________________________________
+- **Pre-push**: Run suites, typechecks, and audits according to measured cost
+  and the project contract. Identify pushed commits/refspecs or residual
+  working-tree coverage. Staged-diff helpers do not prove push coverage.
+- **Tests by stage**: `[TESTS_FAST]` has a bounded commit scope and cost;
+  `[TESTS_FULL]` runs the complete local push tier, not just affected tests.
+- **Dependency audit**: A pinned read-only scanner records source, graph,
+  findings policy, and unavailability. Missing consultation is not a clean
+  audit. Read [gate-catalog.md](references/gate-catalog.md).
+- **CI**: Assign E2E, integrations, and infrastructure scans under the remote
+  contract. Essential gates need equivalent remote protection because local
+  hooks can be bypassed or absent.
 
 ## Status de Execução e Política Fail-Closed
 
@@ -152,7 +138,9 @@ Os hooks e scripts devem seguir códigos de saída explícitos:
 | `ERROR` |  `2`   | Falha de infraestrutura (erro no Git, ausência de ferramenta, crash). | Bloqueia a operação; não converte erro em sucesso.                        |
 | `SKIP`  |  `0`   | Nenhuma entrada relevante segundo a política do gate.                 | Declara o motivo; não conta como gate executado em evidência obrigatória. |
 
-______________________________________________________________________
+These are normalized outcomes. Preserve native analyzer exit codes and map
+their documented semantics and severity before classification; see
+[dead-code-policy.md](references/dead-code-policy.md#5-native-outcomes-and-evidence).
 
 ## Procedimento
 
@@ -188,6 +176,9 @@ Compare o estado atual com a matriz de slots conceituais 80/20 (detalhada em [ga
 - `[FORMATTER]`: Formatação padronizada como auto-fix mecânico seguro (`ruff format`, `prettier`).
 - `[LINTER]`: Code quality plus parser-aware structural checks for complexity,
   nesting, flow simplification, error handling, and routine scope.
+- `[DEAD_CODE]`: Assess all seven capabilities and their coverage statuses in
+  [dead-code-policy.md](references/dead-code-policy.md#1-capability-report).
+  A lint pass does not establish full coverage or approve compatibility APIs.
 - `[SECRETS]`: Varredura de credenciais no diff staged (hook oficial do Gitleaks ou comando atual fixado).
 - `[CONFIG]`: Validação de sintaxe JSON, YAML e TOML.
 - `[CIRCULAR_DEPENDENCIES]`: Detecção de ciclos quando o projeto exige grafo acíclico; ciclos históricos usam baseline por identidade.
@@ -270,6 +261,13 @@ de análise em [agent-anti-patterns.md](references/agent-anti-patterns.md).
     filenames. Confirme Python 3.13+, limites e escopo compatíveis; o gate lê o
     working tree. Só declare cobertura staged se o runner isolar alterações
     não staged. Veja [gate-catalog.md](references/gate-catalog.md).
+12. For `[DEAD_CODE]`, follow the selection, snapshot, review, and native-outcome
+    contracts in [dead-code-policy.md](references/dead-code-policy.md). Use the
+    optional template entry with a pinned project-native analyzer; analyze the
+    complete declared scope, including deletions and configuration changes.
+    Required commit coverage needs index isolation or rejection of divergent
+    inputs, including untracked consumers. Working-tree coverage remains partial.
+    Measure placement and prove blocking behavior; keep execution read-only.
 
 ### Passo 4: Instalar Scripts Auxiliares de Sanidade de IA
 
@@ -309,8 +307,6 @@ inferência em qualquer stack:
    declare completo um estágio que só foi configurado ou executado manualmente
    sem comprovar que o hook efetivo está instalado.
 
-______________________________________________________________________
-
 ## Auto-Fix Policy e Staging Seguro
 
 ### Ações Permitidas para Correção Automática
@@ -338,8 +334,6 @@ ______________________________________________________________________
 4. Proibido executar comandos amplos como `git add .` ou `git add -A` para evitar estagiar arquivos temporários ou alterações não relacionadas.
 5. Re-executar o pre-commit para confirmar que o código formatado passa nos linters e verificadores estáticos.
 
-______________________________________________________________________
-
 ## Formato de Diagnóstico Acionável
 
 Quando um gate falhar, o diagnóstico deve conter arquivo, linha quando
@@ -356,8 +350,6 @@ Suggested command:
 pnpm eslint src/services/auth.ts
 ======================================================================
 ```
-
-______________________________________________________________________
 
 ## Exemplos
 
@@ -376,39 +368,21 @@ ______________________________________________________________________
 
 ### Exemplo 1b: Política de dependências em qualquer stack
 
-**Entrada**: Usuário pede: "Adiciona um atualizador de dependências ao
-pre-commit."
+**Entrada**: Usuário pede: "Adiciona um atualizador de dependências ao pre-commit."
 **Ação do Agente**:
 
-1. Não adiciona um updater automaticamente. Primeiro identifica o gerenciador,
-   o manifesto, o lockfile e se existe uma verificação nativa somente leitura.
-
-2. Configura o `[LOCKFILE]` para exigir paridade staged ou confirmar coerência
-   com um comando nativo somente leitura:
-
-   | Stack                  | Verificação no hook                                                    | Atualização deliberada fora do hook            |
-   | :--------------------- | :--------------------------------------------------------------------- | :--------------------------------------------- |
-   | `uv`                   | `uv lock --check`                                                      | `uv lock --upgrade`                            |
-   | Poetry                 | `poetry check --lock`                                                  | `poetry update`                                |
-   | Cargo                  | `cargo check --locked`                                                 | `cargo update`                                 |
-   | Go                     | `go mod tidy -diff` (se suportado)                                     | `go get -u` / `go mod tidy`                    |
-   | npm, pnpm, Yarn ou Bun | paridade staged e comando imutável documentado pelo projeto, se houver | updater escolhido deliberadamente pelo projeto |
-
-3. Se não houver comando nativo seguro para a stack, mantém o gate de paridade
-   e registra a limitação. Não substitui a validação por `install`, `sync`,
-   `update`, `upgrade`, `lock` ou `tidy` mutável.
-
-4. Oferece o comando de sincronização do ambiente como setup explícito (por
-   exemplo, `uv sync --locked`), sem colocá-lo no pre-commit por inferência.
+1. Identify the manager, manifest, lockfile, and read-only checks.
+2. Configure `[LOCKFILE]` with staged parity or native confirmation without
+   mutations. Read [stack-detection.md](references/stack-detection.md).
+3. Without a safe native check, retain parity and report the limitation;
+   installation, synchronization, updates, and resolution are not validation.
+4. Reserve environment synchronization for explicit setup outside the hook.
 
 ### Automação de atualização fora do hook
 
-Quando o usuário realmente pedir atualização automática, crie uma automação
-separada do ciclo de commit: um script/manual job ou uma execução agendada que
-abre uma branch/PR, roda o updater nativo da stack, testa a resolução e executa
-as auditorias de segurança. O hook de `pre-commit` continua apenas validando o
-estado staged. Se o usuário não pediu CI, bot ou job agendado, documente o
-comando deliberado de atualização e não invente uma automação silenciosa.
+When automatic updates are requested, create an explicit script/job/PR with
+native updates, reviewed resolution, tests, and auditing. Otherwise document
+the deliberate maintenance command; do not infer CI, bots, or scheduled jobs.
 
 ### Exemplo 2: Projeto Legado com Dívida de Tipagem
 
@@ -431,8 +405,6 @@ comando deliberado de atualização e não invente uma automação silenciosa.
   rápidos no pre-commit e escolhe pre-push ou CI para os testes pesados conforme
   o contrato do projeto.
 
-______________________________________________________________________
-
 ## Evals de trigger
 
 ### Deve acionar
@@ -448,6 +420,8 @@ ______________________________________________________________________
   política de lifecycle: configurar validação de lockfile e explicar por que
   o updater deve ser uma automação deliberada fora do hook.
 - "Bloqueia imports circulares antes do commit."
+- "Bloqueia código morto antes do commit."
+- "Revisa se nossos hooks detectam exports e arquivos sem uso."
 - "Configura o linter para bloquear funções complexas e aninhamento profundo."
 - "Bloqueia arquivos com mais de 400 linhas no pre-commit."
 - "Adiciona gates para catch-all, handlers vazios e funções longas."
@@ -460,8 +434,10 @@ ______________________________________________________________________
 - "Audita a segurança da API contra vulnerabilidades OWASP." → Encaminhar para `vulnerability-scanner`.
 - "Refatora essa função que está muito longa." → Encaminhar para `modularizar`.
 - "Essa assertion realmente prova a regressão?" → Encaminhar para `testing-patterns`.
-
-______________________________________________________________________
+- "Remove esse alias obsoleto da aplicação." → Review consumers and contracts
+  in the application; no hook configuration was requested.
+- "Apaga as funções sem uso deste módulo." → Application cleanup with reviewed
+  removals; do not infer a gate setup.
 
 ## Evals de workflow
 
@@ -469,29 +445,4 @@ Execute os três cenários e as assertions binárias em
 [eval-scenarios.md](references/eval-scenarios.md) antes de chamar uma mudança
 de templates portátil entre stacks.
 
-- [ ] Assert: `check_diff_sanity.py` falha com exit code 2 quando o git falha ou fora de um repo git.
-- [ ] Assert: `check_diff_sanity.py` bloqueia `@ts-ignore`, `@ts-nocheck`, `@ts-expect-error` e `# type: ignore` em código e configuração com exit code 1, mesmo com uma razão, e aceita suas citações somente nos formatos documentais declarados.
-- [ ] Assert: `check_diff_sanity.py` bloqueia `# noqa`, `# noqa: BLE001`, `# noqa: F401` com razão e `# noqa` acompanhado de `allow-bypass`, sempre com exit code 1.
-- [ ] Assert: `check_diff_sanity.py` bloqueia `throw new Error("TODO")` mesmo quando acompanhado de comentário de debug.
-- [ ] Assert: `check_test_integrity.py` bloqueia `.only` e `fit` sem exceção e bloqueia `skip` sem razão explícita.
-- [ ] Assert: `check_test_integrity.py` bloqueia deleção de arquivos de teste a menos que autorizada em `.test-deletions.json` staged no git.
-- [ ] Assert: `check_lockfile_sync.py` bloqueia manifesto filho sem lockfile local quando não comprovado o pertencimento aos membros do workspace raiz.
-- [ ] Assert: `check_lockfile_sync.py` permite `package.json` sem dependências declaradas sem exigir lockfile.
-- [ ] Assert: `check_lockfile_sync.py` aceita lockfile staged como paridade sem prometer coerência; sem update staged, exige confirmação nativa quando disponível. Ferramenta ausente ou falha ao executar retorna `ERROR` código 2; retorno não zero é `FAIL` código 1.
-- [ ] Assert: `check_lockfile_sync.py` reconhece `bun.lock` e bloqueia uma verificação nativa do working tree quando manifesto ou lockfile diverge do index.
-- [ ] Assert: O agente separa validação do lockfile, sincronização do ambiente e atualização de dependências; não adiciona updater ou sincronizador mutável ao pre-commit por inferência.
-- [ ] Assert: Para uma stack sem verificação nativa somente leitura, o agente mantém a exigência de paridade staged e não inventa um comando de instalação, atualização ou resolução.
-- [ ] Assert: O agente não classifica `go mod verify` como coerência de `go.mod`/`go.sum`; quando suportado, usa `go mod tidy -diff` ou mantém a paridade staged.
-- [ ] Assert: Uma atualização automática solicitada é colocada em script/job/PR separado, e o pre-commit permanece sem mutações no manifesto, lockfile ou ambiente.
-- [ ] Assert: `[DEPENDENCY_AUDIT]` declara grafo inspecionado, política de achados e indisponibilidade; falta de consulta não vira auditoria limpa.
-- [ ] Assert: `[TESTS_FAST]` não substitui `[TESTS_FULL]`; o relatório distingue testes afetados, suíte completa e snapshot validado.
-- [ ] Assert: Quando o projeto exige grafo acíclico, `[CIRCULAR_DEPENDENCIES]` bloqueia ciclo novo; ausência de comando é `UNSUPPORTED`, não `PASS`.
-- [ ] Assert: Um `[LINTER]` estrutural selecionado registra complexidade, aninhamento, fluxo, erros e tamanho de rotina com regra, limite, escopo e status.
-- [ ] Assert: `[FILE_LINES]` seleciona `tools/check-max-lines` só quando limites, classificação, exclusões e runtime forem compatíveis; declara cobertura do working tree ou do index conforme o runner.
-- [ ] Assert: Complexidades ciclomática e cognitiva permanecem distintas; cobertura bloqueante indisponível não é declarada `PASS`.
-- [ ] Assert: Structural configuration never uses a generic diff regex, treats physical lines as executable statements, or enforces a blanket single-exit rule.
-- [ ] Assert: Broad catches are accepted only at explicit boundaries with a narrow scope, defined handling, and preserved cause.
-- [ ] Assert: Assertion vacuum and tautologies remain under `[TEST_INTEGRITY]` and `testing-patterns`, not `[LINTER]`.
-- [ ] Assert: Os dois templates incluem pre-push ativo, exigem substituir o comando do projeto e instruem instalação e teste de falha do estágio.
-- [ ] Assert: Em três cenários (Python com runner existente, monorepo Node e Go/Rust sem runner), o agente registra estágio, snapshot, runtime e cobertura, instala cada hook declarado e prova ao menos um bloqueio real.
-- [ ] Assert: Um baseline com `{A, B}` não aceita `{B, C}` como zero regressões.
+Retain the existing regression assertions when extending those evaluations.

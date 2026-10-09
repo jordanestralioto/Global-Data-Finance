@@ -18,7 +18,6 @@ import argparse
 import hashlib
 import importlib.util
 import json
-import os
 import re
 import subprocess
 import sys
@@ -26,12 +25,18 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from harness.paths import HARNESS_ROOT, repo_root
+from harness.change_manifest import NON_CHANGE_DIRS
+from harness.decision_provenance import validate_decision_source
+from harness.handoff_decision_titles import (
+    DECISION_RE,
+    normalize_mapping_items,
+)
+from harness.paths import repo_root
+from harness.sync_specs import sync_change
 
 REPO_ROOT = repo_root()
 CHANGES_ROOT = REPO_ROOT / 'openspec' / 'changes'
 CONFIG_PATH = REPO_ROOT / 'openspec' / 'handoff.json'
-NON_CHANGE_DIRS = {'archive', 'paused'}
 SUPPORTED_SCHEMA = 'spec-driven'
 ERROR = 'error'
 
@@ -84,9 +89,7 @@ EVIDENCE_PATH = str(CONFIG.get('evidencePath') or 'evidence/gate-report.json')
 EVIDENCE_VERIFIER = str(
     CONFIG.get('evidenceVerifier') or '.agents/scripts/harness_verify.py'
 )
-DECISION_PREFLIGHT = HARNESS_ROOT / 'harness' / 'opsx.py'
 SEMANTIC_EVIDENCE_PATH = 'evidence/verification-report.json'
-
 HEADING_RE = re.compile(r'^(#{2,4})\s+(.+)$')
 REQUIREMENT_RE = re.compile(r'^###\s+Requirement:\s*(.+?)\s*$')
 SCENARIO_RE = re.compile(r'^####\s+Scenario:\s*(.+?)\s*$')
@@ -180,7 +183,6 @@ GLOSSARY_HEADING_RE = re.compile(r'^##\s+Glossary\s*$', re.I)
 OPEN_QUESTIONS_RE = re.compile(r'^##\s+Open Questions\s*$', re.I)
 DECISIONS_RE = re.compile(r'^##\s+Decisions\s*$', re.I)
 TRACEABILITY_RE = re.compile(r'^##\s+0\.\s+Traceability\s*$', re.I)
-DECISION_RE = re.compile(r'^###\s+D\d+[:.]\s+(.+)$', re.I)
 REJECTED_RE = re.compile(
     r'\b(?:rejected|alternative|instead of|considered)\b', re.I
 )
@@ -532,70 +534,26 @@ def check_schema(docs: ChangeDocs) -> list[Finding]:
 
 
 def check_decision_source(docs: ChangeDocs) -> list[Finding]:
-    """Bind active changes to the repo-native provenance preflight."""
+    """Bind active changes to shared decision-source provenance validation."""
     try:
         docs.root.resolve().relative_to(CHANGES_ROOT.resolve())
     except ValueError:
-        # Unit fixtures and artifact-isolated checks intentionally live outside
-        # the active change tree; their structural contract is tested locally.
-        return []
-    if not DECISION_PREFLIGHT.is_file():
-        return [
-            _finding(
-                docs,
-                'openspec/.agents',
-                'decision-preflight-missing',
-                'Decision-source preflight script is missing.',
-            )
-        ]
-    # Run as a module with the harness on PYTHONPATH: the preflight is a
-    # package module now, so executing its file directly would leave its
-    # own package unimportable.
-    result = subprocess.run(
-        [
-            sys.executable,
-            '-m',
-            f'{DECISION_PREFLIGHT.parent.name}.{DECISION_PREFLIGHT.stem}',
-            'preflight',
-            '--change',
-            docs.name,
-            '--json',
-        ],
-        cwd=REPO_ROOT,
-        env={
-            **os.environ,
-            'PYTHONPATH': str(DECISION_PREFLIGHT.parent.parent),
-        },
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode == 0:
+        # Artifact-isolated fixtures have no active ownership registry.
         return []
     try:
-        payload = json.loads(result.stdout)
-    except json.JSONDecodeError:
-        detail = result.stderr.strip() or result.stdout.strip()
+        _, findings = validate_decision_source(REPO_ROOT, docs.root)
+    except (OSError, RuntimeError, TypeError, ValueError) as exc:
         return [
             _finding(
                 docs,
                 '.openspec.yaml',
                 'decision-preflight-failed',
-                detail or 'Decision-source preflight failed.',
+                str(exc),
             )
         ]
-    findings = payload.get('findings', [])
-    if not isinstance(findings, list):
-        findings = []
     return [
-        _finding(
-            docs,
-            '.openspec.yaml',
-            str(item.get('code', 'decision-preflight-failed')),
-            str(item.get('message', 'Decision-source preflight failed.')),
-        )
+        _finding(docs, '.openspec.yaml', item['code'], item['message'])
         for item in findings
-        if isinstance(item, dict)
     ]
 
 
@@ -1606,8 +1564,8 @@ def _semantic_mapping_findings(
     incomplete_code: str,
     subject: str,
 ) -> list[Finding]:
-    items = report_items if isinstance(report_items, list) else []
-    names = {str(item.get(key)) for item in items if isinstance(item, dict)}
+    items = normalize_mapping_items(docs.design, report_items, key)
+    names = {str(item.get(key)) for item in items}
     findings = [
         _finding(
             docs,
@@ -1625,8 +1583,7 @@ def _semantic_mapping_findings(
             f'{subject} mapping is incomplete: {item.get(key)}.',
         )
         for item in items
-        if isinstance(item, dict)
-        and str(item.get(key)) in expected_names
+        if str(item.get(key)) in expected_names
         and not _mapping_is_covered(item)
     )
     return findings
@@ -1776,23 +1733,7 @@ def check_delta_sync_state(docs: ChangeDocs) -> list[Finding]:
         docs.root.resolve().relative_to(CHANGES_ROOT.resolve())
     except ValueError:
         return []
-    module_path = Path(__file__).resolve().parent / 'sync_specs.py'
-    spec = importlib.util.spec_from_file_location(
-        'opsx_sync_specs', module_path
-    )
-    if spec is None or spec.loader is None:
-        return [
-            _finding(
-                docs,
-                'specs',
-                'sync-check-unavailable',
-                f'Unable to load deterministic sync owner: {module_path}.',
-            )
-        ]
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    _, issues = module.sync_change(REPO_ROOT, docs.name, write=False)
+    _, issues = sync_change(REPO_ROOT, docs.name, write=False)
     return [
         _finding(
             docs,
