@@ -22,6 +22,7 @@ EXPORT_MODULES = (
     'globaldatafinance',
     'globaldatafinance.application',
     'globaldatafinance.application.b3_docs',
+    'globaldatafinance.application.b3_docs.historical_quotes',
     'globaldatafinance.application.b3_docs.result_formatters',
     'globaldatafinance.application.cvm_docs',
     'globaldatafinance.brazil.b3_data.historical_quotes',
@@ -85,14 +86,34 @@ def _clear_configuration_environment(
 def test_root_all_and_facade_identities() -> None:
     package = importlib.import_module('globaldatafinance')
     application = importlib.import_module('globaldatafinance.application')
+    b3_docs = importlib.import_module('globaldatafinance.application.b3_docs')
+    b3_types = importlib.import_module(
+        'globaldatafinance.application.b3_docs.types'
+    )
 
     assert package.__all__ == EXPECTED_ROOT_EXPORTS
     assert package.ExtractionResultB3 is application.ExtractionResultB3
+    assert package.ExtractionResultB3 is b3_docs.ExtractionResultB3
+    assert package.ExtractionResultB3 is b3_types.ExtractionResultB3
     assert (
         package.FundamentalStocksDataCVM
         is application.FundamentalStocksDataCVM
     )
     assert package.HistoricalQuotesB3 is application.HistoricalQuotesB3
+    assert package.HistoricalQuotesB3 is b3_docs.HistoricalQuotesB3
+
+
+def test_historical_quotes_exports_only_its_facade() -> None:
+    historical_quotes = importlib.import_module(
+        'globaldatafinance.application.b3_docs.historical_quotes'
+    )
+    facade = importlib.import_module(
+        'globaldatafinance.application.b3_docs.historical_quotes.facade'
+    )
+
+    assert historical_quotes.__all__ == ['HistoricalQuotesB3']
+    assert historical_quotes.HistoricalQuotesB3 is facade.HistoricalQuotesB3
+    assert not hasattr(historical_quotes, 'ExtractionResultB3')
 
 
 def test_root_import_works_without_dotenv(

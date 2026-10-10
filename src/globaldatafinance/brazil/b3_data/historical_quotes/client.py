@@ -14,7 +14,6 @@ from ....core.archive_safety import ArchiveSafetyLimits
 from ....core.config import PathSafetySettings
 from ....macro_exceptions import InvalidDestinationPathError
 from .assets import AvailableAssetsServiceB3
-from .catalog import resolve_cotahist_sources
 from .cotahist_parser import CotahistParserB3
 from .errors import (
     CotahistCatalogError,
@@ -25,6 +24,7 @@ from .extraction_service import ExtractionServiceB3
 from .filesystem import FileSystemServiceB3
 from .input_validation import validate_and_resolve_cotahist_input
 from .models import DocsToExtractorB3
+from .preflight import resolve_extraction_sources
 from .processing import ExtractionConfigServiceB3, ProcessingModeEnumB3
 from .years import YearValidationServiceB3
 from .zip_reader import ZipFileReaderB3
@@ -219,27 +219,15 @@ class CreateDocsToExtractUseCaseB3:
         target_tpmerc_codes = (
             AvailableAssetsServiceB3.get_tpmerc_codes_for_assets(set_assets)
         )
-        resolver = resolve_cotahist_sources
-        options: dict[str, Any] = {}
-        if (
-            self.executor_backend == 'process'
-            and self.processing_mode is ProcessingModeEnumB3.FAST
-        ):
-            from .preflight import resolve_extraction_sources
-
-            resolver = resolve_extraction_sources
-            options = {
-                'processing_mode': self.processing_mode,
-                'executor_backend': self.executor_backend,
-            }
         try:
-            catalog = resolver(
+            catalog = resolve_extraction_sources(
                 validated_source_directory,
                 expected_years=range_years,
                 target_tpmerc_codes=target_tpmerc_codes,
                 all_markets=all_markets,
                 limits=self.limits,
-                **options,
+                processing_mode=self.processing_mode,
+                executor_backend=self.executor_backend,
             )
         except CotahistCatalogError as error:
             raise CotahistPreflightError(
@@ -280,8 +268,7 @@ class CreateDocsToExtractUseCaseB3:
 class ExtractHistoricalQuotesUseCaseB3:
     """Main orchestrator for extracting historical quotes from COTAHIST files.
 
-    Holds reusable reader and parser collaborators across calls per D3 — this
-    is the one use case kept as a class because it has real state.
+    Holds reusable reader and parser collaborators across calls.
     """
 
     def __init__(
@@ -313,10 +300,6 @@ class ExtractHistoricalQuotesUseCaseB3:
     ) -> dict[str, Any]:
         """Execute the extraction process."""
         self.last_phase_timings = {}
-        # D4: factory removed — construct ExtractionServiceB3 directly. Invalid
-        # processing_mode is already validated by
-        # ValidateExtractionConfigUseCaseB3 in the facade, which raises
-        # InvalidProcessingMode. The enum cast here is the final coercion.
         mode = ProcessingModeEnumB3(processing_mode.lower())
         extraction_service = ExtractionServiceB3(
             zip_reader=self.zip_reader,

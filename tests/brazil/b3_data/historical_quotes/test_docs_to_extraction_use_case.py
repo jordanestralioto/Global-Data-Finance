@@ -90,7 +90,7 @@ class TestCreateDocsToExtractUseCaseExecute:
             return_value=CotahistCatalogResolution((), ())
         )
         monkeypatch.setattr(
-            client_module, 'resolve_cotahist_sources', self.catalog_resolver
+            client_module, 'resolve_extraction_sources', self.catalog_resolver
         )
 
     @patch(

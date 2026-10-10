@@ -13,6 +13,7 @@ from ....macro_exceptions import (
     ParquetWriteError,
 )
 from .download_validation import find_parquet_files, validate_parquet_files
+from .extract import ParquetExtractorAdapterCVM
 
 logger = get_logger(__name__)
 
@@ -20,7 +21,7 @@ ParquetArtifactStateCVM = dict[Path, tuple[int, int]]
 
 
 class ParquetExtractor(Protocol):
-    """Minimal deferred CVM extraction collaborator contract."""
+    """Minimal CVM extraction collaborator contract."""
 
     def extract(self, source_path: str, destination_path: str) -> None:
         """Convert one source ZIP into destination Parquet artifacts."""
@@ -32,11 +33,9 @@ def resolve_parquet_extractor(
     archive_limits: ArchiveSafetyLimits,
     allowed_unc_roots: Sequence[str],
 ) -> ParquetExtractor:
-    """Return a supplied extractor or lazily create the CVM implementation."""
+    """Return a supplied extractor or construct the default implementation."""
     if repository is not None:
         return repository
-
-    from .extract import ParquetExtractorAdapterCVM
 
     return ParquetExtractorAdapterCVM(
         archive_limits=archive_limits,

@@ -4,41 +4,40 @@ This example demonstrates how to download and extract standardized financial
 statements (DFP) for Brazilian public companies directly into Parquet format.
 """
 
-import sys
-from pathlib import Path
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
-
-def main() -> None:
-    """Run the CVM quickstart example."""
-    # Ensure examples import repository code rather than the installed package.
-    repo_root = Path(__file__).resolve().parent.parent
-    sys.path.insert(0, str(repo_root / 'src'))
-    sys.path.insert(0, str(repo_root))
-
+if TYPE_CHECKING:
+    from examples.cli import parse_arguments, run_example
     from examples.result_validation import require_cvm_download_success
-    from globaldatafinance import FundamentalStocksDataCVM
+else:
+    from cli import parse_arguments, run_example
+    from result_validation import require_cvm_download_success
 
-    # 1. Initialize the CVM public facade
+from globaldatafinance import FundamentalStocksDataCVM
+
+
+def main(argv: Sequence[str] | None = None) -> None:
+    """Run the CVM quickstart example."""
+    args = parse_arguments(
+        'Download CVM DFP financial statements and convert them to Parquet.',
+        source='cvm',
+        argv=argv,
+    )
     cvm = FundamentalStocksDataCVM()
-
-    output_dir = './dados_cvm'
-
-    # 2. Execute download with automatic conversion to Parquet
     print('Starting CVM DFP data download and extraction...')
-    resultado = cvm.download(
-        destination_path=output_dir,
+    result = cvm.download(
+        destination_path=args.destination_path,
         list_docs=['DFP'],
-        initial_year=2023,
-        last_year=2023,
+        initial_year=args.initial_year,
+        last_year=args.last_year,
         automatic_extractor=True,
     )
-
-    # 3. Display final result
-    require_cvm_download_success(resultado)
+    require_cvm_download_success(result)
     print('✓ Download completed successfully!')
-    print(f'  Parquet files directory: {output_dir}')
-    print(f'  Downloaded files count: {resultado.success_count_downloads}')
+    print(f'  Parquet files directory: {args.destination_path}')
+    print(f'  Downloaded files count: {result.success_count_downloads}')
 
 
 if __name__ == '__main__':
-    main()
+    run_example(main)

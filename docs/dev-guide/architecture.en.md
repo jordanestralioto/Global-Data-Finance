@@ -14,6 +14,12 @@ Brazilian CVM regulatory feeds and B3 historical market data. Internally, each
 source is implemented in its owning feature directory using focused modules and
 specialized subpackages where the domain requires them.
 
+Each `__init__.py` exports symbols from its own package modules and subpackages.
+`ExtractionResultB3` belongs to `application/b3_docs/types.py` and is exported
+directly by `application.b3_docs`, remaining available from `application` and
+the public package root. The `application.b3_docs.historical_quotes` subpackage
+exports only `HistoricalQuotesB3`.
+
 This architectural paradigm prioritizes:
 
 - ✅ **Readability**: concise module files with explicit operational roles (CVM: `core.py`, `client.py`, `http.py`, `extract.py`, `errors.py`; B3: role-named modules — `client.py`, `assets.py`, `models.py`, `years.py`, `processing.py`, `filesystem.py`, `errors.py`, supplemented by domain subpackages)
@@ -35,6 +41,7 @@ globaldatafinance/
 │   │   │   │   ├── __init__.py
 │   │   │   │   ├── facade.py
 │   │   │   │   └── extraction_flow.py
+│   │   │   ├── types.py                          # ExtractionResultB3
 │   │   │   ├── extraction_result_formatter.py
 │   │   │   └── result_formatters/
 │   │   └── cvm_docs/

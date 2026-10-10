@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from ....core.archive_safety import ArchiveSafetyLimits
 from ....macro_exceptions import CorruptedZipError, ExtractionError
@@ -15,9 +14,8 @@ from .input_validation import (
     validate_cotahist_input,
 )
 from .models import CotahistCatalogResolution, ValidatedCotahistSource
-
-if TYPE_CHECKING:
-    from .source_validation import CotahistDocumentValidator
+from .source_validation import CotahistDocumentValidator
+from .zip_reader import ZipFileReaderB3
 
 
 def resolve_cotahist_sources(
@@ -119,9 +117,6 @@ def iter_serial_sources(
     selection: CatalogSelection,
 ) -> Iterator[AnnualResult]:
     """Use the canonical annual validator without creating an executor."""
-    from .source_validation import CotahistDocumentValidator
-    from .zip_reader import ZipFileReaderB3
-
     validator = CotahistDocumentValidator(
         ZipFileReaderB3(limits=selection.limits)
     )

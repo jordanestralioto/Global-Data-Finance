@@ -14,6 +14,12 @@ dados históricos de mercado da B3. Internamente, cada fonte fica em sua pasta
 de feature, com módulos focados e subpacotes especializados quando o domínio
 exige.
 
+Os `__init__.py` exportam símbolos de módulos do próprio pacote e de seus
+subpacotes. `ExtractionResultB3` pertence a `application/b3_docs/types.py` e é
+exportado diretamente por `application.b3_docs`, permanecendo disponível em
+`application` e na raiz pública. O subpacote
+`application.b3_docs.historical_quotes` exporta apenas `HistoricalQuotesB3`.
+
 Esta abordagem privilegia:
 
 - ✅ **Leitura**: poucos arquivos com nomes claros (CVM: `core.py`, `client.py`, `http.py`, `extract.py`, `errors.py`; B3: módulos por papel — `client.py`, `assets.py`, `models.py`, `years.py`, `processing.py`, `filesystem.py`, `errors.py`, mais subpacotes pesados)
@@ -35,6 +41,7 @@ globaldatafinance/
 │   │   │   │   ├── __init__.py
 │   │   │   │   ├── facade.py
 │   │   │   │   └── extraction_flow.py
+│   │   │   ├── types.py                          # ExtractionResultB3
 │   │   │   ├── extraction_result_formatter.py
 │   │   │   └── result_formatters/
 │   │   └── cvm_docs/

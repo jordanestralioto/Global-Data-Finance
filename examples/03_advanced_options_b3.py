@@ -5,40 +5,47 @@ and Options) from local COTAHIST files, select a range of years, and use
 high-performance 'fast' mode.
 """
 
-import sys
-from pathlib import Path
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
-
-def main() -> None:
-    """Run the advanced B3 options example."""
-    # Ensure examples import repository code rather than the installed package.
-    repo_root = Path(__file__).resolve().parent.parent
-    sys.path.insert(0, str(repo_root / 'src'))
-    sys.path.insert(0, str(repo_root))
-
+if TYPE_CHECKING:
+    from examples.cli import parse_arguments, run_example, year_label
     from examples.result_validation import require_b3_output
-    from globaldatafinance import HistoricalQuotesB3
+else:
+    from cli import parse_arguments, run_example, year_label
+    from result_validation import require_b3_output
 
-    # 1. Initialize the B3 public facade
-    b3 = HistoricalQuotesB3()
+from globaldatafinance import HistoricalQuotesB3
 
-    # 2. Combined extraction with filters and 'fast' mode over local files
-    print('Starting advanced B3 extraction (Stocks, ETFs, Options)...')
-    resultado = b3.extract(
-        path_of_docs='./cotahist_b3',  # Folder with local COTAHIST files
-        assets_list=['ações', 'etf', 'opções'],
-        initial_year=2022,
-        last_year=2023,
-        destination_path='./dados_b3',
-        output_filename='carteira_completa_2022_2023',
-        processing_mode='fast',
+
+def main(argv: Sequence[str] | None = None) -> None:
+    """Run the advanced B3 options example."""
+    args = parse_arguments(
+        'Extract stocks, ETFs and options from local B3 COTAHIST files.',
+        source='b3',
+        argv=argv,
     )
-
-    # 3. Display final result
-    require_b3_output(resultado)
+    b3 = HistoricalQuotesB3()
+    print('Starting advanced B3 extraction (Stocks, ETFs, Options)...')
+    result = b3.extract(
+        path_of_docs=args.path_of_docs,
+        assets_list=['ações', 'etf', 'opções'],
+        initial_year=args.initial_year,
+        last_year=args.last_year,
+        destination_path=args.destination_path,
+        output_filename=(
+            'carteira_completa_'
+            f'{year_label(args.initial_year, args.last_year)}'
+        ),
+        processing_mode=args.processing_mode,
+        verbose=False,
+    )
+    require_b3_output(result)
     print('✓ Advanced extraction completed successfully!')
-    print(f'  Generated Parquet file at: {resultado["output_file"]}')
+    print(f'  Generated Parquet file at: {result["output_file"]}')
+    print(f'  Total processed files: {result["total_files"]}')
+    print(f'  Quote records: {result["total_records"]:,}')
 
 
 if __name__ == '__main__':
-    main()
+    run_example(main)

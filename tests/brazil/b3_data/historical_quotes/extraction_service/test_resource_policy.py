@@ -1,7 +1,11 @@
 """Worker-limit and pressure-admission behavior for B3 extraction."""
 
+import logging
+import os
+from types import SimpleNamespace
 from typing import cast
 
+import psutil
 import pytest
 
 from globaldatafinance.brazil.b3_data.historical_quotes import (
@@ -58,7 +62,7 @@ def test_fast_worker_limit_honors_documented_environment_cap(
     configured_limit: str,
     expected_limit: int,
 ) -> None:
-    """The optional runtime cap only reduces the normal fast-mode limit."""
+    """The optional runtime cap remains bounded by available resources."""
     monkeypatch.setattr(
         'globaldatafinance.brazil.b3_data.historical_quotes.extraction_service.resource_policy.os.cpu_count',
         lambda: 8,
@@ -73,6 +77,66 @@ def test_fast_worker_limit_honors_documented_environment_cap(
     )
 
     assert policy.worker_limit(10) == expected_limit
+
+
+@pytest.mark.parametrize(
+    ('available_mib', 'expected_workers'),
+    [(0, 1), (512, 1), (1024, 2), (4096, 4)],
+)
+def test_worker_limit_uses_available_memory_snapshot(
+    monkeypatch: pytest.MonkeyPatch,
+    available_mib: int,
+    expected_workers: int,
+) -> None:
+    """Actual telemetry keeps the default worker budget within free RAM."""
+    monkeypatch.delenv('GDF_B3_WORKER_LIMIT', raising=False)
+    monkeypatch.setattr(os, 'cpu_count', lambda: 8)
+    monkeypatch.setattr(
+        psutil,
+        'virtual_memory',
+        lambda: SimpleNamespace(available=available_mib * 1024**2),
+    )
+    policy = extraction_service.ResourcePolicyB3(
+        ProcessingModeEnumB3.FAST,
+        resource_monitor=cast(
+            ResourceMonitor, _Monitor([ResourceState.HEALTHY])
+        ),
+    )
+
+    assert policy.worker_limit(10) == expected_workers
+
+
+@pytest.mark.parametrize(
+    'error', [OSError('unavailable'), psutil.AccessDenied()]
+)
+def test_memory_telemetry_failure_limits_workers_and_reports_cause(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    error: Exception,
+) -> None:
+    """Failed telemetry admits one worker and retains a logged traceback."""
+
+    def fail_memory_probe() -> None:
+        raise error
+
+    monkeypatch.setattr(psutil, 'virtual_memory', fail_memory_probe)
+    monkeypatch.setattr(
+        logging.getLogger('globaldatafinance'), 'propagate', True
+    )
+    policy = extraction_service.ResourcePolicyB3(
+        ProcessingModeEnumB3.FAST,
+        resource_monitor=cast(
+            ResourceMonitor, _Monitor([ResourceState.HEALTHY])
+        ),
+    )
+
+    with caplog.at_level(logging.WARNING):
+        assert policy.worker_limit(10) == 1
+
+    record = caplog.records[-1]
+    assert 'limiting B3 to one worker' in record.message
+    assert record.exc_info is not None
+    assert record.exc_info[1] is error
 
 
 def test_slow_worker_limit_is_always_one() -> None:

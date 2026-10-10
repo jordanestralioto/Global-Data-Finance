@@ -152,3 +152,63 @@ def test_main_returns_failure_and_line_details_for_cycle(
     error = capsys.readouterr().err
     assert 'globaldatafinance.a -> globaldatafinance.b (line 7)' in error
     assert 'globaldatafinance.b -> globaldatafinance.a (line 11)' in error
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize('subpackage', ['utils', 'utils.paths'])
+def test_main_rejects_cycles_through_package_initializers(
+    checker: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    subpackage: str,
+) -> None:
+    """Importing a submodule also depends on its package initializers."""
+    config = 'globaldatafinance.core.logging_config'
+    utilities = 'globaldatafinance.core.utils'
+    files = f'{utilities}.files'
+    safety = f'globaldatafinance.core.{subpackage}.path_safety'
+    graph = make_graph(
+        [(utilities, files), (files, config)],
+        modules=[utilities, safety.rpartition('.')[0], safety],
+    )
+    graph.add_import(
+        importer=config,
+        imported=safety,
+        line_number=7,
+        line_contents='from .utils.path_safety import validate',
+    )
+    monkeypatch.setattr(
+        checker.grimp, 'build_graph', lambda *_args, **_kwargs: graph
+    )
+
+    assert checker.main() == 1
+
+    error = capsys.readouterr().err
+    assert f'{config} -> {utilities} (line 7)' in error
+    assert 'package initialization' in error
+
+
+@pytest.mark.unit
+def test_main_accepts_exports_and_imports_within_initialized_packages(
+    checker: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """An ancestor already being initialized is not a new dependency."""
+    package = 'globaldatafinance.core'
+    graph = make_graph(
+        [
+            ('globaldatafinance', f'{package}.logging_config'),
+            (package, f'{package}.logging_config'),
+            (f'{package}.logging_config', f'{package}.utils.path_safety'),
+            (f'{package}.utils', f'{package}.utils.files'),
+            (f'{package}.utils.files', f'{package}.utils.path_safety'),
+        ],
+        modules=[package],
+    )
+    monkeypatch.setattr(
+        checker.grimp, 'build_graph', lambda *_args, **_kwargs: graph
+    )
+
+    assert checker.main() == 0
+    assert capsys.readouterr().err == ''

@@ -1,6 +1,7 @@
 """Monitor process resources for extraction workloads."""
 
 import gc
+import logging
 import os
 import platform
 import threading
@@ -11,9 +12,7 @@ from typing import Optional
 
 import psutil
 
-from ..logging_config import get_logger
-
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 _RESOURCE_TELEMETRY_ERRORS = (OSError, psutil.Error)
 

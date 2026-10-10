@@ -20,6 +20,7 @@ from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .logging_redaction import format_structured_message
+from .utils.path_safety import assert_path_not_sensitive
 
 # Log formats
 
@@ -217,8 +218,6 @@ def _build_managed_handlers(
 
         if settings.log_file:
             log_file_path = Path(settings.log_file)
-            from .utils.path_safety import assert_path_not_sensitive
-
             assert_path_not_sensitive(
                 log_file_path.expanduser().resolve(), settings.log_file
             )
@@ -247,8 +246,9 @@ def _close_handlers(handlers: list[logging.Handler]) -> None:
 def get_logger(name: str) -> logging.Logger:
     """Get a logger instance for a specific module.
 
-    This is the standard way to get a logger in any module.
-    Always use __name__ as the logger name for proper hierarchical naming.
+    Returns the same module logger as ``logging.getLogger(name)``. Shared
+    foundations can use that function directly without depending on logging
+    configuration. Use ``__name__`` for proper hierarchical naming.
     Note that ``setup_logging()`` configures only the ``globaldatafinance.*``
     logger hierarchy, not arbitrary application loggers outside this namespace.
 

@@ -5,11 +5,11 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import gc
-import importlib
 import os
 import time
 from collections.abc import Callable
-from typing import Protocol, cast
+
+import psutil
 
 from .....core import (
     ResourceLimits,
@@ -23,19 +23,6 @@ logger = get_logger(__name__)
 
 _MEBIBYTE = 1024**2
 _MEMORY_PER_FAST_WORKER_MIB = 256
-
-
-class _VirtualMemory(Protocol):
-    """Minimum psutil memory snapshot contract used by this policy."""
-
-    available: int
-
-
-class _PsutilModule(Protocol):
-    """Lazy psutil surface required for B3 worker admission."""
-
-    def virtual_memory(self) -> _VirtualMemory:
-        """Return one available-memory snapshot."""
 
 
 class ResourcePolicyB3:
@@ -67,11 +54,12 @@ class ResourcePolicyB3:
     def _read_available_memory_mib() -> int:
         """Return available RAM in MiB without retaining a large snapshot."""
         try:
-            psutil_module = cast(
-                _PsutilModule, importlib.import_module('psutil')
+            return int(psutil.virtual_memory().available // _MEBIBYTE)
+        except (OSError, psutil.Error):
+            logger.warning(
+                'Could not read available memory; limiting B3 to one worker',
+                exc_info=True,
             )
-            return int(psutil_module.virtual_memory().available // _MEBIBYTE)
-        except (ImportError, OSError):
             return _MEMORY_PER_FAST_WORKER_MIB
 
     def worker_limit(self, file_count: int) -> int:

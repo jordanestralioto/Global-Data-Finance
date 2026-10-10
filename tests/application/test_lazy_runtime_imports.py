@@ -102,6 +102,42 @@ def test_lookup_and_non_extracting_download_are_engine_free() -> None:
     assert state == dict.fromkeys(_ENGINES, False)
 
 
+def test_foundation_logging_is_engine_free() -> None:
+    """Foundations use managed handlers without depending on their setup."""
+    state = _run_probe(
+        _program(
+            'import logging, tempfile',
+            'from pathlib import Path',
+            'from globaldatafinance.core.logging_config import (',
+            '    LoggingSettings, setup_logging,',
+            ')',
+            'from globaldatafinance.core.utils.files import remove_file',
+            'from globaldatafinance.core.utils.resource_monitor import (',
+            '    ResourceMonitor,',
+            ')',
+            'with tempfile.TemporaryDirectory() as directory:',
+            '    root = Path(directory)',
+            "    log_file = root / 'library.log'",
+            '    setup_logging(',
+            "        LoggingSettings(level='DEBUG', log_file=log_file)",
+            '    )',
+            "    target = root / 'source.csv'",
+            "    target.write_text('value\\n1\\n')",
+            '    remove_file(target)',
+            '    ResourceMonitor.create_isolated()',
+            '    content = log_file.read_text()',
+            '    assert not target.exists()',
+            "    assert 'globaldatafinance.core.utils.files' in content",
+            "    assert 'Removed file:' in content",
+            "    assert 'ResourceMonitor initialized' in content",
+            '    logging.shutdown()',
+        )
+        + _engine_state()
+    )
+
+    assert state == dict.fromkeys(_ENGINES, False)
+
+
 def test_cvm_and_b3_extractions_load_arrow_but_not_pandas_or_polars() -> None:
     """Both productive paths activate their single Arrow engine on demand."""
     cvm_state = _run_probe(

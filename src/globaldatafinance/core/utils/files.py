@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
-from ..logging_config import get_logger
-
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def remove_file(filepath: str | Path, log_on_error: bool = True) -> None:

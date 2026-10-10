@@ -1,76 +1,111 @@
-# Exemplos de Uso - GlobalDataFinance
+# Exemplos de uso
 
-Esta pasta contém exemplos práticos executáveis para iniciar rapidamente a extração e o processamento de dados financeiros brasileiros usando a biblioteca `globaldatafinance`.
+Comece pelos exemplos 01 e 02. Cada script usa a API pública da
+`globaldatafinance`, informa onde salvou o resultado e encerra com erro se o
+processamento falhar. Parquet é o formato de saída; você pode lê-lo com
+PyArrow, já instalado com a biblioteca.
 
-______________________________________________________________________
+| Exemplo                                                | O que faz                                  | O que você precisa fornecer             |
+| ------------------------------------------------------ | ------------------------------------------ | --------------------------------------- |
+| [01_quickstart_cvm.py](01_quickstart_cvm.py)           | Baixa DFP da CVM e converte em Parquet     | Conexão com a internet                  |
+| [02_quickstart_b3.py](02_quickstart_b3.py)             | Extrai cotações dos mercados de ações      | Arquivo COTAHIST local do ano escolhido |
+| [03_advanced_options_b3.py](03_advanced_options_b3.py) | Seleciona mercados de ações, ETFs e opções | Arquivo COTAHIST local do ano escolhido |
 
-## 📌 Diferença Entre as Fontes
+Os três exemplos processam **somente 2023** por padrão. Você pode mudar o ano,
+o intervalo e a pasta de saída por opções de linha de comando.
 
-- **CVM (`FundamentalStocksDataCVM`)**: Realiza o **download automático** (via HTTP assíncrono) das Demonstrações Financeiras diretamente dos servidores da CVM e converte em arquivos Parquet.
-- **B3 (`HistoricalQuotesB3`)**: Faz a **leitura, filtragem e conversão** de arquivos oficiais de cotações históricas (`COTAHIST_AYYYY.ZIP` ou `.TXT`) armazenados em uma pasta local (`path_of_docs`) e consolida em Parquet. A API aceita os formatos locais ZIP e TXT; o download oficial da B3 continua sendo distribuído em ZIP. *(Nota: A biblioteca não baixa os arquivos COTAHIST da B3, ela processa os arquivos locais existentes).*
+## Preparar o ambiente
 
-______________________________________________________________________
+Requisitos: Python `>=3.12,<4.0` e `uv`. Consulte o
+[guia de instalação](../docs/user-guide/installation.md) se ainda não preparou
+seu ambiente.
 
-## 🚀 Como Executar os Exemplos
-
-Todos os exemplos utilizam a ferramenta `uv` para gerenciar dependências e o ambiente virtual de forma rápida e reprodutível.
-
-Na raiz do repositório, prepare o ambiente uma vez antes de executar os
-exemplos. O parâmetro `--no-sync` das chamadas seguintes pressupõe que essa
-preparação foi concluída:
+Execute na **raiz do repositório**, onde está o `pyproject.toml`:
 
 ```bash
 uv sync --locked --all-extras --dev
 ```
 
-Consulte o [guia de instalação](../docs/user-guide/installation.md) para
-configurar as dependências e o Python suportado.
+Essa preparação é feita uma vez. Os comandos seguintes usam `--no-sync` para
+reutilizar o ambiente. As pastas relativas, como `./dados_b3`, são resolvidas a
+partir da pasta em que você executa o comando.
 
-### 1. Início Rápido com CVM (`01_quickstart_cvm.py`)
-
-Baixa as Demonstrações Financeiras Padronizadas (**DFP**) da CVM do ano de 2023 diretamente da internet e converte automaticamente em arquivos Parquet.
+## 1. Baixar demonstrações financeiras da CVM
 
 ```bash
 uv run --locked --no-sync python examples/01_quickstart_cvm.py
 ```
 
-______________________________________________________________________
+O exemplo baixa o ZIP de **Demonstrações Financeiras Padronizadas (DFP)** de
+2023, converte seus CSVs em Parquet e salva os arquivos em `./dados_cvm`.
+Essa seleção reúne demonstrações de várias empresas e pode levar alguns
+minutos. Uma execução bem-sucedida remove o ZIP após a conversão.
 
-### 2. Extração Rápida de Ações da B3 (`02_quickstart_b3.py`)
+Para escolher outro período e destino:
 
-Lê os arquivos de cotações históricas da B3 (**COTAHIST**) presentes na pasta local `./cotahist_b3`, filtra apenas os negócios com **Ações** e gera um arquivo Parquet consolidado.
+```bash
+uv run --locked --no-sync python examples/01_quickstart_cvm.py \
+  --initial-year 2022 --last-year 2023 --destination-path ./dados_cvm
+```
+
+## 2. Extrair cotações de ações da B3
+
+A biblioteca **processa arquivos locais ZIP ou TXT**; ela não baixa COTAHIST
+da B3. Obtenha o arquivo anual conforme o
+[guia B3](../docs/user-guide/b3-docs.md) e organize a entrada assim:
+
+```text
+cotahist_b3/
+└── COTAHIST_A2023.ZIP
+```
+
+Você também pode usar `COTAHIST_A2023.TXT`. Preserve o nome oficial do arquivo
+para cada ano. Os arquivos de entrada não são incluídos nos exemplos.
 
 ```bash
 uv run --locked --no-sync python examples/02_quickstart_b3.py
 ```
 
-O padrão é o ano de 2023, com saída `cotacoes_acoes_2023.parquet` em
-`./dados_b3`. Para usar outra pasta ou intervalo, passe as opções de linha de
-comando; o nome da saída acompanha os anos selecionados:
+Saída padrão: `./dados_b3/cotacoes_acoes_2023.parquet`. O exemplo seleciona
+cotações dos mercados à vista (010) e fracionário (020). A seleção é por mercado,
+e não por uma lista de tickers; ETFs desses mercados também podem aparecer.
+
+Se os arquivos estiverem em outra pasta, use `--path-of-docs`. Caminhos com
+espaços devem ficar entre aspas:
 
 ```bash
 uv run --locked --no-sync python examples/02_quickstart_b3.py \
-  --path-of-docs /caminho/para/COTAHIST \
-  --initial-year 2000 --last-year 2026 --destination-path ./dados_b3
+  --path-of-docs "/caminho/para/COTAHIST" \
+  --initial-year 2022 --last-year 2023 --destination-path ./dados_b3
 ```
 
-______________________________________________________________________
+Todos os anos do intervalo precisam existir na pasta. Nesse comando, a saída
+será `cotacoes_acoes_2022_2023.parquet`.
 
-### 3. Extração Avançada da B3 (`03_advanced_options_b3.py`)
-
-Demonstra a extração de múltiplos ativos simultâneos (**Ações, ETFs e Opções**) a partir dos arquivos COTAHIST locais de 2022 e 2023, utilizando o **modo de alto desempenho (`processing_mode="fast"`)**.
+## 3. Selecionar mais mercados e ajustar o processamento
 
 ```bash
 uv run --locked --no-sync python examples/03_advanced_options_b3.py
 ```
 
-______________________________________________________________________
+Saída padrão: `./dados_b3/carteira_completa_2023.parquet`. Este exemplo passa
+`assets_list=['ações', 'etf', 'opções']` para incluir também os mercados de
+opções de compra e venda.
 
-### 4. Seleção Completa de Mercados da B3
+Os dois exemplos B3 aceitam `--processing-mode fast` (padrão, voltado a
+throughput) e `--processing-mode slow` (menor uso de memória). Para processar
+2022 e 2023 em modo `slow`:
 
-Para preservar todos os mercados presentes na fonte, omita `assets_list` ou
-use `assets_list=["todos"]`. Informe o intervalo que existe na pasta: anos
-solicitados sem arquivo COTAHIST fazem a chamada falhar.
+```bash
+uv run --locked --no-sync python examples/03_advanced_options_b3.py \
+  --initial-year 2022 --last-year 2023 --processing-mode slow
+```
+
+Ao informar apenas `--initial-year`, o ano final acompanha o inicial. Por
+exemplo, `--initial-year 2022` processa somente 2022 nos três scripts.
+
+Para preservar todos os mercados, omita `assets_list` ou use `['todos']` em
+seu próprio código:
 
 ```python
 from globaldatafinance import HistoricalQuotesB3
@@ -85,35 +120,73 @@ result = b3.extract(
     output_filename='cotahist_completo_2023',
     verbose=False,
 )
-
-if not result['success']:
-    raise SystemExit(result['errors'])
-assert result['schema_version'] == 2
-print(result['integrity']['unknown_market_counts'])
+if not result['success'] or result['total_records'] == 0:
+    raise SystemExit(f'Extração incompleta: {result["errors"]}')
+print(result['output_file'])
 ```
 
-______________________________________________________________________
+## Ler o Parquet gerado
 
-## 📁 Estrutura dos Arquivos de Saída
-
-Por padrão, os exemplos salvam os dados em formato **Parquet** e usam
-**PyArrow** como leitor nativo. Pandas e Polars são opções downstream; instale
-explicitamente a biblioteca escolhida no ambiente consumidor antes de usá-la:
+Após executar o exemplo 02, abra o Python no mesmo ambiente:
 
 ```bash
-python -m pip install pandas  # opcional, para DataFrames
-python -m pip install polars  # opcional, para consultas Polars
+uv run --locked --no-sync python
 ```
 
-- `./dados_cvm/`: Contém os arquivos `.parquet` por tipo de relatório da CVM.
-- `./dados_b3/`: Contém os arquivos Parquet consolidados com o nome especificado em `output_filename`.
+Cole este código para ver a contagem e as cinco primeiras cotações sem carregar
+o arquivo inteiro:
 
-______________________________________________________________________
+```python
+import pyarrow.parquet as pq
 
-## 📚 Mais Documentação
+parquet = pq.ParquetFile('./dados_b3/cotacoes_acoes_2023.parquet')
+print(f'Registros: {parquet.metadata.num_rows}')
+for batch in parquet.iter_batches(
+    batch_size=5,
+    columns=['data_pregao', 'ticker', 'preco_fechamento'],
+):
+    print(batch.to_pydict())
+    break
+```
 
-Para acessar a documentação completa da biblioteca e parâmetros avançados:
+Troque o caminho para ler outra saída. Pandas e Polars são leitores opcionais;
+os exemplos não exigem sua instalação.
 
-- [Guia do Usuário CVM](../docs/user-guide/cvm-docs.md)
-- [Guia do Usuário B3](../docs/user-guide/b3-docs.md)
-- [Exemplos Detalhados na Doc](../docs/user-guide/examples.md)
+## Ajuda e problemas comuns
+
+Cada script lista suas opções e padrões com `--help`:
+
+```bash
+uv run --locked --no-sync python examples/01_quickstart_cvm.py --help
+uv run --locked --no-sync python examples/02_quickstart_b3.py --help
+uv run --locked --no-sync python examples/03_advanced_options_b3.py --help
+```
+
+- **`ModuleNotFoundError: globaldatafinance`**: execute a preparação do ambiente
+  e use os comandos `uv run` acima.
+- **COTAHIST ausente ou ano indisponível**: confira `--path-of-docs`, os nomes
+  `COTAHIST_AYYYY.ZIP` ou `COTAHIST_AYYYY.TXT` e todos os anos solicitados.
+- **Nenhum registro selecionado**: confira se os mercados escolhidos existem
+  no arquivo de entrada; uma saída vazia não é apresentada como sucesso.
+- **Falha de download CVM**: leia o diagnóstico exibido, confira a conexão e a
+  disponibilidade dos arquivos na fonte antes de tentar novamente.
+
+`cli.py` e `result_validation.py` são módulos de apoio; os exemplos executáveis
+são os três scripts numerados.
+
+## Validar os exemplos
+
+Na raiz do repositório:
+
+```bash
+uv run --locked --no-sync pytest tests/examples
+```
+
+Os testes executam os três scripts com entradas controladas, leem os Parquet
+gerados e verificam os filtros e as falhas. O HTTP da CVM é substituído por
+respostas locais nos testes; eles não dependem da internet nem exigem arquivos
+COTAHIST oficiais. Executar o exemplo 01 normalmente acessa a fonte CVM.
+
+Para os contratos completos, consulte os guias
+[CVM](../docs/user-guide/cvm-docs.md), [B3](../docs/user-guide/b3-docs.md) e os
+[exemplos adicionais](../docs/user-guide/examples.md).

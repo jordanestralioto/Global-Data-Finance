@@ -8,9 +8,11 @@ submodule importing its own package root (``from ...core import x`` while
 ``core/__init__`` imports that same submodule). That is invisible to a layers
 contract because the package root is the container, not a sibling layer.
 
-Such a cycle usually still imports successfully -- but only because of the
-statement order inside ``__init__.py``. Reordering imports turns it into an
-ImportError at package import time. This hook makes the fragility explicit.
+Importing a submodule also initializes its parent packages. Those implicit
+dependencies can hide a cycle even when modules import defining files directly.
+Include them unless the importer is already inside the package being
+initialized. Local imports are checked too: delaying a dependency does not
+remove it from the library's structural contract.
 """
 
 from __future__ import annotations
@@ -133,12 +135,50 @@ def find_cycles(graph: grimp.ImportGraph) -> list[list[str]]:
     return state.cycles
 
 
+def _add_package_initialization_imports(
+    graph: grimp.ImportGraph,
+) -> dict[tuple[str, str], str]:
+    """Include initializer dependencies outside the importer's ancestry."""
+    modules = graph.modules
+    implicit: dict[tuple[str, str], str] = {}
+    for importer in sorted(modules):
+        for imported in sorted(
+            graph.find_modules_directly_imported_by(importer)
+        ):
+            details = graph.get_import_details(
+                importer=importer, imported=imported
+            )
+            parent = imported.rpartition('.')[0]
+            while parent:
+                if (
+                    parent in modules
+                    and importer != parent
+                    and not importer.startswith(parent + '.')
+                    and not graph.direct_import_exists(
+                        importer=importer, imported=parent
+                    )
+                ):
+                    if details:
+                        graph.add_import(
+                            importer=importer,
+                            imported=parent,
+                            line_number=details[0]['line_number'],
+                            line_contents=details[0]['line_contents'],
+                        )
+                    else:
+                        graph.add_import(importer=importer, imported=parent)
+                    implicit[importer, parent] = imported
+                parent = parent.rpartition('.')[0]
+    return implicit
+
+
 def main() -> int:
     """Check the package import graph for circular dependencies."""
     graph = grimp.build_graph(
         PACKAGE,
         exclude_type_checking_imports=True,
     )
+    implicit = _add_package_initialization_imports(graph)
     cycles = find_cycles(graph)
 
     if not cycles:
@@ -162,10 +202,12 @@ def main() -> int:
                     if details and details[0].get('line_number')
                     else ''
                 )
+                if initialized_for := implicit.get((module, target)):
+                    where += f' (package initialization for {initialized_for})'
                 print(f'  {module} -> {target}{where}', file=sys.stderr)
     print(
-        '\nImport a defining module directly instead of routing through the '
-        'package root.',
+        '\nRemove the dependency cycle, including package initialization. '
+        'Moving an import inside a function does not remove the dependency.',
         file=sys.stderr,
     )
     return 1
