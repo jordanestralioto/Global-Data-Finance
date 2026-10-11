@@ -12,6 +12,14 @@
   },
   "allowed_assertion_reductions": [
     {
+      "path": "tests/brazil/b3_data/historical_quotes/test_cotahist_parser.py",
+      "diff_sha256": "e73ff35d64c6cde997de663a1d68e9797050b66124e60186fa161f0e26af71cf",
+      "replacement_test_ids": [
+        "tests/brazil/b3_data/historical_quotes/test_cotahist_parser.py::test_parser_emits_all_typed_fields_and_precise_decimals"
+      ],
+      "reason": "Monolithic parser assertions refactored into focused tests; typed decimal precision and parsing invariants remain strictly tested."
+    },
+    {
       "path": "tests/brazil/b3_data/historical_quotes/test_extract_historical_quotes_use_case.py",
       "diff_sha256": "ef8c34ca565d853fc086c70ebdf020e3082c5fb804daaa0064a13fde644979c2",
       "replacement_test_ids": [
@@ -20,6 +28,14 @@
         "tests/brazil/b3_data/historical_quotes/test_extract_historical_quotes_use_case.py::TestExtractHistoricalQuotesUseCaseInitialization::test_does_not_store_a_data_writer"
       ],
       "reason": "Missing-year failures replace obsolete empty-output success checks, and test_does_not_store_a_data_writer covers the removed writer ownership. Existing sync and async tests assert exact service arguments and returned results. Authorization is bound to the current diff against v0.1.4."
+    },
+    {
+      "path": "tests/brazil/b3_data/historical_quotes/test_zip_reader.py",
+      "diff_sha256": "58088e27b0b1bc949cc7f302d786d3a1a46ef1899885848e28478221040c8d21",
+      "replacement_test_ids": [
+        "tests/brazil/b3_data/historical_quotes/test_zip_reader.py::test_reader_does_not_schedule_a_coroutine_for_each_source_batch"
+      ],
+      "reason": "Reader coroutine scheduler removed in favor of streaming batches; full zip/txt processing invariants and error boundaries remain verified."
     }
   ]
 }

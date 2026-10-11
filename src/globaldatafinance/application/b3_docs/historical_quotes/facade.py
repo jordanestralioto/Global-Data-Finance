@@ -164,8 +164,8 @@ class HistoricalQuotesB3:
             ...     initial_year=2020,
             ...     last_year=2023,
             ... )
-            >>> if result['success']:
-            ...     print(f"Extracted {result['total_records']} records")
+            >>> result['success']
+            True
         """
         return asyncio.run(
             self.extract_async(
