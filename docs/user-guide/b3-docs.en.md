@@ -432,7 +432,7 @@ lists the gap in `integrity.missing_years`, and does not publish a new output.
 
 ### File Naming Contract
 
-Official B3 archive downloads adhere to the standard pattern `COTAHIST_A{YYYY}.ZIP` (e.g., `COTAHIST_A2023.ZIP`), where `{YYYY}` denotes a four-digit fiscal year. The local scanner also supports raw uncompressed text files matching `COTAHIST_A{YYYY}.TXT`. If ZIP and TXT for the same year coexist, only ZIP is selected deterministically.
+Official B3 archive downloads adhere to the standard pattern `COTAHIST_A{YYYY}.ZIP` (e.g., `COTAHIST_A2023.ZIP`), where `{YYYY}` denotes a four-digit fiscal year. The local scanner also supports raw uncompressed text files matching `COTAHIST_A{YYYY}.TXT`. When ZIP and TXT for the same year coexist, both are validated. ZIP takes precedence only when their uncompressed contents are identical; conflicting contents make extraction return `success=False` without publishing output.
 
 ### Internal Archive Structure
 

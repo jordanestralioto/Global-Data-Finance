@@ -568,6 +568,156 @@ def test_stage_path_cannot_escape_transaction_staging(tmp_path: Path) -> None:
     publication.abort()
 
 
+def test_artifact_registration_rejects_output_symlink(tmp_path: Path) -> None:
+    """A final artifact must not resolve into another caller-owned file."""
+    source = tmp_path / 'source.txt'
+    source.write_bytes(b'caller-owned source')
+    output = tmp_path / 'quotes.parquet'
+    output.symlink_to(source.name)
+    publisher = TransactionalPublisher(tmp_path, owner='test')
+    publication = publisher.begin()
+    staged = publication.stage_path(output.name)
+    staged.write_bytes(b'new output')
+
+    try:
+        with pytest.raises(ExtractionError, match='symbolic link'):
+            publication.add_artifact(
+                final_path=output,
+                staged_path=staged,
+                expected_rows=1,
+                schema_fingerprint='schema-v1',
+            )
+        assert publication.manifest.artifacts == []
+        assert source.read_bytes() == b'caller-owned source'
+        assert output.is_symlink()
+    finally:
+        publication.abort()
+
+
+def test_symlink_inserted_after_registration_cannot_redirect_manifest(
+    tmp_path: Path,
+) -> None:
+    """A late output alias fails validation without changing source bytes."""
+    source = tmp_path / 'source.txt'
+    source.write_bytes(b'caller-owned source')
+    publisher = TransactionalPublisher(tmp_path, owner='test')
+    publication, _ = _stage_artifact(
+        publisher, 'quotes.parquet', b'new output'
+    )
+    output = tmp_path / 'quotes.parquet'
+    output.symlink_to(source.name)
+
+    try:
+        with pytest.raises(ExtractionError, match='symbolic link'):
+            publication.mark_validated()
+        assert publication.manifest.artifacts[0].final_path == output
+        payload = json.loads(publication.manifest_path.read_text())
+        assert payload['artifacts'][0]['final_path'] == output.name
+        assert source.read_bytes() == b'caller-owned source'
+    finally:
+        output.unlink()
+        publication.abort()
+
+
+def test_recovery_preserves_final_name_when_output_becomes_symlink(
+    tmp_path: Path,
+) -> None:
+    """Recovery must never reinterpret an output name as its link target."""
+    source = tmp_path / 'source.txt'
+    source.write_bytes(b'caller-owned source')
+    publisher = TransactionalPublisher(tmp_path, owner='test')
+    publication, _ = _stage_artifact(
+        publisher, 'quotes.parquet', b'new output'
+    )
+    output = tmp_path / 'quotes.parquet'
+    output.symlink_to(source.name)
+
+    try:
+        recovered = publisher._read_manifest(publication.manifest_path)
+        assert recovered.artifacts[0].final_path == output
+        assert source.read_bytes() == b'caller-owned source'
+        assert output.is_symlink()
+    finally:
+        output.unlink()
+        publication.abort()
+
+
+def test_output_symlink_after_validation_releases_transaction_ownership(
+    tmp_path: Path,
+) -> None:
+    """Reject a late output alias and allow a new same-process transaction."""
+    source = tmp_path / 'source.txt'
+    source.write_bytes(b'caller-owned source')
+    publisher = TransactionalPublisher(tmp_path, owner='test')
+    publication, _ = _stage_artifact(
+        publisher, 'quotes.parquet', b'new output'
+    )
+    publication.mark_validated()
+    output = tmp_path / 'quotes.parquet'
+    output.symlink_to(source.name)
+
+    with pytest.raises(ExtractionError, match='symbolic link'):
+        publication.commit()
+    publication.abort()
+
+    assert source.read_bytes() == b'caller-owned source'
+    assert output.is_symlink()
+    assert not list(tmp_path.glob('.globaldatafinance-transaction*'))
+    next_publication = TransactionalPublisher(tmp_path, owner='test').begin()
+    next_publication.abort()
+    assert not list(tmp_path.glob('.globaldatafinance-transaction*'))
+
+
+@pytest.mark.parametrize('copy_fallback', [False, True])
+@pytest.mark.parametrize('absolute_link', [False, True])
+def test_output_link_inserted_during_backup_aborts_before_replacement(
+    tmp_path: Path, copy_fallback: bool, absolute_link: bool
+) -> None:
+    """No-follow backups reject late aliases before any staged replacement."""
+    source = tmp_path / 'source.txt'
+    source.write_bytes(b'caller-owned source')
+    output = tmp_path / 'quotes.parquet'
+    output.write_bytes(b'previous output')
+    replaced_outputs: list[Path] = []
+
+    class InsertOutputLink(FileOperations):
+        """Change the output after commit preflight at the backup boundary."""
+
+        def link(self, source_path: Path, destination: Path) -> None:
+            """Insert a source alias before backup creation."""
+            output.unlink()
+            output.symlink_to(source if absolute_link else source.name)
+            if copy_fallback:
+                raise OSError('hard links are unavailable')
+            super().link(source_path, destination)
+
+        def replace(self, staged: Path, destination: Path) -> None:
+            """Expose an unsafe publication by failing after its rename."""
+            super().replace(staged, destination)
+            if staged.suffix == '.parquet':
+                replaced_outputs.append(destination)
+                raise OSError('injected failure after publication rename')
+
+    publisher = TransactionalPublisher(
+        tmp_path, owner='test', operations=InsertOutputLink()
+    )
+    publication, _ = _stage_artifact(publisher, output.name, b'new output')
+    publication.mark_validated()
+
+    with pytest.raises(ExtractionError, match='symbolic link'):
+        publication.commit()
+    publication.abort()
+
+    assert replaced_outputs == []
+    assert source.read_bytes() == b'caller-owned source'
+    assert output.is_symlink()
+    assert output.read_bytes() == source.read_bytes()
+    assert not list(tmp_path.glob('.globaldatafinance-transaction*'))
+    next_publication = TransactionalPublisher(tmp_path, owner='test').begin()
+    next_publication.abort()
+    assert not list(tmp_path.glob('.globaldatafinance-transaction*'))
+
+
 def test_manifest_cannot_treat_destination_as_staging_directory(
     tmp_path: Path,
 ) -> None:

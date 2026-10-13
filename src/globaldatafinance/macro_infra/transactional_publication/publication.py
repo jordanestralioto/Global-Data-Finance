@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from ...macro_exceptions import ExtractionError
 from .durability import sync_directory, sync_file
-from .paths import require_strict_descendant
+from .paths import require_strict_descendant, validate_artifact_destination
 from .types import ArtifactIntent, PublicationManifest
 
 if TYPE_CHECKING:
@@ -66,9 +66,10 @@ class TransactionalPublication:
                 str(self._publisher.destination_dir),
                 'Artifacts can only be added while publication is OPEN',
             )
-        final = final_path.resolve()
+        final = validate_artifact_destination(
+            final_path, self._publisher.destination_dir
+        )
         staged = staged_path.resolve()
-        require_strict_descendant(final, self._publisher.destination_dir)
         require_strict_descendant(staged, self.staging_dir)
         if (
             isinstance(expected_rows, bool)
@@ -112,6 +113,7 @@ class TransactionalPublication:
                 str(self._publisher.destination_dir),
                 'Staged artifact is missing: ' + ', '.join(missing),
             )
+        self._validate_destinations()
         self._publisher.ensure_backup_space(self.manifest.artifacts)
         self.manifest.phase = 'VALIDATED'
         self._publisher._write_manifest(self.manifest, self.manifest_path)
@@ -125,6 +127,7 @@ class TransactionalPublication:
             )
         committed_durable = False
         try:
+            self._validate_destinations()
             self._prepare_backups()
             self.manifest.phase = 'BACKUPS_READY'
             self._publisher._write_manifest(self.manifest, self.manifest_path)
@@ -170,6 +173,13 @@ class TransactionalPublication:
         self._cleanup_rolled_back()
         self._finished = True
 
+    def _validate_destinations(self) -> None:
+        """Recheck output leaves without redirecting their registered names."""
+        for item in self.manifest.artifacts:
+            validate_artifact_destination(
+                item.final_path, self._publisher.destination_dir
+            )
+
     def _prepare_backups(self) -> None:
         backup_dir = self.staging_dir / 'backups'
         existing = [
@@ -184,11 +194,11 @@ class TransactionalPublication:
             backup = backup_dir / f'{index:04d}-{item.final_path.name}'
             try:
                 self._publisher.operations.link(item.final_path, backup)
-                sync_directory(self._publisher.operations, backup_dir)
             except OSError:
                 self._publisher.operations.copy2(item.final_path, backup)
-                sync_file(self._publisher.operations, backup)
-                sync_directory(self._publisher.operations, backup_dir)
+            validate_artifact_destination(backup, backup_dir)
+            sync_file(self._publisher.operations, backup)
+            sync_directory(self._publisher.operations, backup_dir)
             item.existed_before = True
             item.backup_path = backup
             self._publisher._write_manifest(self.manifest, self.manifest_path)

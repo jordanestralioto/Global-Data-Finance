@@ -9,7 +9,12 @@ from pathlib import Path
 
 from ...macro_exceptions import ExtractionError
 from .durability import sync_directory, sync_file
-from .paths import relative_to, require_descendant, require_strict_descendant
+from .paths import (
+    bind_artifact_destination,
+    relative_to,
+    require_descendant,
+    require_strict_descendant,
+)
 from .types import PHASES, ArtifactIntent, FileOperations, PublicationManifest
 
 
@@ -166,7 +171,10 @@ class ManifestStore:
         value = payload.get(key)
         if not isinstance(value, str):
             raise ValueError(f'{key} must be a relative path string')
-        path = (self.destination_dir / value).resolve()
+        path = self.destination_dir / value
+        if key == 'final_path':
+            return bind_artifact_destination(path, self.destination_dir)
+        path = path.resolve()
         require_descendant(path, self.destination_dir)
         return path
 
@@ -178,7 +186,7 @@ class ManifestStore:
     def _validate_paths(self, manifest: PublicationManifest) -> None:
         require_strict_descendant(manifest.staging_dir, self.destination_dir)
         for item in manifest.artifacts:
-            require_strict_descendant(item.final_path, self.destination_dir)
+            bind_artifact_destination(item.final_path, self.destination_dir)
             require_strict_descendant(item.staged_path, manifest.staging_dir)
             if item.backup_path is not None:
                 require_strict_descendant(

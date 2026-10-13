@@ -28,7 +28,32 @@ def require_strict_descendant(path: Path, parent: Path) -> None:
     require_descendant(resolved_path, resolved_parent)
 
 
+def bind_artifact_destination(path: Path, destination_dir: Path) -> Path:
+    """Bind an output name to its canonical parent without following links."""
+    final = path.parent.resolve() / path.name
+    if (
+        not path.name
+        or path.name == '..'
+        or final == destination_dir.resolve()
+    ):
+        raise ExtractionError(
+            str(destination_dir), f'Path must name an artifact below: {path}'
+        )
+    require_descendant(final.parent, destination_dir)
+    return final
+
+
+def validate_artifact_destination(path: Path, destination_dir: Path) -> Path:
+    """Reject symbolic links before staging or replacing a bound output."""
+    final = bind_artifact_destination(path, destination_dir)
+    if final.is_symlink():
+        raise ExtractionError(
+            str(final), 'Artifact destination cannot be a symbolic link'
+        )
+    return final
+
+
 def relative_to(path: Path, destination_dir: Path) -> str:
     """Serialize one verified path relative to the publication destination."""
-    require_descendant(path.resolve(), destination_dir)
-    return path.resolve().relative_to(destination_dir).as_posix()
+    bound = bind_artifact_destination(path, destination_dir)
+    return bound.relative_to(destination_dir.resolve()).as_posix()

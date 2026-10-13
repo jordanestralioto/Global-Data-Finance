@@ -43,9 +43,15 @@ def extract(
 **Description**: Parses COTAHIST archives (`COTAHIST_A{YYYY}.ZIP` or `.TXT`), filters target asset transactions, and compiles a unified Parquet file. The API accepts both local formats; official B3 downloads continue to be distributed as ZIP archives.
 
 The parser is strict: `00`/`99` controls and blank lines are not persisted,
-TPMERC outside the filter is counted as filtered, and an invalid selected `01`
-record raises contextual `ExtractionError`. Invalid financial values never
-receive a zero or null fallback.
+and TPMERC outside the filter is counted as filtered. Every `01` record is
+validated before filtering. When a source contains invalid records, the facade
+returns `success=False`, `output_file=""`, and contextual details in `errors`;
+callers must check the result. Direct parser calls may raise `ExtractionError`.
+Invalid financial values never receive a zero or null fallback.
+
+Within the validated destination, an output-file symbolic link is rejected
+with a failure result without changing its target. Publication also prevents
+the output path from replacing a COTAHIST source.
 
 **Parameters**:
 

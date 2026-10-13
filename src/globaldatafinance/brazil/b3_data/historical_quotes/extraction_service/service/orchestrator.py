@@ -11,9 +11,13 @@ from typing import Any
 
 from ......core import get_logger
 from ......core.config import PathSafetySettings
+from ......macro_exceptions import ExtractionError
 from ......macro_infra.transactional_publication import (
     TransactionalPublication,
     TransactionalPublisher,
+)
+from ......macro_infra.transactional_publication.paths import (
+    validate_artifact_destination,
 )
 from ...async_execution import (
     run_atomic_phase,
@@ -163,6 +167,14 @@ class ExtractionServiceB3:
         verified_digests: dict[str, str] = {}
         readback: B3ParquetReadback | None = None
         try:
+            final = validate_artifact_destination(
+                output_path, publisher.destination_dir
+            )
+            if any(final == source.path.resolve() for source in sources):
+                raise ExtractionError(
+                    str(final),
+                    'B3 output path cannot replace a COTAHIST source',
+                )
             expected_fingerprint = schema_fingerprint(build_b3_schema())
             schema_metadata = build_b3_audit_metadata(
                 sources,

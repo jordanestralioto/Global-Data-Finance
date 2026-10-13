@@ -7,8 +7,6 @@
     "tests/brazil/b3_data/historical_quotes/test_parquet_writer.py": "Consolidated into modular parquet writer suite under parquet_writer/.",
     "tests/brazil/cvm/fundamental_stocks_data/integration/conftest.py": "Fixtures merged into shared test support fixtures under tests/conftest.py and tests/support/.",
     "tests/brazil/cvm/fundamental_stocks_data/integration/test_no_overwrite.py": "Consolidated into test_overwrite_semantics.py and test_atomic_rollback.py.",
-    "tests/examples/test_cli.py": "Example argument parsing was intentionally removed so SETTINGS is the only configuration surface. Output-name and diagnostic tests moved to tests/examples/test_support.py, which also proves terminal options are rejected before processing. tests/examples/test_quickstarts.py replaces help and argument-driven cases with settings-driven single-year, range, path, mode, filter, readback, and failure checks.",
-    "tests/examples/test_result_validation.py": "Result checks were consolidated into examples/support.py and run before its CVM and B3 summaries. All existing result-validation cases moved to tests/examples/test_support.py, retaining partial-download, zero-download, empty-result, missing-artifact, empty-artifact, and diagnostic checks while proving that failed results never print success.",
     "tests/macro_infra/test_extractor_file.py": "The generic ExtractorAdapter public surface is intentionally removed; supported CVM and B3 source-owned extraction behavior remains covered by their owner suites.",
     "tests/macro_infra/test_read_files_adapter.py": "The generic ReadFilesAdapter public surface is intentionally removed with its legacy Pandas dependency; supported CVM and B3 source-owned behavior remains covered by their owner suites."
   },

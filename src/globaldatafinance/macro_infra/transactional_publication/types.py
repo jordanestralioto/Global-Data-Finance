@@ -42,11 +42,11 @@ class FileOperations:
 
     def link(self, source: Path, destination: Path) -> None:
         """Create a hard-link backup."""
-        os.link(source, destination)
+        os.link(source, destination, follow_symlinks=False)
 
     def copy2(self, source: Path, destination: Path) -> None:
         """Copy a backup when hard links are unavailable."""
-        shutil.copy2(source, destination)
+        shutil.copy2(source, destination, follow_symlinks=False)
 
     def replace(self, source: Path, destination: Path) -> None:
         """Atomically replace a destination path."""

@@ -12,7 +12,10 @@ import pytest
 
 from globaldatafinance import HistoricalQuotesB3
 from globaldatafinance.brazil.b3_data.historical_quotes import (
+    cotahist_parser,
     extraction_service,
+    processing,
+    zip_reader,
 )
 from globaldatafinance.macro_exceptions import ExtractionError
 from globaldatafinance.macro_infra.transactional_publication import (
@@ -24,7 +27,11 @@ from globaldatafinance.macro_infra.transactional_publication.types import (
     FileOperations,
 )
 from scripts.cotahist_oracle import reconcile_sources
-from tests.support.builders import build_cotahist_record, write_cotahist_txt
+from tests.support.builders import (
+    build_cotahist_record,
+    write_cotahist_txt,
+    write_cotahist_zip,
+)
 
 pytestmark = pytest.mark.integration
 
@@ -46,6 +53,89 @@ def _assert_failed_publication(
     assert result['integrity']['status'] == 'failed'
     assert output.read_bytes() == before
     assert not list(output.parent.glob('.globaldatafinance-transaction*'))
+
+
+@pytest.mark.parametrize('extension', ['TXT', 'ZIP'])
+@pytest.mark.parametrize('mode', ['fast', 'slow'])
+@pytest.mark.parametrize('created_during_extraction', [False, True])
+def test_output_symlink_never_replaces_cotahist_source(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    extension: str,
+    mode: str,
+    created_during_extraction: bool,
+) -> None:
+    """Reject source aliases at preflight and staged-artifact registration."""
+    write_source = (
+        write_cotahist_txt if extension == 'TXT' else write_cotahist_zip
+    )
+    source = write_source(
+        tmp_path, year=2024, records=[build_cotahist_record()]
+    )
+    before = source.read_bytes()
+    output = tmp_path / 'quotes.parquet'
+    if created_during_extraction:
+        orchestrator = extraction_service.service.orchestrator
+        verify_output = orchestrator.merge_and_verify_output
+
+        def insert_link_after_readback(*args, **kwargs):
+            verified = verify_output(*args, **kwargs)
+            output.symlink_to(source.name)
+            return verified
+
+        monkeypatch.setattr(
+            orchestrator, 'merge_and_verify_output', insert_link_after_readback
+        )
+    else:
+        output.symlink_to(source.name)
+
+    result = HistoricalQuotesB3().extract(
+        path_of_docs=str(tmp_path),
+        initial_year=2024,
+        last_year=2024,
+        output_filename=output.name,
+        processing_mode=mode,
+        verbose=False,
+    )
+
+    _assert_failed_publication(dict(result), output, before)
+    assert source.read_bytes() == before
+    assert output.is_symlink()
+    assert 'symbolic link' in ' '.join(result['errors'].values())
+    assert set(tmp_path.iterdir()) == {source, output}
+
+
+def test_direct_service_output_cannot_replace_its_source(
+    tmp_path: Path,
+) -> None:
+    """The source-owned entrypoint rejects identical input and output paths."""
+    source = write_cotahist_txt(
+        tmp_path, year=2024, records=[build_cotahist_record()]
+    )
+    before = source.read_bytes()
+    service = extraction_service.ExtractionServiceB3(
+        zip_reader.ZipFileReaderB3(),
+        cotahist_parser.CotahistParserB3(),
+        processing.ProcessingModeEnumB3.FAST,
+    )
+
+    result = asyncio.run(
+        service.extract_from_zip_files(
+            zip_files={str(source)},
+            target_tpmerc_codes={'010'},
+            output_path=source,
+        )
+    )
+
+    assert result['success_count'] == result['total_records'] == 0
+    assert result['error_count'] == 1
+    assert result['output_file'] == ''
+    assert result['integrity']['status'] == 'failed'
+    assert source.read_bytes() == before
+    assert 'cannot replace a COTAHIST source' in ' '.join(
+        result['errors'].values()
+    )
+    assert set(tmp_path.iterdir()) == {source}
 
 
 @pytest.mark.parametrize('mutation', ['append', 'remove'])

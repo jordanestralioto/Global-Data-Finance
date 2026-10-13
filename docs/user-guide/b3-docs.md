@@ -450,7 +450,7 @@ ______________________________________________________________________
 
 ### Nomenclatura
 
-Os arquivos oficiais da B3 seguem o padrão `COTAHIST_A{YYYY}.ZIP` (ex: `COTAHIST_A2023.ZIP`), onde `{YYYY}` é o ano com 4 dígitos. O extrator também aceita arquivos de texto descompactados no formato `COTAHIST_A{YYYY}.TXT`. Se ZIP e TXT do mesmo ano coexistirem, somente o ZIP será selecionado, de forma determinística.
+Os arquivos oficiais da B3 seguem o padrão `COTAHIST_A{YYYY}.ZIP` (ex: `COTAHIST_A2023.ZIP`), onde `{YYYY}` é o ano com 4 dígitos. O extrator também aceita arquivos de texto descompactados no formato `COTAHIST_A{YYYY}.TXT`. Se ZIP e TXT do mesmo ano coexistirem, ambos são validados. O ZIP tem precedência somente quando os conteúdos descompactados são idênticos; conteúdos divergentes fazem a extração retornar `success=False`, sem publicar saída.
 
 ### Estrutura Interna
 

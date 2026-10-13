@@ -93,7 +93,7 @@ class CvmTransactionFileOperations(FileOperations):
 
     def copy2(self, source: Path, destination: Path) -> None:
         """Copy rollback bytes through stable paths when linking fails."""
-        shutil.copy2(self.bound_path(source), self.bound_path(destination))
+        super().copy2(self.bound_path(source), self.bound_path(destination))
 
     def replace(self, source: Path, destination: Path) -> None:
         """Publish or roll back artifacts relative to both owned parents."""
