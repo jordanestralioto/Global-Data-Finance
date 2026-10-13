@@ -11,6 +11,16 @@ from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
     InvalidLastYear,
 )
 
+_DOCUMENT_FIRST_YEARS = {
+    'CGVN': 2018,
+    'DFP': 2010,
+    'FCA': 2010,
+    'FRE': 2010,
+    'IPE': 2003,
+    'ITR': 2011,
+    'VLMO': 2018,
+}
+
 
 @pytest.mark.unit
 class TestDictZipsToDownload:
@@ -111,9 +121,10 @@ class TestDictZipsToDownload:
 
         assert len(result) == 7
         assert len(set_docs) == 7
-        expected_years = date.today().year - 2010 + 1
-        for urls_list in result.values():
-            assert len(urls_list) == expected_years
+        for document, first_year in _DOCUMENT_FIRST_YEARS.items():
+            expected_years = date.today().year - first_year + 1
+            assert len(result[document]) == expected_years
+            assert result[document][0].endswith(f'_{first_year}.zip')
 
         for urls_list in result.values():
             for url in urls_list:
@@ -180,9 +191,9 @@ class TestDictZipsToDownload:
 
         assert len(result) == 7
         assert len(set_docs) == 7
-        expected_count = 2020 - 2010 + 1
-        for urls_list in result.values():
-            assert len(urls_list) == expected_count
+        for document, first_year in _DOCUMENT_FIRST_YEARS.items():
+            expected_count = 2020 - first_year + 1
+            assert len(result[document]) == expected_count
 
     def test_get_dict_zips_to_download_with_lowercase_doc_name(
         self, dict_zips
@@ -226,7 +237,7 @@ class TestDictZipsToDownload:
         self, dict_zips
     ):
         with pytest.raises(InvalidFirstYear):
-            dict_zips.get_dict_zips_to_download(['DFP'], 2009, 2020)
+            dict_zips.get_dict_zips_to_download(['DFP'], 2002, 2020)
 
     def test_get_dict_zips_to_download_with_invalid_last_year_raises_error(
         self, dict_zips
@@ -473,3 +484,18 @@ class TestDictZipsToDownload:
 
         result1['DFP'].append('test')
         assert len(result2['DFP']) == 1
+
+    def test_mixed_documents_do_not_generate_unpublished_years(
+        self, dict_zips
+    ):
+        result, documents = dict_zips.get_dict_zips_to_download(
+            ['DFP', 'IPE', 'CGVN'], 2003, 2018
+        )
+
+        assert documents == {'DFP', 'IPE', 'CGVN'}
+        assert result['DFP'][0].endswith('_2010.zip')
+        assert result['IPE'][0].endswith('_2003.zip')
+        assert result['CGVN'] == [
+            'https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/CGVN/DADOS/'
+            'cgvn_cia_aberta_2018.zip'
+        ]

@@ -36,16 +36,7 @@ def test_synthetic_cvm_benchmark_emits_a_fresh_child_median(
     tmp_path: Path,
 ) -> None:
     """A small deterministic CVM corpus produces a logically valid median."""
-    source_path = tmp_path / 'cvm.zip'
-    benchmark_ingestion.write_cvm_zip(source_path, 3)
-    source = benchmark_ingestion.ScenarioInput(
-        scenario='cvm',
-        path=source_path,
-        row_count=3,
-        input_sha256=benchmark_ingestion.sha256_file(source_path),
-        expected_first='0',
-        expected_last='2',
-    )
+    source = benchmark_corpus.prepare_input('cvm', tmp_path, 3, None)
 
     records = benchmark_ingestion.run_parent_scenario(
         source, repeats=1, root=tmp_path, git_sha='test-sha'
@@ -74,16 +65,7 @@ def test_synthetic_cvm_text_benchmark_emits_a_fresh_child_median(
     tmp_path: Path,
 ) -> None:
     """Wide-text CVM corpus runs safely end-to-end and validates."""
-    source_path = tmp_path / 'cvm_text.zip'
-    benchmark_ingestion.write_cvm_zip(source_path, 5, long_text=True)
-    source = benchmark_ingestion.ScenarioInput(
-        scenario='cvm_text',
-        path=source_path,
-        row_count=5,
-        input_sha256=benchmark_ingestion.sha256_file(source_path),
-        expected_first='0',
-        expected_last='4',
-    )
+    source = benchmark_corpus.prepare_input('cvm_text', tmp_path, 5, None)
 
     records = benchmark_ingestion.run_parent_scenario(
         source, repeats=1, root=tmp_path, git_sha='test-sha'

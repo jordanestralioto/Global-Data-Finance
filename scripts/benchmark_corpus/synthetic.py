@@ -114,13 +114,13 @@ def write_b3_txt(
 
 
 def expected_cvm_digest(rows: int, *, long_text: bool = False) -> str:
-    """Return the typed digest expected from one generated CVM corpus."""
+    """Return the exact-text digest expected from one generated CVM corpus."""
     text_width = 8_000 if long_text else 250
     payload = ('GlobalDataFinance-' * ((text_width // 18) + 1))[:text_width]
     return logical_digest(
         {
-            'identificador': index,
-            'valor': 1.25 if index == rows - 1 else float(index),
+            'identificador': str(index),
+            'valor': '1.25' if index == rows - 1 else str(index),
             'descricao': f'{payload}{index:08d}',
         }
         for index in range(rows)

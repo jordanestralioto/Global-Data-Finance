@@ -32,7 +32,7 @@ class TestAsyncDownloadAdapterCVMFileValidation:
 
         assert result is True
 
-    def test_scenario_success_file_size_within_tolerance(
+    def test_scenario_error_even_small_file_size_mismatch(
         self, adapter, tmp_path
     ):
         test_file = tmp_path / 'test.zip'
@@ -46,7 +46,7 @@ class TestAsyncDownloadAdapterCVMFileValidation:
             str(test_file), expected_size
         )
 
-        assert result is True
+        assert result is False
 
     def test_scenario_error_file_size_outside_tolerance(
         self, adapter, tmp_path

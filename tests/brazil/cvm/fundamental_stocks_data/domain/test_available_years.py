@@ -97,7 +97,7 @@ class TestAvailableYears:
         self, available_years
     ):
         with pytest.raises(InvalidFirstYear):
-            available_years.return_range_years(2009, 2020)
+            available_years.return_range_years(2002, 2020)
 
     def test_return_range_years_with_initial_year_above_current_raises_error(
         self, available_years
@@ -173,13 +173,13 @@ class TestAvailableYears:
         years_range = available_years.return_range_years()
         assert list(years_range)[-1] == 2023
 
-    def test_return_range_years_with_year_2009_raises_invalid_first_year(
+    def test_return_range_years_with_year_2002_raises_invalid_first_year(
         self, available_years
     ):
         with pytest.raises(InvalidFirstYear) as exc_info:
-            available_years.return_range_years(2009, 2020)
+            available_years.return_range_years(2002, 2020)
 
-        assert '2010' in str(exc_info.value)
+        assert '2003' in str(exc_info.value)
 
     def test_return_range_years_with_reversed_years_raises_invalid_last_year(
         self, available_years

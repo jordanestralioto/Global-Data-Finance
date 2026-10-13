@@ -10,7 +10,10 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import transaction
+from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
+    source_inventory,
+    transaction,
+)
 from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
     ParquetExtractorAdapterCVM,
 )
@@ -263,7 +266,7 @@ def test_reserved_unicode_member_is_rejected_before_crc_or_publication(
         crc_called = True
         raise AssertionError('CRC validation must follow name validation')
 
-    def fail_derive(_self: object, _member: str) -> str:
+    def fail_derive(_member: str) -> str:
         nonlocal derive_called
         derive_called = True
         raise AssertionError('Output derivation must follow name validation')
@@ -280,8 +283,8 @@ def test_reserved_unicode_member_is_rejected_before_crc_or_publication(
 
     monkeypatch.setattr(transaction, 'validate_zip_crc_with_limits', fail_crc)
     monkeypatch.setattr(
-        transaction.CvmFailureAtomicBatchCommit,
-        '_parquet_basename',
+        source_inventory,
+        'parquet_basename',
         fail_derive,
     )
     monkeypatch.setattr(

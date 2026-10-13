@@ -8,10 +8,13 @@ import sys
 from pathlib import Path
 from typing import Any, cast
 
+import httpx
+
 if __package__ in {None, ''}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from globaldatafinance.macro_exceptions import SecurityError
+from scripts.cvm_catalog import verify_catalog
 from scripts.real_validation_matrix import Source, build_cases, manifest_for
 from scripts.real_validation_report import (
     REPORT_SCHEMA_VERSION,
@@ -82,12 +85,25 @@ def main(argv: list[str] | None = None) -> int:
                     timeout=timeout,
                 ),
             )
+        if args.verify_cvm_catalog:
+            catalog = verify_catalog(cases, timeout)
+            write_json(report_path / 'cvm-catalog.json', catalog)
+            if catalog['status'] != 'passed':
+                _emit_error(
+                    'incomplete_catalog',
+                    'Published CVM archives are outside the selected '
+                    'matrix; see cvm-catalog.json',
+                )
+                return 1
         if args.progress:
             emit_progress(
                 f'Prepared {len(cases)} case(s); report={report_path}'
             )
             return run_campaign(report_path, cases, timeout, progress=True)
         return run_campaign(report_path, cases, timeout)
+    except httpx.HTTPError as error:
+        _emit_error('external_failure', str(error))
+        return 2
     except (OSError, ReportFormatError, SecurityError, ValueError) as error:
         _emit_error('invalid_campaign', str(error))
         return 3
@@ -114,6 +130,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument('--initial-year', type=int)
     parser.add_argument('--last-year', type=int)
     parser.add_argument('--document', help='CVM document code or all')
+    parser.add_argument(
+        '--verify-cvm-catalog',
+        action='store_true',
+        help='require all published years for the selected CVM documents',
+    )
     parser.add_argument(
         '--cotahist-mode',
         choices=('fast', 'parity', 'all'),

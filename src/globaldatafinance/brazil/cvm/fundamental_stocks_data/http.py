@@ -8,27 +8,27 @@ from pathlib import Path
 
 import httpx
 
-from ....core import (
-    RetryStrategy,
-    SimpleProgressBar,
-    get_logger,
-    remove_file,
-)
+from ....core import RetryStrategy, SimpleProgressBar, get_logger
 from ....core.archive_safety import ArchiveSafetyLimits
 from ....core.config import PathSafetySettings
 from ....macro_exceptions import DownloadTimeoutError, NetworkError
 from ....macro_infra import RequestsAdapter
 from .core import DownloadResultCVM
-from .download_extraction import (
-    ParquetExtractor,
-    resolve_parquet_extractor,
+from .destination_io import (
+    capture_download_destination,
+    remove_owned_staging_file,
 )
+from .download_extraction import ParquetExtractor, resolve_parquet_extractor
 from .download_finalization import (
     finalize_downloaded_file,
     run_download_finalizer,
 )
 from .download_paths import build_download_target_path
-from .download_validation import validate_downloaded_file
+from .download_validation import (
+    get_content_length,
+    validate_download_options,
+    validate_downloaded_file,
+)
 
 logger = get_logger(__name__)
 
@@ -58,6 +58,7 @@ class AsyncDownloadAdapterCVM:
         allowed_unc_roots: Sequence[str] | None = None,
     ):
         """Initialize the adapter and preserve httpx defaults."""
+        validate_download_options(max_concurrent, chunk_size, max_retries)
         self.file_extractor_repository = file_extractor_repository
         self.max_concurrent = max_concurrent
         self.chunk_size = chunk_size
@@ -106,6 +107,8 @@ class AsyncDownloadAdapterCVM:
         """Asynchronously download documents in the current event loop."""
         if automatic_extractor is None:
             automatic_extractor = self.automatic_extractor
+        if not isinstance(automatic_extractor, bool):
+            raise TypeError('automatic_extractor must be a boolean')
 
         result, total_files = DownloadResultCVM(), len(tasks)
 
@@ -229,6 +232,9 @@ class AsyncDownloadAdapterCVM:
         executor: Executor | None = None,
         finalization_lock: asyncio.Lock | None = None,
     ) -> None:
+        destination_snapshot = capture_download_destination(
+            Path(filepath).parent
+        )
         success, staged_path_or_error = await self._download_with_retry(
             url, filepath, doc_name, year
         )
@@ -240,6 +246,13 @@ class AsyncDownloadAdapterCVM:
                 staged_path_or_error or 'Unknown download error',
             )
             return
+        if destination_snapshot.identity is None:
+            destination_snapshot = capture_download_destination(
+                destination_snapshot.path
+            )
+        cleanup_staging = partial(
+            remove_owned_staging_file, destination=destination_snapshot
+        )
         staging_path = Path(staged_path_or_error or filepath)
         owns_staging = (
             staged_path_or_error is not None and staging_path != Path(filepath)
@@ -279,12 +292,15 @@ class AsyncDownloadAdapterCVM:
                     automatic_extractor=automatic_extractor,
                     file_extractor_repository=file_extractor_repository,
                     validate_file=self._validate_downloaded_file,
-                    cleanup_file=partial(remove_file, log_on_error=True),
+                    cleanup_file=cleanup_staging,
+                    allowed_unc_roots=self.allowed_unc_roots,
+                    archive_limits=self.archive_limits,
+                    expected_destination=destination_snapshot,
                 ),
             )
         except BaseException:
             if owns_staging:
-                remove_file(str(staging_path), log_on_error=True)
+                cleanup_staging(str(staging_path))
             raise
         finally:
             if owns_executor and worker_executor is not None:
@@ -373,24 +389,7 @@ class AsyncDownloadAdapterCVM:
         )
 
     async def _get_content_length(self, url: str) -> int | None:
-        try:
-            response = await self.requests_adapter.async_head(url)
-            content_length = response.headers.get('content-length')
-            if content_length:
-                size_bytes = int(content_length)
-                logger.debug(
-                    'Content-Length for %s: %.2f MB',
-                    url,
-                    size_bytes / 1024 / 1024,
-                )
-                return size_bytes
-            logger.debug('No Content-Length header for %s', url)
-            return None
-        except Exception:
-            logger.warning(
-                'Failed to get Content-Length for %s', url, exc_info=True
-            )
-            return None
+        return await get_content_length(self.requests_adapter, url)
 
     def _validate_downloaded_file(
         self, filepath: str, expected_size: int | None = None

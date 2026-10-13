@@ -57,11 +57,12 @@ Baixa demonstrativos financeiros regulatórios da CVM para um diretório local.
 - `last_year` (`int`, opcional): Ano final da consulta (inclusivo). Se `None`, usa o ano corrente do sistema.
 - `automatic_extractor` (`bool`): Se `True`, extrai automaticamente os arquivos ZIP baixados para o formato Apache Parquet. Padrão: `False`.
 
-Quando ativado, o extrator CVM usa PyArrow e o dialeto CSV `QUOTE_NONE`.
-Linhas curtas recebem apenas nulos finais, linhas excedentes falham, e um CSV
-somente com cabeçalho gera Parquet vazio com campos Arrow `null`. O lote de
-múltiplos Parquets é publicado de forma recuperável; não há atomicidade de
-visibilidade instantânea para leitores concorrentes.
+Quando ativado, o extrator CVM usa PyArrow e `QUOTE_NONE`, com colunas
+Arrow `string` e preservação textual exata, inclusive campos vazios como `""`.
+O ZIP original é retido e todos os registros são conferidos antes da publicação.
+CSV só com cabeçalho mantém colunas `string` e zero linhas. Consulte a
+[migração CVM exata](../user-guide/migration-cvm-exact-text.md) para o contrato
+persistido e a adaptação do consumidor.
 
 **Retorno**:
 

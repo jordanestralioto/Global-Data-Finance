@@ -31,11 +31,11 @@ CVM publishes official disclosures under the following classifications:
 | **FCA**       | Formulário Cadastral                | Corporate Cadastral Registration Forms         | 2010            |
 | **CGVN**      | Código de Governança                | Corporate Governance Practices Reports         | 2018            |
 | **VLMO**      | Valores Mobiliários                 | Securities Trading and Holding Declarations    | 2018            |
-| **IPE**       | Informações Periódicas e Eventuais  | Periodic and Eventual Filings (Material Facts) | 2010            |
+| **IPE**       | Informações Periódicas e Eventuais  | Periodic and Eventual Filings (Material Facts) | 2003            |
 
 !!! info "Historical Data Depth"
 
-    The major structural financial forms (`DFP`, `FRE`, `FCA`, `IPE`) span from fiscal year 2010 onward, while `ITR` disclosures start in 2011 and `CGVN`/`VLMO` commence in 2018.
+    IPE starts in 2003; DFP/FRE/FCA start in 2010, ITR in 2011, and CGVN/VLMO in 2018.
 
 ______________________________________________________________________
 
@@ -218,6 +218,7 @@ A structural `NamedTuple` container describing historical floor boundaries:
 | `general_min_year`   | `int` | Minimum historical starting year for general filings (2010)  |
 | `itr_min_year`       | `int` | Minimum historical year for ITR quarterly disclosures (2011) |
 | `cgvn_vlmo_min_year` | `int` | Minimum historical year for governance disclosures (2018)    |
+| `ipe_min_year` | `int` | IPE: 2003 (property) |
 | `current_year`       | `int` | Real-time operational system year                            |
 
 #### Example Execution
@@ -386,24 +387,22 @@ destination_path/
 
 ### Extraction integrity and recovery
 
-Every ZIP is validated before consumption. The PyArrow pipeline makes two
-passes: it validates structure and a global schema, then writes typed row
-groups. Encoding comes from full-member validation (UTF-8, UTF-8 BOM, CP1252,
-or Latin-1); invalid structure never silently drops rows.
+Every ZIP is validated before consumption. All columns are Arrow `string`
+under `exact-text-v1`, preserving decimals, leading zeroes, case, literals
+such as `N/A`, and empty fields as `""`. Header-only CSVs produce zero rows
+with string columns. `QUOTE_NONE` retains literal quotes; short rows receive
+trailing empty fields and excess fields abort.
 
-The dialect remains `QUOTE_NONE`: quotes are literal and multiline is disabled.
-Short rows receive trailing nulls only, excess rows abort, and a header-only CSV
-becomes an empty Parquet with ordered Arrow `null` fields and no `b'pandas'`
-metadata.
+The SHA-256 of every record is checked against reopened Parquet content before
+publication. Checksums, `fsync`, and association with the consumed ZIP prevent
+confirmation of incomplete or differing data. The original ZIP remains in the
+destination, including non-CSV attachments. Parquets use recoverable batch
+publication; concurrent readers do not get instantaneous combined visibility.
 
-One ZIP can create several Parquets. Staging, a manifest, backups, and a lock
-provide a **failure-atomic batch commit**: artifacts are validated before
-deterministic replacement, and the next operation recovers an interruption.
-There is no instant atomic visibility for concurrent readers or concurrent
-writes to one destination; a live-process or other-host lock is rejected. An
-existing raw ZIP is replaced only after successful transfer and validation.
-
-See the [major migration note](migration-pyarrow-integrity.en.md) for the consumer compatibility table and required actions.
+Concurrent writers to one destination fail before ZIP promotion. A
+`.cvm-write-lock` left by abrupt termination requires explicit inspection
+before recovery. See the [CVM exact text migration](migration-cvm-exact-text.en.md)
+for limits, encoding, and consumer migration.
 
 ## Best Practices
 
@@ -414,7 +413,7 @@ See the [major migration note](migration-pyarrow-integrity.en.md) for the consum
 cvm.download(
     destination_path="/data",
     list_docs=["DFP"],
-    initial_year=2010,  # 25+ years requested at once!
+    initial_year=2003,  # Includes the full IPE history
     last_year=2023
 )
 
@@ -472,6 +471,8 @@ The CVM implementation utilizes `AsyncDownloadAdapterCVM` by default, delivering
 
 **Baseline v2 — full pipeline: download + CSV→Parquet extraction
 (2010–2026, revision `703d9ab`):**
+
+This historical measurement uses the contract preceding `exact-text-v1`.
 
 | Docs                | Period    | ZIPs | Parquets | Extracted Rows |    Output |     Time | Peak RSS | Errors |
 | ------------------- | --------- | ---: | -------: | -------------: | --------: | -------: | -------: | -----: |

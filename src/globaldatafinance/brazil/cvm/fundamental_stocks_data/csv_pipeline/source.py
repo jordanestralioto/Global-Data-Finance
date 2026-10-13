@@ -7,7 +7,7 @@ import hashlib
 import io
 import zipfile
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 from typing import BinaryIO, TextIO
 
@@ -39,17 +39,29 @@ class ReopenableCsvSource:
         member_name: str,
         *,
         limits: ArchiveSafetyLimits | None = None,
+        archive: zipfile.ZipFile | None = None,
     ) -> None:
         """Store the source ZIP path and its already-selected CSV member."""
         self.source_path = Path(source_path)
         self.member_name = member_name
         self.limits = limits
+        self.archive = archive
+
+    @contextmanager
+    def open_archive(self) -> Iterator[zipfile.ZipFile]:
+        """Keep every pipeline pass on the same opened source descriptor."""
+        with (
+            nullcontext(self.archive)
+            if self.archive is not None
+            else zipfile.ZipFile(self.source_path, 'r')
+        ) as archive:
+            yield archive
 
     @contextmanager
     def open_binary(self) -> Iterator[BinaryIO]:
         """Yield a new bounded member stream without retaining ZIP state."""
         try:
-            with zipfile.ZipFile(self.source_path, 'r') as archive:
+            with self.open_archive() as archive:
                 validate_zip_archive(
                     self.source_path, archive, limits=self.limits
                 )

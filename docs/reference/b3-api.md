@@ -60,6 +60,16 @@ inválidos não recebem fallback para zero ou nulo.
 | `processing_mode`  | `str`               | Não         | `"fast"`               | Modo de processamento: `"fast"` (paralelo) ou `"slow"` (baixo consumo de RAM) |
 | `verbose`          | `bool`              | Não         | `True`                 | Se `True`, imprime o resumo formatado no console                               |
 
+As barras `Validating B3 files` e `Processing B3 files` aparecem em `stdout`
+nos modos `fast` e `slow`, independentemente de `verbose`. Elas contam fontes
+anuais encontradas: a primeira avança após a validação de uma fonte; a segunda
+avança quando uma tentativa de processamento termina, inclusive com erro.
+O resumo é emitido somente quando `verbose=True`. A consolidação, a leitura de
+verificação e a publicação do Parquet continuam após a barra de processamento;
+o resultado retornado confirma o sucesso completo. Falhas e cancelamento
+encerram a linha da barra com o contador observado. Seleções sem arquivos não
+exibem barras vazias.
+
 **Retorno (`ExtractionResultB3`)**:
 
 Objeto `TypedDict` contendo o resultado da extração:

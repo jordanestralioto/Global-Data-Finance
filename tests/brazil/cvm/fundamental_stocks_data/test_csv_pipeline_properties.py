@@ -38,7 +38,7 @@ _TEXT_ALPHABET = (
 def test_arrow_pipeline_preserves_generated_logical_rows(
     rows: list[tuple[int, str]],
 ) -> None:
-    """Global inference writes generated values in source order."""
+    """Exact text writes generated values in source order."""
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
         archive = root / 'source.zip'
@@ -58,5 +58,5 @@ def test_arrow_pipeline_preserves_generated_logical_rows(
 
         assert result.rows == len(rows)
         assert pq.read_table(output).to_pylist() == [
-            {'id': identifier, 'text': text} for identifier, text in rows
+            {'id': str(identifier), 'text': text} for identifier, text in rows
         ]

@@ -148,7 +148,7 @@ uv run --locked --no-sync python scripts/real_validation.py \
 
 `all` cria casos COTAHIST para cada ano do catálogo local dentro do intervalo
 solicitado (ou de todos os anos disponíveis quando o intervalo é omitido) e
-as combinações válidas das sete janelas documentais CVM, atualmente 102. Anos
+as combinações válidas das sete janelas documentais CVM, 109 combinações em 2026, incluindo IPE desde 2003. Anos
 ausentes no intervalo pedido fazem a campanha falhar antes do processamento.
 Com `--cotahist-mode all`, cada ano recebe uma prova `fast` e uma paridade
 integral `fast`/`slow`; a campanha também inclui uma paridade integral
@@ -160,6 +160,15 @@ independente; a preparação do manifesto não repete esse parsing completo.
 Um container inválido impede a criação da campanha; campos inválidos nas
 cotações produzem um caso `failed`, sem publicação pela API.
 COTAHIST nunca é baixado pelo executor.
+Na CVM, `--verify-cvm-catalog` grava `cvm-catalog.json` com todos os anos
+publicados e omissões da seleção. Se um ano publicado dos documentos escolhidos
+ficar fora da matriz, interrompe a campanha com código 1; omita essa opção em
+campanhas intencionalmente parciais. Cada CSV é reconciliado campo a campo por
+um parser independente, incluindo cabeçalho, ordem, vazios e contagem. O
+resultado registra hashes de todos os membros ZIP, anexos e campos conferidos.
+Para toda a história CVM, use `--initial-year 2003 --document all`; os ZIPs
+retidos pela fachada no workspace isolado são removidos pelo executor somente
+após persistir a evidência, junto com os demais artefatos da campanha.
 A matriz CVM acessa somente os URLs oficiais explicitamente definidos pelo
 código e classifica HTTP 404/410 como
 `not_published`, indisponibilidade de rede como `external_failure` e conteúdo
@@ -380,10 +389,13 @@ estágio `pre-push`, executa os testes determinísticos do executor e exige
 uv run --locked --no-sync pytest -q \
   tests/tooling/test_cotahist_oracle.py \
   tests/tooling/test_file_digests.py \
+  tests/tooling/test_cvm_archive_oracle.py \
+  tests/tooling/test_cvm_catalog.py \
   tests/tooling/test_real_validation.py \
   tests/tooling/test_real_validation_b3.py \
   tests/tooling/test_real_validation_cases.py \
   tests/tooling/test_real_validation_cvm.py \
+  tests/tooling/test_real_validation_cvm_integration.py \
   tests/tooling/test_real_validation_matrix.py \
   tests/tooling/test_real_validation_process.py \
   tests/tooling/test_real_validation_report.py \
@@ -393,6 +405,8 @@ uv run --locked --no-sync pytest -q \
   tests/tooling/test_real_validation_utils.py \
   --cov=scripts.cotahist_oracle \
   --cov=scripts.file_digests \
+  --cov=scripts.cvm_archive_oracle \
+  --cov=scripts.cvm_catalog \
   --cov=scripts.real_validation \
   --cov=scripts.real_validation_b3 \
   --cov=scripts.real_validation_cases \

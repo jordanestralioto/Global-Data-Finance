@@ -49,7 +49,7 @@ class TransactionalPublication:
             )
         path = (self.staging_dir / relative).resolve()
         self._publisher._require_descendant(path, self.staging_dir)
-        path.parent.mkdir(parents=True, exist_ok=True)
+        self._publisher.operations.makedirs(path.parent)
         return path
 
     def add_artifact(

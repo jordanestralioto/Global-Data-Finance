@@ -8,6 +8,7 @@ import re
 import shlex
 import zipfile
 from dataclasses import replace
+from datetime import date
 from pathlib import Path
 from typing import Any, cast
 
@@ -216,11 +217,21 @@ def test_cvm_matrix_covers_all_document_windows(tmp_path: Path) -> None:
         document: sum(case.document == document for case in cases)
         for document in CVM_DOCUMENT_WINDOWS
     }
-    assert len(cases) == 102
-    assert counts == {
-        document: last_year - first_year + 1
-        for document, (first_year, last_year) in CVM_DOCUMENT_WINDOWS.items()
+    expected_start_years = {
+        'CGVN': 2018,
+        'DFP': 2010,
+        'FCA': 2010,
+        'FRE': 2010,
+        'IPE': 2003,
+        'ITR': 2011,
+        'VLMO': 2018,
     }
+    expected_counts = {
+        document: date.today().year - first_year + 1
+        for document, first_year in expected_start_years.items()
+    }
+    assert len(cases) == sum(expected_counts.values())
+    assert counts == expected_counts
     assert all(case.input_path == case.url for case in cases)
 
 
@@ -254,7 +265,13 @@ def test_real_validation_coverage_contract_matches_executor_surface() -> None:
     )
 
     assert script_modules
-    assert test_modules == sorted([*script_modules, 'real_validation_process'])
+    assert test_modules == sorted(
+        [
+            *script_modules,
+            'real_validation_process',
+            'real_validation_cvm_integration',
+        ]
+    )
 
     expected_coverage_modules = [
         f'scripts.{module}' for module in script_modules

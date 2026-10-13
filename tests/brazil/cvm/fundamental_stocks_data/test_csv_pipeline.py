@@ -40,10 +40,10 @@ def _convert(
     return output, result
 
 
-def test_global_inference_handles_a_decimal_after_the_first_row_group(
+def test_exact_text_preserves_decimals_after_the_first_row_group(
     tmp_path: Path,
 ) -> None:
-    """Late decimals promote one complete column rather than one chunk only."""
+    """Late decimals retain exact text across row-group boundaries."""
     data_rows = [f'{index};{index}' for index in range(50_000)]
     data_rows.append('50000;1.5')
     output, result = _convert(
@@ -55,17 +55,17 @@ def test_global_inference_handles_a_decimal_after_the_first_row_group(
     assert result.rows == 50_001
     assert result.row_groups == (50_000, 1)
     assert parquet.schema_arrow == pa.schema(
-        [pa.field('id', pa.int64()), pa.field('value', pa.float64())]
+        [pa.field('id', pa.string()), pa.field('value', pa.string())]
     )
     assert parquet.read_row_group(1).to_pylist() == [
-        {'id': 50_000, 'value': 1.5}
+        {'id': '50000', 'value': '1.5'}
     ]
 
 
-def test_terminal_string_inference_preserves_late_values_and_short_rows(
+def test_exact_text_preserves_mixed_tokens_and_short_rows(
     tmp_path: Path,
 ) -> None:
-    """Late string and overflow transitions preserve every logical value."""
+    """Mixed scalar spellings and short rows preserve every field."""
     output, result = _convert(
         tmp_path,
         b'late_text;late_unsigned;late_signed;short\n'
@@ -86,7 +86,7 @@ def test_terminal_string_inference_preserves_late_values_and_short_rows(
             pa.field('late_text', pa.string()),
             pa.field('late_unsigned', pa.string()),
             pa.field('late_signed', pa.string()),
-            pa.field('short', pa.int64()),
+            pa.field('short', pa.string()),
         ]
     )
     assert pq.read_table(output).to_pylist() == [
@@ -94,54 +94,54 @@ def test_terminal_string_inference_preserves_late_values_and_short_rows(
             'late_text': '1',
             'late_unsigned': '1',
             'late_signed': '-9223372036854775808',
-            'short': 10,
+            'short': '10',
         },
         {
             'late_text': '1.5',
             'late_unsigned': '18446744073709551616',
             'late_signed': '-9223372036854775809',
-            'short': 11,
+            'short': '11',
         },
         {
             'late_text': 'true',
             'late_unsigned': 'true',
             'late_signed': '-1',
-            'short': 12,
+            'short': '12',
         },
         {
-            'late_text': None,
-            'late_unsigned': None,
+            'late_text': '',
+            'late_unsigned': '',
             'late_signed': ' ',
-            'short': 13,
+            'short': '13',
         },
         {
             'late_text': 'word',
             'late_unsigned': 'word',
             'late_signed': 'word',
-            'short': 14,
+            'short': '14',
         },
         {
             'late_text': '18446744073709551616',
             'late_unsigned': '1.5',
             'late_signed': 'false',
-            'short': 15,
+            'short': '15',
         },
         {
             'late_text': '-9223372036854775809',
-            'late_unsigned': None,
-            'late_signed': None,
-            'short': 16,
+            'late_unsigned': '',
+            'late_signed': '',
+            'short': '16',
         },
         {
             'late_text': '17',
             'late_unsigned': '18',
-            'late_signed': None,
-            'short': None,
+            'late_signed': '',
+            'short': '',
         },
     ]
 
 
-def test_header_only_csv_writes_empty_null_schema_without_pandas_metadata(
+def test_header_only_csv_writes_empty_text_schema_without_pandas_metadata(
     tmp_path: Path,
 ) -> None:
     """Header-only regulatory files remain valid, explicit empty datasets."""
@@ -153,9 +153,9 @@ def test_header_only_csv_writes_empty_null_schema_without_pandas_metadata(
     assert parquet.metadata.num_rows == 0
     assert parquet.metadata.num_row_groups == 0
     assert parquet.schema_arrow == pa.schema(
-        [pa.field('first', pa.null()), pa.field('second', pa.null())]
+        [pa.field('first', pa.string()), pa.field('second', pa.string())]
     )
-    assert not parquet.schema_arrow.metadata
+    assert parquet.schema_arrow.metadata[b'cvm.contract'] == b'exact-text-v1'
 
 
 def test_cp1252_is_spooled_losslessly_and_quotes_remain_literal(
@@ -181,39 +181,39 @@ def test_latin1_undefined_cp1252_bytes_are_preserved_losslessly(
     assert pq.read_table(output).to_pylist() == [{'text': '\x81'}]
 
 
-def test_boolean_inference_accepts_all_case_variants_globally(
+def test_boolean_spelling_preserves_all_case_variants(
     tmp_path: Path,
 ) -> None:
-    """Mixed boolean casing is converted only after global classification."""
+    """Boolean-like text keeps its exact case without conversion."""
     output, _ = _convert(tmp_path, b'flag\nTrUe\nfAlSe\n')
 
     assert pq.read_table(output).to_pylist() == [
-        {'flag': True},
-        {'flag': False},
+        {'flag': 'TrUe'},
+        {'flag': 'fAlSe'},
     ]
 
 
 def test_short_and_blank_rows_are_padded_only_at_the_tail(
     tmp_path: Path,
 ) -> None:
-    """Missing final fields become nulls while empty physical rows survive."""
+    """Missing final fields become empty text and blank records survive."""
     output, result = _convert(tmp_path, b'first;second;third\n1;2\n\n')
 
     assert result.rows == 2
     assert pq.read_table(output).to_pylist() == [
-        {'first': 1.0, 'second': 2.0, 'third': None},
-        {'first': None, 'second': None, 'third': None},
+        {'first': '1', 'second': '2', 'third': ''},
+        {'first': '', 'second': '', 'third': ''},
     ]
 
 
-def test_one_column_blank_physical_row_is_preserved_as_a_null(
+def test_one_column_blank_physical_row_is_preserved_as_empty_text(
     tmp_path: Path,
 ) -> None:
-    """A blank one-column record remains representable in QUOTE_NONE CSV."""
+    """A blank one-column record remains exact empty text."""
     output, result = _convert(tmp_path, b'value\n\n')
 
     assert result.rows == 1
-    assert pq.read_table(output).to_pylist() == [{'value': None}]
+    assert pq.read_table(output).to_pylist() == [{'value': ''}]
 
 
 def test_excess_fields_fail_with_source_context_and_never_write_output(
@@ -238,7 +238,7 @@ def test_excess_fields_fail_with_source_context_and_never_write_output(
     assert not output.exists()
 
 
-def test_integer_boundaries_and_null_rules_choose_safe_explicit_types(
+def test_integer_boundaries_keep_exact_text_without_coercion(
     tmp_path: Path,
 ) -> None:
     """Large integers are never rounded into floating-point representation."""
@@ -249,8 +249,8 @@ def test_integer_boundaries_and_null_rules_choose_safe_explicit_types(
 
     assert pq.ParquetFile(output).schema_arrow == pa.schema(
         [
-            pa.field('signed', pa.int64()),
-            pa.field('unsigned', pa.uint64()),
+            pa.field('signed', pa.string()),
+            pa.field('unsigned', pa.string()),
             pa.field('too_large', pa.string()),
         ]
     )
@@ -259,21 +259,21 @@ def test_integer_boundaries_and_null_rules_choose_safe_explicit_types(
     )
 
 
-def test_nullable_signed_integer_boundaries_remain_int64(
+def test_signed_integer_boundaries_and_blank_records_remain_text(
     tmp_path: Path,
 ) -> None:
-    """Signed nullability must not promote lossless integers to doubles."""
+    """Integer limits and blank fields retain source representation."""
     output, _ = _convert(
         tmp_path,
         b'value\n9223372036854775807\n-9223372036854775808\n\n',
     )
 
     parquet = pq.ParquetFile(output)
-    assert parquet.schema_arrow == pa.schema([pa.field('value', pa.int64())])
+    assert parquet.schema_arrow == pa.schema([pa.field('value', pa.string())])
     assert pq.read_table(output).to_pylist() == [
-        {'value': 9223372036854775807},
-        {'value': -9223372036854775808},
-        {'value': None},
+        {'value': '9223372036854775807'},
+        {'value': '-9223372036854775808'},
+        {'value': ''},
     ]
 
 
@@ -313,24 +313,24 @@ def test_leading_plus_integer_like_value_is_preserved_as_string(
         {'ddd': '11'},
         {'ddd': '+31'},
         {'ddd': '21'},
-        {'ddd': None},
+        {'ddd': ''},
     ]
 
 
-def test_float_inference_supports_scientific_notation_and_signed_decimals(
+def test_signed_decimals_and_scientific_notation_remain_exact_text(
     tmp_path: Path,
 ) -> None:
-    """Signed decimals and scientific notation are inferred as float64."""
+    """Decimal precision, signs, and exponents retain their source text."""
     output, _ = _convert(
         tmp_path,
         b'value\n+1.5\n-2.5\n1e5\n-3.2e-2\n',
     )
 
     parquet = pq.ParquetFile(output)
-    assert parquet.schema_arrow == pa.schema([pa.field('value', pa.float64())])
+    assert parquet.schema_arrow == pa.schema([pa.field('value', pa.string())])
     assert pq.read_table(output).to_pylist() == [
-        {'value': 1.5},
-        {'value': -2.5},
-        {'value': 100000.0},
-        {'value': -0.032},
+        {'value': '+1.5'},
+        {'value': '-2.5'},
+        {'value': '1e5'},
+        {'value': '-3.2e-2'},
     ]

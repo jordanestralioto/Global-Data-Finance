@@ -57,11 +57,12 @@ Downloads regulatory CVM archives directly into a local filesystem directory.
 - `last_year` (`int`, optional): Ending fiscal year (inclusive). Defaults to the active system year.
 - `automatic_extractor` (`bool`): When set to `True`, deconstructs downloaded ZIP archives into columnar Apache Parquet files. Default: `False`.
 
-When enabled, the CVM extractor uses PyArrow and the `QUOTE_NONE` CSV dialect.
-Short rows receive trailing nulls only, excess rows fail, and a header-only CSV
-produces an empty Parquet with Arrow `null` fields. Its multi-Parquet batch is
-recoverably published; concurrent readers do not get instant visibility
-atomicity.
+When enabled, the CVM extractor uses PyArrow and `QUOTE_NONE`, with Arrow
+`string` columns and exact text preservation, including empty fields as `""`.
+The original ZIP is retained and every record is checked before publication.
+Header-only CSVs keep string columns and zero rows. See the
+[CVM exact text migration](../user-guide/migration-cvm-exact-text.en.md) for the
+persisted contract and consumer changes.
 
 **Returns**:
 

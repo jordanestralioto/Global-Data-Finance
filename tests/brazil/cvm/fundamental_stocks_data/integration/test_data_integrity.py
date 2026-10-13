@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import math
-
 import pyarrow.parquet as pq
 import pytest
 
@@ -50,7 +48,10 @@ class TestDataIntegrity:
         table = pq.read_table(tmp_path / 'data.parquet')
         assert table.num_rows == len(sample_rows)
         assert table.column_names == ['id', 'name', 'value', 'category']
-        assert table.to_pylist() == sample_rows
+        assert table.to_pylist() == [
+            {key: str(value) for key, value in row.items()}
+            for row in sample_rows
+        ]
 
     def test_no_data_loss_with_special_characters(self, tmp_path) -> None:
         rows = [
@@ -112,30 +113,19 @@ class TestDataIntegrity:
         result = pq.read_table(tmp_path / 'numeric.parquet').to_pylist()
         assert len(result) == len(rows) - 1
         assert [row['big_int'] for row in result] == [
-            9999999999999999,
-            1234567890123456,
-            -9876543210987654,
+            '9999999999999999',
+            '1234567890123456',
+            '-9876543210987654',
         ]
-        expected_float_values = [
-            1.234567890123456,
-            9.876543210987654,
-            3.141592653589793,
+        assert [row['float_precision'] for row in result] == [
+            '1.234567890123456',
+            '9.876543210987654',
+            '3.141592653589793',
         ]
-        assert all(
-            math.isclose(
-                float(row['float_precision']),
-                expected,
-                rel_tol=1e-15,
-                abs_tol=1e-15,
-            )
-            for row, expected in zip(
-                result, expected_float_values, strict=True
-            )
-        )
         assert [row['scientific'] for row in result] == [
-            1.23e15,
-            4.56e-10,
-            7.89e20,
+            '1.23e15',
+            '4.56e-10',
+            '7.89e20',
         ]
 
     def test_zero_byte_csv_aborts_the_batch_without_partial_outputs(
@@ -217,7 +207,9 @@ class TestDataIntegrity:
             source_path=str(csv_zip), destination_path=str(tmp_path)
         )
 
-        assert pq.read_table(tmp_path / 'data.parquet').to_pylist() == expected
+        assert pq.read_table(tmp_path / 'data.parquet').to_pylist() == [
+            {key: str(value) for key, value in row.items()} for row in expected
+        ]
 
     def test_handles_empty_values_correctly(self, tmp_path) -> None:
         zip_path = write_zip(
@@ -232,12 +224,12 @@ class TestDataIntegrity:
         table = pq.read_table(tmp_path / 'data.parquet')
         assert table.num_rows == 2
         assert table.to_pylist() == [
-            {'a': 1, 'b': None},
-            {'a': None, 'b': 2},
+            {'a': '1', 'b': ''},
+            {'a': '', 'b': '2'},
         ]
 
     def test_handles_large_numbers_precision(self, tmp_path) -> None:
-        large_num = 123456789.123456789
+        large_num = '123456789.123456789'
         zip_path = write_zip(
             tmp_path / 'precision.zip',
             {'data.csv': csv_bytes(['val', str(large_num)])},
@@ -248,7 +240,7 @@ class TestDataIntegrity:
         )
 
         value = pq.read_table(tmp_path / 'data.parquet').to_pylist()[0]['val']
-        assert math.isclose(float(value), large_num, abs_tol=1e-7)
+        assert value == large_num
 
     def test_handles_latin1_encoding_correctly(self, tmp_path) -> None:
         special_text = 'Mãe, Ações, Vovô'

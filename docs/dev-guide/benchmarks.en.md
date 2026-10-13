@@ -170,7 +170,7 @@ ______________________________________________________________________
 
 ## 3. CVM Baseline — Download + Extraction
 
-### 3.1. Baseline v2 — 17 Years (2010–2026, Revision `703d9ab`)
+### 3.1. Historical Baseline v2 — 17 Years (2010–2026, Revision `703d9ab`)
 
 Full-pipeline measurement of `FundamentalStocksDataCVM` with
 `automatic_extractor=True`: raw ZIP downloads from CVM, CSV extraction with
@@ -316,7 +316,13 @@ ______________________________________________________________________
 
 ## 6. CVM Optimizations — Encoding, Inference, and HTTP
 
-### 6.1. Encoding Scan and Terminal Inference
+### 6.1. Historical Encoding Scan and Terminal Inference
+
+The CVM measurements from 2026-09-23 predate the `exact-text-v1` contract and
+its complete content validation. They are not a baseline for the current
+implementation. The current runner verifies digests with every CVM field
+preserved as text; the numeric and long-text scenarios share the same input
+preparation in integration tests and the CLI.
 
 On **2026-09-23**, the `cvm` and `cvm_text` scenarios ran in three fresh
 processes per stage against the same deterministic corpora. Environment: Python
@@ -348,7 +354,8 @@ scenario. The logical digests were
 
 Full reports with input checksums, each repeat, and `git_sha` /
 `worktree_sha256` provenance are available as [baseline](benchmark-results/cvm-optimizations-20260923/cvm-opt-baseline-20260923.json), [scan](benchmark-results/cvm-optimizations-20260923/cvm-opt-scan-20260923.json), and [scan + inference](benchmark-results/cvm-optimizations-20260923/cvm-opt-inference-20260923.json) reports.
-Reproduce these scenarios with:
+Measure the same scenarios on the current version with the command below.
+Reproducing the historical stages requires their implementations and contracts.
 
 ```bash
 mkdir -p .benchmarks

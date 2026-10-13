@@ -48,7 +48,16 @@ def temporary_paths(root: Path) -> list[str]:
     """List known staging, recovery, and temporary artifacts below a root."""
     if not root.exists():
         return []
-    markers = ('temp', 'tmp', 'staging', 'recovery', 'preflight')
+    markers = (
+        'temp',
+        'tmp',
+        'staging',
+        'recovery',
+        'preflight',
+        '.cvm-write-lock',
+        '.globaldatafinance-transaction',
+        '.part',
+    )
     return sorted(
         path.relative_to(root).as_posix()
         for path in root.rglob('*')

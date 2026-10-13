@@ -1,43 +1,35 @@
-"""Example 01: Quickstart with CVM (DFP Financial Statements).
+"""Download CVM documents. Edit the SETTINGS block, then run this file."""
 
-This example demonstrates how to download and extract standardized financial
-statements (DFP) for Brazilian public companies directly into Parquet format.
-"""
-
-from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from examples.cli import parse_arguments, run_example
-    from examples.result_validation import require_cvm_download_success
+    from examples import support
 else:
-    from cli import parse_arguments, run_example
-    from result_validation import require_cvm_download_success
+    import support
 
 from globaldatafinance import FundamentalStocksDataCVM
 
+# SETTINGS: change the values here. The README explains each option.
+INITIAL_YEAR = 2010
+LAST_YEAR = 2026
+DESTINATION_PATH = './dados_cvm'
+DOCUMENTS: list[str] = []  # All types; use ['DFP'] for annual statements.
+AUTOMATIC_EXTRACTOR = True  # Create Parquet files and retain the source ZIPs.
 
-def main(argv: Sequence[str] | None = None) -> None:
+
+def main() -> None:
     """Run the CVM quickstart example."""
-    args = parse_arguments(
-        'Download CVM DFP financial statements and convert them to Parquet.',
-        source='cvm',
-        argv=argv,
-    )
     cvm = FundamentalStocksDataCVM()
-    print('Starting CVM DFP data download and extraction...')
+    print('Starting CVM download...')
     result = cvm.download(
-        destination_path=args.destination_path,
-        list_docs=['DFP'],
-        initial_year=args.initial_year,
-        last_year=args.last_year,
-        automatic_extractor=True,
+        destination_path=DESTINATION_PATH,
+        list_docs=DOCUMENTS,
+        initial_year=INITIAL_YEAR,
+        last_year=LAST_YEAR,
+        automatic_extractor=AUTOMATIC_EXTRACTOR,
     )
-    require_cvm_download_success(result)
-    print('✓ Download completed successfully!')
-    print(f'  Parquet files directory: {args.destination_path}')
-    print(f'  Downloaded files count: {result.success_count_downloads}')
+    support.print_cvm_summary(result, destination_path=DESTINATION_PATH)
 
 
 if __name__ == '__main__':
-    run_example(main)
+    support.run_example(main)

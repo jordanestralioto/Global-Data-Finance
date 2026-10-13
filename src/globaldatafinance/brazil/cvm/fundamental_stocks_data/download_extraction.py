@@ -1,23 +1,24 @@
 """Automatic extraction handling for CVM downloads."""
 
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Protocol
 
-from ....core import get_logger, remove_file
+from ....core import get_logger
 from ....core.archive_safety import ArchiveSafetyLimits
 from ....macro_exceptions import (
     CorruptedZipError,
     DiskFullError,
     ExtractionError,
     ParquetWriteError,
+    SecurityError,
 )
-from .download_validation import find_parquet_files, validate_parquet_files
+from .download_validation import validate_parquet_files
 from .extract import ParquetExtractorAdapterCVM
+from .source_inventory import inspect_source, validate_output_inventory
+from .write_ownership import exclusive_destination
 
 logger = get_logger(__name__)
-
-ParquetArtifactStateCVM = dict[Path, tuple[int, int]]
 
 
 class ParquetExtractor(Protocol):
@@ -49,39 +50,53 @@ def extract_downloaded_file(
     dest_path: str,
     doc_name: str,
     year: str,
-    cleanup_file: Callable[[str], None] = remove_file,
+    *,
+    archive_limits: ArchiveSafetyLimits | None = None,
 ) -> str | None:
     """Extract one archive, returning an error for loop-side aggregation."""
     document_key = f'{doc_name}_{year}'
 
     try:
         logger.info('Starting extraction for %s', document_key)
-        parquet_artifacts_before = _snapshot_parquet_artifacts(dest_path)
-        file_extractor_repository.extract(filepath, dest_path)
-
-        parquet_files = _find_current_extraction_parquets(
-            dest_path,
-            parquet_artifacts_before,
-        )
-        if not parquet_files:
-            logger.warning(
-                'Extraction completed but no new or updated .parquet files '
-                'were found in %s. Keeping source ZIP: %s',
-                dest_path,
-                filepath,
+        with exclusive_destination(dest_path) as operations:
+            source = Path(filepath)
+            if source.parent == operations.snapshot.path:
+                source = operations.bound_path(source)
+            destination = operations.bound_path(operations.snapshot.path)
+            inventory = inspect_source(
+                source, destination, limits=archive_limits
             )
-            return 'No parquet files generated after extraction'
+            file_extractor_repository.extract(filepath, dest_path)
+            validate_output_inventory(source, destination, inventory)
 
-        if not validate_parquet_files(parquet_files, doc_name, year):
-            return 'Parquet validation failed: corrupted or empty files'
+            parquet_files = list(inventory.artifacts)
+            if not all(path.is_file() for path in parquet_files):
+                logger.warning(
+                    'Extraction completed but no new or updated .parquet '
+                    'files were found in %s. Keeping source ZIP: %s',
+                    dest_path,
+                    filepath,
+                )
+                return 'No parquet files generated after extraction'
 
-        logger.info(
-            'Extraction completed for %s: %d parquet files created',
-            document_key,
-            len(parquet_files),
-        )
-        cleanup_file(filepath)
-        return None
+            if not validate_parquet_files(
+                parquet_files,
+                doc_name,
+                year,
+                expected_archive_sha256=inventory.sha256,
+                expected_members=inventory.artifacts,
+            ):
+                return 'Parquet validation failed: corrupted or empty files'
+
+            logger.info(
+                'Extraction completed for %s: %d parquet files created',
+                document_key,
+                len(parquet_files),
+            )
+            logger.info(
+                'Retaining original CVM ZIP for reprocessing: %s', filepath
+            )
+            return None
 
     except DiskFullError as disk_err:
         logger.exception('Disk full during extraction of %s', document_key)
@@ -109,6 +124,9 @@ def extract_downloaded_file(
         logger.info('Keeping ZIP for manual investigation: %s', filepath)
         return f'ExtractionFailed: {extract_err}'
 
+    except SecurityError:
+        raise
+
     except Exception as unexpected_err:
         logger.error(
             f'Unexpected extraction error for {document_key}: '
@@ -120,41 +138,3 @@ def extract_downloaded_file(
             f'UnexpectedError: {type(unexpected_err).__name__}: '
             f'{unexpected_err}'
         )
-
-
-def _snapshot_parquet_artifacts(dest_path: str) -> ParquetArtifactStateCVM:
-    """Capture the parquet state present before one extraction attempt."""
-    artifacts: ParquetArtifactStateCVM = {}
-    for parquet_file in find_parquet_files(dest_path):
-        try:
-            stat = parquet_file.stat()
-        except OSError as exc:
-            logger.warning(
-                'Could not snapshot existing parquet %s: %s', parquet_file, exc
-            )
-            continue
-        artifacts[parquet_file.resolve()] = (stat.st_size, stat.st_mtime_ns)
-    return artifacts
-
-
-def _find_current_extraction_parquets(
-    dest_path: str,
-    previous_artifacts: ParquetArtifactStateCVM,
-) -> list[Path]:
-    """Return parquet files created or overwritten by the current attempt."""
-    changed_artifacts: list[Path] = []
-    for parquet_file in find_parquet_files(dest_path):
-        try:
-            resolved_path = parquet_file.resolve()
-            stat = parquet_file.stat()
-        except OSError as exc:
-            logger.warning(
-                'Could not inspect extracted parquet %s: %s', parquet_file, exc
-            )
-            continue
-
-        current_state = (stat.st_size, stat.st_mtime_ns)
-        if previous_artifacts.get(resolved_path) != current_state:
-            changed_artifacts.append(parquet_file)
-
-    return changed_artifacts

@@ -104,7 +104,6 @@ class VerifyPathsUseCasesCVM:
         self.allowed_unc_roots = PathSafetySettings.resolve_allowed_unc_roots(
             allowed_unc_roots
         )
-        self.__available_years = core.AvailableYearsCVM()
 
         if not new_set_docs:
             raise EmptyDocumentListError()
@@ -155,12 +154,7 @@ class VerifyPathsUseCasesCVM:
         return docs_paths
 
     def __is_valid_year_for_doc(self, doc: str, year: int) -> bool:
-        doc_upper = doc.upper()
-        if doc_upper == 'ITR':
-            return year >= self.__available_years.get_minimal_itr_year()
-        if doc_upper in {'VLMO', 'CGVN'}:
-            return year >= self.__available_years.get_minimal_cgvn_vlmo_year()
-        return year >= self.__available_years.get_minimal_general_year()
+        return year >= core.DOCUMENT_START_YEARS[doc.upper()]
 
     def __validate_and_create_paths(self, path: str) -> str:
         result = prepare_writable_destination(
@@ -272,14 +266,18 @@ class DownloadDocumentsUseCaseCVM:
             last_year,
         )
 
-        range_years = generate_range_years(
-            initial_year=initial_year, last_year=last_year
-        )
-
         dict_urls_zips, new_set_docs = generate_urls(
             list_docs=list_docs,
             initial_year=initial_year,
             last_year=last_year,
+        )
+
+        if initial_year is None:
+            initial_year = min(
+                core.DOCUMENT_START_YEARS[doc] for doc in new_set_docs
+            )
+        range_years = generate_range_years(
+            initial_year=initial_year, last_year=last_year
         )
 
         verify_paths = VerifyPathsUseCasesCVM(

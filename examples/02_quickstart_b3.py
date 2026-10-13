@@ -1,50 +1,42 @@
-"""Example 02: Quickstart with B3 (Historical Stock Quotes).
+"""Extract B3 stock quotes. Edit the SETTINGS block, then run this file."""
 
-This example demonstrates how to read and extract historical stock quotes
-from local COTAHIST files (e.g. COTAHIST_A2023.ZIP or .TXT) saved in
-'path_of_docs' and generate a consolidated Parquet file.
-"""
-
-from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from examples.cli import parse_arguments, run_example, year_label
-    from examples.result_validation import require_b3_output
+    from examples import support
 else:
-    from cli import parse_arguments, run_example, year_label
-    from result_validation import require_b3_output
+    import support
 
 from globaldatafinance import HistoricalQuotesB3
 
+# SETTINGS: change the values here. The README explains each option.
+INITIAL_YEAR = 2023
+LAST_YEAR = 2023
+PATH_OF_DOCS = './cotahist_b3'  # Folder with COTAHIST_AYYYY.ZIP or .TXT files.
+DESTINATION_PATH = './dados_b3'
+ASSETS = ['ações']  # Market groups; use ['todos'] for every market.
+OUTPUT_NAME = 'cotacoes_acoes'  # The selected years are added automatically.
+PROCESSING_MODE = 'fast'  # Use 'slow' to reduce memory usage.
+VERBOSE = False  # Extra summary details; file progress is always shown.
 
-def main(argv: Sequence[str] | None = None) -> None:
+
+def main() -> None:
     """Run the B3 quickstart example."""
-    args = parse_arguments(
-        'Extract stock quotes from local B3 COTAHIST files to Parquet.',
-        source='b3',
-        argv=argv,
-    )
     b3 = HistoricalQuotesB3()
+    years = support.year_label(INITIAL_YEAR, LAST_YEAR)
     print('Starting B3 stock quotes extraction...')
     result = b3.extract(
-        path_of_docs=args.path_of_docs,
-        assets_list=['ações'],
-        initial_year=args.initial_year,
-        last_year=args.last_year,
-        destination_path=args.destination_path,
-        output_filename=(
-            f'cotacoes_acoes_{year_label(args.initial_year, args.last_year)}'
-        ),
-        processing_mode=args.processing_mode,
+        path_of_docs=PATH_OF_DOCS,
+        assets_list=ASSETS,
+        initial_year=INITIAL_YEAR,
+        last_year=LAST_YEAR,
+        destination_path=DESTINATION_PATH,
+        output_filename=f'{OUTPUT_NAME}_{years}',
+        processing_mode=PROCESSING_MODE,
         verbose=False,
     )
-    require_b3_output(result)
-    print('✓ Extraction completed successfully!')
-    print(f'  Generated Parquet file at: {result["output_file"]}')
-    print(f'  Total processed files: {result["total_files"]}')
-    print(f'  Quote records: {result["total_records"]:,}')
+    support.print_b3_summary(result, verbose=VERBOSE)
 
 
 if __name__ == '__main__':
-    run_example(main)
+    support.run_example(main)

@@ -1,6 +1,7 @@
 """Regression tests for observable CVM extraction failures."""
 
 import logging
+import zipfile
 from unittest.mock import MagicMock
 
 import pytest
@@ -15,20 +16,19 @@ from globaldatafinance.macro_exceptions import (
     ParquetWriteError,
 )
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.integration
 
 
 @pytest.mark.parametrize(
-    ('failure', 'result_marker', 'cleanup_expected'),
+    ('failure', 'result_marker'),
     [
-        (DiskFullError('/output'), 'DiskFull:', False),
-        (CorruptedZipError('/input.zip', 'invalid'), 'CorruptedZIP:', False),
+        (DiskFullError('/output'), 'DiskFull:'),
+        (CorruptedZipError('/input.zip', 'invalid'), 'CorruptedZIP:'),
         (
             ParquetWriteError('/output.parquet', 'permission denied'),
             'ParquetWrite:',
-            False,
         ),
-        (ExtractionError('/input.zip', 'failed'), 'ExtractionFailed:', False),
+        (ExtractionError('/input.zip', 'failed'), 'ExtractionFailed:'),
     ],
 )
 def test_known_extraction_failures_log_traceback_and_preserve_results(
@@ -37,11 +37,12 @@ def test_known_extraction_failures_log_traceback_and_preserve_results(
     monkeypatch: pytest.MonkeyPatch,
     failure: Exception,
     result_marker: str,
-    cleanup_expected: bool,
 ) -> None:
+    with zipfile.ZipFile(tmp_path / 'input.zip', 'w') as archive:
+        archive.writestr('data.csv', b'id\n1\n')
+    original_bytes = (tmp_path / 'input.zip').read_bytes()
     extractor = MagicMock()
     extractor.extract.side_effect = failure
-    cleanup_file = MagicMock()
     package_logger = logging.getLogger('globaldatafinance')
     monkeypatch.setattr(package_logger, 'propagate', True)
 
@@ -52,10 +53,12 @@ def test_known_extraction_failures_log_traceback_and_preserve_results(
             dest_path=str(tmp_path),
             doc_name='DFP',
             year='2024',
-            cleanup_file=cleanup_file,
         )
 
     assert error_message is not None
     assert result_marker in error_message
-    assert cleanup_file.called is cleanup_expected
+    assert (tmp_path / 'input.zip').read_bytes() == original_bytes
+    extractor.extract.assert_called_once_with(
+        str(tmp_path / 'input.zip'), str(tmp_path)
+    )
     assert any(record.exc_info is not None for record in caplog.records)

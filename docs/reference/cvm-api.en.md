@@ -41,11 +41,31 @@ def download(
 | `last_year`           | `int \| None`       | No       | `None`  | Ending fiscal year (None = current year)   |
 | `automatic_extractor` | `bool`              | No       | `False` | Convert to Parquet through PyArrow         |
 
-With `automatic_extractor=True`, CVM CSV keeps the `QUOTE_NONE` dialect:
-quotes are literal, short rows receive trailing nulls only, and excess rows
-fail. A header-only CSV produces an empty Parquet with Arrow `null` fields and
-no `b'pandas'` metadata. Parquets from the same ZIP use recoverable batch
-publication, not instant visibility atomicity for concurrent readers.
+With `automatic_extractor=True`, every CVM column is Arrow `string`
+under the `exact-text-v1` contract. Each field keeps its original text:
+decimals, leading zeroes, signs, case, and literals such as `N/A`, `NULL`, or
+`None`; empty fields are `""`. Header-only CSVs produce zero rows with string
+columns. `QUOTE_NONE` retains literal quotes. Short rows receive trailing
+empty fields; excess fields, empty or duplicate headers, more than 4,096
+columns, and physical records exceeding 8 MiB UTF-8 fail explicitly.
+
+The SHA-256 of all decoded records is compared with reopened Parquet content
+before publication. Files include page checksums, ZIP and CSV member identity
+in metadata, and `fsync` synchronization. Confirmation requires all expected
+Parquets and their association with the ZIP. Row groups use an estimated
+16 MiB budget, up to 50,000 rows.
+Reads stay on the same opened ZIP and the source is checked again before
+publication. Removed or renamed CSVs require regeneration into a clean
+destination when obsolete Parquets from that archive remain.
+
+The original ZIP is retained after success and failure, including non-CSV
+members. Concurrent calls to one destination fail before ZIP promotion.
+After abrupt termination, `.cvm-write-lock` requires explicit inspection
+before recovery. Multi-Parquet publication is recoverable as a batch; its
+visibility to concurrent readers is not instantaneously atomic. Undeclared
+encoding can be ambiguous, and accounting consistency is not inferred.
+
+This schema change requires [consumer migration](../user-guide/migration-cvm-exact-text.en.md).
 
 The local filename is the URL path's final component after one
 percent-encoding decode. The library rejects separators, invalid Win32
@@ -76,6 +96,28 @@ Transient HTTP transmission failures during asynchronous downloads are handled
 by the internal retry mechanism. When retries are exhausted, each final failure
 is consolidated in `DownloadResultCVM.failed_downloads` without terminating
 the remaining downloads.
+
+If the output directory disappears, becomes a file, or encounters an I/O error
+while creating the lock after the download, finalization records the failure
+in `failed_downloads` and continues other destinations. Replacement by another
+directory or a symbolic link raises `SecurityError`.
+
+On systems supporting directory-descriptor-relative operations, the lock,
+ZIP promotion, and cleanup remain bound to the opened directory. Automatic
+extraction reuses that ownership to read the ZIP, write staging, and publish
+Parquet. Readers and writers use descriptor-backed paths through `/proc/self/fd`
+or `/dev/fd`; if both are unavailable, extraction raises `SecurityError` before
+writing data through a mutable pathname. Manifests retain the original relative
+names. Cleanup preserves staging and logs a diagnostic when it cannot confirm
+the originally validated directory identity.
+
+On systems without this support, the library verifies directory identity before
+path-based operations. Concurrent changes by processes that do not follow the
+ownership protocol do not have the same atomic guarantee on those systems.
+
+URL selection respects each document's first year: IPE in 2003; DFP, FCA, and
+FRE in 2010; ITR in 2011; CGVN and VLMO in 2018. A mixed interval does not
+generate URLs for years before the document starts.
 
 **Execution Example**:
 
@@ -119,10 +161,11 @@ def get_available_years(self) -> AvailableYearsInfoCVM:
 
 **Return Structure (`AvailableYearsInfoCVM`)**: `NamedTuple` container featuring:
 
-- `general_min_year` (`int`): Earliest year for general accounting forms (`DFP`, `FRE`, `FCA`, `IPE`) — `2010`.
+- `general_min_year` (`int`): Earliest year for general accounting forms (`DFP`, `FRE`, `FCA`) — `2010`.
 - `itr_min_year` (`int`): Earliest year for interim quarterly reports (`ITR`) — `2011`.
 - `cgvn_vlmo_min_year` (`int`): Earliest year for governance disclosures (`CGVN`, `VLMO`) — `2018`.
 - `current_year` (`int`): Real-time operational system year limit.
+- `ipe_min_year` (`int`, property): Earliest IPE year — `2003`; accessed as a tuple property.
 
 **Execution Example**:
 
@@ -145,7 +188,7 @@ ______________________________________________________________________
 | FCA          | Formulário Cadastral                | 2010            |
 | CGVN         | Código de Governança                | 2018            |
 | VLMO         | Valores Mobiliários                 | 2018            |
-| IPE          | Informações Periódicas e Eventuais  | 2010            |
+| IPE          | Informações Periódicas e Eventuais  | 2003            |
 
 ______________________________________________________________________
 

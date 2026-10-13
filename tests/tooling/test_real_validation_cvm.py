@@ -111,11 +111,16 @@ def _facade_adapter() -> SimpleNamespace:
 
     class Delegate:
         def extract(self, source_path: str, destination_path: str) -> None:
-            _ = source_path
             destination = Path(destination_path)
             destination.mkdir(parents=True, exist_ok=True)
+            fingerprint = hashlib.sha256(
+                Path(source_path).read_bytes()
+            ).hexdigest()
             pq.write_table(
-                pa.table({'id': [1, 2]}), destination / 'data.parquet'
+                pa.table({'id': ['1']}).replace_schema_metadata(
+                    {b'cvm.source-archive-sha256': fingerprint.encode('ascii')}
+                ),
+                destination / 'DFP_2024.parquet',
             )
 
     return SimpleNamespace(
@@ -280,7 +285,7 @@ def test_execute_cvm_case_records_hash_of_archive_consumed_by_facade(
     result = cvm.execute_cvm_case(case, workspace, 4.0)
 
     assert result['status'] == 'passed'
-    assert result['recordCount'] == 2
+    assert result['recordCount'] == 1
     assert result['artifactCount'] == 1
     assert result['inputSizeBytes'] == len(payload)
     assert result['inputSha256'] == hashlib.sha256(payload).hexdigest()
@@ -418,14 +423,14 @@ def test_inspect_parquet_files_rejects_invalid_evidence(
     output.mkdir()
     path = output / 'data.parquet'
     if kind == 'empty':
-        pq.write_table(pa.table({'id': pa.array([], type=pa.int64())}), path)
+        pq.write_table(pa.table({}), path)
     elif kind == 'unreadable':
         path.write_bytes(b'not parquet')
     else:
         pq.write_table(pa.table({'id': [1]}), path)
 
         class FakeParquet:
-            metadata = SimpleNamespace(num_rows=2)
+            metadata = SimpleNamespace(num_rows=2, num_columns=1)
             schema_arrow = pa.schema([('id', pa.int64())])
 
             def iter_batches(self, **kwargs: int):
@@ -433,7 +438,7 @@ def test_inspect_parquet_files_rejects_invalid_evidence(
                 return [SimpleNamespace(num_rows=1)]
 
         original = cvm.pq.ParquetFile
-        cvm.pq.ParquetFile = lambda _candidate: FakeParquet()
+        cvm.pq.ParquetFile = lambda _candidate, **_kwargs: FakeParquet()
         try:
             inspected = cvm.inspect_parquet_files([path], output)
         finally:
@@ -455,7 +460,7 @@ def test_validate_cleanup_rejects_archives_and_temporary_markers(
     output = tmp_path / 'output'
     output.mkdir()
     (output / 'source.zip').touch()
-    assert cvm.validate_cleanup(output) == 'CVM source ZIP was not cleaned up'
+    assert cvm.validate_cleanup(output) is None
     (output / 'source.zip').unlink()
     (output / 'staging.tmp').touch()
 

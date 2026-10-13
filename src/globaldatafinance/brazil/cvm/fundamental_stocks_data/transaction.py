@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import zipfile
 from collections.abc import Sequence
+from contextlib import nullcontext
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 from ....core.archive_safety import (
     ArchiveSafetyLimits,
@@ -16,6 +17,15 @@ from ....core.config import PathSafetySettings
 from ....macro_exceptions import CorruptedZipError, ExtractionError
 from ....macro_infra.transactional_publication import TransactionalPublisher
 from .csv_pipeline import CvmCsvParquetPipeline
+from .destination_io import DestinationFileOperationsCVM
+from .download_paths import parquet_basename
+from .source_inventory import (
+    inspect_source,
+    validate_output_inventory,
+    validate_source_unchanged,
+)
+from .transaction_io import CvmTransactionFileOperations
+from .write_ownership import exclusive_destination
 
 
 @dataclass(frozen=True)
@@ -38,10 +48,12 @@ class CvmFailureAtomicBatchCommit:
         *,
         archive_limits: ArchiveSafetyLimits | None = None,
         allowed_unc_roots: Sequence[str] | None = None,
+        directory_operations: DestinationFileOperationsCVM | None = None,
     ) -> None:
         """Store the source-owned paths for one recoverable batch."""
         self.source_path = source_path
         self.destination_path = destination_path
+        self.directory_operations = directory_operations
         if archive_limits is None:
             archive_limits = ArchiveSafetyLimits.from_environment()
         self.archive_limits = archive_limits
@@ -51,14 +63,46 @@ class CvmFailureAtomicBatchCommit:
 
     def execute(self, zip_file: zipfile.ZipFile) -> int:
         """Convert all CSV members and atomically publish their Parquets."""
+        directory_context = (
+            nullcontext(self.directory_operations)
+            if self.directory_operations is not None
+            else exclusive_destination(
+                self.destination_path, allowed_unc_roots=self.allowed_unc_roots
+            )
+        )
+        with (
+            directory_context as directory,
+            CvmTransactionFileOperations(directory) as operations,
+        ):
+            return self._execute_owned(zip_file, operations)
+
+    def _execute_owned(
+        self,
+        zip_file: zipfile.ZipFile,
+        operations: CvmTransactionFileOperations,
+    ) -> int:
+        """Publish validated records through the leased filesystem boundary."""
         publisher = TransactionalPublisher(
             self.destination_path,
             owner='cvm',
             source_path=self.source_path,
             allowed_unc_roots=self.allowed_unc_roots,
+            operations=operations,
         )
         publisher.validate_destination()
         self.destination_path = str(publisher.destination_dir)
+        source_path = Path(self.source_path)
+        if source_path.parent == operations.destination.snapshot.path:
+            source_path = operations.destination.bound_path(source_path)
+        inventory = inspect_source(
+            source_path,
+            Path(self.destination_path),
+            limits=self.archive_limits,
+            archive=zip_file,
+        )
+        validate_output_inventory(
+            Path(self.source_path), Path(self.destination_path), inventory
+        )
         outputs = self._build_outputs(zip_file)
         source_size = sum(output.source_bytes for output in outputs)
         publication = publisher.begin(
@@ -77,9 +121,11 @@ class CvmFailureAtomicBatchCommit:
                     self.source_path,
                     output.csv_member,
                     limits=self.archive_limits,
+                    source_sha256=inventory.sha256,
+                    archive=zip_file,
                 ).convert(
-                    staged_path=staged_path,
-                    staging_dir=publication.staging_dir,
+                    staged_path=operations.bound_path(staged_path),
+                    staging_dir=operations.bound_path(publication.staging_dir),
                 )
                 publication.add_artifact(
                     final_path=output.final_path,
@@ -87,6 +133,7 @@ class CvmFailureAtomicBatchCommit:
                     expected_rows=result.rows,
                     schema_fingerprint=result.schema_fingerprint,
                 )
+            validate_source_unchanged(source_path, zip_file, inventory.sha256)
             publication.mark_validated()
             publication.commit()
         except Exception as error:
@@ -122,26 +169,12 @@ class CvmFailureAtomicBatchCommit:
             for info in infos
             if not info.is_dir() and info.filename.lower().endswith('.csv')
         ]
-        if not csv_infos:
-            raise ExtractionError(
-                self.source_path, 'Archive does not contain any CSV members'
-            )
-
-        names: set[str] = set()
         outputs: list[_CvmOutput] = []
         for info in sorted(
             csv_infos,
             key=lambda item: item.filename.casefold(),
         ):
-            parquet_name = self._parquet_basename(info.filename)
-            normalized = parquet_name.casefold()
-            if normalized in names:
-                raise ExtractionError(
-                    self.source_path,
-                    'CSV members collide after basename normalization: '
-                    f'{info.filename!r} -> {parquet_name!r}',
-                )
-            names.add(normalized)
+            parquet_name = parquet_basename(info.filename)
             outputs.append(
                 _CvmOutput(
                     csv_member=info.filename,
@@ -151,9 +184,3 @@ class CvmFailureAtomicBatchCommit:
                 )
             )
         return outputs
-
-    @staticmethod
-    def _parquet_basename(csv_member: str) -> str:
-        """Keep the established basename-only output naming contract."""
-        name = PurePosixPath(csv_member.replace('\\', '/')).name
-        return f'{PurePosixPath(name).stem}.parquet'

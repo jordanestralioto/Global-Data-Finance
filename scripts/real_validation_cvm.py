@@ -11,11 +11,15 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from globaldatafinance import FundamentalStocksDataCVM
+from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
+    download_extraction,
+)
 from globaldatafinance.brazil.cvm.fundamental_stocks_data.errors import (
     CvmError,
 )
 from globaldatafinance.macro_exceptions import SecurityError
 
+from .cvm_archive_oracle import reconcile_archive
 from .real_validation_matrix.cases import canonical_cvm_case
 from .real_validation_types import (
     ExternalFailure,
@@ -45,14 +49,54 @@ class _EvidenceCapturingExtractor:
     def __init__(self, extractor: _CvmExtractor) -> None:
         self._extractor = extractor
         self.evidence: dict[str, int | str] | None = None
+        self.reconciliation: dict[str, Any] | None = None
 
     def extract(self, source_path: str, destination_path: str) -> None:
         source = Path(source_path)
+        expected_size = source.stat().st_size
+        expected_sha256 = sha256_file(source)
         self.evidence = {
-            'size_bytes': source.stat().st_size,
-            'sha256': sha256_file(source),
+            'size_bytes': expected_size,
+            'sha256': expected_sha256,
         }
+        self.reconciliation = None
         self._extractor.extract(source_path, destination_path)
+        destination = Path(destination_path)
+        reconciliation = reconcile_archive(source, destination)
+        _validate_archive_receipt(
+            source,
+            destination,
+            reconciliation,
+            expected_size=expected_size,
+            expected_sha256=expected_sha256,
+        )
+        self.reconciliation = reconciliation
+
+
+def _validate_archive_receipt(
+    source: Path,
+    destination: Path,
+    reconciliation: dict[str, Any],
+    *,
+    expected_size: int,
+    expected_sha256: str,
+) -> None:
+    """Bind campaign evidence to the ZIP consumed by every Parquet writer."""
+    if (
+        source.stat().st_size != expected_size
+        or sha256_file(source) != expected_sha256
+    ):
+        raise ValueError('CVM archive receipt changed during extraction')
+    for member in reconciliation['members']:
+        if not member['isCsv']:
+            continue
+        path = destination / member['parquetName']
+        with pq.ParquetFile(path) as parquet:
+            metadata = parquet.schema_arrow.metadata or {}
+        if metadata.get(b'cvm.source-archive-sha256') != (
+            expected_sha256.encode('ascii')
+        ):
+            raise ValueError(f'CVM archive receipt differs from {path.name}')
 
 
 def execute_cvm_case(
@@ -122,6 +166,7 @@ def execute_cvm_case(
         'artifacts': details['artifacts'],
         'recordCount': details['record_count'],
         'schema': details['schema'],
+        'sourceReconciliation': evidence_extractor.reconciliation,
     }
 
 
@@ -131,9 +176,14 @@ def _configure_campaign_facade(
     """Disable redirect following and attach evidence to the public facade."""
     download_adapter = facade.download_adapter
     download_adapter.requests_adapter.follow_redirects = False
-    extractor = _EvidenceCapturingExtractor(
-        cast(_CvmExtractor, download_adapter.file_extractor_repository)
-    )
+    delegate = download_adapter.file_extractor_repository
+    if delegate is None:
+        delegate = download_extraction.resolve_parquet_extractor(
+            delegate,
+            archive_limits=download_adapter.archive_limits,
+            allowed_unc_roots=download_adapter.allowed_unc_roots,
+        )
+    extractor = _EvidenceCapturingExtractor(cast(_CvmExtractor, delegate))
     download_adapter.file_extractor_repository = cast(Any, extractor)
     return extractor
 
@@ -221,6 +271,11 @@ def validate_result(
         return {'valid': False, 'message': cleanup_error}
     if not case.document:
         return {'valid': False, 'message': 'CVM document is missing'}
+    if result.successful_downloads != [f'{case.document}_{case.year}']:
+        return {
+            'valid': False,
+            'message': 'CVM successful document identity does not match case',
+        }
     return {
         'valid': True,
         'message': '',
@@ -253,9 +308,15 @@ def inspect_parquet_files(
     schema: dict[str, str] = {}
     try:
         for parquet_file in parquet_files:
-            parquet = pq.ParquetFile(parquet_file)
+            parquet = pq.ParquetFile(
+                parquet_file, page_checksum_verification=True
+            )
             metadata = parquet.metadata
-            if metadata is None or metadata.num_rows <= 0:
+            if (
+                metadata is None
+                or metadata.num_rows < 0
+                or metadata.num_columns == 0
+            ):
                 return f'Invalid or empty CVM Parquet: {parquet_file}'
             read_rows = sum(
                 batch.num_rows
@@ -282,9 +343,7 @@ def inspect_parquet_files(
 
 
 def validate_cleanup(output_directory: Path) -> str | None:
-    """Ensure source archives and staging artifacts are gone from output."""
-    if list(output_directory.rglob('*.zip')):
-        return 'CVM source ZIP was not cleaned up'
+    """Allow retained sources and reject leaked staging or writer state."""
     temporary = temporary_paths(output_directory)
     if temporary:
         return f'CVM temporary files leaked: {temporary}'

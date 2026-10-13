@@ -126,7 +126,8 @@ class HistoricalQuotesB3:
                            is appended automatically only when it is absent.
                            Default: "cotahist_extracted"
             processing_mode: 'fast' (high performance) or 'slow' (low RAM).
-            verbose: When True (default), print summary to stdout.
+            verbose: When True (default), print summary to stdout. File
+                     validation and processing progress is always displayed.
 
         Note:
             Synchronous wrapper around :meth:`extract_async` using ``asyncio``.

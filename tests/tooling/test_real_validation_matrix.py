@@ -207,10 +207,10 @@ def test_cvm_matrix_rejects_missing_output_and_invalid_years() -> None:
             cotahist_path=None,
             cvm_output=None,
         )
-    with pytest.raises(ValueError, match=r'2010\.\.2026'):
+    with pytest.raises(ValueError, match=r'2003\.\.2026'):
         build_cases(
             source='cvm',
-            initial_year=2009,
+            initial_year=2002,
             last_year=2026,
             document=None,
             cotahist_path=None,

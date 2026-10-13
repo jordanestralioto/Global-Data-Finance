@@ -42,4 +42,7 @@ class TestMemorySafety:
         assert parquet.metadata.num_rows == 7
         assert parquet.metadata.num_columns == 3
         assert parquet.metadata.num_row_groups == 1
-        assert pq.read_table(output_path).to_pylist() == source_rows
+        assert pq.read_table(output_path).to_pylist() == [
+            {key: str(value) for key, value in row.items()}
+            for row in source_rows
+        ]

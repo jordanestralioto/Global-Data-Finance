@@ -25,18 +25,19 @@ from globaldatafinance import (
 | Namespace de arquivo canônico | Use `Settings.archive`; `Settings.archive_safety` não existe mais e não há alias de compatibilidade. |
 | Configuração de logging estrita | Use apenas os campos e variáveis documentados de `LoggingSettings`; `LoggingSettings(structured=True)` e variáveis `DATAFIN_LOG_*` desconhecidas agora falham com `ValidationError`. |
 | Destino e contexto de logging | Use um `log_file` em diretório aprovado pela aplicação; raízes/diretórios protegidos são rejeitados, e campos comuns de segredo recebem redação de melhor esforço. Não envie segredos ao logging. |
-| Inteiros CVM anuláveis | Uma coluna assinada com nulos pode ser persistida como `int64`; não dependa de promoção automática para `float64`. |
+| Preservação CVM exata | Regenere os Parquets como `exact-text-v1`; todas as colunas são `string` e conversões numéricas são explícitas. |
 | Corte interno B3 | Remova `data_writer` de integrações que constroem `ExtractionServiceB3` e não passe `resource_monitor` para `ParquetWriterB3`; use as fachadas e as assinaturas atuais. |
 | Sentinela B3 reservada | O texto literal `__GLOBALDATAFINANCE_NULL__` não é um valor aceito; use `None` para nulos. |
 
 ## CVM
 
-O CSV CVM continua com `QUOTE_NONE`: aspas são texto literal, não quoting RFC.
-Linhas curtas recebem somente valores nulos finais, linhas excedentes falham e
-um arquivo apenas com cabeçalho gera Parquet vazio. A publicação de vários
-Parquets de um ZIP é failure-atomic e recuperável por manifesto, staging,
-backup e lock. Ela não oferece visibilidade instantaneamente atômica para
-leitores concorrentes de todos os nomes de arquivo.
+O contrato CVM atual é `exact-text-v1`: colunas `string`, campos vazios como
+`""`, valores originais preservados e ZIP retido após extração. `QUOTE_NONE`
+mantém aspas literais e linhas curtas recebem somente campos vazios finais.
+A publicação de vários Parquets permanece recuperável por lote, com confirmação
+de todos os registros antes da promoção. Consulte a
+[migração CVM exata](migration-cvm-exact-text.md) para regeneração dos arquivos,
+conversões explícitas e inspeção de locks após interrupção.
 
 O logging da biblioteca não altera o root logger da aplicação. Antes de uma
 chamada explícita a `setup_logging()`, o namespace `globaldatafinance` usa

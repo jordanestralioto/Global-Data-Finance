@@ -1,14 +1,16 @@
-"""Global CVM CSV structure validation and Arrow schema inference."""
+"""Complete CVM CSV structure checks and exact-text Arrow schemas."""
 
 from __future__ import annotations
 
-import csv
 from pathlib import Path
 
 import pyarrow as pa
 
 from .....macro_exceptions import DiskFullError, ExtractionError
-from .models import ColumnInference, CsvAnalysis, EncodingPlan
+from ..content_fingerprint import CONTRACT_VERSION, RecordDigest
+from .constants import MAX_COLUMNS
+from .models import CsvAnalysis, EncodingPlan
+from .records import read_records
 from .source import ReopenableCsvSource, text_source
 
 
@@ -17,53 +19,36 @@ def analyse_csv(
     utf8_source: Path | None,
     plan: EncodingPlan,
 ) -> CsvAnalysis:
-    """Read all source rows as text and retain global type observations."""
-    reader = None
-    try:
-        with text_source(source, utf8_source, plan) as text:
-            reader = csv.reader(
-                text,
-                delimiter=';',
-                quoting=csv.QUOTE_NONE,
-                strict=True,
+    """Validate every record and fingerprint all decoded source fields."""
+    with text_source(source, utf8_source, plan) as text:
+        reader = read_records(text, str(source.source_path))
+        try:
+            header = tuple(next(reader))
+        except StopIteration as error:
+            raise ExtractionError(
+                str(source.source_path), 'CSV member has no header'
+            ) from error
+        validate_header(header)
+        digest = RecordDigest(header)
+        rows = 0
+        max_record_bytes = len(';'.join(header).encode('utf-8')) + 2
+        short_rows_seen = False
+        for record, row in enumerate(reader, start=1):
+            row, short = pad_record(source, header, record, row)
+            short_rows_seen |= short
+            digest.update(row)
+            max_record_bytes = max(
+                max_record_bytes,
+                len(';'.join(row).encode('utf-8')) + 2,
             )
-            try:
-                header = tuple(next(reader))
-            except StopIteration as error:
-                raise ExtractionError(
-                    str(source.source_path), 'CSV member has no header'
-                ) from error
-            validate_header(header)
-            columns = [ColumnInference() for _ in header]
-            rows = 0
-            short_rows_seen = False
-            physical_lines = reader.line_num
-            for logical_record, row in enumerate(reader, start=1):
-                physical_lines = reader.line_num
-                if len(row) > len(header):
-                    raise_structure_error(
-                        source,
-                        logical_record,
-                        reader.line_num,
-                        len(header),
-                        len(row),
-                        row,
-                    )
-                if len(row) < len(header):
-                    short_rows_seen = True
-                    row = [*row, *([''] * (len(header) - len(row)))]
-                for index, value in enumerate(row):
-                    columns[index].observe(value)
-                rows += 1
-    except csv.Error as error:
-        line = reader.line_num if reader is not None else 0
-        raise_csv_error(source, line, error)
+            rows += 1
     return CsvAnalysis(
         header=header,
-        columns=columns,
         rows=rows,
+        content_sha256=digest.hexdigest(),
+        max_record_bytes=max_record_bytes,
         short_rows_seen=short_rows_seen,
-        physical_lines=physical_lines,
+        physical_lines=rows + 1,
     )
 
 
@@ -74,54 +59,23 @@ def normalize_short_rows(
     staging_dir: Path,
     header: tuple[str, ...],
 ) -> Path:
-    """Create a private CSV that pads only short trailing fields."""
+    """Pad absent trailing fields in a private UTF-8 CSV spool."""
     normalized = staging_dir / '.cvm-normalized.csv'
-    reader = None
     try:
         with (
             text_source(source, utf8_source, plan) as text,
             normalized.open('w', encoding='utf-8', newline='') as target,
         ):
-            reader = csv.reader(
-                text,
-                delimiter=';',
-                quoting=csv.QUOTE_NONE,
-                strict=True,
-            )
-            observed_header = tuple(next(reader))
-            if observed_header != header:
+            reader = read_records(text, str(source.source_path))
+            if tuple(next(reader)) != header:
                 raise ExtractionError(
                     str(source.source_path),
                     'CSV header changed while normalizing short rows',
                 )
-            writer = csv.writer(
-                target,
-                delimiter=';',
-                quoting=csv.QUOTE_NONE,
-                lineterminator='\n',
-            )
-            writer.writerow(header)
-            for logical_record, row in enumerate(reader, start=1):
-                if len(row) > len(header):
-                    raise_structure_error(
-                        source,
-                        logical_record,
-                        reader.line_num,
-                        len(header),
-                        len(row),
-                        row,
-                    )
-                padded_row = [
-                    *row,
-                    *([''] * (len(header) - len(row))),
-                ]
-                if not row and len(header) == 1:
-                    target.write('\n')
-                else:
-                    writer.writerow(padded_row)
-    except csv.Error as error:
-        line = reader.line_num if reader is not None else 0
-        raise_csv_error(source, line, error)
+            target.write(';'.join(header) + '\n')
+            for record, row in enumerate(reader, start=1):
+                padded, _ = pad_record(source, header, record, row)
+                target.write(';'.join(padded) + '\n')
     except OSError as error:
         if getattr(error, 'errno', None) == 28:
             raise DiskFullError(str(normalized)) from error
@@ -133,79 +87,46 @@ def normalize_short_rows(
 
 
 def build_schema(analysis: CsvAnalysis) -> pa.Schema:
-    """Build one explicit Arrow schema from global column observations."""
-    fields = [
-        pa.field(name, inferred_type(column, analysis.rows))
-        for name, column in zip(analysis.header, analysis.columns, strict=True)
-    ]
-    return pa.schema(fields)
-
-
-def inferred_type(column: ColumnInference, rows: int) -> pa.DataType:
-    """Select the documented lossless Arrow type for one column."""
-    if rows == 0:
-        return pa.null()
-    if not column.has_non_null:
-        return pa.float64()
-    if (
-        column.has_string
-        or column.has_signed_overflow
-        or column.has_unsigned_overflow
-    ):
-        return pa.string()
-    if column.has_boolean:
-        mixed_with_boolean = (
-            column.has_signed_integer
-            or column.has_unsigned_integer
-            or column.has_float
-        )
-        return pa.string() if mixed_with_boolean else pa.bool_()
-    if column.has_float:
-        return pa.float64()
-    if column.has_unsigned_integer:
-        if column.has_null or column.has_signed_integer:
-            return pa.string()
-        return pa.uint64()
-    return pa.int64()
+    """Keep every field as text, including empty and header-only columns."""
+    return pa.schema(
+        [pa.field(name, pa.string()) for name in analysis.header],
+        metadata={
+            b'cvm.contract': CONTRACT_VERSION,
+            b'cvm.content-sha256': analysis.content_sha256.encode('ascii'),
+        },
+    )
 
 
 def validate_header(header: tuple[str, ...]) -> None:
-    """Reject absent, unusable, and duplicate column names before writing."""
-    if not header or not any(column for column in header):
+    """Reject absent, unusable, duplicate, and excessively wide headers."""
+    if not header or not all(column.strip() for column in header):
         raise ExtractionError('CVM CSV', 'CSV member has no usable header')
+    if len(header) > MAX_COLUMNS:
+        raise ExtractionError(
+            'CVM CSV', f'CSV header exceeds {MAX_COLUMNS} columns'
+        )
     if len(set(header)) != len(header):
         raise ExtractionError(
             'CVM CSV', 'CSV member has duplicate header column names'
         )
 
 
-def raise_structure_error(
+def pad_record(
     source: ReopenableCsvSource,
+    header: tuple[str, ...],
     record: int,
-    line: int,
-    expected: int,
-    observed: int,
     row: list[str],
-) -> None:
-    """Raise a bounded source-context error for an invalid row."""
-    preview = ';'.join(row)[:80]
-    raise ExtractionError(
-        str(source.source_path),
-        f'CSV structure error source={source.source_path.name}; '
-        f'member={source.member_name}; record={record}; line={line}; '
-        f'expected_fields={expected}; observed_fields={observed}; '
-        f'value={preview!r}',
-    )
-
-
-def raise_csv_error(
-    source: ReopenableCsvSource,
-    line: int,
-    error: csv.Error,
-) -> None:
-    """Wrap strict CSV dialect errors with bounded source coordinates."""
-    raise ExtractionError(
-        str(source.source_path),
-        f'CSV parser error source={source.source_path.name}; '
-        f'member={source.member_name}; line={line}; cause={error}',
-    ) from error
+) -> tuple[list[str], bool]:
+    """Reject extra fields and pad absent trailing fields with empty text."""
+    if len(row) > len(header):
+        preview = ';'.join(row)[:80]
+        raise ExtractionError(
+            str(source.source_path),
+            f'CSV structure error source={source.source_path.name}; '
+            f'member={source.member_name}; record={record}; '
+            f'line={record + 1}; '
+            f'expected_fields={len(header)}; observed_fields={len(row)}; '
+            f'value={preview!r}',
+        )
+    short = len(row) < len(header)
+    return [*row, *([''] * (len(header) - len(row)))], short

@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Generator, Iterable, Iterator
 from concurrent.futures import Future, TimeoutError
+from contextlib import closing
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 from typing import Any, NoReturn
 
 from ....core.archive_safety import ArchiveSafetyLimits
+from ....core.utils import SimpleProgressBar
 from .async_execution import (
     check_phase_cancellation,
     set_phase_cancellation,
@@ -150,6 +152,35 @@ def _iter_preflight_sources(
     processing_mode: ProcessingModeEnumB3,
     executor_backend: str,
 ) -> Iterator[AnnualResult]:
+    """Report validated annual files while keeping worker cleanup scoped."""
+    source_count = sum(
+        bool(selection.candidates.get(year)) for year in selection.years
+    )
+    with (
+        SimpleProgressBar(
+            total=source_count,
+            desc='Validating B3 files',
+            operation='validation',
+        ) as progress_bar,
+        closing(
+            _iter_preflight_results(
+                selection,
+                processing_mode=processing_mode,
+                executor_backend=executor_backend,
+            )
+        ) as results,
+    ):
+        for result in results:
+            progress_bar.update()
+            yield result
+
+
+def _iter_preflight_results(
+    selection: CatalogSelection,
+    *,
+    processing_mode: ProcessingModeEnumB3,
+    executor_backend: str,
+) -> Generator[AnnualResult, None, None]:
     """Admit bounded work and join all children before reporting any result."""
     if (
         executor_backend != 'process'

@@ -4,13 +4,16 @@ from pathlib import Path
 from threading import Event
 from unittest.mock import AsyncMock, MagicMock
 
-import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
 from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
     AsyncDownloadAdapterCVM,
     DownloadResultCVM,
+    destination_io,
+)
+from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
+    ParquetExtractorAdapterCVM,
 )
 
 pytestmark = pytest.mark.integration
@@ -72,7 +75,7 @@ async def test_failed_zip_promotion_removes_staging_file(
     async def staged_download(_url, _filepath, _doc_name, _year):
         return True, str(staging_path)
 
-    def fail_replace(_self, _target):
+    def fail_replace(_self, _source, _target):
         raise OSError('promotion failed')
 
     monkeypatch.setattr(adapter, '_download_with_retry', staged_download)
@@ -81,7 +84,9 @@ async def test_failed_zip_promotion_removes_staging_file(
         '_get_content_length',
         AsyncMock(return_value=None),
     )
-    monkeypatch.setattr(Path, 'replace', fail_replace)
+    monkeypatch.setattr(
+        destination_io.DestinationFileOperationsCVM, 'replace', fail_replace
+    )
     result = DownloadResultCVM()
 
     await adapter._download_and_extract(
@@ -114,17 +119,14 @@ async def test_worker_keeps_loop_live_and_drains_on_cancel(
     extraction_started = Event()
     release_extraction = Event()
     extraction_finished = Event()
-    parquet_path = output_dir / 'completed.parquet'
+    parquet_path = output_dir / 'data.parquet'
 
     class BarrierExtractor:
-        def extract(self, _source_path: str, destination_path: str) -> None:
+        def extract(self, source_path: str, destination_path: str) -> None:
             extraction_started.set()
-            if not release_extraction.wait(timeout=2):
+            if not release_extraction.wait(timeout=5):
                 raise TimeoutError('test barrier was not released')
-            pq.write_table(
-                pa.table({'id': [1]}),
-                Path(destination_path) / parquet_path.name,
-            )
+            ParquetExtractorAdapterCVM().extract(source_path, destination_path)
             extraction_finished.set()
 
     adapter = AsyncDownloadAdapterCVM(
@@ -165,10 +167,13 @@ async def test_worker_keeps_loop_live_and_drains_on_cancel(
 
     progress_task = asyncio.create_task(advance_while_extracting())
     try:
-        await asyncio.wait_for(progress_task, timeout=1)
+        await asyncio.wait_for(progress_task, timeout=3)
         assert loop_ticks == 3
         assert not task.done()
 
+        task.cancel()
+        await asyncio.sleep(0)
+        assert not task.done()
         task.cancel()
         await asyncio.sleep(0)
         assert not task.done()
@@ -181,6 +186,9 @@ async def test_worker_keeps_loop_live_and_drains_on_cancel(
     assert extraction_finished.is_set()
     assert not staging_path.exists()
     assert not list(output_dir.glob('*.part'))
+    assert pq.read_table(parquet_path).to_pylist() == [
+        {'id': '1', 'value': '10'}
+    ]
     modified_at = parquet_path.stat().st_mtime_ns
     await asyncio.sleep(0.05)
     assert parquet_path.stat().st_mtime_ns == modified_at

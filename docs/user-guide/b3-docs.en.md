@@ -13,7 +13,7 @@ The `HistoricalQuotesB3` class provides a high-performance engine capable of ing
 - ✅ Automatic structural type normalization into Apache Parquet
 - ✅ Deep historical compatibility dating back to fiscal year **1986**
 - ✅ Granular asset filtering syntax to exclude unnecessary instrument types
-- ✅ Comprehensive execution tracking and diagnostic console outputs
+- ✅ File progress bars during validation and processing
 
 ## Supported Asset Categories
 
@@ -105,7 +105,9 @@ def extract(
 | `destination_path` | `str \| None` | ❌ No     | Destination output directory (default: matches `path_of_docs`)     |
 | `output_filename`  | `str`         | ❌ No     | Base filename of the target Parquet artifact; optional `.parquet` suffix       |
 | `processing_mode`  | `str`         | ❌ No     | Execution concurrency profile: `"fast"` or `"slow"`                |
-| `verbose`          | `bool`        | ❌ No     | When `True` (default), prints formatted console summary            |
+| `verbose`          | `bool`        | ❌ No     | When `True` (default), prints the final summary; progress bars also appear with `False` |
+
+See the [progress and final summary](../reference/b3-api.en.md#extract) details.
 
 #### Return Contract (`ExtractionResultB3`)
 

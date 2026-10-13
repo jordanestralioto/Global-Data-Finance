@@ -171,7 +171,7 @@ ______________________________________________________________________
 
 ## 3. Linha de Base CVM — Download + Extração
 
-### 3.1. Linha de Base v2 — 17 Anos (2010–2026, Revisão `703d9ab`)
+### 3.1. Linha de Base Histórica v2 — 17 Anos (2010–2026, Revisão `703d9ab`)
 
 Medição do fluxo completo de `FundamentalStocksDataCVM` com
 `automatic_extractor=True`: download dos ZIPs brutos da CVM, extração CSV com
@@ -321,7 +321,13 @@ ______________________________________________________________________
 
 ## 6. Otimizações CVM — Encoding, Inferência e HTTP
 
-### 6.1. Varredura de encoding e inferência terminal
+### 6.1. Histórico de varredura de encoding e inferência terminal
+
+As medições CVM de 2026-09-23 antecedem o contrato `exact-text-v1` e sua
+validação integral de conteúdo. Elas não são uma linha de base da implementação
+atual. O runner atual verifica digests com todos os campos CVM preservados como
+texto; os cenários numérico e de texto longo usam a mesma preparação de entrada
+nos testes de integração e na CLI.
 
 Em **2026-09-23**, os cenários `cvm` e `cvm_text` foram executados em três
 processos novos por etapa, com o mesmo corpus determinístico. Ambiente: Python
@@ -352,7 +358,8 @@ para `cvm` (269.181 linhas) e
 
 Os relatórios completos, incluindo checksums de entrada, cada repetição e
 proveniência `git_sha` / `worktree_sha256`, estão nos arquivos [baseline](benchmark-results/cvm-optimizations-20260923/cvm-opt-baseline-20260923.json), [scan](benchmark-results/cvm-optimizations-20260923/cvm-opt-scan-20260923.json) e [scan + inferência](benchmark-results/cvm-optimizations-20260923/cvm-opt-inference-20260923.json).
-Reproduza os três cenários com:
+Meça os mesmos cenários na versão atual com o comando abaixo. Reproduzir as
+etapas históricas exige as implementações e os contratos daquela medição.
 
 ```bash
 mkdir -p .benchmarks

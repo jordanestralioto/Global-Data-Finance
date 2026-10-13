@@ -107,6 +107,7 @@ plugins:
             Boas práticas B3: B3 Operational Practices
             Migração major: Major Migration
             Migração de infraestrutura: Infrastructure Clean Cut Migration
+            Migração CVM exata: CVM Exact Text Migration
             Arquitetura: Architecture
             Referência da API: API Reference
             Como Contribuir: Contributing
@@ -176,6 +177,7 @@ nav:
       - FAQ: user-guide/faq.md
       - Migração major: user-guide/migration-pyarrow-integrity.md
       - Migração de infraestrutura: user-guide/migration-infrastructure-clean-cut.md
+      - Migração CVM exata: user-guide/migration-cvm-exact-text.md
   - Guia do Desenvolvedor:
       - Arquitetura: dev-guide/architecture.md
       - Referência da API: dev-guide/api-reference.md

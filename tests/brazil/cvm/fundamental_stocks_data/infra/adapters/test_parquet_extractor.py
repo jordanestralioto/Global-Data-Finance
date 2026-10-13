@@ -48,8 +48,8 @@ def test_public_extractor_publishes_one_or_more_arrow_outputs(
 
     first = tmp_path / 'first.parquet'
     second = tmp_path / 'second.parquet'
-    assert pq.read_table(first).to_pylist() == [{'code': 1, 'value': 10}]
-    assert pq.read_table(second).to_pylist() == [{'code': 2, 'value': 20}]
+    assert pq.read_table(first).to_pylist() == [{'code': '1', 'value': '10'}]
+    assert pq.read_table(second).to_pylist() == [{'code': '2', 'value': '20'}]
     assert not list(tmp_path.glob('.globaldatafinance-transaction-*'))
     assert not (tmp_path / '.globaldatafinance-transaction.lock').exists()
 

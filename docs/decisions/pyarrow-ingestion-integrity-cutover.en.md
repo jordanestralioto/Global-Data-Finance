@@ -65,6 +65,8 @@ Parquets because multiple names cannot be replaced by one operation.
 
 ### Q4 — Per-source integrity rules
 
+The CVM inference and types in this historical decision were superseded by the [CVM exact text preservation contract](../user-guide/migration-cvm-exact-text.en.md), authorized on 2026-10-12. The other decisions remain applicable.
+
 CVM performs a global text validation/inference pass followed by a second pass
 with an explicit schema. Short rows are padded at the end only; extra rows,
 missing headers, and ambiguous structures fail without publishing. A

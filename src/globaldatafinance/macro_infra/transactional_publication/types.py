@@ -32,6 +32,10 @@ class FileOperations:
         """Create one directory atomically."""
         path.mkdir()
 
+    def makedirs(self, path: Path) -> None:
+        """Ensure an artifact parent exists through the filesystem seam."""
+        path.mkdir(parents=True, exist_ok=True)
+
     def mkdtemp(self, prefix: str, destination: Path) -> Path:
         """Create a same-filesystem staging directory."""
         return Path(tempfile.mkdtemp(prefix=prefix, dir=destination))

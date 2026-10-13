@@ -24,18 +24,18 @@ from globaldatafinance import (
 | Canonical archive namespace | Use `Settings.archive`; `Settings.archive_safety` no longer exists and has no compatibility alias. |
 | Strict logging configuration | Use only documented `LoggingSettings` fields and environment variables; `LoggingSettings(structured=True)` and unknown `DATAFIN_LOG_*` variables now raise `ValidationError`. |
 | Logging destination and context | Use a `log_file` under an application-approved directory; roots/protected directories are rejected, and common secret fields receive best-effort redaction. Do not send secrets to logging. |
-| Nullable CVM integers | A signed nullable column may be persisted as `int64`; do not depend on automatic promotion to `float64`. |
+| Exact CVM preservation | Regenerate Parquets as `exact-text-v1`; all columns are strings and numeric conversions are explicit. |
 | B3 internal clean cut | Remove `data_writer` from integrations constructing `ExtractionServiceB3` and do not pass `resource_monitor` to `ParquetWriterB3`; use the current facades and signatures. |
 | Reserved B3 sentinel | The literal `__GLOBALDATAFINANCE_NULL__` is not accepted as a value; use `None` for nulls. |
 
 ## CVM
 
-CVM CSV keeps `QUOTE_NONE`: quotes are literal text, not RFC quoting. Short
-rows receive trailing nulls only, excess rows fail, and a header-only file
-produces an empty Parquet. Publication of the several Parquets from one ZIP is
-failure-atomic and recoverable through a manifest, staging, backup, and lock.
-It does not provide instant atomic visibility of every filename to concurrent
-readers.
+The current CVM contract is `exact-text-v1`: string columns, empty fields as
+`""`, original values preserved, and ZIP retention after extraction.
+`QUOTE_NONE` keeps literal quotes and short rows receive trailing empty fields.
+Multi-Parquet publication remains recoverable as a batch, with all records
+verified before promotion. See the [CVM exact text migration](migration-cvm-exact-text.en.md)
+for regeneration, explicit conversions, and lock inspection after interruption.
 
 Library logging does not alter the application root logger. Before an explicit
 `setup_logging()` call, the `globaldatafinance` namespace uses a `NullHandler`

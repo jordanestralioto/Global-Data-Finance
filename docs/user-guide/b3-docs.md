@@ -15,7 +15,7 @@ A classe `HistoricalQuotesB3` fornece uma interface poderosa para processar arqu
 - ✅ Conversão automática para formato Parquet
 - ✅ Suporte a dados desde 1986
 - ✅ Filtragem inteligente por tipo de ativo
-- ✅ Progress tracking detalhado
+- ✅ Barras de progresso por arquivo na validação e no processamento
 
 ______________________________________________________________________
 
@@ -110,7 +110,9 @@ def extract(
 | `destination_path` | `str \| None` | ❌ Não      | Diretório de saída (padrão: mesmo que `path_of_docs`) |
 | `output_filename`  | `str`         | ❌ Não      | Basename obrigatório; `.parquet` opcional e acrescentado apenas quando ausente |
 | `processing_mode`  | `str`         | ❌ Não      | Modo de processamento: `"fast"` ou `"slow"`           |
-| `verbose`          | `bool`        | ❌ Não      | Se `True` (padrão), imprime resumo no console         |
+| `verbose`          | `bool`        | ❌ Não      | Se `True` (padrão), imprime o resumo final; as barras de progresso aparecem também com `False` |
+
+Consulte os detalhes de [progresso e resumo final](../reference/b3-api.md#extract).
 
 #### Retorno (`ExtractionResultB3`)
 

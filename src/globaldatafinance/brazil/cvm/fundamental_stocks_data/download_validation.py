@@ -10,6 +10,8 @@ from ....core.archive_safety import (
     validate_zip_crc_with_limits,
 )
 from ....macro_exceptions import CorruptedZipError
+from ....macro_infra import RequestsAdapter
+from .parquet_validation import validate_parquet_data
 
 logger = get_logger(__name__)
 
@@ -48,7 +50,12 @@ def find_parquet_files(dest_path: str) -> list[Path]:
 
 
 def validate_parquet_files(
-    parquet_files: list[Path], doc_name: str, year: str
+    parquet_files: list[Path],
+    doc_name: str,
+    year: str,
+    *,
+    expected_archive_sha256: str | None = None,
+    expected_members: dict[Path, str] | None = None,
 ) -> bool:
     """Validate that Parquet files are readable and contain data."""
     import pyarrow.parquet as pq
@@ -84,24 +91,35 @@ def validate_parquet_files(
                 )
                 return False
 
-            parquet_metadata = pq.ParquetFile(parquet_file).metadata
-            if parquet_metadata is None:
-                logger.error(
-                    'Parquet metadata is unavailable: %s for %s_%s',
-                    parquet_file,
-                    doc_name,
-                    year,
-                )
-                return False
-
-            if parquet_metadata.num_columns == 0:
-                logger.error(
-                    'Parquet file has no columns: %s for %s_%s',
-                    parquet_file,
-                    doc_name,
-                    year,
-                )
-                return False
+            with pq.ParquetFile(
+                parquet_file, page_checksum_verification=True
+            ) as parquet:
+                if expected_archive_sha256 is not None:
+                    metadata_map = parquet.schema_arrow.metadata or {}
+                    if metadata_map.get(
+                        b'cvm.source-archive-sha256'
+                    ) != expected_archive_sha256.encode(
+                        'ascii'
+                    ) or metadata_map.get(b'cvm.source-member') != (
+                        expected_members or {}
+                    )[parquet_file].encode('utf-8'):
+                        raise ValueError(
+                            'Parquet does not match its CVM source'
+                        )
+                parquet_metadata = parquet.metadata
+                if (
+                    parquet_metadata is None
+                    or parquet_metadata.num_columns == 0
+                ):
+                    logger.error(
+                        'Parquet has no usable metadata or columns: '
+                        '%s for %s_%s',
+                        parquet_file,
+                        doc_name,
+                        year,
+                    )
+                    return False
+                validate_parquet_data(parquet, parquet_metadata.num_rows)
 
             valid_files += 1
             logger.debug(
@@ -134,27 +152,19 @@ def validate_parquet_files(
 
 def _has_valid_size(path: Path, expected_size: int) -> bool:
     actual_size = path.stat().st_size
-    size_diff = abs(actual_size - expected_size)
-    size_diff_pct = (
-        (size_diff / expected_size) * 100 if expected_size > 0 else 0
-    )
-
-    if size_diff_pct > 5.0:
+    if expected_size <= 0 or actual_size != expected_size:
         logger.error(
-            'File size mismatch for %s: expected %d bytes, got %d bytes '
-            '(%.1f%% difference)',
+            'File size mismatch for %s: expected %d bytes, got %d bytes',
             path,
             expected_size,
             actual_size,
-            size_diff_pct,
         )
         return False
 
     logger.debug(
-        'File size validation passed: %d bytes (expected %d, diff %.2f%%)',
+        'File size validation passed: %d bytes (expected %d)',
         actual_size,
         expected_size,
-        size_diff_pct,
     )
     return True
 
@@ -194,3 +204,44 @@ def has_valid_zip_contents(
 
     logger.debug('File validation passed: %s', filepath)
     return True
+
+
+def validate_download_options(
+    max_concurrent: int, chunk_size: int, max_retries: int
+) -> None:
+    """Reject configurations that cannot execute bounded download attempts."""
+    for name, value, minimum in (
+        ('max_concurrent', max_concurrent, 1),
+        ('chunk_size', chunk_size, 1),
+        ('max_retries', max_retries, 0),
+    ):
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, int)
+            or value < minimum
+        ):
+            raise ValueError(f'{name} must be an integer >= {minimum}')
+
+
+async def get_content_length(
+    requests_adapter: RequestsAdapter, url: str
+) -> int | None:
+    """Read optional ZIP size metadata without hiding integrity failures."""
+    try:
+        response = await requests_adapter.async_head(url)
+        content_length = response.headers.get('content-length')
+        if content_length:
+            size_bytes = int(content_length)
+            logger.debug(
+                'Content-Length for %s: %.2f MB',
+                url,
+                size_bytes / 1024 / 1024,
+            )
+            return size_bytes
+        logger.debug('No Content-Length header for %s', url)
+        return None
+    except Exception:
+        logger.warning(
+            'Failed to get Content-Length for %s', url, exc_info=True
+        )
+        return None

@@ -31,11 +31,11 @@ A CVM disponibiliza os seguintes tipos de documentos:
 | **FCA**  | Formulário Cadastral                | Dados cadastrais da empresa            | 2010             |
 | **CGVN** | Código de Governança                | Práticas de governança corporativa     | 2018             |
 | **VLMO** | Valores Mobiliários                 | Informações sobre valores mobiliários  | 2018             |
-| **IPE**  | Informações Periódicas e Eventuais  | Documentos periódicos e eventuais      | 2010             |
+| **IPE**  | Informações Periódicas e Eventuais  | Documentos periódicos e eventuais      | 2003             |
 
 !!! info "Dados Históricos"
 
-    A maioria dos documentos está disponível desde 2010, exceto ITR (2011) e CGVN/VLMO (2018).
+    IPE está disponível desde 2003; DFP/FRE/FCA desde 2010, ITR desde 2011 e CGVN/VLMO desde 2018.
 
 ______________________________________________________________________
 
@@ -217,6 +217,7 @@ Objeto `NamedTuple` com informações estruturadas de anos disponíveis:
 | `general_min_year`   | `int` | Ano mínimo para documentos gerais (2010) |
 | `itr_min_year`       | `int` | Ano mínimo para ITR (2011)               |
 | `cgvn_vlmo_min_year` | `int` | Ano mínimo para CGVN/VLMO (2018)         |
+| `ipe_min_year` | `int` | IPE: 2003 (propriedade) |
 | `current_year`       | `int` | Ano corrente do sistema                  |
 
 #### Exemplo
@@ -388,24 +389,22 @@ destination_path/
 
 ### Integridade e recuperação da extração
 
-Cada ZIP é validado antes do consumo. O pipeline PyArrow faz duas passagens:
-valida estrutura e schema global, depois grava row groups tipados. O encoding é
-escolhido ao validar o membro inteiro (UTF-8, UTF-8 BOM, CP1252 ou Latin-1);
-estrutura inválida nunca descarta linhas silenciosamente.
+Cada ZIP é validado antes do consumo. Todas as colunas são Arrow `string`
+no contrato `exact-text-v1`, preservando decimais, zeros iniciais, caixa,
+textos como `N/A` e campos vazios como `""`. CSV só com cabeçalho gera zero
+linhas com colunas `string`. `QUOTE_NONE` mantém aspas literais; linhas curtas
+recebem campos vazios finais e campos excedentes abortam.
 
-O dialeto continua `QUOTE_NONE`: aspas são literais e não há multiline. Linhas
-curtas recebem apenas nulos finais, linhas excedentes abortam e CSV só com
-cabeçalho vira Parquet vazio com campos Arrow `null`, nomes ordenados e sem
-metadata `b'pandas'`.
+O SHA-256 de todos os registros é conferido contra o Parquet reaberto antes
+da publicação. Checksums, `fsync` e associação do Parquet ao ZIP consumido
+impedem confirmar conteúdo incompleto ou divergente. O ZIP original permanece
+no destino, incluindo anexos não CSV. Os Parquets têm commit recuperável por
+lote; a visibilidade conjunta para leitores concorrentes não é instantânea.
 
-Um ZIP pode gerar vários Parquets. Staging, manifesto, backups e lock permitem
-um **commit em lote tolerante a falhas**: artefatos são validados antes da
-substituição determinística, e a próxima operação recupera uma interrupção. Não
-há atomicidade instantânea para leitores concorrentes nem escrita simultânea no
-mesmo destino; lock vivo ou de outro host é rejeitado. Um ZIP bruto existente
-só é substituído após transferência e validação bem-sucedidas.
-
-Consulte a [nota de migração major](migration-pyarrow-integrity.md) para a tabela de compatibilidade e ações para consumidores.
+Escritores concorrentes para o mesmo destino são rejeitados antes da promoção
+do ZIP. Um `.cvm-write-lock` deixado por terminação abrupta exige inspeção
+explícita antes da recuperação. Para limites, encoding e migração do
+consumidor, consulte a [migração CVM exata](migration-cvm-exact-text.md).
 
 ## Boas Práticas
 
@@ -416,7 +415,7 @@ Consulte a [nota de migração major](migration-pyarrow-integrity.md) para a tab
 cvm.download(
     destination_path="/data",
     list_docs=["DFP"],
-    initial_year=2010,  # 25+ anos!
+    initial_year=2003,  # Includes the full IPE history
     last_year=2023
 )
 
@@ -474,6 +473,8 @@ O `FundamentalStocksDataCVM` usa `AsyncDownloadAdapterCVM` por padrão, que ofer
 
 **Linha de base v2 — fluxo completo: download + extração CSV→Parquet
 (2010–2026, revisão `703d9ab`):**
+
+Esta medição histórica usa o contrato anterior ao `exact-text-v1`.
 
 | Docs                | Período   | ZIPs | Parquets |      Linhas |     Saída |     Tempo | Pico RSS | Erros |
 | ------------------- | --------- | ---: | -------: | ----------: | --------: | --------: | -------: | ----: |

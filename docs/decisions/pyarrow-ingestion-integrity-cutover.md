@@ -65,6 +65,8 @@ porque múltiplos nomes não podem ser substituídos em uma única operação.
 
 ### Q4 — Regras de integridade por fonte
 
+A inferência e os tipos CVM descritos nesta decisão histórica foram substituídos pelo [contrato CVM de preservação textual exata](../user-guide/migration-cvm-exact-text.md), autorizado em 2026-10-12. As demais decisões continuam aplicáveis.
+
 CVM faz uma passagem global de validação/inferência em texto e uma segunda
 passagem com schema explícito. Linhas curtas são completadas somente no final;
 linhas excedentes, cabeçalhos ausentes e estruturas ambíguas falham sem

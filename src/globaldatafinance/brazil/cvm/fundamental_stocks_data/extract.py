@@ -6,6 +6,7 @@ Parquet datasets with automatic error handling and filesystem rollback support.
 
 import zipfile
 from collections.abc import Sequence
+from pathlib import Path
 
 from ....core import get_logger
 from ....core.archive_safety import ArchiveSafetyLimits
@@ -20,6 +21,7 @@ from ....macro_exceptions import (
     SecurityError,
 )
 from .transaction import CvmFailureAtomicBatchCommit
+from .write_ownership import exclusive_destination
 
 logger = get_logger(__name__)
 
@@ -46,12 +48,23 @@ class ParquetExtractorAdapterCVM:
         try:
             logger.info('Starting Parquet extraction from %s', source_path)
 
-            with zipfile.ZipFile(source_path, 'r') as zip_file:
+            with (
+                exclusive_destination(
+                    destination_path, allowed_unc_roots=self.allowed_unc_roots
+                ) as operations,
+                zipfile.ZipFile(
+                    operations.bound_path(Path(source_path))
+                    if Path(source_path).parent == operations.snapshot.path
+                    else source_path,
+                    'r',
+                ) as zip_file,
+            ):
                 transaction = CvmFailureAtomicBatchCommit(
                     source_path=source_path,
                     destination_path=destination_path,
                     archive_limits=self.archive_limits,
                     allowed_unc_roots=self.allowed_unc_roots,
+                    directory_operations=operations,
                 )
                 transaction.execute(zip_file)
 

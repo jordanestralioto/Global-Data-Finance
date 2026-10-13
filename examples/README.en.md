@@ -1,140 +1,155 @@
 # Usage examples
 
-Start with examples 01 and 02. Each script uses the public
-`globaldatafinance` API, reports where it saved the result, and exits with an
-error if processing fails. Outputs use Parquet; you can read them with
-PyArrow, which is installed with the library.
+To use an example, **open the file, change the values in its `SETTINGS` block,
+save it, and run the command shown below**. You can use your usual text editor.
+The options you need to change are grouped near the start of each file.
 
-| Example                                                | What it does                                 | What you need to supply                     |
-| ------------------------------------------------------ | -------------------------------------------- | ------------------------------------------- |
-| [01_quickstart_cvm.py](01_quickstart_cvm.py)           | Downloads CVM DFP and converts it to Parquet | An internet connection                      |
-| [02_quickstart_b3.py](02_quickstart_b3.py)             | Extracts quotes from stock markets           | A local COTAHIST file for the selected year |
-| [03_advanced_options_b3.py](03_advanced_options_b3.py) | Selects stock, ETF, and options markets      | A local COTAHIST file for the selected year |
+| File                                                   | What it does                      | What you need                   |
+| ------------------------------------------------------ | --------------------------------- | ------------------------------- |
+| [01_quickstart_cvm.py](01_quickstart_cvm.py)           | Downloads CVM financial documents | Internet access                 |
+| [02_quickstart_b3.py](02_quickstart_b3.py)             | Reads quotes from stock markets   | COTAHIST files on your computer |
+| [03_advanced_options_b3.py](03_advanced_options_b3.py) | Also reads options markets        | COTAHIST files on your computer |
 
-All three examples process **only 2023** by default. You can change the year,
-range, and output directory through command-line options.
+## 1. Prepare the environment once
 
-## Prepare the environment
+You need Python `>=3.12,<4.0` and `uv`. If you have not installed them, follow
+the [installation guide](../docs/user-guide/installation.en.md).
 
-Requirements: Python `>=3.12,<4.0` and `uv`. See the
-[installation guide](../docs/user-guide/installation.en.md) if you have not
-prepared your environment yet.
-
-Run this from the **repository root**, where `pyproject.toml` is located:
+Open a terminal in the **main project directory**, which contains
+`pyproject.toml`, and run:
 
 ```bash
 uv sync --locked --all-extras --dev
 ```
 
-Do this once. Subsequent commands use `--no-sync` to reuse the environment.
-Relative paths such as `./dados_b3` are resolved from the directory where you
-run the command.
+Use this same directory when running the examples. A path such as `./dados_b3`
+means the `dados_b3` folder inside it. The library creates the output directory
+when needed.
 
-## 1. Download CVM financial statements
+## 2. Choose what to process
+
+The variable names are in English, matching the files. Use this table to find
+which value to change:
+
+| Variable              | Meaning                                                    | How to fill it in                                                                                               |
+| --------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `INITIAL_YEAR`        | First year                                                 | A number without quotes, such as `2023`                                                                         |
+| `LAST_YEAR`           | Last year, included in processing                          | Use the first year again to process just one year                                                               |
+| `DESTINATION_PATH`    | Folder where results are saved                             | A quoted path, such as `'./meus_dados'`                                                                         |
+| `DOCUMENTS`           | CVM document types, in example 01                          | `['DFP']` for annual statements; `['DFP', 'ITR']` to include quarterly statements; `[]` for all available types |
+| `AUTOMATIC_EXTRACTOR` | Convert CVM documents to Parquet                           | `True` converts them; `False` only downloads the ZIPs                                                           |
+| `PATH_OF_DOCS`        | Folder containing B3 files                                 | A quoted folder path, without the ZIP or TXT filename                                                           |
+| `ASSETS`              | B3 market groups                                           | `['ações']`, `['ações', 'etf', 'opções']`, or `['todos']`                                                       |
+| `OUTPUT_NAME`         | Initial part of the B3 filename                            | Text without a folder, extension, or year, such as `'minhas_cotacoes'`                                          |
+| `PROCESSING_MODE`     | B3 processing mode                                         | `'fast'` for higher speed; `'slow'` for lower memory usage                                                      |
+| `VERBOSE`             | Also show markets, processing mode, and B3 extraction time | `True` shows them; `False` keeps the basic summary                                                              |
+
+B3 examples display file progress bars during validation and processing with
+either `VERBOSE = True` or `False`. This variable controls only extra details
+in the final summary. After the processing bar, the library still consolidates
+and verifies the Parquet before reporting that extraction is complete.
+
+Change only the value **to the right of `=`**. Keep quotes around text,
+brackets around lists, and commas between list items. Write `True` and `False`
+without quotes and with the first letter capitalized. After editing, **save
+the file** before running it.
+
+### Example 01: CVM documents
+
+To start with just the annual statements for 2023, set the block to:
+
+```python
+INITIAL_YEAR = 2023
+LAST_YEAR = 2023
+DESTINATION_PATH = './dados_cvm'
+DOCUMENTS = ['DFP']
+AUTOMATIC_EXTRACTOR = True
+```
+
+Run:
 
 ```bash
 uv run --locked --no-sync python examples/01_quickstart_cvm.py
 ```
 
-The example downloads the 2023 **Standardized Financial Statements (DFP)** ZIP,
-converts its CSVs to Parquet, and saves the files in `./dados_cvm`.
-This selection includes statements from multiple companies and may take a few
-minutes. A successful run removes the ZIP after conversion.
+Files are saved in `dados_cvm`. Parquet is the data format created by the
+conversion; the original ZIPs are also retained. The documents cover multiple
+companies, and downloading them may take a few minutes.
 
-To choose a different period and destination:
+The file is configured for **2010 through 2026**, with
+`DOCUMENTS = []` for all types. Use the block above for a smaller first run.
 
-```bash
-uv run --locked --no-sync python examples/01_quickstart_cvm.py \
-  --initial-year 2022 --last-year 2023 --destination-path ./dados_cvm
-```
+### Example 02: B3 quotes
 
-## 2. Extract B3 stock quotes
-
-The library **processes local ZIP or TXT files**; it does not download B3
-COTAHIST. Obtain the annual file as explained in the
-[B3 guide](../docs/user-guide/b3-docs.en.md) and arrange the input like this:
+The library reads files already on your computer. To obtain the input, follow
+the [B3 guide](../docs/user-guide/b3-docs.en.md). To process 2023, arrange the
+folder as follows:
 
 ```text
 cotahist_b3/
 └── COTAHIST_A2023.ZIP
 ```
 
-You can also use `COTAHIST_A2023.TXT`. Preserve the official filename for each
-year. Input files are not included in the examples.
+`COTAHIST_A2023.TXT` also works. Keep the official name; every requested year
+must have its file in the folder. The examples do not include or download these
+files.
+
+Example 02 is already configured for 2023. If your input is in another folder,
+replace the `PATH_OF_DOCS` line with something like:
+
+```text
+PATH_OF_DOCS = '/home/usuario/Minha pasta/COTAHIST'
+```
+
+Quotes also allow paths containing spaces. Run:
 
 ```bash
 uv run --locked --no-sync python examples/02_quickstart_b3.py
 ```
 
-Default output: `./dados_b3/cotacoes_acoes_2023.parquet`. The example selects
-quotes from cash (010) and fractional (020) markets. Selection is by market,
-rather than a list of tickers; ETFs in those markets may also appear.
+The default result is `dados_b3/cotacoes_acoes_2023.parquet`. To process 2022
+and 2023, change `INITIAL_YEAR` to `2022` and `LAST_YEAR` to `2023`. The name
+automatically becomes `cotacoes_acoes_2022_2023.parquet`.
 
-If your files are in another directory, use `--path-of-docs`. Quote paths that
-contain spaces:
+`ASSETS = ['ações']` selects cash (010) and fractional (020) markets. ETFs in
+these markets may also appear. This option selects **markets**; it does not
+select companies by ticker codes such as PETR4.
 
-```bash
-uv run --locked --no-sync python examples/02_quickstart_b3.py \
-  --path-of-docs "/path/to/COTAHIST" \
-  --initial-year 2022 --last-year 2023 --destination-path ./dados_b3
-```
+### Example 03: more B3 markets
 
-Every year in the range must be present in the directory. This command writes
-`cotacoes_acoes_2022_2023.parquet`.
+Use this file to include options. It works the same way as example 02; the
+initial selection is `ASSETS = ['ações', 'etf', 'opções']`.
 
-## 3. Select more markets and adjust processing
+The file is configured for **2010 through 2026** and the local path
+already configured in `PATH_OF_DOCS`. To try just 2023, change both years to
+`2023`. If you need to change the folder, replace the entire section from
+`PATH_OF_DOCS = (` through `)` with a single line like the one in example 02.
+
+Run:
 
 ```bash
 uv run --locked --no-sync python examples/03_advanced_options_b3.py
 ```
 
-Default output: `./dados_b3/carteira_completa_2023.parquet`. This example passes
-`assets_list=['ações', 'etf', 'opções']` to also include call and put options
-markets.
+With the current settings, the result is
+`dados_b3/carteira_completa_2010_2026.parquet`. With both years set to 2023,
+it becomes `dados_b3/carteira_completa_2023.parquet`. To include every market
+in either B3 example, change `ASSETS` to `['todos']`.
 
-Both B3 examples accept `--processing-mode fast` (the default, focused on
-throughput) and `--processing-mode slow` (lower memory usage). To process 2022
-and 2023 in `slow` mode:
+## 3. Check the result
 
-```bash
-uv run --locked --no-sync python examples/03_advanced_options_b3.py \
-  --initial-year 2022 --last-year 2023 --processing-mode slow
-```
+When finished, each example shows the output directory or file and the number
+of processed files. The B3 examples also show the quote count. If processing
+fails or produces no data, the script prints a diagnostic and exits with an
+error.
 
-When you supply only `--initial-year`, the final year follows it. For example,
-`--initial-year 2022` processes only 2022 in all three scripts.
-
-To preserve every market, omit `assets_list` or use `['todos']` in your own
-code:
-
-```python
-from globaldatafinance import HistoricalQuotesB3
-
-b3 = HistoricalQuotesB3()
-result = b3.extract(
-    path_of_docs='./cotahist_b3',
-    initial_year=2023,
-    last_year=2023,
-    assets_list=['todos'],
-    destination_path='./dados_b3',
-    output_filename='cotahist_completo_2023',
-    verbose=False,
-)
-if not result['success'] or result['total_records'] == 0:
-    raise SystemExit(f'Incomplete extraction: {result["errors"]}')
-print(result['output_file'])
-```
-
-## Read the generated Parquet
-
-After running example 02, open Python in the same environment:
+To see five quotes from example 02, open Python from the terminal:
 
 ```bash
 uv run --locked --no-sync python
 ```
 
-Paste this code to see the record count and the first five quotes without
-loading the entire file:
+Paste the following code. PyArrow is already installed with the library:
 
 ```python
 import pyarrow.parquet as pq
@@ -149,45 +164,38 @@ for batch in parquet.iter_batches(
     break
 ```
 
-Change the path to read another output. Pandas and Polars are optional readers;
-the examples do not require them.
+If you changed the folder, name, or years, adjust the quoted path to match the
+generated file. This code reads a small sample without loading all quotes into
+memory.
 
-## Help and common problems
+## If an error appears
 
-Each script lists its options and defaults with `--help`:
+- **Library not found:** prepare the environment and use `uv run` as shown
+  above.
+- **COTAHIST not found or year unavailable:** check `PATH_OF_DOCS`, the
+  `COTAHIST_AYYYY.ZIP` or `.TXT` names, and that every year has a file.
+- **No quotes selected:** check `ASSETS` and whether the chosen markets exist
+  in the input.
+- **CVM download failed:** check your connection and read which documents
+  failed in the diagnostic before retrying.
+- **Error after editing:** check quotes, brackets, commas, and that the last
+  year is greater than or equal to the first year.
+- **Message asking you to edit `SETTINGS`:** remove extra command options,
+  change the values in the file, save it, and run it again.
 
-```bash
-uv run --locked --no-sync python examples/01_quickstart_cvm.py --help
-uv run --locked --no-sync python examples/02_quickstart_b3.py --help
-uv run --locked --no-sync python examples/03_advanced_options_b3.py --help
-```
-
-- **`ModuleNotFoundError: globaldatafinance`**: prepare the environment and use
-  the `uv run` commands above.
-- **Missing COTAHIST or unavailable year**: check `--path-of-docs`, the names
-  `COTAHIST_AYYYY.ZIP` or `COTAHIST_AYYYY.TXT`, and every requested year.
-- **No selected records**: check whether the selected markets exist in the
-  input file; an empty output is not reported as success.
-- **CVM download failure**: read the diagnostic, check your connection and
-  source file availability before trying again.
-
-`cli.py` and `result_validation.py` are support modules; the runnable examples
-are the three numbered scripts.
+The file `support.py` handles result checks and messages for the examples.
+To use or customize the examples, edit the three numbered files.
 
 ## Validate the examples
 
-From the repository root:
+From the main project directory:
 
 ```bash
 uv run --locked --no-sync pytest tests/examples
 ```
 
-Tests execute all three scripts with controlled inputs, read the generated
-Parquet, and verify filters and failures. Local responses replace CVM HTTP in
-the tests; they require neither the internet nor official COTAHIST files.
-Running example 01 normally accesses the CVM source.
+Tests use local ZIP, TXT, CSV, and Parquet files created for validation. CVM
+HTTP is replaced with local responses without downloading real data.
 
-For the complete contracts, see the
-[CVM guide](../docs/user-guide/cvm-docs.en.md),
-[B3 guide](../docs/user-guide/b3-docs.en.md), and
-[additional examples](../docs/user-guide/examples.en.md).
+See the [CVM](../docs/user-guide/cvm-docs.en.md) and
+[B3](../docs/user-guide/b3-docs.en.md) guides for the full contracts.

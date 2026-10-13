@@ -1,24 +1,30 @@
 """Synchronous validation, promotion, and extraction for one CVM download."""
 
 import asyncio
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from concurrent.futures import Executor, Future
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 from typing import Protocol
 
 from ....core import get_logger
-from .download_extraction import extract_downloaded_file
+from ....core.archive_safety import ArchiveSafetyLimits
+from ....macro_exceptions import ExtractionError, PathIsNotDirectoryError
+from ....macro_infra.transactional_publication.durability import (
+    sync_directory,
+    sync_file,
+)
+from .destination_io import (
+    DestinationFileOperationsCVM,
+    DownloadDestinationSnapshot,
+    assert_download_destination_unchanged,
+)
+from .download_extraction import ParquetExtractor, extract_downloaded_file
+from .write_ownership import exclusive_destination
 
 logger = get_logger(__name__)
 _FINALIZER_POLL_INTERVAL = 0.005
-
-
-class _ParquetExtractor(Protocol):
-    """Minimal CVM extraction contract used during download finalization."""
-
-    def extract(self, source_path: str, destination_path: str) -> None:
-        """Convert one source ZIP into destination Parquet artifacts."""
 
 
 class _DownloadedFileValidator(Protocol):
@@ -73,12 +79,80 @@ def finalize_downloaded_file(
     expected_size: int | None,
     *,
     automatic_extractor: bool,
-    file_extractor_repository: _ParquetExtractor | None,
+    file_extractor_repository: ParquetExtractor | None,
     validate_file: _DownloadedFileValidator,
     cleanup_file: Callable[[str], None],
+    allowed_unc_roots: Sequence[str] | None = None,
+    archive_limits: ArchiveSafetyLimits | None = None,
+    expected_destination: DownloadDestinationSnapshot | None = None,
 ) -> DownloadFinalizationResultCVM:
-    """Validate and publish a staged ZIP, then optionally extract it."""
+    """Own the destination before publishing or extracting a staged ZIP."""
+    try:
+        with exclusive_destination(
+            dest_path,
+            allowed_unc_roots=allowed_unc_roots,
+            expected_destination=expected_destination,
+        ) as operations:
+            return _finalize_owned_download(
+                staging_path,
+                final_path,
+                doc_name,
+                year,
+                expected_size,
+                automatic_extractor=automatic_extractor,
+                file_extractor_repository=file_extractor_repository,
+                validate_file=validate_file,
+                cleanup_file=cleanup_file,
+                archive_limits=archive_limits,
+                operations=operations,
+            )
+    except (ExtractionError, PathIsNotDirectoryError, OSError) as error:
+        logger.error(
+            'Failed to finalize %s_%s: %s',
+            doc_name,
+            year,
+            error,
+            exc_info=True,
+        )
+        if staging_path != final_path:
+            cleanup_file(str(staging_path))
+        return DownloadFinalizationResultCVM(
+            succeeded=False,
+            error_message=str(error),
+        )
+
+
+def _finalize_owned_download(
+    staging_path: Path,
+    final_path: Path,
+    doc_name: str,
+    year: str,
+    expected_size: int | None,
+    *,
+    automatic_extractor: bool,
+    file_extractor_repository: ParquetExtractor | None,
+    validate_file: _DownloadedFileValidator,
+    cleanup_file: Callable[[str], None],
+    archive_limits: ArchiveSafetyLimits | None,
+    operations: DestinationFileOperationsCVM,
+) -> DownloadFinalizationResultCVM:
+    """Validate and publish one ZIP while holding its destination lease."""
     document_key = f'{doc_name}_{year}'
+    extract: Callable[[], str | None] | None = None
+    if automatic_extractor:
+        if file_extractor_repository is None:
+            raise RuntimeError(
+                'Automatic extraction requires a CVM Parquet extractor'
+            )
+        extract = partial(
+            extract_downloaded_file,
+            file_extractor_repository=file_extractor_repository,
+            filepath=str(final_path),
+            dest_path=str(operations.snapshot.path),
+            doc_name=doc_name,
+            year=year,
+            archive_limits=archive_limits,
+        )
     promoted = False
     owns_staging = staging_path != final_path
 
@@ -97,7 +171,12 @@ def finalize_downloaded_file(
             )
 
         try:
-            staging_path.replace(final_path)
+            assert_download_destination_unchanged(
+                final_path.parent.resolve(), operations.snapshot
+            )
+            sync_file(operations, staging_path)
+            operations.replace(staging_path, final_path)
+            sync_directory(operations, final_path.parent)
         except OSError as promotion_error:
             logger.error(
                 'Failed to promote downloaded file for %s: %s',
@@ -118,18 +197,13 @@ def finalize_downloaded_file(
         if owns_staging and not promoted:
             cleanup_file(str(staging_path))
 
-    if automatic_extractor:
-        if file_extractor_repository is None:
-            raise RuntimeError(
-                'Automatic extraction requires a CVM Parquet extractor'
-            )
-        extraction_error = extract_downloaded_file(
-            file_extractor_repository=file_extractor_repository,
-            filepath=str(final_path),
-            dest_path=dest_path,
-            doc_name=doc_name,
-            year=year,
-            cleanup_file=cleanup_file,
+    assert_download_destination_unchanged(
+        final_path.parent.resolve(), operations.snapshot
+    )
+    if extract is not None:
+        extraction_error = extract()
+        assert_download_destination_unchanged(
+            final_path.parent.resolve(), operations.snapshot
         )
         if extraction_error is not None:
             return DownloadFinalizationResultCVM(

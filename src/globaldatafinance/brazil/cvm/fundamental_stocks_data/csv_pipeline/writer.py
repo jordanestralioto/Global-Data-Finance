@@ -17,7 +17,10 @@ from .....macro_exceptions import (
     ExtractionError,
     ParquetWriteError,
 )
-from .constants import FALSE_VALUES, NULL_TOKENS, ROW_GROUP_SIZE, TRUE_VALUES
+from .....macro_infra.transactional_publication import FileOperations
+from .....macro_infra.transactional_publication.durability import sync_file
+from ..parquet_validation import validate_parquet_data
+from .constants import ROW_GROUP_BYTES, ROW_GROUP_SIZE
 from .models import CsvAnalysis, CsvPipelineResult, EncodingPlan
 from .source import ReopenableCsvSource, binary_source
 
@@ -44,10 +47,17 @@ def write_parquet(
             schema,
             compression='zstd',
             compression_level=3,
+            write_page_checksum=True,
         )
         if analysis.rows:
             rows_written, row_groups = _write_arrow_batches(
-                source, utf8_source, plan, writer, schema, staged_path
+                source,
+                utf8_source,
+                plan,
+                writer,
+                schema,
+                staged_path,
+                max_record_bytes=analysis.max_record_bytes,
             )
         writer.close()
         writer = None
@@ -71,6 +81,10 @@ def write_parquet(
             f'wrote {rows_written}',
         )
     validate_parquet(source, staged_path, schema, rows_written, row_groups)
+    try:
+        sync_file(FileOperations(), staged_path)
+    except OSError as error:
+        _raise_staged_write_error(staged_path, error)
     fingerprint = hashlib.sha256(
         schema.to_string().encode('utf-8')
     ).hexdigest()
@@ -90,18 +104,24 @@ def _write_arrow_batches(
     writer: Any,
     schema: pa.Schema,
     output_path: Path,
+    *,
+    max_record_bytes: int,
 ) -> tuple[int, list[int]]:
     """Stream explicitly typed Arrow CSV batches into fixed row groups."""
     rows_written = 0
     row_groups: list[int] = []
     pending_batches: list[Any] = []
     pending_rows = 0
+    row_group_size = min(
+        ROW_GROUP_SIZE,
+        max(1, ROW_GROUP_BYTES // (max_record_bytes + 8 * len(schema))),
+    )
     try:
         with binary_source(source, utf8_source, plan) as opened:
             reader = pacsv.open_csv(
                 opened,
                 read_options=pacsv.ReadOptions(
-                    block_size=256 * 1024,
+                    block_size=max(256 * 1024, 2 * max_record_bytes),
                     use_threads=False,
                 ),
                 parse_options=pacsv.ParseOptions(
@@ -112,24 +132,21 @@ def _write_arrow_batches(
                 ),
                 convert_options=pacsv.ConvertOptions(
                     column_types=schema,
-                    null_values=sorted(NULL_TOKENS),
-                    strings_can_be_null=True,
-                    quoted_strings_can_be_null=True,
-                    true_values=TRUE_VALUES,
-                    false_values=FALSE_VALUES,
+                    null_values=[],
+                    strings_can_be_null=False,
                 ),
             )
             for batch in reader:
                 offset = 0
                 while offset < batch.num_rows:
                     size = min(
-                        ROW_GROUP_SIZE - pending_rows,
+                        row_group_size - pending_rows,
                         batch.num_rows - offset,
                     )
                     pending_batches.append(batch.slice(offset, size))
                     pending_rows += size
                     offset += size
-                    if pending_rows == ROW_GROUP_SIZE:
+                    if pending_rows == row_group_size:
                         _write_row_group(
                             writer, pending_batches, schema, output_path
                         )
@@ -141,7 +158,7 @@ def _write_arrow_batches(
                 _write_row_group(writer, pending_batches, schema, output_path)
                 rows_written += pending_rows
                 row_groups.append(pending_rows)
-    except (ExtractionError, ParquetWriteError):
+    except (ExtractionError, ParquetWriteError, DiskFullError):
         raise
     except OSError as error:
         raise ExtractionError(
@@ -172,23 +189,43 @@ def validate_parquet(
     rows: int,
     row_groups: list[int],
 ) -> None:
-    """Verify schema, metadata, rows, and row groups before publication."""
+    """Read and verify every staged page before publication."""
     try:
-        parquet = pq.ParquetFile(path)
-    except pa.ArrowException as error:
+        with pq.ParquetFile(path, page_checksum_verification=True) as parquet:
+            _validate_parquet_metadata(
+                source, parquet, schema, rows, row_groups
+            )
+            validate_parquet_data(
+                parquet,
+                rows,
+                expected_content_sha256=(schema.metadata or {})[
+                    b'cvm.content-sha256'
+                ].decode('ascii'),
+            )
+    except (pa.ArrowException, ValueError) as error:
         raise ExtractionError(
             str(source.source_path),
-            f'Could not reopen staged Parquet: {error}',
+            f'Could not validate staged Parquet data: {error}',
         ) from error
     except OSError as error:
         _raise_staged_write_error(path, error)
+
+
+def _validate_parquet_metadata(
+    source: ReopenableCsvSource,
+    parquet: Any,
+    schema: pa.Schema,
+    rows: int,
+    row_groups: list[int],
+) -> None:
+    """Check the persisted schema and row-group layout against the source."""
     metadata = parquet.metadata
     if metadata is None or metadata.num_rows != rows:
         raise ExtractionError(
             str(source.source_path),
             'Staged Parquet row count validation failed',
         )
-    if parquet.schema_arrow != schema:
+    if not parquet.schema_arrow.equals(schema, check_metadata=True):
         raise ExtractionError(
             str(source.source_path),
             'Staged Parquet schema validation failed',

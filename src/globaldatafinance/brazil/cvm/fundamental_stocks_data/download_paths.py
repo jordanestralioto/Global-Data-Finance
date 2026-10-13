@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlsplit
 
 from ....core.archive_names import validate_portable_basename
 from ....core.utils import normalize_destination_path
 from ....macro_exceptions import SecurityError
+
+
+def parquet_basename(csv_member: str) -> str:
+    """Map a validated CSV member to its established output basename."""
+    name = PurePosixPath(csv_member.replace('\\', '/')).name
+    return f'{PurePosixPath(name).stem}.parquet'
 
 
 def build_download_target_path(

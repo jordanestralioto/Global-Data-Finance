@@ -54,9 +54,9 @@ class TestEstablishedOverwriteSemantics:
         )
 
         assert pq.read_table(output_path).to_pylist() == [
-            {'id': 10, 'value': 900, 'state': 'new'},
-            {'id': 20, 'value': 800, 'state': 'new'},
-            {'id': 30, 'value': 700, 'state': 'new'},
+            {'id': '10', 'value': '900', 'state': 'new'},
+            {'id': '20', 'value': '800', 'state': 'new'},
+            {'id': '30', 'value': '700', 'state': 'new'},
         ]
         assert sorted(path.name for path in tmp_path.glob('*.parquet')) == [
             'data.parquet'
@@ -83,8 +83,8 @@ class TestEstablishedOverwriteSemantics:
             )
 
         assert pq.read_table(output_path).to_pylist() == [
-            {'version': 2, 'value': 'last'},
-            {'version': 2, 'value': 'last'},
+            {'version': '2', 'value': 'last'},
+            {'version': '2', 'value': 'last'},
         ]
 
     def test_different_csv_basenames_create_independent_outputs(
@@ -104,11 +104,11 @@ class TestEstablishedOverwriteSemantics:
         )
 
         assert pq.read_table(tmp_path / 'first.parquet').to_pylist() == [
-            {'asset': 'A', 'value': 1}
+            {'asset': 'A', 'value': '1'}
         ]
         assert pq.read_table(tmp_path / 'second.parquet').to_pylist() == [
-            {'asset': 'B', 'value': 2},
-            {'asset': 'C', 'value': 3},
+            {'asset': 'B', 'value': '2'},
+            {'asset': 'C', 'value': '3'},
         ]
         assert sorted(path.name for path in tmp_path.glob('*.parquet')) == [
             'first.parquet',

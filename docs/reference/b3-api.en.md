@@ -60,6 +60,16 @@ receive a zero or null fallback.
 | `processing_mode`  | `str`               | No       | `"fast"`               | Execution mode: `"fast"` (parallel) or `"slow"` (minimal RAM)                    |
 | `verbose`          | `bool`              | No       | `True`                 | When `True`, prints formatted execution summary to console                       |
 
+The `Validating B3 files` and `Processing B3 files` bars appear on `stdout`
+in both `fast` and `slow`, independently of `verbose`. They count annual
+sources found: the first advances after a source is validated; the second
+advances when a processing attempt finishes, including with an error.
+The summary is emitted only when `verbose=True`. Parquet consolidation,
+readback verification, and publication continue after the processing bar;
+the returned result confirms complete success. Failures and cancellation
+finish the bar's output line at the observed count. Selections without files
+do not display empty bars.
+
 **Return Contract (`ExtractionResultB3`)**:
 
 Typed dictionary (`TypedDict`) containing execution results:

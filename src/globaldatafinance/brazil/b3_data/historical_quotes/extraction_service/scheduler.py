@@ -10,7 +10,7 @@ from concurrent.futures import (
 from pathlib import Path
 from typing import Any, Protocol
 
-from .....core import get_logger
+from .....core import SimpleProgressBar, get_logger
 from ..async_execution import run_blocking_phase
 from ..executors import create_b3_executor
 from ..models import ValidatedCotahistSource
@@ -118,6 +118,7 @@ class ExtractionSchedulerB3:
         self,
         active: dict[Future[SourceExtractionResult], tuple[int, str]],
         state: ExtractionState,
+        progress_bar: SimpleProgressBar,
     ) -> bool:
         """Process finished tasks and record output results or errors.
 
@@ -141,6 +142,7 @@ class ExtractionSchedulerB3:
                     f'{type(error).__name__}: {error}'
                 )
                 admission_stopped = True
+            progress_bar.update()
         return admission_stopped
 
     @staticmethod
@@ -205,71 +207,80 @@ class ExtractionSchedulerB3:
         admission_stopped = False
         shutdown_complete = False
 
-        executor, cancel_event, use_processes = self._create_executor(
-            len(sources), worker_limit
-        )
-        state.effective_backend = 'process' if use_processes else 'thread'
-        state.effective_worker_limit = worker_limit
-
-        try:
-            while active or next_index < len(sources):
-                while (
-                    not admission_stopped
-                    and next_index < len(sources)
-                    and len(active) < worker_limit
-                ):
-                    if not await self.resource_policy.await_admission():
-                        state.errors['resources'] = (
-                            'B3 extraction stopped because resources did not '
-                            'recover'
-                        )
-                        admission_stopped = True
-                        break
-                    source = sources[next_index]
-                    temp_output = (
-                        staging_dir / 'sources' / f'{next_index:05d}.parquet'
-                    )
-                    future = self._submit_source(
-                        executor,
-                        source,
-                        target_tpmerc_codes,
-                        temp_output,
-                        use_processes=use_processes,
-                        cancel_event=cancel_event,
-                        source_descriptor=(
-                            source_descriptors.get(source)
-                            if source_descriptors is not None
-                            else None
-                        ),
-                        all_markets=all_markets,
-                        schema_metadata=schema_metadata,
-                    )
-                    active[future] = (next_index, source)
-                    next_index += 1
-
-                if not active:
-                    break
-
-                if not any(task.done() for task in active):
-                    await asyncio.sleep(0.01)
-                    continue
-
-                if self._drain_completed_tasks(active, state):
-                    admission_stopped = True
-        except (asyncio.CancelledError, ProcessingCancelled):
-            await self._shutdown_executor(
-                executor,
-                cancel_event,
-                cancel_futures=True,
+        with SimpleProgressBar(
+            total=len(sources),
+            desc='Processing B3 files',
+            operation='processing',
+        ) as progress_bar:
+            executor, cancel_event, use_processes = self._create_executor(
+                len(sources), worker_limit
             )
-            shutdown_complete = True
-            raise
-        finally:
-            if not shutdown_complete:
+            state.effective_backend = 'process' if use_processes else 'thread'
+            state.effective_worker_limit = worker_limit
+
+            try:
+                while active or next_index < len(sources):
+                    while (
+                        not admission_stopped
+                        and next_index < len(sources)
+                        and len(active) < worker_limit
+                    ):
+                        if not await self.resource_policy.await_admission():
+                            state.errors['resources'] = (
+                                'B3 extraction stopped because resources did '
+                                'not recover'
+                            )
+                            admission_stopped = True
+                            break
+                        source = sources[next_index]
+                        temp_output = (
+                            staging_dir
+                            / 'sources'
+                            / f'{next_index:05d}.parquet'
+                        )
+                        future = self._submit_source(
+                            executor,
+                            source,
+                            target_tpmerc_codes,
+                            temp_output,
+                            use_processes=use_processes,
+                            cancel_event=cancel_event,
+                            source_descriptor=(
+                                source_descriptors.get(source)
+                                if source_descriptors is not None
+                                else None
+                            ),
+                            all_markets=all_markets,
+                            schema_metadata=schema_metadata,
+                        )
+                        active[future] = (next_index, source)
+                        next_index += 1
+
+                    if not active:
+                        break
+
+                    if not any(task.done() for task in active):
+                        await asyncio.sleep(0.01)
+                        continue
+
+                    if self._drain_completed_tasks(
+                        active, state, progress_bar
+                    ):
+                        admission_stopped = True
+            except (asyncio.CancelledError, ProcessingCancelled):
                 await self._shutdown_executor(
                     executor,
-                    None,
-                    cancel_futures=False,
+                    cancel_event,
+                    cancel_futures=True,
                 )
+                shutdown_complete = True
+                raise
+            finally:
+                if not shutdown_complete:
+                    await self._shutdown_executor(
+                        executor,
+                        None,
+                        cancel_futures=False,
+                    )
 
         return state

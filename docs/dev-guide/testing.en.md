@@ -147,7 +147,7 @@ uv run --locked --no-sync python scripts/real_validation.py \
 
 `all` creates COTAHIST cases for every local catalog year in the requested
 range (or every available year when the range is omitted) and valid
-combinations in the seven CVM document windows, currently 102. A missing year
+combinations in the seven CVM document windows, 109 combinations in 2026, including IPE since 2003. A missing year
 in the requested range fails the campaign before processing. With
 `--cotahist-mode all`, every year gets a `fast` proof and a complete
 `fast`/`slow` parity; the campaign also includes complete multi-year parity
@@ -162,6 +162,16 @@ matrix contacts only the official URLs defined explicitly in code and
 classifies HTTP 404/410 as `not_published`,
 network unavailability as `external_failure`, and invalid content or processing
 failures as `failed`.
+
+For CVM, `--verify-cvm-catalog` writes `cvm-catalog.json` with all published
+years and selection omissions. If a published year of the selected documents
+is outside the matrix, the campaign stops with exit code 1; omit this option
+for intentionally partial campaigns. Every CSV is reconciled field by field by an
+independent parser, including headers, ordering, empty fields, and counts.
+Results record hashes for every ZIP member, attachments, and compared fields.
+For complete CVM history, use `--initial-year 2003 --document all`; ZIPs the
+facade retains in the isolated workspace are removed by the executor only
+after evidence is persisted, along with other campaign artifacts.
 
 By default, COTAHIST campaigns reconcile caller-provided inputs against the
 checksums frozen in that run's own manifest. Selecting 2000–2026 does not
@@ -375,10 +385,13 @@ at the `pre-push` stage, runs the deterministic executor tests and requires
 uv run --locked --no-sync pytest -q \
   tests/tooling/test_cotahist_oracle.py \
   tests/tooling/test_file_digests.py \
+  tests/tooling/test_cvm_archive_oracle.py \
+  tests/tooling/test_cvm_catalog.py \
   tests/tooling/test_real_validation.py \
   tests/tooling/test_real_validation_b3.py \
   tests/tooling/test_real_validation_cases.py \
   tests/tooling/test_real_validation_cvm.py \
+  tests/tooling/test_real_validation_cvm_integration.py \
   tests/tooling/test_real_validation_matrix.py \
   tests/tooling/test_real_validation_process.py \
   tests/tooling/test_real_validation_report.py \
@@ -388,6 +401,8 @@ uv run --locked --no-sync pytest -q \
   tests/tooling/test_real_validation_utils.py \
   --cov=scripts.cotahist_oracle \
   --cov=scripts.file_digests \
+  --cov=scripts.cvm_archive_oracle \
+  --cov=scripts.cvm_catalog \
   --cov=scripts.real_validation \
   --cov=scripts.real_validation_b3 \
   --cov=scripts.real_validation_cases \

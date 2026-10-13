@@ -15,6 +15,16 @@ from .errors import (
     InvalidLastYear,
 )
 
+DOCUMENT_START_YEARS: dict[str, int] = {
+    'CGVN': 2018,
+    'FRE': 2010,
+    'FCA': 2010,
+    'DFP': 2010,
+    'ITR': 2011,
+    'IPE': 2003,
+    'VLMO': 2018,
+}
+
 
 class AvailableYearsInfoCVM(NamedTuple):
     """Type-safe container for CVM document year ranges.
@@ -41,6 +51,11 @@ class AvailableYearsInfoCVM(NamedTuple):
     itr_min_year: int
     cgvn_vlmo_min_year: int
     current_year: int
+
+    @property
+    def ipe_min_year(self) -> int:
+        """Return the official IPE minimum without changing tuple fields."""
+        return DOCUMENT_START_YEARS['IPE']
 
 
 _DICT_AVAILABLE_DOCS: dict[str, str] = {
@@ -156,34 +171,34 @@ def get_url_docs(
 class AvailableYearsCVM:
     """Provides minimum allowed years and helpers for CVM documents."""
 
-    __MIN_GENERAL_YEAR: int = 2010
-    __MIN_ITR_YEAR: int = 2011
-    __MIN_CGVN_VLMO_YEAR: int = 2018
-
     def get_current_year(self) -> int:
         """Return current year (system date)."""
         return date.today().year
 
     def get_minimal_general_year(self) -> int:
         """Return minimum supported year for general documents."""
-        return self.__MIN_GENERAL_YEAR
+        return DOCUMENT_START_YEARS['DFP']
 
     def get_minimal_itr_year(self) -> int:
         """Return minimum supported year for ITR documents."""
-        return self.__MIN_ITR_YEAR
+        return DOCUMENT_START_YEARS['ITR']
 
     def get_minimal_cgvn_vlmo_year(self) -> int:
         """Return minimum supported year for CGVN/VLMO documents."""
-        return self.__MIN_CGVN_VLMO_YEAR
+        return DOCUMENT_START_YEARS['CGVN']
+
+    def get_minimal_ipe_year(self) -> int:
+        """Return the earliest official IPE metadata archive year."""
+        return DOCUMENT_START_YEARS['IPE']
 
     def __validate_years(self, initial_year: int, last_year: int) -> None:
         if (
             not isinstance(initial_year, int)
-            or initial_year < self.get_minimal_general_year()
+            or initial_year < self.get_minimal_ipe_year()
             or initial_year > self.get_current_year()
         ):
             raise InvalidFirstYear(
-                self.get_minimal_general_year(), self.get_current_year()
+                self.get_minimal_ipe_year(), self.get_current_year()
             )
 
         if (
@@ -223,14 +238,20 @@ class DictZipsToDownloadCVM:
         last_year: int | None = None,
     ) -> tuple[dict[str, list[str]], set[str]]:
         """Build a `{doc_code: [zip_url_per_year]}` map plus the doc set."""
+        dict_urls_docs, set_docs = get_url_docs(list_docs)
+
+        if initial_year is None:
+            initial_year = min(DOCUMENT_START_YEARS[doc] for doc in set_docs)
         range_years: range = self._available_years.return_range_years(
             initial_year, last_year
         )
 
-        dict_urls_docs, set_docs = get_url_docs(list_docs)
-
         dict_zips_to_download: dict[str, list[str]] = {
-            doc: [url + str(year) + '.zip' for year in range_years]
+            doc: [
+                url + str(year) + '.zip'
+                for year in range_years
+                if year >= DOCUMENT_START_YEARS[doc]
+            ]
             for doc, url in dict_urls_docs.items()
         }
 

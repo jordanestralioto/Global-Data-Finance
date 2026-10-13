@@ -13,6 +13,9 @@ from globaldatafinance.brazil.b3_data.historical_quotes.catalog import (
 from globaldatafinance.brazil.b3_data.historical_quotes.errors import (
     CotahistCatalogError,
 )
+from globaldatafinance.brazil.cvm.fundamental_stocks_data.core import (
+    DOCUMENT_START_YEARS,
+)
 
 from ..real_validation_b3.frozen_baseline import expected_frozen_checksums
 from ..real_validation_types import ValidationCase, ValidationInputSnapshot
@@ -24,18 +27,12 @@ COTAHIST_START = 1986
 
 COTAHIST_END = date.today().year
 
-CVM_START = 2010
+CVM_START = min(DOCUMENT_START_YEARS.values())
 
-CVM_END = 2026
+CVM_END = date.today().year
 
 CVM_DOCUMENT_WINDOWS: dict[str, tuple[int, int]] = {
-    'CGVN': (2018, 2026),
-    'FRE': (2010, 2026),
-    'FCA': (2010, 2026),
-    'DFP': (2010, 2026),
-    'ITR': (2011, 2026),
-    'IPE': (2010, 2026),
-    'VLMO': (2018, 2026),
+    doc: (start, CVM_END) for doc, start in DOCUMENT_START_YEARS.items()
 }
 
 _CVM_DOCUMENT_ORDER = tuple(CVM_DOCUMENT_WINDOWS)
@@ -249,7 +246,7 @@ def _build_cvm_cases(
     start = CVM_START if initial_year is None else initial_year
     end = CVM_END if last_year is None else last_year
     if start < CVM_START or end > CVM_END or start > end:
-        raise ValueError('CVM years must be within 2010..2026')
+        raise ValueError(f'CVM years must be within {CVM_START}..{CVM_END}')
     cases: list[ValidationCase] = []
     for item in selected_documents(document):
         first_valid, last_valid = CVM_DOCUMENT_WINDOWS[item]

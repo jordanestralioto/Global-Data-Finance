@@ -3,6 +3,7 @@ import pytest
 from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
     InvalidDocumentName,
     InvalidDocumentType,
+    core,
 )
 from globaldatafinance.brazil.cvm.fundamental_stocks_data.core import (
     get_available_docs,
@@ -13,6 +14,14 @@ from globaldatafinance.brazil.cvm.fundamental_stocks_data.core import (
 
 @pytest.mark.unit
 class TestAvailableDocs:
+    def test_registered_document_without_url_fails_explicitly(
+        self, monkeypatch
+    ):
+        """An incomplete registry cannot silently drop a selected document."""
+        monkeypatch.delitem(core._DICT_URL_DOCS, 'DFP')
+        with pytest.raises(ValueError, match="No URL available for doc 'DFP'"):
+            get_url_docs(['DFP'])
+
     def test_get_available_docs_returns_dict(self):
         docs = get_available_docs()
         assert isinstance(docs, dict)

@@ -1,3 +1,4 @@
+import asyncio
 import io
 from unittest.mock import patch
 
@@ -37,6 +38,50 @@ class TestSimpleProgressBar:
 
             output = mock_stdout.getvalue()
             assert 'Download: Starting download of 50 files' in output
+
+    def test_initialization_describes_the_selected_operation(self, capsys):
+        """Processing callers can label work without calling it a download."""
+        SimpleProgressBar(total=2, desc='B3', operation='processing')
+
+        assert capsys.readouterr().out == (
+            '\nB3: Starting processing of 2 files...\n'
+        )
+
+    def test_context_displays_initial_and_completed_counts(self, capsys):
+        """The bar is visible before work starts and closes on completion."""
+        with SimpleProgressBar(total=2, desc='B3') as bar:
+            assert '0/2 (0%)' in capsys.readouterr().out
+            bar.update(2)
+
+        output = capsys.readouterr().out
+        assert '2/2 (100%)' in output
+        assert output.endswith('\n')
+
+    @pytest.mark.parametrize(
+        'error_type', [RuntimeError, asyncio.CancelledError]
+    )
+    def test_context_preserves_partial_counts_and_errors(
+        self, error_type, capsys
+    ):
+        """Errors and cancellation close the line at the observed count."""
+        with (
+            pytest.raises(error_type),
+            SimpleProgressBar(total=2, desc='B3') as bar,
+        ):
+            bar.update()
+            raise error_type
+
+        output = capsys.readouterr().out
+        assert '1/2 (50%)' in output
+        assert '(100%)' not in output
+        assert output.endswith('\n')
+
+    def test_empty_context_has_no_console_output(self, capsys):
+        """An empty selection has no misleading progress display."""
+        with SimpleProgressBar(total=0):
+            pass
+
+        assert capsys.readouterr().out == ''
 
     def test_initialization_no_print_for_zero_total(self):
         with patch('sys.stdout', new_callable=io.StringIO) as mock_stdout:
