@@ -9,8 +9,11 @@ import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .cleanup import remove_owned_tree
+
 MANIFEST_PREFIX = '.globaldatafinance-transaction-'
 LOCK_NAME = '.globaldatafinance-transaction.lock'
+JOURNAL_NAME = '.publication-journal.json'
 PHASES = frozenset(
     {
         'OPEN',
@@ -30,7 +33,7 @@ class FileOperations:
 
     def mkdir(self, path: Path) -> None:
         """Create one directory atomically."""
-        path.mkdir()
+        path.mkdir(mode=0o700)
 
     def makedirs(self, path: Path) -> None:
         """Ensure an artifact parent exists through the filesystem seam."""
@@ -56,9 +59,11 @@ class FileOperations:
         """Remove one file."""
         path.unlink()
 
-    def rmtree(self, path: Path) -> None:
+    def rmtree(
+        self, path: Path, *, expected_identity: tuple[int, int]
+    ) -> None:
         """Remove a transaction-only directory."""
-        shutil.rmtree(path)
+        remove_owned_tree(path, expected_identity=expected_identity)
 
     def write_bytes(self, path: Path, payload: bytes) -> None:
         """Write one manifest candidate."""
@@ -107,6 +112,12 @@ class ArtifactIntent:
     existed_before: bool = False
     publishing: bool = False
     published: bool = False
+    publication_identity: list[int] | None = None
+    original_identity: list[int] | None = None
+    backup_identity: list[int] | None = None
+    publication_sha256: str | None = None
+    original_sha256: str | None = None
+    backup_sha256: str | None = None
 
 
 @dataclass
@@ -121,4 +132,4 @@ class PublicationManifest:
     artifacts: list[ArtifactIntent] = field(default_factory=list)
     source_descriptors: list[dict[str, str]] = field(default_factory=list)
     phase: str = 'OPEN'
-    version: int = 1
+    version: int = 2

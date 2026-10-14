@@ -105,12 +105,14 @@ class _FailCleanupOperations(FileOperations):
     def __init__(self) -> None:
         self.failed = False
 
-    def rmtree(self, path: Path) -> None:
+    def rmtree(
+        self, path: Path, *, expected_identity: tuple[int, int]
+    ) -> None:
         """Leave the staging directory for the next recovery attempt."""
         if not self.failed:
             self.failed = True
             raise OSError('injected cleanup failure')
-        super().rmtree(path)
+        super().rmtree(path, expected_identity=expected_identity)
 
 
 class _UnsupportedDirectoryFsyncOperations(FileOperations):
@@ -375,6 +377,37 @@ def test_validated_commit_requires_capacity_for_copy_based_backups(
     assert final.read_bytes() == b'old output'
 
 
+@pytest.mark.parametrize('previous_output', [b'', b'old'])
+def test_commit_capacity_counts_only_additional_backup_bytes(
+    tmp_path: Path, previous_output: bytes
+) -> None:
+    """Already-written staging consumes no additional space during rename."""
+
+    class RemainingBackupSpace(FileOperations):
+        """Report enough free bytes only for the existing output backup."""
+
+        def disk_free_bytes(self, path: Path) -> int:
+            """Expose the remaining capacity after staging has been written."""
+            _ = path
+            return len(previous_output)
+
+    final = tmp_path / 'quotes.parquet'
+    if previous_output:
+        final.write_bytes(previous_output)
+    publisher = TransactionalPublisher(
+        tmp_path, owner='test', operations=RemainingBackupSpace()
+    )
+    publication, _ = _stage_artifact(publisher, final.name, b'new output')
+
+    try:
+        publication.mark_validated()
+        publication.commit()
+        assert final.read_bytes() == b'new output'
+        assert not list(tmp_path.glob('.globaldatafinance-transaction*'))
+    finally:
+        publication.abort()
+
+
 def test_initial_manifest_write_failure_cleans_private_staging_and_lock(
     tmp_path: Path,
 ) -> None:
@@ -436,7 +469,7 @@ def test_existing_live_lock_is_rejected_without_mutating_its_artifacts(
 ) -> None:
     """Reject a concurrent local writer rather than overwriting it silently."""
     lock_dir = tmp_path / '.globaldatafinance-transaction.lock'
-    lock_dir.mkdir()
+    lock_dir.mkdir(mode=0o700)
     owner = lock_dir / 'owner.json'
     owner.write_text(
         json.dumps(
@@ -450,6 +483,8 @@ def test_existing_live_lock_is_rejected_without_mutating_its_artifacts(
         encoding='utf-8',
     )
 
+    owner.chmod(0o600)
+
     with pytest.raises(ExtractionError, match='live PID'):
         TransactionalPublisher(tmp_path, owner='test').begin()
 
@@ -461,7 +496,7 @@ def test_dead_lock_without_manifest_is_recovered_safely(
 ) -> None:
     """A crash before manifest persistence does not block output forever."""
     lock_dir = tmp_path / '.globaldatafinance-transaction.lock'
-    lock_dir.mkdir()
+    lock_dir.mkdir(mode=0o700)
     owner = lock_dir / 'owner.json'
     owner.write_text(
         json.dumps(
@@ -474,6 +509,7 @@ def test_dead_lock_without_manifest_is_recovered_safely(
         ),
         encoding='utf-8',
     )
+    owner.chmod(0o600)
     orphan = tmp_path / (
         '.globaldatafinance-transaction-'
         '0123456789abcdef0123456789abcdef-orphan'
@@ -485,7 +521,7 @@ def test_dead_lock_without_manifest_is_recovered_safely(
     publication.abort()
 
     assert not lock_dir.exists()
-    assert not orphan.exists()
+    assert (orphan / 'derived.tmp').read_bytes() == b'derived'
 
 
 def test_failed_rollback_preserves_manifest_until_next_invocation(
@@ -543,7 +579,7 @@ def test_cleanup_failure_keeps_durable_commit_recoverable(
         publication.commit()
 
     assert final.read_bytes() == b'new output'
-    assert list(tmp_path.glob('.globaldatafinance-transaction-*.json'))
+    assert (publication.staging_dir / '.publication-journal.json').is_file()
     lock_owner = (
         tmp_path / '.globaldatafinance-transaction.lock' / 'owner.json'
     )

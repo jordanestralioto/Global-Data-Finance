@@ -11,7 +11,7 @@ from __future__ import annotations
 import io
 import stat
 import zipfile
-from collections.abc import Buffer
+from collections.abc import Buffer, Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import IO
@@ -163,6 +163,7 @@ def validate_zip_crc_with_limits(
     *,
     limits: ArchiveSafetyLimits | None = None,
     infos: list[zipfile.ZipInfo] | None = None,
+    cancellation_check: Callable[[], None] | None = None,
 ) -> None:
     """Verify member CRCs through bounded streams after metadata validation.
 
@@ -183,6 +184,8 @@ def validate_zip_crc_with_limits(
     )
     try:
         for info in validated_infos:
+            if cancellation_check is not None:
+                cancellation_check()
             if info.is_dir():
                 continue
             with open_limited_zip_member(
@@ -192,8 +195,11 @@ def validate_zip_crc_with_limits(
                 limits=limits,
                 byte_budget=budget,
             ) as member:
-                while member.read(64 * 1024):
-                    pass
+                while True:
+                    if cancellation_check is not None:
+                        cancellation_check()
+                    if not member.read1(64 * 1024):
+                        break
     except (OSError, RuntimeError, zipfile.BadZipFile) as error:
         raise CorruptedZipError(
             str(source_path), f'CRC validation failed: {error}'

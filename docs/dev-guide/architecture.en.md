@@ -160,6 +160,14 @@ own parsing, schemas, and artifact validation. The result is a
 **failure-atomic, recoverable batch commit**, not an instantly atomic
 replacement of a caller-owned directory.
 
+Recovery requires a private journal with directory/artifact identities and SHA-256 of artifact bytes.
+The external JSON is for discovery; its paths and flags cannot authorize deletion.
+On POSIX, staging/locks require the effective UID and `0700`; regular records require `0600`, without aliases.
+Outputs changed outside the transaction and directories without verified authority are preserved.
+On POSIX, cleanup uses verified directory handles; internal journal/backup names are reserved.
+The journal survives interrupted JSON updates; prefixes alone cannot authorize cleanup.
+This boundary requires filesystem isolation and excludes hostile concurrent writers and arbitrary process access under the same UID.
+
 Auxiliary utility classes or helper functions remain internal to their module unless explicitly consumed across boundaries — the true unit of extensibility in the codebase is the *source implementation*, not abstract object hierarchies.
 
 > **Why B3 avoids a consolidated `core.py`.** The operational domain of B3 resides across topical modules (`assets.py`, `models.py`, `years.py`, `processing.py`, `filesystem.py`) rather than a single `core.py` because each topic possesses substantial critical mass (~100–300 lines of logic) and serves divergent internal callers. Consolidating them would sacrifice 5 clean, focused files in favor of an unwieldy monolith.

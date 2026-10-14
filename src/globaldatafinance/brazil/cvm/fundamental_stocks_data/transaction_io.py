@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import os
-import shutil
 from contextlib import ExitStack
 from pathlib import Path
 from uuid import uuid4
 
 from ....macro_exceptions import SecurityError
 from ....macro_infra.transactional_publication import FileOperations
+from ....macro_infra.transactional_publication.cleanup import remove_owned_tree
 from .destination_io import DestinationFileOperationsCVM
 
 
@@ -107,13 +107,16 @@ class CvmTransactionFileOperations(FileOperations):
         """Remove one transaction artifact within its opened parent."""
         self._directory(path.parent).unlink(path)
 
-    def rmtree(self, path: Path) -> None:
+    def rmtree(
+        self, path: Path, *, expected_identity: tuple[int, int]
+    ) -> None:
         """Remove transaction state through its original parent descriptor."""
         parent = self._directory(path.parent)
-        if parent.descriptor is None:
-            super().rmtree(path)
-        else:
-            shutil.rmtree(path.name, dir_fd=parent.descriptor)
+        remove_owned_tree(
+            path,
+            expected_identity=expected_identity,
+            parent_descriptor=parent.descriptor,
+        )
 
     def write_bytes(self, path: Path, payload: bytes) -> None:
         """Persist transaction records through the owned parent directory."""

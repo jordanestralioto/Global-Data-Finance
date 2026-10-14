@@ -7,8 +7,10 @@ from typing import TYPE_CHECKING
 
 from ...macro_exceptions import ExtractionError
 from .durability import sync_directory, sync_file
+from .ownership import artifact_identity, artifact_sha256, directory_identity
 from .paths import require_strict_descendant, validate_artifact_destination
-from .types import ArtifactIntent, PublicationManifest
+from .rollback import restore_artifact
+from .types import JOURNAL_NAME, ArtifactIntent, PublicationManifest
 
 if TYPE_CHECKING:
     from .publisher import TransactionalPublisher
@@ -28,6 +30,8 @@ class TransactionalPublication:
         self.manifest = manifest
         self.manifest_path = manifest_path
         self._finished = False
+        device, inode = directory_identity(manifest.staging_dir)
+        self._staging_identity = (device, inode)
 
     @property
     def staging_dir(self) -> Path:
@@ -42,6 +46,7 @@ class TransactionalPublication:
             or relative.is_absolute()
             or '..' in relative.parts
             or relative == Path()
+            or relative.parts[0] in {JOURNAL_NAME, 'backups'}
         ):
             raise ExtractionError(
                 str(self._publisher.destination_dir),
@@ -115,6 +120,10 @@ class TransactionalPublication:
             )
         self._validate_destinations()
         self._publisher.ensure_backup_space(self.manifest.artifacts)
+        for item in self.manifest.artifacts:
+            sync_file(self._publisher.operations, item.staged_path)
+            item.publication_identity = artifact_identity(item.staged_path)
+            item.publication_sha256 = artifact_sha256(item.staged_path)
         self.manifest.phase = 'VALIDATED'
         self._publisher._write_manifest(self.manifest, self.manifest_path)
 
@@ -191,6 +200,8 @@ class TransactionalPublication:
             return
         self._publisher.operations.mkdir(backup_dir)
         for index, item in enumerate(existing):
+            original_identity = artifact_identity(item.final_path)
+            original_sha256 = artifact_sha256(item.final_path)
             backup = backup_dir / f'{index:04d}-{item.final_path.name}'
             try:
                 self._publisher.operations.link(item.final_path, backup)
@@ -199,8 +210,21 @@ class TransactionalPublication:
             validate_artifact_destination(backup, backup_dir)
             sync_file(self._publisher.operations, backup)
             sync_directory(self._publisher.operations, backup_dir)
+            backup_sha256 = artifact_sha256(backup)
+            if (
+                artifact_identity(item.final_path) != original_identity
+                or backup_sha256 != original_sha256
+            ):
+                raise ExtractionError(
+                    str(item.final_path),
+                    'Output changed while creating its backup',
+                )
             item.existed_before = True
             item.backup_path = backup
+            item.original_identity = original_identity
+            item.backup_identity = artifact_identity(backup)
+            item.original_sha256 = original_sha256
+            item.backup_sha256 = backup_sha256
             self._publisher._write_manifest(self.manifest, self.manifest_path)
 
     def _publish_artifacts(self) -> None:
@@ -252,16 +276,7 @@ class TransactionalPublication:
             if not (item.published or item.publishing):
                 continue
             try:
-                if item.backup_path is not None:
-                    if not item.backup_path.exists():
-                        raise FileNotFoundError(
-                            f'Backup is missing: {item.backup_path}'
-                        )
-                    self._publisher.operations.replace(
-                        item.backup_path, item.final_path
-                    )
-                elif item.final_path.exists():
-                    self._publisher.operations.unlink(item.final_path)
+                restore_artifact(item, self._publisher.operations)
                 sync_directory(
                     self._publisher.operations, self._publisher.destination_dir
                 )
@@ -270,7 +285,7 @@ class TransactionalPublication:
                 self._publisher._write_manifest(
                     self.manifest, self.manifest_path
                 )
-            except OSError as error:
+            except (OSError, ExtractionError) as error:
                 errors.append(
                     f'{item.final_path}: {type(error).__name__}: {error}'
                 )
@@ -285,8 +300,10 @@ class TransactionalPublication:
         self._cleanup_derived_state()
 
     def _cleanup_derived_state(self) -> None:
-        self._publisher._remove_tree(self.staging_dir)
         self._publisher._remove_file(self.manifest_path)
+        self._publisher._remove_tree(
+            self.staging_dir, expected_identity=self._staging_identity
+        )
         self._publisher._release_lock_for(self.manifest.transaction_id)
 
     def _ordered_artifacts(self) -> list[ArtifactIntent]:

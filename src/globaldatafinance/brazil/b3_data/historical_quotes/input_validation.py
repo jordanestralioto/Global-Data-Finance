@@ -15,6 +15,7 @@ from ....core.archive_safety import (
     validate_zip_crc_with_limits,
 )
 from ....macro_exceptions import CorruptedZipError, ExtractionError
+from .async_execution import check_phase_cancellation
 from .errors import CotahistCatalogError
 from .member_resolver import resolve_cotahist_member
 
@@ -121,7 +122,11 @@ def _open_validated_zip(
         archive = zipfile.ZipFile(candidate, 'r')
         infos = validate_zip_archive(candidate, archive, limits=limits)
         validate_zip_crc_with_limits(
-            candidate, archive, infos=infos, limits=limits
+            candidate,
+            archive,
+            infos=infos,
+            limits=limits,
+            cancellation_check=check_phase_cancellation,
         )
         member = resolve_cotahist_member(candidate, infos)
         if archive.getinfo(member).file_size == 0:

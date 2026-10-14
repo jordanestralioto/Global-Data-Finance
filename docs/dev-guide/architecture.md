@@ -159,6 +159,14 @@ Os owners continuam responsáveis por parser, schema e validação. O resultado 
 um **commit em lote tolerante a falhas**, recuperável em caso de erro, e não uma
 troca instantaneamente atômica de um diretório caller-owned.
 
+A recuperação exige um journal privado com identidade dos diretórios/arquivos e SHA-256 dos bytes.
+O JSON externo serve à descoberta; seus caminhos e flags não autorizam exclusões.
+No POSIX, staging/lock exigem o UID efetivo e `0700`; registros regulares exigem `0600`, sem aliases.
+Outputs modificados fora da transação e diretórios sem autoridade verificável são preservados.
+No POSIX, a limpeza usa handles dos diretórios verificados; nomes internos de journal/backups são reservados.
+O journal sobrevive a atualizações interrompidas do JSON; prefixos isolados não autorizam limpeza.
+Essa fronteira exige isolamento do filesystem e exclui escritores concorrentes hostis e processos com acesso arbitrário pelo mesmo UID.
+
 Funções/classes auxiliares são internas ao módulo a menos que sejam usadas em outro arquivo — o ponto de extensibilidade real é a fonte, não o "tipo de objeto".
 
 > **Por que B3 não tem `core.py` consolidado.** O conteúdo de B3 vive em módulos por tópico (`assets.py`, `models.py`, `years.py`, `processing.py`, `filesystem.py`) em vez de um único `core.py` porque cada um já tem massa crítica (~100–300 linhas) e diferentes consumidores. Consolidar trocaria 5 arquivos médios por 1 arquivo enorme.

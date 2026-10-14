@@ -46,9 +46,15 @@ def test_reader_validates_all_members_once_per_pass(
     calls = []
     original = input_validation.validate_zip_crc_with_limits
 
-    def validate_all(path, archive, *, infos, limits):
+    def validate_all(path, archive, *, infos, limits, cancellation_check):
         calls.append(tuple(info.filename for info in infos))
-        return original(path, archive, infos=infos, limits=limits)
+        return original(
+            path,
+            archive,
+            infos=infos,
+            limits=limits,
+            cancellation_check=cancellation_check,
+        )
 
     monkeypatch.setattr(
         input_validation, 'validate_zip_crc_with_limits', validate_all

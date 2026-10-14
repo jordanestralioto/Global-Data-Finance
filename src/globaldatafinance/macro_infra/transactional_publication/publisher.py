@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import contextlib
-import json
 import os
 import socket
-import string
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -23,9 +21,11 @@ from ...macro_exceptions import (
 )
 from .durability import sync_directory
 from .manifests import ManifestStore
+from .ownership import read_private_json, require_private_entry
 from .paths import require_descendant
 from .publication import TransactionalPublication
 from .types import (
+    JOURNAL_NAME,
     LOCK_NAME,
     MANIFEST_PREFIX,
     ArtifactIntent,
@@ -136,18 +136,13 @@ class TransactionalPublisher:
         before commit keeps a copy fallback from consuming an old artifact
         after publication has started.
         """
-        staged_bytes = sum(
-            artifact.staged_path.stat().st_size
-            for artifact in artifacts
-            if artifact.staged_path.is_file()
-        )
         backup_bytes = sum(
             artifact.final_path.stat().st_size
             for artifact in artifacts
             if artifact.final_path.is_file()
         )
         free_bytes = self.operations.disk_free_bytes(self.destination_dir)
-        if staged_bytes + backup_bytes > free_bytes:
+        if backup_bytes > free_bytes:
             raise DiskFullError(str(self.destination_dir))
 
     def _acquire_lock(self) -> None:
@@ -164,6 +159,7 @@ class TransactionalPublisher:
             raise
 
     def _recover_stale_lock(self) -> None:
+        require_private_entry(self.lock_dir, directory=True)
         lock_record = self._read_lock()
         if lock_record.get('hostname') != socket.gethostname():
             raise ExtractionError(
@@ -181,59 +177,8 @@ class TransactionalPublisher:
                 self.source_path,
                 f'Destination transaction lock is held by live PID {pid}',
             )
-        manifest_name = lock_record.get('manifest')
-        if isinstance(manifest_name, str) and manifest_name:
-            manifest_path = (self.destination_dir / manifest_name).resolve()
-            self._require_descendant(manifest_path, self.destination_dir)
-            if manifest_path.is_file():
-                self._recover_manifest(manifest_path)
-            else:
-                self._recover_orphan_transaction(lock_record)
-        else:
-            self._recover_orphan_transaction(lock_record)
+        self._recover_pending()
         self._remove_tree(self.lock_dir)
-
-    def _recover_orphan_transaction(self, lock_record: dict[str, Any]) -> None:
-        """Remove only derived state left before a manifest became durable."""
-        transaction_id = lock_record.get('transaction_id', '')
-        if not isinstance(transaction_id, str):
-            raise ExtractionError(
-                self.source_path,
-                'Stale transaction lock has an invalid transaction id',
-            )
-        if transaction_id and (
-            len(transaction_id) != 32
-            or any(
-                character not in string.hexdigits
-                for character in transaction_id
-            )
-        ):
-            raise ExtractionError(
-                self.source_path,
-                'Stale transaction lock has an unverifiable transaction id',
-            )
-
-        if transaction_id:
-            candidates = self.destination_dir.glob(
-                f'{MANIFEST_PREFIX}{transaction_id}-*'
-            )
-        else:
-            protected = {
-                self._read_manifest(path).staging_dir.resolve()
-                for path in self.destination_dir.glob(
-                    f'{MANIFEST_PREFIX}*.json'
-                )
-            }
-            candidates = (
-                path
-                for path in self.destination_dir.glob(f'{MANIFEST_PREFIX}*-*')
-                if path.resolve() not in protected
-            )
-
-        for candidate in candidates:
-            self._require_descendant(candidate.resolve(), self.destination_dir)
-            if candidate.is_dir():
-                self._remove_tree(candidate)
 
     @staticmethod
     def _pid_is_alive(pid: int) -> bool:
@@ -261,28 +206,31 @@ class TransactionalPublisher:
         self._store.write_json_atomically(path, record)
 
     def _read_lock(self) -> dict[str, Any]:
-        path = self.lock_dir / 'owner.json'
-        try:
-            payload = json.loads(path.read_text(encoding='utf-8'))
-        except (OSError, json.JSONDecodeError) as error:
-            raise ExtractionError(
-                self.source_path,
-                f'Cannot read destination transaction lock: {error}',
-            ) from error
-        if not isinstance(payload, dict):
-            raise ExtractionError(
-                self.source_path, 'Destination transaction lock is malformed'
-            )
-        return payload
+        return read_private_json(self.lock_dir / 'owner.json')
 
     def _recover_pending(self) -> None:
         for manifest_path in sorted(
             self.destination_dir.glob(f'{MANIFEST_PREFIX}*.json')
         ):
             self._recover_manifest(manifest_path)
+        for staging_dir in sorted(
+            self.destination_dir.glob(f'{MANIFEST_PREFIX}*-*')
+        ):
+            if (staging_dir / JOURNAL_NAME).exists():
+                manifest = self._store.read_journal(staging_dir)
+                self._recover_manifest(
+                    self._manifest_path(manifest.transaction_id),
+                    manifest=manifest,
+                )
 
-    def _recover_manifest(self, manifest_path: Path) -> None:
-        manifest = self._read_manifest(manifest_path)
+    def _recover_manifest(
+        self,
+        manifest_path: Path,
+        *,
+        manifest: PublicationManifest | None = None,
+    ) -> None:
+        if manifest is None:
+            manifest = self._read_manifest(manifest_path)
         transaction = TransactionalPublication(self, manifest, manifest_path)
         if manifest.phase in {'OPEN', 'VALIDATED', 'ROLLED_BACK'}:
             transaction._cleanup_rolled_back()
@@ -317,12 +265,20 @@ class TransactionalPublisher:
 
     def _remove_file(self, path: Path) -> None:
         if path.exists():
+            require_private_entry(path)
             self.operations.unlink(path)
             sync_directory(self.operations, path.parent)
 
-    def _remove_tree(self, path: Path) -> None:
+    def _remove_tree(
+        self,
+        path: Path,
+        *,
+        expected_identity: tuple[int, int] | None = None,
+    ) -> None:
         if path.exists():
-            self.operations.rmtree(path)
+            status = require_private_entry(path, directory=True)
+            identity = expected_identity or (status.st_dev, status.st_ino)
+            self.operations.rmtree(path, expected_identity=identity)
             sync_directory(self.operations, path.parent)
 
     def _release_lock(self) -> None:

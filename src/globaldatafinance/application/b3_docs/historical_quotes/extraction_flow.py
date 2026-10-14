@@ -73,6 +73,7 @@ class ExtractionFlowB3:
         verbose: bool,
     ) -> ExtractionResultB3:
         """Run preparation, extraction, and stable result formatting."""
+        self._extract_use_case.last_phase_timings = {}
         start_time = time.time()
         resolved_assets = ['todos'] if assets_list is None else assets_list
         try:

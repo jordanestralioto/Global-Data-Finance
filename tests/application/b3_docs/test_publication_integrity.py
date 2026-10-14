@@ -309,7 +309,7 @@ def test_postcommit_cleanup_failure_preserves_truthful_success_and_recovery(
         transactions.append(transaction)
         return transaction
 
-    def fail_derived_cleanup(self, path):
+    def fail_derived_cleanup(self, path, *, expected_identity):
         nonlocal remaining
         if (
             path.name.startswith(MANIFEST_PREFIX)
@@ -318,7 +318,7 @@ def test_postcommit_cleanup_failure_preserves_truthful_success_and_recovery(
         ):
             remaining -= 1
             raise OSError('injected postcommit cleanup failure')
-        return remove_tree(self, path)
+        return remove_tree(self, path, expected_identity=expected_identity)
 
     monkeypatch.setattr(TransactionalPublisher, 'begin', record_transaction)
     monkeypatch.setattr(FileOperations, 'rmtree', fail_derived_cleanup)
@@ -431,12 +431,12 @@ def test_committed_cleanup_phase_preserves_validated_bytes(
     remaining = failures
     remove_tree = FileOperations.rmtree
 
-    def interrupt_cleanup(self, path):
+    def interrupt_cleanup(self, path, *, expected_identity):
         nonlocal remaining
         if path == publication.staging_dir and remaining:
             remaining -= 1
             raise OSError('injected committed cleanup failure')
-        return remove_tree(self, path)
+        return remove_tree(self, path, expected_identity=expected_identity)
 
     monkeypatch.setattr(FileOperations, 'rmtree', interrupt_cleanup)
     commit = extraction_service.service.publication.commit_with_cleanup_warning
