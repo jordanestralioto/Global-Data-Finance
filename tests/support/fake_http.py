@@ -3,9 +3,21 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from functools import partial
 
 import httpx
 import pytest
+
+
+def install_mock_http_transport(
+    monkeypatch: pytest.MonkeyPatch,
+    handler: Callable[[httpx.Request], httpx.Response],
+) -> None:
+    """Run real HTTPX streaming and redirect logic with a local transport."""
+    factory = partial(
+        httpx.AsyncClient, transport=httpx.MockTransport(handler)
+    )
+    monkeypatch.setattr(httpx, 'AsyncClient', factory)
 
 
 class FakeResponse:

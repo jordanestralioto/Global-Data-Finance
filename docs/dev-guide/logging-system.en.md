@@ -38,8 +38,18 @@ including `DATAFIN_LOG_STRUCTURED`, raises `ValidationError` when
 
 The formatter performs best-effort redaction for common URL parameters and
 sensitive context fields such as `token`, `password`, `authorization`, and
-`cookie`. This does not replace the consumer's responsibility: secrets must
-not be passed in messages, exceptions, or logging context.
+`cookie`. It also covers URL parameters `key`, `code`, and `state`, and quoted sensitive fields
+in JSON text, including formatted exceptions. URL authority credentials
+(`https://<userinfo>@host/`) become `[REDACTED]@`, preserving the host,
+path, and public parameters. The same protection covers protocol-relative
+authorities (`//user:password@host/`). This does not replace the consumer's
+responsibility: secrets must not be passed in messages, exceptions, or
+logging context.
+
+Compound names with `_` or `-`, such as `id_token` and `auth_token`, receive
+the same protection in URLs, serialized messages, and context fields.
+URL parameter names are decoded before identifying sensitive fields; the
+original parameter spelling and public values are preserved.
 
 `log_file` must point to a consumer-approved application path. Before creating
 directories or the file, `setup_logging()` rejects system roots, protected

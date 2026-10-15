@@ -99,6 +99,7 @@ plugins:
             Guia do Usuário: User Guide
             Guia do Desenvolvedor: Developer Guide
             Referência Técnica: Technical Reference
+            Publicação transacional: Transactional publication
             Instalação: Installation
             Início Rápido: Quickstart
             Documentos CVM: CVM Documents
@@ -112,6 +113,7 @@ plugins:
             Referência da API: API Reference
             Como Contribuir: Contributing
             Testes: Testing
+            Aceite de release: Release Acceptance
             Performance COTAHIST: COTAHIST Performance
             Uso Avançado: Advanced Usage
             Sistema de Logging: Logging System
@@ -182,6 +184,7 @@ nav:
       - Arquitetura: dev-guide/architecture.md
       - Referência da API: dev-guide/api-reference.md
       - Como Contribuir: dev-guide/contributing.md
+      - Aceite de release: dev-guide/release-readiness.md
       - Testes: dev-guide/testing.md
       - Benchmarks: dev-guide/benchmarks.md
       - Performance COTAHIST: dev-guide/cotahist-performance.md
@@ -197,6 +200,7 @@ nav:
       - Monitoramento de Recursos: dev-guide/resource-monitoring.md
       - Estratégia de Retry: dev-guide/retry-strategy.md
   - Referência Técnica:
+      - Publicação transacional: reference/transactional-publication.md
       - API CVM: reference/cvm-api.md
       - API B3: reference/b3-api.md
       - Schema Parquet B3 v2: reference/b3-schema-v2.md

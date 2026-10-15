@@ -118,7 +118,7 @@ def test_campaign_detects_real_unfinished_publication_state(
     publication = publisher.begin()
     try:
         expected = {
-            publication.staging_dir.name,
+            publication.staging_dir.relative_to(tmp_path).as_posix(),
             publication.manifest_path.name,
             publisher.lock_dir.name,
         }

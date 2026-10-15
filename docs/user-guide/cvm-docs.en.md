@@ -326,7 +326,7 @@ The CVM module enforces fail-fast error behavior by validating parameters at pub
 | `InvalidLastYear`             | End year is prior to start year or invalid    | Validate parameters prior to invocation         |
 | `InvalidDestinationPathError` | Target filesystem path fails safety check     | Confirm folder write and creation access        |
 
-> Transient network failures during asynchronous downloads are automatically managed via retry policies. Unresolved errors are consolidated in the `failed_downloads` dictionary of the returned `DownloadResultCVM` object.
+> Transient network failures during asynchronous downloads follow the [retry and HTTP policies](../dev-guide/retry-strategy.md). Unresolved errors are consolidated in the `failed_downloads` dictionary of the returned `DownloadResultCVM` object.
 
 ______________________________________________________________________
 

@@ -20,7 +20,15 @@ def remove_owned_tree(
     """Delete private contents without traversing a substituted root name."""
     if os.open not in os.supports_dir_fd:
         _require_identity(path.lstat(), expected_identity, path)
-        shutil.rmtree(path)
+        for child_path in sorted(
+            path.iterdir(), key=lambda entry: entry.name == 'owner.json'
+        ):
+            if child_path.is_dir() and not child_path.is_symlink():
+                shutil.rmtree(child_path)
+            else:
+                child_path.unlink()
+        _require_identity(path.lstat(), expected_identity, path)
+        path.rmdir()
         return
     flags = os.O_RDONLY | os.O_DIRECTORY | getattr(os, 'O_NOFOLLOW', 0)
     with ExitStack() as handles:
@@ -31,7 +39,10 @@ def remove_owned_tree(
         handles.callback(os.close, descriptor)
         _require_identity(os.fstat(descriptor), expected_identity, path)
         with os.scandir(descriptor) as children:
-            for child in children:
+            ordered = sorted(
+                children, key=lambda entry: entry.name == 'owner.json'
+            )
+            for child in ordered:
                 if child.is_dir(follow_symlinks=False):
                     shutil.rmtree(child.name, dir_fd=descriptor)
                 else:

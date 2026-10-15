@@ -13,6 +13,14 @@ from ..macro_exceptions import (
     PathPermissionError,
     SecurityError,
 )
+from .http_safety import (
+    bounded_download_headers,
+    discard_head_body,
+    download_response_hook,
+    identity_headers,
+    redirect_header_hook,
+    validate_download_response_headers,
+)
 from .temporary_files import reserve_temporary_path
 
 
@@ -44,6 +52,7 @@ class RequestsAdapter:
             http2: Enable HTTP/2
             default_headers: Optional headers merged into every request.
                 Headers explicitly supplied to a request take precedence.
+                Redirects to another origin retain only public headers.
             follow_redirects: Whether requests may follow HTTP redirects.
         """
         self.timeout = timeout
@@ -95,13 +104,17 @@ class RequestsAdapter:
         Returns:
             httpx.Response: Request response (no body, only headers)
         """
-        request_headers = self._merge_headers(headers)
+        request_headers = identity_headers(self._merge_headers(headers))
         async with httpx.AsyncClient(
             timeout=timeout or self.timeout,
             follow_redirects=self.follow_redirects,
             max_redirects=self.max_redirects,
             verify=self.verify,
             http2=self.http2,
+            event_hooks={
+                'request': [redirect_header_hook(url)],
+                'response': [discard_head_body],
+            },
         ) as client:
             return await client.head(url, headers=request_headers, **kwargs)
 
@@ -162,7 +175,9 @@ class RequestsAdapter:
         """
         _validate_download_limit(max_bytes)
         target_path = Path(output_path)
-        request_headers = self._merge_headers(headers)
+        request_headers = bounded_download_headers(
+            self._merge_headers(headers), max_bytes
+        )
         staging_path: Path | None = None
 
         try:
@@ -175,14 +190,18 @@ class RequestsAdapter:
                     max_redirects=self.max_redirects,
                     verify=self.verify,
                     http2=self.http2,
+                    event_hooks={
+                        'request': [redirect_header_hook(url)],
+                        'response': [
+                            download_response_hook(max_bytes, output_path)
+                        ],
+                    },
                 ) as client,
                 client.stream('GET', url, headers=request_headers) as response,
             ):
                 response.raise_for_status()
-                _validate_content_length(
-                    response.headers.get('content-length'),
-                    max_bytes,
-                    output_path,
+                validate_download_response_headers(
+                    response.headers, max_bytes, output_path
                 )
 
                 with staging_path.open('wb') as file_handle:
@@ -244,25 +263,3 @@ def _validate_download_limit(max_bytes: int | None) -> None:
     """Reject invalid byte limits before any network or filesystem work."""
     if max_bytes is not None and max_bytes < 1:
         raise ValueError('max_bytes must be at least one when provided')
-
-
-def _validate_content_length(
-    raw_content_length: object,
-    max_bytes: int | None,
-    output_path: str,
-) -> None:
-    """Reject an announced response body that exceeds the caller's budget."""
-    if raw_content_length is None or max_bytes is None:
-        return
-    if not isinstance(raw_content_length, str):
-        return
-    try:
-        content_length = int(raw_content_length)
-    except (TypeError, ValueError):
-        return
-    if content_length > max_bytes:
-        raise SecurityError(
-            'download Content-Length exceeds configured byte limit '
-            f'({content_length} > {max_bytes})',
-            output_path,
-        )

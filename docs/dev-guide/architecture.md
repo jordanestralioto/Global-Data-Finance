@@ -165,7 +165,7 @@ No POSIX, staging/lock exigem o UID efetivo e `0700`; registros regulares exigem
 Outputs modificados fora da transação e diretórios sem autoridade verificável são preservados.
 No POSIX, a limpeza usa handles dos diretórios verificados; nomes internos de journal/backups são reservados.
 O journal sobrevive a atualizações interrompidas do JSON; prefixos isolados não autorizam limpeza.
-Essa fronteira exige isolamento do filesystem e exclui escritores concorrentes hostis e processos com acesso arbitrário pelo mesmo UID.
+Essa fronteira exige isolamento do filesystem e exclui escritores concorrentes hostis e processos com acesso arbitrário pelo mesmo UID. Consulte o [protocolo de publicação e recuperação](../reference/transactional-publication.md).
 
 Funções/classes auxiliares são internas ao módulo a menos que sejam usadas em outro arquivo — o ponto de extensibilidade real é a fonte, não o "tipo de objeto".
 

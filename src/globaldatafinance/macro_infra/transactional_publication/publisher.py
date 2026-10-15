@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import contextlib
 import os
+import re
 import socket
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
+
+import psutil
 
 from ...core.config import PathSafetySettings
 from ...core.utils import normalize_destination_path
@@ -20,6 +23,7 @@ from ...macro_exceptions import (
     PathPermissionError,
 )
 from .durability import sync_directory
+from .locking import destination_guard
 from .manifests import ManifestStore
 from .ownership import read_private_json, require_private_entry
 from .paths import require_descendant
@@ -78,7 +82,7 @@ class TransactionalPublisher:
             self._recover_pending()
             transaction_id = uuid4().hex
             staging_dir = self.operations.mkdtemp(
-                f'{MANIFEST_PREFIX}{transaction_id}-', self.destination_dir
+                f'{MANIFEST_PREFIX}{transaction_id}-', self.lock_dir
             ).resolve()
             self._require_descendant(staging_dir, self.destination_dir)
             manifest = PublicationManifest(
@@ -146,21 +150,28 @@ class TransactionalPublisher:
             raise DiskFullError(str(self.destination_dir))
 
     def _acquire_lock(self) -> None:
-        try:
-            self.operations.mkdir(self.lock_dir)
-        except FileExistsError:
-            self._recover_stale_lock()
-            self.operations.mkdir(self.lock_dir)
-        try:
-            self._write_lock(None)
-        except BaseException:
-            with contextlib.suppress(OSError):
-                self._remove_tree(self.lock_dir)
-            raise
+        with destination_guard(self.destination_dir):
+            try:
+                self.operations.mkdir(self.lock_dir)
+            except FileExistsError:
+                self._recover_stale_lock()
+                self.operations.mkdir(self.lock_dir)
+            try:
+                self._write_lock(None)
+            except BaseException:
+                with contextlib.suppress(OSError):
+                    self._remove_tree(self.lock_dir)
+                raise
 
     def _recover_stale_lock(self) -> None:
         require_private_entry(self.lock_dir, directory=True)
-        lock_record = self._read_lock()
+        try:
+            lock_record = self._read_lock()
+        except ExtractionError as error:
+            if not isinstance(error.__cause__, FileNotFoundError):
+                raise
+            self._recover_uninitialized_lock()
+            return
         if lock_record.get('hostname') != socket.gethostname():
             raise ExtractionError(
                 self.source_path,
@@ -180,17 +191,30 @@ class TransactionalPublisher:
         self._recover_pending()
         self._remove_tree(self.lock_dir)
 
+    def _recover_uninitialized_lock(self) -> None:
+        """Reclaim only the reserved initial record under the held guard."""
+        for entry in self.lock_dir.iterdir():
+            if (
+                re.fullmatch(r'owner\.json-[0-9a-f]{32}\.tmp', entry.name)
+                is None
+            ):
+                raise ExtractionError(
+                    self.source_path,
+                    'Incomplete transaction lock contains unverifiable state',
+                )
+            require_private_entry(entry)
+        self._remove_tree(self.lock_dir)
+
     @staticmethod
     def _pid_is_alive(pid: int) -> bool:
         try:
-            os.kill(pid, 0)
-        except ProcessLookupError:
+            return bool(psutil.Process(pid).is_running())
+        except psutil.NoSuchProcess:
             return False
-        except PermissionError as error:
+        except psutil.AccessDenied as error:
             raise ExtractionError(
                 str(pid), 'Cannot verify existing transaction process safely'
             ) from error
-        return True
 
     def _write_lock(self, manifest_path: Path | None) -> None:
         record = {
@@ -213,9 +237,11 @@ class TransactionalPublisher:
             self.destination_dir.glob(f'{MANIFEST_PREFIX}*.json')
         ):
             self._recover_manifest(manifest_path)
-        for staging_dir in sorted(
-            self.destination_dir.glob(f'{MANIFEST_PREFIX}*-*')
-        ):
+        staging_dirs = [
+            *self.destination_dir.glob(f'{MANIFEST_PREFIX}*-*'),
+            *self.lock_dir.glob(f'{MANIFEST_PREFIX}*-*'),
+        ]
+        for staging_dir in sorted(staging_dirs):
             if (staging_dir / JOURNAL_NAME).exists():
                 manifest = self._store.read_journal(staging_dir)
                 self._recover_manifest(
@@ -282,8 +308,9 @@ class TransactionalPublisher:
             sync_directory(self.operations, path.parent)
 
     def _release_lock(self) -> None:
-        if self.lock_dir.exists():
-            self._remove_tree(self.lock_dir)
+        with destination_guard(self.destination_dir, blocking=True):
+            if self.lock_dir.exists():
+                self._remove_tree(self.lock_dir)
         self._transaction_id = None
 
     def _release_lock_for(self, transaction_id: str) -> None:

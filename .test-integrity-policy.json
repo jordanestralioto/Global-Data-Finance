@@ -10,6 +10,9 @@
     "tests/macro_infra/test_extractor_file.py": "The generic ExtractorAdapter public surface is intentionally removed; supported CVM and B3 source-owned extraction behavior remains covered by their owner suites.",
     "tests/macro_infra/test_read_files_adapter.py": "The generic ReadFilesAdapter public surface is intentionally removed with its legacy Pandas dependency; supported CVM and B3 source-owned behavior remains covered by their owner suites."
   },
+  "uncommitted_test_removals": {
+    "tests/tooling/test_release_reviews.py": "Removed before its first commit because release acceptance no longer requires versioned planning or reviewer records. Native, campaign, SHA, coverage, and distribution checks remain covered by test_release_acceptance.py, including acceptance without planning files."
+  },
   "allowed_assertion_reductions": [
     {
       "path": "tests/brazil/b3_data/historical_quotes/test_cotahist_parser.py",

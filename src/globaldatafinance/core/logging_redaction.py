@@ -6,24 +6,30 @@ import re
 from collections.abc import Mapping
 from logging import LogRecord
 from typing import Any
+from urllib.parse import unquote_plus
 
 REDACTED = '[REDACTED]'
 
-_SENSITIVE_KEY_RE = re.compile(
-    r'(?:^|[_-])(?:access[_-]?token|api[_-]?key|auth|authorization|'
+_SENSITIVE_FIELD = (
+    r'(?:access[_-]?token|api[_-]?key|auth|authorization|'
     r'client[_-]?secret|cookie|credential|password|passwd|private[_-]?key|'
-    r'refresh[_-]?token|secret|signature|token)(?:$|[_-])',
+    r'refresh[_-]?token|secret|signature|token)'
+)
+_SENSITIVE_NAME = rf'(?:[a-z0-9]*[_-])*{_SENSITIVE_FIELD}(?:[_-][a-z0-9]*)*'
+_SENSITIVE_KEY_RE = re.compile(
+    rf'(?:^|[_-]){_SENSITIVE_FIELD}(?:$|[_-])',
     re.IGNORECASE,
 )
-_URL_SECRET_RE = re.compile(
-    r'([?&](?:access[_-]?token|api[_-]?key|auth|authorization|'
-    r'cookie|password|passwd|secret|signature|token)=)[^&#\s|]+',
+_URL_USERINFO_RE = re.compile(
+    r"""((?:\b[a-z][a-z0-9+.-]*:|(?<![\w/.:]))//)[^/\s?#"'<>]*@""",
     re.IGNORECASE,
+)
+_URL_QUERY_RE = re.compile(
+    r"""(?P<prefix>[?&](?P<key>[^=&#\s|"'<>]+)=)[^&#\s|"'<>]+""",
 )
 _KEY_VALUE_SECRET_RE = re.compile(
-    r'(\b(?:access[_-]?token|api[_-]?key|auth|authorization|cookie|'
-    r'password|passwd|private[_-]?key|refresh[_-]?token|secret|signature|'
-    r'token)\b\s*[:=]\s*)[^\r\n,;|}]+',
+    rf"""(?P<prefix>\b{_SENSITIVE_NAME}\b["']?\s*[:=]\s*)"""
+    r"""(?P<value>"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\r\n,;|}&]+)""",
     re.IGNORECASE,
 )
 _STANDARD_RECORD_ATTRS: frozenset[str] = frozenset(
@@ -57,9 +63,25 @@ _STANDARD_RECORD_ATTRS: frozenset[str] = frozenset(
 
 
 def redact_log_text(text: str) -> str:
-    """Redact common URL-query and key/value secrets from text."""
-    text = _URL_SECRET_RE.sub(rf'\1{REDACTED}', text)
-    return _KEY_VALUE_SECRET_RE.sub(rf'\1{REDACTED}', text)
+    """Redact URL credentials and common query and key/value secrets."""
+    text = _URL_USERINFO_RE.sub(rf'\1{REDACTED}@', text)
+    text = _URL_QUERY_RE.sub(_redact_query_value, text)
+    return _KEY_VALUE_SECRET_RE.sub(_redact_field, text)
+
+
+def _redact_query_value(match: re.Match[str]) -> str:
+    key = unquote_plus(match['key'])
+    if key.casefold() in {'key', 'code', 'state'} or _SENSITIVE_KEY_RE.search(
+        key
+    ):
+        return f'{match["prefix"]}{REDACTED}'
+    return match[0]
+
+
+def _redact_field(match: re.Match[str]) -> str:
+    value = match['value']
+    quote = value[0] if value.startswith(('"', "'")) else ''
+    return f'{match["prefix"]}{quote}{REDACTED}{quote}'
 
 
 def redact_log_value(key: str, value: Any) -> str:

@@ -38,8 +38,18 @@ derivado do campo. Qualquer outra variável `DATAFIN_LOG_*`, incluindo
 
 O formatter faz uma redação de melhor esforço para parâmetros comuns de URL e
 campos de contexto sensíveis, como `token`, `password`, `authorization` e
-`cookie`. Isso não substitui a responsabilidade do consumidor: segredos não
-devem ser enviados em mensagens, exceções ou contexto de logging.
+`cookie`. Também cobre os parâmetros de URL `key`, `code` e `state`, e campos sensíveis em texto
+JSON com aspas, inclusive em exceções formatadas. Credenciais na autoridade
+da URL (`https://<userinfo>@host/`) são substituídas por `[REDACTED]@`,
+preservando host, caminho e parâmetros públicos. A mesma proteção cobre
+autoridades relativas ao protocolo (`//usuario:senha@host/`). Isso não substitui a
+responsabilidade do consumidor: segredos não devem ser enviados em mensagens,
+exceções ou contexto de logging.
+
+Nomes compostos com `_` ou `-`, como `id_token` e `auth_token`, recebem a
+mesma proteção em URLs, mensagens serializadas e campos de contexto.
+Nomes de parâmetros de URL são decodificados antes de identificar campos
+sensíveis; a grafia original do parâmetro e os valores públicos são preservados.
 
 `log_file` deve apontar para um caminho de aplicação aprovado pelo consumidor.
 Antes de criar diretórios ou o arquivo, `setup_logging()` rejeita raízes do

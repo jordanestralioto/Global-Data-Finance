@@ -94,11 +94,14 @@ class TestRequestsAdapterAsyncMethods:
         await adapter.async_head('https://example.com', headers=headers)
 
         call_args = mock_client.head.call_args
-        assert call_args[1]['headers'] == headers
+        assert httpx.Headers(call_args[1]['headers']) == httpx.Headers(
+            {'Authorization': 'Bearer token', 'Accept-Encoding': 'identity'}
+        )
+        assert headers == {'Authorization': 'Bearer token'}
 
     @pytest.mark.asyncio
     @patch('globaldatafinance.macro_infra.requests_adapter.httpx.AsyncClient')
-    async def test_async_head_has_no_default_headers_by_default(
+    async def test_async_head_requests_identity_encoding_by_default(
         self, mock_client_class
     ):
         mock_client = AsyncMock()
@@ -108,7 +111,9 @@ class TestRequestsAdapterAsyncMethods:
 
         await RequestsAdapter().async_head('https://example.com')
 
-        assert mock_client.head.call_args.kwargs['headers'] is None
+        assert mock_client.head.call_args.kwargs['headers'] == {
+            'accept-encoding': 'identity'
+        }
 
     @pytest.mark.asyncio
     @patch('globaldatafinance.macro_infra.requests_adapter.httpx.AsyncClient')
@@ -125,9 +130,14 @@ class TestRequestsAdapterAsyncMethods:
         )
         await adapter.async_head('https://example.com')
 
-        assert mock_client.head.call_args.kwargs['headers'] == {
-            'User-Agent': 'configured-client/1.0'
-        }
+        assert httpx.Headers(
+            mock_client.head.call_args.kwargs['headers']
+        ) == httpx.Headers(
+            {
+                'User-Agent': 'configured-client/1.0',
+                'Accept-Encoding': 'identity',
+            }
+        )
 
     @pytest.mark.asyncio
     @patch('globaldatafinance.macro_infra.requests_adapter.httpx.AsyncClient')
@@ -150,10 +160,15 @@ class TestRequestsAdapterAsyncMethods:
             headers={'user-agent': 'per-request-client/2.0'},
         )
 
-        assert mock_client.head.call_args.kwargs['headers'] == {
-            'Accept': 'application/octet-stream',
-            'user-agent': 'per-request-client/2.0',
-        }
+        assert httpx.Headers(
+            mock_client.head.call_args.kwargs['headers']
+        ) == httpx.Headers(
+            {
+                'Accept': 'application/octet-stream',
+                'User-Agent': 'per-request-client/2.0',
+                'Accept-Encoding': 'identity',
+            }
+        )
 
     @pytest.mark.asyncio
     @patch('globaldatafinance.macro_infra.requests_adapter.httpx.AsyncClient')

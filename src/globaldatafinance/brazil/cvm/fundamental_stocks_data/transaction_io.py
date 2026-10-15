@@ -117,6 +117,9 @@ class CvmTransactionFileOperations(FileOperations):
             expected_identity=expected_identity,
             parent_descriptor=parent.descriptor,
         )
+        for directory in tuple(self._directories):
+            if directory.is_relative_to(path):
+                del self._directories[directory]
 
     def write_bytes(self, path: Path, payload: bytes) -> None:
         """Persist transaction records through the owned parent directory."""

@@ -170,6 +170,9 @@ jobs:
             --allow-print-file scripts/benchmark_cvm_full.py \
             --allow-print-file scripts/audit_locked_dependencies.py \
             --allow-print-file scripts/check_commit_msg.py \
+            --allow-print-file scripts/check_release_evidence.py \
+            --allow-print-file scripts/check_distributions.py \
+            --allow-print-file scripts/release_acceptance.py \
             --allow-print-file \
             "$app_dir/b3_docs/extraction_result_formatter.py" \
             --allow-print-file \
@@ -206,9 +209,13 @@ jobs:
         env:
           PYTHONPATH: .
         run: |
+          mkdir -p .cache/release-coverage
+          git rev-parse HEAD > .cache/release-coverage/environment.txt
+          uv --version >> .cache/release-coverage/environment.txt
           uv run --locked --no-sync pytest \
             -m "not slow and not real_data and not perf" \
-            --cov --cov-report=xml --cov-report=term-missing
+            --cov --cov-report=xml --cov-report=term-missing \
+            --cov-report=json:.cache/release-coverage/product.json
 
       - name: Run real-validation executor coverage
         run: >-
@@ -244,6 +251,7 @@ jobs:
           --cov=scripts.real_validation_types
           --cov=scripts.real_validation_utils
           --cov-report=term-missing
+          --cov-report=json:.cache/release-coverage/executor.json
           --cov-fail-under=85
 
       # v7
@@ -263,5 +271,155 @@ jobs:
           actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: coverage-report-py${{ matrix.python-version }}
-          path: coverage.xml
-          if-no-files-found: ignore
+          path: |
+            coverage.xml
+            .cache/release-coverage/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+  native-regressions:
+    name: Native regressions (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+        python: ["3.12", "3.13", "3.14"]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install locked dependencies
+        env:
+          NATIVE_PYTHON: ${{ matrix.python }}
+        run: uv sync --locked --all-extras --dev --python "$NATIVE_PYTHON"
+      - name: Record native environment
+        run: |
+          mkdir -p .cache/release-native
+          uv --version > .cache/release-native/environment.txt
+          git rev-parse HEAD >> .cache/release-native/environment.txt
+          uv run --locked --no-sync python -VV \
+            >> .cache/release-native/environment.txt
+      - name: Run required native behaviors
+        run: |
+          cvm_tests=tests/brazil/cvm/fundamental_stocks_data
+          uv run --locked --no-sync pytest \
+            -p tests.support.release_evidence --release-native \
+            --release-evidence=.cache/release-native/results.json \
+            --junitxml=.cache/release-native/junit.xml --no-cov \
+            tests/core/test_archive_safety.py \
+            tests/core/test_logging_redaction.py \
+            tests/macro_infra/test_publication_platforms.py \
+            tests/macro_infra/test_publication_crashes.py \
+            tests/macro_infra/test_requests_adapter.py \
+            tests/macro_infra/test_http_safety.py \
+            "$cvm_tests/infra/adapters/test_http_retry.py" \
+            "$cvm_tests/integration/test_transaction_recovery.py" \
+            "$cvm_tests/integration/test_cvm_log_redaction.py" \
+            tests/application/b3_docs/test_release_regressions.py
+          git diff --exit-code
+      - name: Upload native evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: native-${{ matrix.os }}-py${{ matrix.python }}
+          path: .cache/release-native/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+  publication-fault-campaign:
+    name: Publication failure campaign (shard ${{ matrix.shard }})
+    if: inputs.release_tag != '' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    env:
+      GDF_PUBLICATION_SHARD: ${{ matrix.shard }}
+      GDF_PUBLICATION_SHARDS: "8"
+      GDF_PUBLICATION_REPORT_DIR: .cache/publication-campaign/reports
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Set up Python 3.13
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.13"
+      - name: Install uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install locked dependencies
+        run: uv sync --locked --all-extras --dev --python 3.13
+      - name: Record campaign environment
+        run: |
+          mkdir -p .cache/publication-campaign
+          uv --version > .cache/publication-campaign/environment.txt
+          git rev-parse HEAD >> .cache/publication-campaign/environment.txt
+      - name: Execute every assigned fault case
+        run: |
+          uv run --locked --no-sync pytest \
+            tests/macro_infra/test_publication_fault_campaign.py \
+            -m 'integration and slow' --no-cov \
+            --junitxml=.cache/publication-campaign/junit.xml
+          git diff --exit-code
+      - name: Upload campaign evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: publication-campaign-${{ matrix.shard }}
+          path: .cache/publication-campaign/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+  verify-publication-campaign:
+    name: Verify complete failure campaign
+    needs: publication-fault-campaign
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Set up Python 3.13
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.13"
+      - name: Install uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990
+      - name: Install locked dependencies
+        run: uv sync --locked --all-extras --dev --python 3.13
+      - name: Download all campaign shards
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          pattern: publication-campaign-*
+          path: .cache/campaign-evidence
+      - name: Reject missing or incomplete campaign evidence
+        run: >-
+          uv run --locked --no-sync python scripts/check_release_evidence.py
+          .cache/campaign-evidence --shards 8

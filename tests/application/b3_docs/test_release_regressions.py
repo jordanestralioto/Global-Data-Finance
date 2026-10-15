@@ -2,11 +2,13 @@
 
 import asyncio
 import json
+import os
 import threading
 import zipfile
 from pathlib import Path
 from typing import Any
 
+import pyarrow.parquet as pq
 import pytest
 
 from globaldatafinance import HistoricalQuotesB3
@@ -21,6 +23,56 @@ from tests.support.builders import (
 )
 
 pytestmark = pytest.mark.integration
+
+
+@pytest.mark.parametrize('mode', ['fast', 'slow'])
+@pytest.mark.parametrize('source_kind', ['zip', 'txt'])
+@pytest.mark.parametrize('existing', [False, True])
+def test_native_public_extraction_preserves_sources_and_publishes_rows(
+    tmp_path: Path, mode: str, source_kind: str, existing: bool
+) -> None:
+    """Public source and output contracts hold on every supported platform."""
+    builder = (
+        write_cotahist_zip if source_kind == 'zip' else write_cotahist_txt
+    )
+    source = builder(
+        tmp_path,
+        year=2024,
+        records=[
+            build_cotahist_record(ticker='PETR4'),
+            build_cotahist_record(ticker='VALE3'),
+        ],
+    )
+    before = source.read_bytes()
+    caller = tmp_path / 'caller.txt'
+    caller.write_bytes(b'caller-owned bytes')
+    output = tmp_path / 'quotes.parquet'
+    if existing:
+        output.write_bytes(b'previous caller output')
+
+    result = HistoricalQuotesB3().extract(
+        path_of_docs=str(tmp_path),
+        initial_year=2024,
+        last_year=2024,
+        output_filename=output.name,
+        processing_mode=mode,
+        verbose=False,
+    )
+
+    assert result['success'] is True, result
+    assert result['output_file'] == str(output)
+    table = pq.read_table(output)
+    assert table.num_rows == 2
+    assert sorted(table['ticker'].to_pylist()) == ['PETR4', 'VALE3']
+    assert table.schema.metadata is not None
+    assert source.read_bytes() == before
+    assert caller.read_bytes() == b'caller-owned bytes'
+    expected = {source.name, output.name, caller.name}
+    if os.name == 'nt':
+        guard = tmp_path / '.globaldatafinance-publication.guard'
+        assert guard.is_file() and guard.read_bytes() == b''
+        expected.add(guard.name)
+    assert {path.name for path in tmp_path.iterdir()} == expected
 
 
 @pytest.mark.parametrize('mode', ['fast', 'slow'])

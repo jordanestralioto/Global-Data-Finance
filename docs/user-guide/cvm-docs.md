@@ -325,7 +325,7 @@ A API valida parâmetros na fronteira pública e pode lançar:
 | `InvalidLastYear`             | Ano final inválido ou menor que inicial | Validar intervalo de anos                  |
 | `InvalidDestinationPathError` | Caminho de destino inválido             | Verificar permissões e caminho             |
 
-> Falhas transitórias de conexão durante o download assíncrono passam pela política automática de retry. Erros persistentes são consolidados no atributo `failed_downloads` do `DownloadResultCVM` retornado.
+> Falhas transitórias de conexão durante o download assíncrono passam pela [política de retry e HTTP](../dev-guide/retry-strategy.md). Erros persistentes são consolidados no atributo `failed_downloads` do `DownloadResultCVM` retornado.
 
 ______________________________________________________________________
 

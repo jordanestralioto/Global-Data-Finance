@@ -44,6 +44,33 @@ Standard runtime exceptions triggered by underlying transports are marked retrya
 - `DiskFullError` - Local volume capacity exhaustion
 - `ValueError` / `InvalidDocumentName` - Invalid API parameters or unapproved inputs
 
+### HTTP Statuses in CVM Downloads
+
+The CVM adapter classifies HTTP statuses before translating failures into
+`NetworkError`. Only `408`, `429`, `500`, `502`, `503`, and `504` allow retries.
+Other statuses, including `403`, `404`, and `410`, end the attempt without
+additional backoff. Diagnostics retain the original status. Status selection
+takes precedence over keywords in the message or URL; timeouts and connection
+failures continue to use the shared strategy.
+
+### HTTP Limits and Redirects
+
+The download byte limit requires `Accept-Encoding: identity`. Responses with
+other HTTP content encodings are rejected before reading, including redirect
+responses; internal ZIP compression remains supported and is checked against
+extraction limits. The byte counter also limits intermediate redirect bodies
+without `Content-Length`. Calls to the shared adapter without a byte limit
+retain existing HTTP content decoding.
+
+HEAD also requests `identity` and closes bodies without reading or decoding,
+including redirect bodies. The `Content-Length` header is preserved as
+resource metadata; its value is not treated as a HEAD body size.
+
+In the shared HTTP adapter, redirects changing scheme, host, or port retain
+only `Accept`, `Accept-Encoding`, `Accept-Language`, `Connection`, `Host`, and
+`User-Agent`. Credentials and custom headers are confined to the initial
+origin. CVM header configuration supplies `User-Agent` when provided.
+
 ______________________________________________________________________
 
 ## Public API

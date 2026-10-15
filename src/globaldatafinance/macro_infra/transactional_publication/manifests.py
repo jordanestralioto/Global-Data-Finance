@@ -24,6 +24,7 @@ from .paths import (
 )
 from .types import (
     JOURNAL_NAME,
+    LOCK_NAME,
     MANIFEST_PREFIX,
     PHASES,
     ArtifactIntent,
@@ -63,7 +64,9 @@ class ManifestStore:
         self.write_json_atomically(
             manifest.staging_dir / JOURNAL_NAME, payload
         )
-        self.write_json_atomically(path, payload)
+        self.write_json_atomically(
+            path, payload, temporary_dir=manifest.staging_dir
+        )
 
     def read(self, path: Path) -> PublicationManifest:
         """Read and validate one manifest before recovery touches artifacts."""
@@ -141,7 +144,8 @@ class ManifestStore:
             or re.fullmatch(r'[0-9a-f]{32}', manifest.transaction_id) is None
             or path.parent != self.destination_dir
             or path.name != f'{MANIFEST_PREFIX}{manifest.transaction_id}.json'
-            or manifest.staging_dir.parent != self.destination_dir
+            or manifest.staging_dir.parent
+            not in {self.destination_dir, self.destination_dir / LOCK_NAME}
             or not manifest.staging_dir.name.startswith(
                 f'{MANIFEST_PREFIX}{manifest.transaction_id}-'
             )
@@ -150,6 +154,8 @@ class ManifestStore:
             raise ExtractionError(
                 self.source_path, 'Unverifiable transaction recovery identity'
             )
+        if manifest.staging_dir.parent != self.destination_dir:
+            require_private_entry(manifest.staging_dir.parent, directory=True)
         require_private_entry(manifest.staging_dir, directory=True)
 
     def _artifacts(self, payload: dict[str, object]) -> list[ArtifactIntent]:
@@ -357,11 +363,18 @@ class ManifestStore:
                 )
 
     def write_json_atomically(
-        self, path: Path, payload: dict[str, object]
+        self,
+        path: Path,
+        payload: dict[str, object],
+        *,
+        temporary_dir: Path | None = None,
     ) -> None:
         """Persist an internal lock or manifest with durable replacement."""
         require_descendant(path.resolve(), self.destination_dir)
-        temporary = path.with_name(f'{path.name}-{uuid4().hex}.tmp')
+        temporary = (temporary_dir or path.parent) / (
+            f'{path.name}-{uuid4().hex}.tmp'
+        )
+        require_descendant(temporary.resolve(), self.destination_dir)
         encoded = (json.dumps(payload, sort_keys=True) + '\n').encode('utf-8')
         try:
             self.operations.write_bytes(temporary, encoded)

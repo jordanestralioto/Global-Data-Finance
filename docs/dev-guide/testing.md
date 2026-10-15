@@ -429,6 +429,10 @@ ______________________________________________________________________
 
 ## CI/CD
 
+O [aceite de release](release-readiness.md) acrescenta regressões nativas
+em Windows e macOS, campanha completa de falhas e verificação das distribuições.
+Resultados locais em Linux não substituem esses ambientes nativos.
+
 Testes são executados automaticamente em:
 
 - Push para `main` ou `develop`

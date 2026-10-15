@@ -44,6 +44,34 @@ Erros com keywords retryáveis na mensagem:
 - `DiskFullError` - Disco cheio
 - `ValueError` - Erro de validação
 
+### Status HTTP nos downloads CVM
+
+O adaptador CVM classifica o status HTTP antes de traduzir a falha para
+`NetworkError`. Apenas `408`, `429`, `500`, `502`, `503` e `504` permitem
+retry. Os demais status, incluindo `403`, `404` e `410`, encerram a tentativa
+sem backoff adicional. O diagnóstico mantém o status original. A seleção por
+status tem precedência sobre palavras presentes na mensagem ou no URL;
+timeouts e falhas de conexão continuam usando a estratégia compartilhada.
+
+### Limites e redirects HTTP
+
+O limite de bytes do download exige `Accept-Encoding: identity`. Respostas
+com outra codificação HTTP são rejeitadas antes da leitura, inclusive em
+redirects; a compressão interna do ZIP continua permitida e passa pelos
+limites próprios de extração. O contador limita também corpos intermediários
+de redirects sem `Content-Length`. Chamadas ao adaptador compartilhado sem
+limite de bytes mantêm a decodificação HTTP existente.
+
+HEAD também solicita `identity` e fecha corpos sem ler ou decodificar,
+inclusive em redirects. O header `Content-Length` é preservado como metadado
+do recurso; seu valor não é tratado como tamanho de um corpo HEAD.
+
+No adaptador HTTP compartilhado, redirects que mudam esquema, host ou porta
+retêm somente `Accept`, `Accept-Encoding`, `Accept-Language`, `Connection`,
+`Host` e `User-Agent`. Credenciais e headers personalizados ficam restritos à
+origem inicial. A configuração de headers da CVM fornece `User-Agent` quando
+informado.
+
 ______________________________________________________________________
 
 ## API

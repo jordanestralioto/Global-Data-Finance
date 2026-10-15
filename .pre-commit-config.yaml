@@ -133,6 +133,12 @@ repos:
           - scripts/audit_locked_dependencies.py
           - --allow-print-file
           - scripts/check_commit_msg.py
+          - --allow-print-file
+          - scripts/check_release_evidence.py
+          - --allow-print-file
+          - scripts/check_distributions.py
+          - --allow-print-file
+          - scripts/release_acceptance.py
         language: system
         pass_filenames: false
         always_run: true

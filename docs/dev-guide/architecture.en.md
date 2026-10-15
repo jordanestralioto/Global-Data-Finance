@@ -166,7 +166,7 @@ On POSIX, staging/locks require the effective UID and `0700`; regular records re
 Outputs changed outside the transaction and directories without verified authority are preserved.
 On POSIX, cleanup uses verified directory handles; internal journal/backup names are reserved.
 The journal survives interrupted JSON updates; prefixes alone cannot authorize cleanup.
-This boundary requires filesystem isolation and excludes hostile concurrent writers and arbitrary process access under the same UID.
+This boundary requires filesystem isolation and excludes hostile concurrent writers and arbitrary process access under the same UID. See the [publication and recovery protocol](../reference/transactional-publication.md).
 
 Auxiliary utility classes or helper functions remain internal to their module unless explicitly consumed across boundaries — the true unit of extensibility in the codebase is the *source implementation*, not abstract object hierarchies.
 

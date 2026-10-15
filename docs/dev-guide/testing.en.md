@@ -425,6 +425,10 @@ ______________________________________________________________________
 
 ## Continuous Integration (CI/CD)
 
+[Release acceptance](release-readiness.md) adds native Windows/macOS regressions,
+the complete fault campaign, and distribution verification. Local Linux results
+do not substitute for those native environments.
+
 Automated quality verification gates execute on GitHub Actions during:
 
 - Commit pushes targeting `main` or `develop` branches

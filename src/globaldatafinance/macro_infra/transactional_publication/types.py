@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import contextlib
+import errno
 import os
 import shutil
+import sys
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -84,11 +86,18 @@ class FileOperations:
 
     def fsync_file(self, path: Path) -> None:
         """Flush file bytes and metadata."""
-        with path.open('rb') as handle:
+        mode = 'r+b' if sys.platform == 'win32' else 'rb'
+        with path.open(mode) as handle:
             os.fsync(handle.fileno())
 
     def fsync_directory(self, path: Path) -> None:
         """Flush directory metadata where the platform permits it."""
+        if sys.platform == 'win32':
+            raise OSError(
+                errno.ENOTSUP,
+                'directory fsync is unavailable on Windows',
+                str(path),
+            )
         descriptor = os.open(path, os.O_RDONLY)
         try:
             os.fsync(descriptor)

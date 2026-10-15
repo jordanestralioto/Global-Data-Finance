@@ -6,12 +6,9 @@ from concurrent.futures import Executor, ThreadPoolExecutor
 from functools import partial
 from pathlib import Path
 
-import httpx
-
 from ....core import RetryStrategy, SimpleProgressBar, get_logger
 from ....core.archive_safety import ArchiveSafetyLimits
 from ....core.config import PathSafetySettings
-from ....macro_exceptions import DownloadTimeoutError, NetworkError
 from ....macro_infra import RequestsAdapter
 from .core import DownloadResultCVM
 from .destination_io import (
@@ -29,12 +26,11 @@ from .download_validation import (
     validate_download_options,
     validate_downloaded_file,
 )
+from .http_retry import classify_download_error
 
 logger = get_logger(__name__)
 
 DownloadTaskCVM = tuple[str, str, str, str]
-_TIMEOUT_ERRORS = (httpx.TimeoutException, TimeoutError, asyncio.TimeoutError)
-_NETWORK_ERRORS = (httpx.RequestError, httpx.HTTPStatusError, ConnectionError)
 
 
 class AsyncDownloadAdapterCVM:
@@ -345,16 +341,10 @@ class AsyncDownloadAdapterCVM:
                 )
             except Exception as e:
                 key = f'{doc_name}_{year}'
-                if isinstance(e, _TIMEOUT_ERRORS):
-                    e = DownloadTimeoutError(
-                        key, self.requests_adapter.timeout
-                    )
-                elif isinstance(e, _NETWORK_ERRORS):
-                    e = NetworkError(key, f'{type(e).__name__}: {e}')
-
+                e, retryable = classify_download_error(
+                    e, key, self.requests_adapter.timeout, self.retry_strategy
+                )
                 last_exception = e
-
-                retryable = self.retry_strategy.is_retryable(e)
                 if not retryable or attempt >= self.max_retries:
                     logger.error(
                         'Download failed for %s: %s: %s',
