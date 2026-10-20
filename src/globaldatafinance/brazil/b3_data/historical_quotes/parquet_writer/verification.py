@@ -132,10 +132,6 @@ def _verify_parquet_batches(
         check_phase_cancellation()
         _validate_batch(path, batch, actual_schema)
         columns = canonical_columns(batch)
-        coordinates = {
-            name: batch.column(index).to_pylist()
-            for name, index in field_indices.items()
-        }
         offset = 0
         while offset < batch.num_rows:
             _finish_complete_sources(path, sources, state)
@@ -148,13 +144,13 @@ def _verify_parquet_batches(
                 batch.num_rows - offset,
                 source.selected_quotes - state.source_rows,
             )
-            for row_index in range(offset, offset + length):
-                _record_readback_row(
-                    path, row_index, coordinates, sources, state
-                )
+            segment = batch.slice(offset, length)
+            _validate_segment(path, segment, field_indices, source, state)
             state.source_digest.update_columns(
                 [column.slice(offset, length) for column in columns]
             )
+            state.source_rows += length
+            state.observed_rows += length
             offset += length
     _finish_remaining_sources(path, sources, state)
     return state
@@ -172,14 +168,16 @@ def _validate_batch(path: Path, batch: Any, actual_schema: Schema) -> None:
             )
 
 
-def _record_readback_row(
+def _validate_segment(
     path: Path,
-    row_index: int,
-    coordinates: dict[str, list[Any]],
-    sources: tuple[ValidatedCotahistSource, ...],
+    segment: Any,
+    field_indices: dict[str, int],
+    source: ValidatedCotahistSource,
     state: _ReadbackState,
 ) -> None:
-    source = sources[state.source_index]
+    """Validate source coordinates natively, materializing only failures."""
+    import pyarrow.compute as pc
+
     if not state.expected_coordinates:
         state.expected_coordinates = {
             'tipo_registro': '01',
@@ -188,26 +186,42 @@ def _record_readback_row(
             'membro_origem': source.member,
             'ano_origem': source.year,
         }
-    _verify_source_coordinates(
-        path, coordinates, row_index, source, state.expected_coordinates
+    coordinates = {
+        name: segment.column(index) for name, index in field_indices.items()
+    }
+    valid = all(
+        pc.all(pc.equal(coordinates[name], value)).as_py()
+        for name, value in state.expected_coordinates.items()
     )
-    trading_date = coordinates['data_pregao'][row_index]
-    if not isinstance(trading_date, date):
+    valid = (
+        valid
+        and pc.all(pc.greater(coordinates['linha_origem'], 0)).as_py()
+        and pc.all(
+            pc.equal(pc.year(coordinates['data_pregao']), source.year)
+        ).as_py()
+    )
+    if not valid:
+        diagnostic = {
+            name: column.to_pylist() for name, column in coordinates.items()
+        }
+        for row_index in range(segment.num_rows):
+            _verify_source_coordinates(
+                path, diagnostic, row_index, source, state.expected_coordinates
+            )
         raise ExtractionError(
-            str(path), 'B3 Parquet trading date has an invalid type'
+            str(path), 'B3 Parquet source segment is invalid'
         )
+    bounds = pc.min_max(coordinates['data_pregao']).as_py()
     state.first_date = (
-        trading_date
+        bounds['min']
         if state.first_date is None
-        else min(state.first_date, trading_date)
+        else min(state.first_date, bounds['min'])
     )
     state.last_date = (
-        trading_date
+        bounds['max']
         if state.last_date is None
-        else max(state.last_date, trading_date)
+        else max(state.last_date, bounds['max'])
     )
-    state.source_rows += 1
-    state.observed_rows += 1
 
 
 def _finish_complete_sources(

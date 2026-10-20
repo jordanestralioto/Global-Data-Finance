@@ -55,16 +55,16 @@ the output path from replacing a COTAHIST source.
 
 **Parameters**:
 
-| Parameter          | Type                | Required | Default                | Description                                                                      |
-| ------------------ | ------------------- | -------- | ---------------------- | -------------------------------------------------------------------------------- |
-| `path_of_docs`     | `str`               | Yes      | -                      | Directory containing COTAHIST ZIP or TXT inputs                                 |
-| `assets_list`      | `list[str] \| None` | No       | `None` (`["todos"]`)   | Asset classes; `todos` selects every valid numeric TPMERC                         |
-| `initial_year`     | `int \| None`       | No       | `None` (1986)          | Initial historical fiscal year (inclusive, >= 1986)                              |
-| `last_year`        | `int \| None`       | No       | `None` (current year)  | Ending historical fiscal year (inclusive)                                        |
-| `destination_path` | `str \| None`       | No       | `None` (`path_of_docs`)| Output artifact destination directory                                            |
-| `output_filename`  | `str`               | No       | `"cotahist_extracted"` | Required basename; optional `.parquet` suffix is appended only when absent     |
-| `processing_mode`  | `str`               | No       | `"fast"`               | Execution mode: `"fast"` (parallel) or `"slow"` (minimal RAM)                    |
-| `verbose`          | `bool`              | No       | `True`                 | When `True`, prints formatted execution summary to console                       |
+| Parameter          | Type                | Required | Default                 | Description                                                                |
+| ------------------ | ------------------- | -------- | ----------------------- | -------------------------------------------------------------------------- |
+| `path_of_docs`     | `str`               | Yes      | -                       | Directory containing COTAHIST ZIP or TXT inputs                            |
+| `assets_list`      | `list[str] \| None` | No       | `None` (`["todos"]`)    | Asset classes; `todos` selects every valid numeric TPMERC                  |
+| `initial_year`     | `int \| None`       | No       | `None` (1986)           | Initial historical fiscal year (inclusive, >= 1986)                        |
+| `last_year`        | `int \| None`       | No       | `None` (current year)   | Ending historical fiscal year (inclusive)                                  |
+| `destination_path` | `str \| None`       | No       | `None` (`path_of_docs`) | Output artifact destination directory                                      |
+| `output_filename`  | `str`               | No       | `"cotahist_extracted"`  | Required basename; optional `.parquet` suffix is appended only when absent |
+| `processing_mode`  | `str`               | No       | `"fast"`                | Execution mode: `"fast"` (parallel) or `"slow"` (minimal RAM)              |
+| `verbose`          | `bool`              | No       | `True`                  | When `True`, prints formatted execution summary to console                 |
 
 The `Validating B3 files` and `Processing B3 files` bars appear on `stdout`
 in both `fast` and `slow`, independently of `verbose`. They count annual
@@ -233,38 +233,37 @@ ______________________________________________________________________
 
 ## Execution Configuration and Environment Variables
 
-The variables below are resolved when `HistoricalQuotesB3()` is constructed.
-They do not alter an existing instance or add parameters to the public
-constructor. The process backend is experimental and requires explicit opt-in.
-Measure complete operation time, CPU, and aggregate RSS on the consumer's corpus
-before adopting it. Conditions and measurements are in the
+`GDF_B3_EXECUTOR_BACKEND` is resolved when `HistoricalQuotesB3()` is constructed
+and does not alter an existing instance. Resource policy reads
+`GDF_B3_WORKER_LIMIT` when calculating worker admission. These options add no
+public constructor parameters. The default `process` applies in `fast` with two sources, two workers,
+and a compatible spawn context. Conditions and measurements are in the
 [COTAHIST performance guide](../dev-guide/cotahist-performance.en.md).
 
-- `GDF_B3_EXECUTOR_BACKEND`: Defines the parallel execution backend in `fast` mode (`"thread"` or `"process"`). Default is `"thread"`.
-  - `"thread"`: Uses `ThreadPoolExecutor`. Lower startup overhead and lower global memory consumption. Recommended for most workloads.
-  - `"process"`: Uses `ProcessPoolExecutor` with `spawn` context only for controlled experiments. It can reduce measured parent-process RSS by isolating per-file buffers in workers, but it also adds `spawn` cost, can increase summed worker RSS, and offers no guaranteed time improvement.
-  - Automatic fallback: If `processing_mode="slow"`, exactly 1 source file is processed, or worker limit is below 2, the system safely falls back to `"thread"`.
-  - Annual preflight: In `fast` with `process`, validation can use processes when the resource policy admits at least two workers and stored annual candidates total at least 64 MiB. Coexisting ZIP and TXT files both count. Smaller workloads and size-read errors use serial validation. Source order, the first error, and its typed causes are preserved; all workers are joined before cancellation or failure completes.
-  - Contractual limitations:
-    1. Child worker processes instantiate default readers and parsers; internally injected custom collaborators are not serialized across process boundaries in this version.
-    2. Multiprocessing with `spawn` requires importable Python modules and does not support interactive execution via `<stdin>` (`python -`).
+- `GDF_B3_EXECUTOR_BACKEND`: Accepts `"thread"` or `"process"`; the default is `"process"`.
+  - `"thread"`: Uses `ThreadPoolExecutor`, with lower startup cost and buffers in the parent process.
+  - `"process"`: Uses `ProcessPoolExecutor` with `spawn` in eligible contexts. It isolates source buffers and can increase aggregate RSS. Measure complete operation time, CPU, and memory on the consumer's corpus.
+  - Fallback: `slow`, one source, or a one-worker limit use one thread worker. Daemons and sessions without an importable main module or readable script use threads. The logger records the incompatibility and `last_phase_timings['effective_backend']` reports the actual backend. Failures after submission retain their diagnostics and normal cleanup.
+  - Annual preflight: In `fast` with `process`, admits processes when policy allows at least two workers, the context is compatible, and stored annual candidates total at least 64 MiB. Coexisting ZIP and TXT files both count. Smaller workloads and size-read errors use serial validation. Order, first error, typed causes, and joining workers before cleanup are preserved.
+  - Child workers instantiate default readers and parsers; internally injected custom collaborators are not serialized. Use threads for these collaborators.
+  - Scripts must guard the call with `if __name__ == '__main__':`. Set `GDF_B3_EXECUTOR_BACKEND=thread` to explicitly select threads. Invalid values raise `ValueError` at construction.
 - `GDF_B3_WORKER_LIMIT`: Optional fast-mode worker cap. Use a positive integer; the effective limit remains the minimum of this value, source-file count, available CPUs, and memory budget. Slow mode remains single-worker. A non-numeric value preserves the default cap; values below one are clamped to one worker.
 
 ______________________________________________________________________
 
 ## Asset Classification Codes
 
-| Code Identifier  | Description          | Included B3 TPMERC Codes                                 |
-| ---------------- | -------------------- | -------------------------------------------------------- |
-| `ações`          | Equities / Stocks    | 010 (Spot Cash Market), 020 (Fractional Market)          |
-| `etf`            | ETFs                 | 010 (Spot Cash Market), 020 (Fractional Market)          |
-| `opções`         | Options              | 070 (Call Options), 080 (Put Options)                    |
-| `termo`          | Term-market contracts | 030 (Term Market)                                        |
-| `exercicio_opcoes`| Option Exercises    | 012 (Call Exercise), 013 (Put Exercise)                  |
-| `forward`        | Forward Contracts    | 050 (Forward with Gain), 060 (Forward with Movement)     |
-| `leilao`         | Auction Market       | 017 (Auction Market)                                     |
-| `lote_bloco`     | Block lot            | 021 (BBT and Midpoint)                                   |
-| `todos`          | Complete selection   | Every valid numeric TPMERC                               |
+| Code Identifier    | Description           | Included B3 TPMERC Codes                             |
+| ------------------ | --------------------- | ---------------------------------------------------- |
+| `ações`            | Equities / Stocks     | 010 (Spot Cash Market), 020 (Fractional Market)      |
+| `etf`              | ETFs                  | 010 (Spot Cash Market), 020 (Fractional Market)      |
+| `opções`           | Options               | 070 (Call Options), 080 (Put Options)                |
+| `termo`            | Term-market contracts | 030 (Term Market)                                    |
+| `exercicio_opcoes` | Option Exercises      | 012 (Call Exercise), 013 (Put Exercise)              |
+| `forward`          | Forward Contracts     | 050 (Forward with Gain), 060 (Forward with Movement) |
+| `leilao`           | Auction Market        | 017 (Auction Market)                                 |
+| `lote_bloco`       | Block lot             | 021 (BBT and Midpoint)                               |
+| `todos`            | Complete selection    | Every valid numeric TPMERC                           |
 
 The Portuguese strings in this table are canonical `assets_list` values and
 must be passed exactly as shown. BDRs and Futures are **Planned** and are not
@@ -274,10 +273,10 @@ ______________________________________________________________________
 
 ## Computational Execution Modes
 
-| Processing Mode | Measured Throughput* | Measured Peak RSS* | Default Parallelism                                          | Recommended Operating Profile |
-| --------------- | -------------------: | -----------------: | ------------------------------------------------------------ | ----------------------------- |
-| **fast**        | 34,313.8 rows/s      | 429.88 MiB         | Up to 4 workers, bounded by CPU count, memory, and source files | Prioritize throughput         |
-| **slow**        | 29,759.9 rows/s      | 331.11 MiB         | 1 worker                                                     | Reduce memory use             |
+| Processing Mode | Measured Throughput\* | Measured Peak RSS\* | Default Parallelism                                             | Recommended Operating Profile |
+| --------------- | --------------------: | ------------------: | --------------------------------------------------------------- | ----------------------------- |
+| **fast**        |       34,313.8 rows/s |          429.88 MiB | Up to 4 workers, bounded by CPU count, memory, and source files | Prioritize throughput         |
+| **slow**        |       29,759.9 rows/s |          331.11 MiB | 1 worker                                                        | Reduce memory use             |
 
 *Historical implementation v3 measurement on 27 annual files (2000–2026),
 22,303,577 rows, excluding 2,283 TPMERC `021` quotations. It does not describe
@@ -285,6 +284,13 @@ schema v2 and is not directly comparable. See the [benchmark details](../dev-gui
 
 The `fast` mode coordinates parallelism by source file. The `slow` mode uses a
 single worker to reduce memory use.
+
+For consumers importing `ProcessingModeEnumB3` through the source namespace,
+the `FAST` and `SLOW` values remain. The 2026-10-20 revision removes
+`desired_concurrent_files`, `desired_workers`, `use_parallel_parsing` and
+`memory_threshold_mb`, which did not control extraction. `ResourcePolicyB3`
+continues to calculate actual limits, while telemetry exposes the effective
+backend and worker count.
 
 ______________________________________________________________________
 

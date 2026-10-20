@@ -14,6 +14,7 @@ from scripts.benchmark_corpus.annual import (
     annual_corpus_available,
     expected_b3_annual_digest,
 )
+from scripts.benchmark_corpus.containers import select_b3_container
 from scripts.benchmark_support.digests import (
     directory_digest,
     logical_digest,
@@ -224,20 +225,9 @@ def _prepare_b3_multi(
     worker_limit: int | None,
     backend: str,
     processing_mode: str,
+    input_format: str,
 ) -> ScenarioInput:
-    """Generate the synthetic multi-file B3 input directory.
-
-    Args:
-        root: Temporary root directory where corpus files are placed.
-        rows: Total synthetic quotation rows to distribute across files.
-        source_count: Optional override for number of generated files.
-        worker_limit: Optional limit on worker processes or threads.
-        backend: Execution backend ('thread' or 'process').
-        processing_mode: Ingestion mode ('fast' or 'slow').
-
-    Returns:
-        Fully configured ScenarioInput for the b3_multi_4x25k scenario.
-    """
+    """Distribute deterministic annual inputs under bounded worker settings."""
     scenario_dir = root / 'b3_multi_4x25k'
     scenario_dir.mkdir(exist_ok=True)
     count = source_count if source_count is not None else 4
@@ -268,12 +258,14 @@ def _prepare_b3_multi(
     for idx in range(count):
         rows_this_file = base + (1 if idx < rem else 0)
         year = 2021 + idx
+        path = scenario_dir / f'COTAHIST_A{year}.TXT'
         write_b3_txt(
-            scenario_dir / f'COTAHIST_A{year}.TXT',
+            path,
             rows_this_file,
             year=year,
             start_index=cur_start,
         )
+        select_b3_container(path, input_format)
         cur_start += rows_this_file
     return ScenarioInput(
         'b3_multi_4x25k',
@@ -299,8 +291,18 @@ def prepare_input(
     processing_mode: str = 'fast',
     source_count: int | None = None,
     worker_limit: int | None = None,
+    *,
+    b3_input_format: str = 'txt',
 ) -> ScenarioInput:
     """Generate or locate the one source input for a selected scenario."""
+    if b3_input_format not in {'txt', 'zip'}:
+        raise ValueError('b3_input_format must be txt or zip')
+    if b3_input_format != 'txt' and scenario not in {
+        'b3_100k',
+        'b3_250k',
+        'b3_multi_4x25k',
+    }:
+        raise ValueError('b3_input_format requires a synthetic B3 scenario')
     if scenario in {'import_root', 'runtime_footprint'}:
         return ScenarioInput(
             scenario,
@@ -357,6 +359,7 @@ def prepare_input(
             worker_limit,
             backend,
             processing_mode,
+            b3_input_format,
         )
     if scenario.startswith('cvm'):
         source = root / f'{scenario}.zip'
@@ -374,6 +377,7 @@ def prepare_input(
         )
     source = root / 'COTAHIST_A2024.TXT'
     write_b3_txt(source, rows)
+    source = select_b3_container(source, b3_input_format)
     return ScenarioInput(
         scenario,
         source,

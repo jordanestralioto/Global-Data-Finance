@@ -159,7 +159,7 @@ def test_extract_forwards_normalized_arguments_and_enriches_result(
     """The sync facade normalizes output then awaits the use case once."""
     docs = _docs_to_extract()
     create_docs_constructor.return_value.execute.return_value = docs
-    extract_use_case = Mock()
+    extract_use_case = Mock(executor_backend='process')
     extract_use_case.execute = AsyncMock(return_value=_raw_result())
     extract_constructor.return_value = extract_use_case
     b3 = HistoricalQuotesB3()
@@ -183,6 +183,8 @@ def test_extract_forwards_normalized_arguments_and_enriches_result(
         destination_path='/output',
         allowed_unc_roots=(),
         limits=ArchiveSafetyLimits.from_settings(b3.settings.archive),
+        processing_mode=extraction_flow.ProcessingModeEnumB3.FAST,
+        executor_backend='process',
     )
     extract_use_case.execute.assert_awaited_once_with(
         docs_to_extract=docs,
@@ -212,7 +214,7 @@ async def test_extract_async_applies_defaults_and_preserves_error(
     """The async facade applies default years and returns an error result."""
     docs = _docs_to_extract()
     create_docs_constructor.return_value.execute.return_value = docs
-    extract_use_case = Mock()
+    extract_use_case = Mock(executor_backend='process')
     extract_use_case.execute = AsyncMock(
         return_value=_raw_result(error_count=1)
     )
@@ -239,6 +241,8 @@ async def test_extract_async_applies_defaults_and_preserves_error(
         destination_path=None,
         allowed_unc_roots=(),
         limits=ArchiveSafetyLimits.from_settings(b3.settings.archive),
+        processing_mode=extraction_flow.ProcessingModeEnumB3.SLOW,
+        executor_backend='process',
     )
     extract_use_case.execute.assert_awaited_once_with(
         docs_to_extract=docs,

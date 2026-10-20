@@ -54,7 +54,7 @@ globaldatafinance/
 │   │   │       ├── assets.py                  # AvailableAssetsServiceB3 (validação + TPMERC mapping)
 │   │   │       ├── models.py                  # DocsToExtractorB3 (dataclass)
 │   │   │       ├── years.py                   # YearRangeB3 (value object + validators)
-│   │   │       ├── processing.py              # ProcessingModeEnumB3, _ProcessingModeConfig
+│   │   │       ├── processing.py              # ProcessingModeEnumB3, validação de configuração
 │   │   │       ├── filesystem.py              # FileSystemServiceB3.validate_directory_path
 │   │   │       ├── errors.py                  # exceções específicas da fonte
 │   │   │       ├── zip_reader.py              # leitura de COTAHIST ZIP/TXT
@@ -100,17 +100,17 @@ CVM e B3 são as implementações de fonte atuais: CVM pertence a
 reais, sem prometer que toda fonte futura terá exatamente o mesmo conjunto de
 arquivos. Uma nova fonte pode reutilizar esses limites quando fizer sentido.
 
-| Papel                       | CVM                                                | B3                                                                                     |
-| --------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Dados puros (types, enums)  | `core.py`                                          | `models.py` + `years.py` + `processing.py`                                             |
-| Validação / domain services | `core.py` (`validate_docs_name`)                   | `assets.py` (`AvailableAssetsServiceB3`) + `filesystem.py` (`validate_directory_path`) |
-| Orquestração / use cases    | `client.py`                                        | `client.py`                                                                            |
-| HTTP / download             | `http.py` (`AsyncDownloadAdapterCVM`)              | (no `zip_reader.py` + `extraction_service/`; não há download HTTP)                     |
-| Extração / escrita Parquet  | `csv_pipeline/` + `transaction.py`                 | `parquet_writer/` + `extraction_service/`                                               |
-| Parser de formato           | —                                                  | `cotahist_parser.py`                                                                   |
-| Catálogo de inputs          | —                                                  | `catalog.py`                                                                           |
+| Papel                       | CVM                                                                     | B3                                                                                     |
+| --------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Dados puros (types, enums)  | `core.py`                                                               | `models.py` + `years.py` + `processing.py`                                             |
+| Validação / domain services | `core.py` (`validate_docs_name`)                                        | `assets.py` (`AvailableAssetsServiceB3`) + `filesystem.py` (`validate_directory_path`) |
+| Orquestração / use cases    | `client.py`                                                             | `client.py`                                                                            |
+| HTTP / download             | `http.py` (`AsyncDownloadAdapterCVM`)                                   | (no `zip_reader.py` + `extraction_service/`; não há download HTTP)                     |
+| Extração / escrita Parquet  | `csv_pipeline/` + `transaction.py`                                      | `parquet_writer/` + `extraction_service/`                                              |
+| Parser de formato           | —                                                                       | `cotahist_parser.py`                                                                   |
+| Catálogo de inputs          | —                                                                       | `catalog.py`                                                                           |
 | Helpers de validação        | `download_paths.py`, `download_validation.py`, `download_extraction.py` | embutidos em `filesystem.py` / `client.py`                                             |
-| Exceções                    | `errors.py`                                        | `errors.py`                                                                            |
+| Exceções                    | `errors.py`                                                             | `errors.py`                                                                            |
 
 ### Decisão: COTAHIST complete preservation and verified publication
 

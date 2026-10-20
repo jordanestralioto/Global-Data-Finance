@@ -54,7 +54,7 @@ globaldatafinance/
 │   │   │       ├── assets.py                  # AvailableAssetsServiceB3 (validation + TPMERC mapping)
 │   │   │       ├── models.py                  # DocsToExtractorB3 (dataclass)
 │   │   │       ├── years.py                   # YearRangeB3 (value object + boundary validators)
-│   │   │       ├── processing.py              # ProcessingModeEnumB3, _ProcessingModeConfig
+│   │   │       ├── processing.py              # ProcessingModeEnumB3, configuration validation
 │   │   │       ├── filesystem.py              # FileSystemServiceB3.validate_directory_path
 │   │   │       ├── errors.py                  # source-specific exception definitions
 │   │   │       ├── zip_reader.py              # COTAHIST ZIP/TXT discovery and streaming
@@ -101,17 +101,17 @@ responsibility rather than by a promise that every future source will have an
 identical file set. A future source can reuse these boundaries when its needs
 match them.
 
-| Architectural Role           | CVM                                                | B3                                                                                     |
-| ---------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Pure data constructs         | `core.py`                                          | `models.py` + `years.py` + `processing.py`                                             |
-| Validation / domain services | `core.py` (`validate_docs_name`)                   | `assets.py` (`AvailableAssetsServiceB3`) + `filesystem.py` (`validate_directory_path`) |
-| Orchestration / use cases    | `client.py`                                        | `client.py`                                                                            |
-| HTTP network adaptation      | `http.py` (`AsyncDownloadAdapterCVM`)              | (N/A — COTAHIST ingestion operates on localized ZIP/TXT files via `zip_reader.py`)     |
-| Extraction / Parquet writer  | `csv_pipeline/` + `transaction.py`                 | `parquet_writer/` + `extraction_service/`                                               |
-| Format schema parser         | —                                                  | `cotahist_parser.py`                                                                   |
-| Input catalog                | —                                                  | `catalog.py`                                                                           |
+| Architectural Role           | CVM                                                                     | B3                                                                                     |
+| ---------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Pure data constructs         | `core.py`                                                               | `models.py` + `years.py` + `processing.py`                                             |
+| Validation / domain services | `core.py` (`validate_docs_name`)                                        | `assets.py` (`AvailableAssetsServiceB3`) + `filesystem.py` (`validate_directory_path`) |
+| Orchestration / use cases    | `client.py`                                                             | `client.py`                                                                            |
+| HTTP network adaptation      | `http.py` (`AsyncDownloadAdapterCVM`)                                   | (N/A — COTAHIST ingestion operates on localized ZIP/TXT files via `zip_reader.py`)     |
+| Extraction / Parquet writer  | `csv_pipeline/` + `transaction.py`                                      | `parquet_writer/` + `extraction_service/`                                              |
+| Format schema parser         | —                                                                       | `cotahist_parser.py`                                                                   |
+| Input catalog                | —                                                                       | `catalog.py`                                                                           |
 | Validation helpers           | `download_paths.py`, `download_validation.py`, `download_extraction.py` | Embedded inside `filesystem.py` / `client.py`                                          |
-| Exception definitions        | `errors.py`                                        | `errors.py`                                                                            |
+| Exception definitions        | `errors.py`                                                             | `errors.py`                                                                            |
 
 ### Decision: COTAHIST complete preservation and verified publication
 

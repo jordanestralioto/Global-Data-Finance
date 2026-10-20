@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
+if TYPE_CHECKING or __package__:
     from examples import support
 else:
     import support

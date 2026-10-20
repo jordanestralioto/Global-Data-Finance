@@ -131,7 +131,18 @@ def _frame_arrow_column(column: Array) -> Array:
         or pa.types.is_large_binary(kind)
         or pa.types.is_fixed_size_binary(kind)
     )
-    if binary:
+    if pa.types.is_fixed_size_binary(kind) and column.null_count == 0:
+        data = memoryview(column.buffers()[1])
+        width = kind.byte_width
+        start = column.offset * width
+        values = pa.array(
+            [
+                base64.b64encode(data[offset : offset + width])
+                for offset in range(start, start + len(column) * width, width)
+            ],
+            type=pa.large_binary(),
+        )
+    elif binary:
         values = pa.array(
             [
                 base64.b64encode(value) if value is not None else None

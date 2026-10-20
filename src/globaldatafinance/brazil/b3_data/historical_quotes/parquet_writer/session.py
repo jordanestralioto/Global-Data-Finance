@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import csv
 import io
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from contextlib import suppress
 from datetime import date
 from decimal import Decimal
@@ -114,7 +114,10 @@ class B3ParquetWriterSession:
             raise
 
     def write_csv_rows(
-        self, rows: list[tuple[str | bytes | None, ...]]
+        self,
+        rows: list[tuple[str | bytes | None, ...]],
+        *,
+        batch_observer: Callable[[Any], None] | None = None,
     ) -> None:
         """Convert canonical parser rows without rebuilding typed objects."""
         if self._writer is None or self.schema is None:
@@ -126,6 +129,8 @@ class B3ParquetWriterSession:
                 chunk = rows[:size]
                 del rows[:size]
                 for batch in self._csv_rows_to_batches(chunk, self.schema):
+                    if batch_observer is not None:
+                        batch_observer(batch)
                     self._pending_batches.append(batch)
                     self._pending_rows += batch.num_rows
                     if self._pending_rows >= self.row_group_limit:

@@ -1,0 +1,240 @@
+{
+  "schema_version": 1,
+  "evidence_root": "/tmp/gdf-b3-refactor-20261019",
+  "source_state": "Historical measurements and gate results bind the frozen 2026-10-19 candidate in provenance.json. Current source includes the separately validated 2026-10-20 review follow-up.",
+  "passed": [
+    {
+      "check": "deterministic product suite",
+      "command": "uv run --locked --no-sync pytest -m \"not slow and not real_data and not perf\" --cov --cov-report=xml --cov-report=term-missing",
+      "tests_passed": 2930,
+      "deselected": 12,
+      "coverage_percent_with_branches_enabled": 93.03,
+      "log": "deterministic-313.log"
+    },
+    {
+      "check": "supported Python pre-push matrix",
+      "command": "uv run --locked --no-sync pre-commit run --all-files --hook-stage pre-push --show-diff-on-failure --verbose",
+      "interpreters": [
+        {
+          "python": "3.12.3",
+          "product_tests_passed": 2930,
+          "product_coverage_percent_with_branches_enabled": 93.03,
+          "validation_executor_tests_passed": 229,
+          "executor_coverage_percent_with_branches_enabled": 91.11,
+          "log": "pre-push-3.12.log"
+        },
+        {
+          "python": "3.13.9",
+          "product_tests_passed": 2930,
+          "product_coverage_percent_with_branches_enabled": 93.03,
+          "validation_executor_tests_passed": 229,
+          "executor_coverage_percent_with_branches_enabled": 91.11,
+          "log": "pre-push-3.13.log"
+        },
+        {
+          "python": "3.14.0",
+          "product_tests_passed": 2930,
+          "product_coverage_percent_with_branches_enabled": 92.95,
+          "validation_executor_tests_passed": 229,
+          "executor_coverage_percent_with_branches_enabled": 91.11,
+          "log": "pre-push-3.14.log"
+        }
+      ],
+      "status_file": "matrix-status.json"
+    },
+    {
+      "check": "structural test quality",
+      "command": "uv run --locked --no-sync python scripts/check_test_quality.py",
+      "log": "pre-push-3.13.log"
+    },
+    {
+      "check": "product mypy",
+      "command": "uv run --locked --no-sync mypy src --pretty",
+      "log": "pre-push-3.13.log"
+    },
+    {
+      "check": "supporting code mypy",
+      "log": "pre-push-3.13.log"
+    },
+    {
+      "check": "complete Ruff policy",
+      "command": "uv run --locked --no-sync python scripts/check-ruff-policy.py --profile all",
+      "log": "final-ruff.log"
+    },
+    {
+      "check": "format",
+      "command": "uv run --locked --no-sync ruff format --check src tests scripts examples",
+      "log": "final-ruff.log"
+    },
+    {
+      "check": "strict documentation build",
+      "command": "uv run --locked --no-sync mkdocs build --strict",
+      "log": "final-mkdocs.log"
+    },
+    {
+      "check": "documentation contracts",
+      "command": "uv run --locked --no-sync python scripts/check-docs-contracts.py",
+      "log": "final-docs-contracts.log"
+    },
+    {
+      "check": "dependency audit",
+      "locked_packages": 116,
+      "log": "pre-push-3.13.log"
+    },
+    {
+      "check": "actual spawned-worker cancellation and joining",
+      "tests_passed": 1,
+      "log": "slow-cancellation.log"
+    },
+    {
+      "check": "distribution build and inspection",
+      "command": "uv build",
+      "log": "build.log",
+      "inspection": "distribution-report.json"
+    },
+    {
+      "check": "paired complete-API benchmark",
+      "samples": 72,
+      "configurations": 12,
+      "pairs_per_configuration": 3,
+      "all_32_columns_schema_metadata_order_and_occurrences_equal": true,
+      "report": "comparison.json"
+    },
+    {
+      "check": "independent synthetic raw reconciliation",
+      "audits": 8,
+      "total_rows": 2400000,
+      "report": "independent-audits.json"
+    },
+    {
+      "check": "caller-provided annual 2023 reconciliation",
+      "quotations_per_mode": 2257424,
+      "modes": [
+        "slow",
+        "fast"
+      ],
+      "all_32_fields_reconciled": true,
+      "ordered_parity": true,
+      "caller_input_unchanged": true,
+      "report": "annual-2023.json"
+    },
+    {
+      "check": "environment-unset public default",
+      "actual_backend": "process",
+      "workers": 4,
+      "active_workers_after_completion": 0,
+      "report": "default-smoke.json"
+    },
+    {
+      "check": "one-ZIP bounded container validation",
+      "complete_crc_scans_before": 4,
+      "complete_crc_scans_after": 2,
+      "decompressions_before": 7,
+      "decompressions_after": 5,
+      "hash_context_allocations_after": 0,
+      "report": "container-counts.json"
+    },
+    {
+      "check": "matched mode/backend time regressions",
+      "configurations": 12,
+      "regressions_exceeding_five_percent": 0
+    },
+    {
+      "check": "eligible multi-source default delivery target",
+      "minimum_reduction_percent": 20,
+      "txt_reduction_percent": 55.51,
+      "zip_reduction_percent": 42.62
+    },
+    {
+      "check": "aggregate RSS investigation",
+      "largest_matched_increase_percent": 37.29,
+      "bounded_batch_rows": 25000,
+      "report": "memory-investigation.json"
+    },
+    {
+      "check": "final native pre-commit gate including new files",
+      "command": "uv run --locked --no-sync pre-commit run --all-files --show-diff-on-failure",
+      "scope": "Isolated native Git worktree with all 63 changed/new files copied byte-for-byte and staged; the caller index is unchanged.",
+      "log": "final-review-pre-commit.log",
+      "receipt": "final-review-validation.json"
+    },
+    {
+      "check": "native checksum false-positive audit",
+      "entries": 430,
+      "scanner_plugins_unchanged": true,
+      "scanner_filters_unchanged": true,
+      "existing_audit_records_unchanged": true,
+      "report": "checksum-audit.json"
+    }
+  ],
+  "failed": [
+    {
+      "check": "single-source ZIP complete API performance target",
+      "target_reduction_percent": 20,
+      "observed_default_comparison_reduction_percent": 15.41,
+      "reason": "The measured improvement is below the delivery target. Functional and integrity checks passed.",
+      "report": "comparison.json"
+    }
+  ],
+  "skipped": [
+    {
+      "check": "deterministic deselections",
+      "count": 12,
+      "reason": "Orthogonal slow and caller-provided real-data qualifiers are excluded by the official deterministic expression; annual parity and actual cancellation were run separately."
+    },
+    {
+      "check": "perf pytest tier",
+      "reason": "Wall-time acceptance was measured outside deterministic pytest with 72 fresh-process samples."
+    },
+    {
+      "check": "commit-msg hook",
+      "reason": "No commit was requested or created."
+    }
+  ],
+  "external_failure": [],
+  "superseded_attempts": [
+    {
+      "log": "pre-push-3.12-cache-denial.log",
+      "classification": "external_failure",
+      "resolution": "The standard pre-commit cache required an approved sandbox escalation. The full 3.12 matrix subsequently passed."
+    },
+    {
+      "log": "pre-push-3.13-docs-interleaving.log",
+      "classification": "failed",
+      "resolution": "A full sequential matrix passed after concurrent documentation edits stopped."
+    },
+    {
+      "log": "final-pre-commit-new-files.log",
+      "classification": "failed",
+      "resolution": "The native scan and audit classified 430 verified integrity hashes/local paths. Final native hooks passed with the complete proposal staged in an isolated review worktree."
+    },
+    {
+      "log": "final-explicit-files.log",
+      "classification": "failed",
+      "reason": "The scanner requires an updated baseline to be staged. The caller index was intentionally preserved.",
+      "resolution": "All changed and new files, including the audited baseline, were staged and successfully checked in an isolated native Git worktree."
+    }
+  ],
+  "limitations": [
+    "The one-source ZIP 20 percent target was not reached.",
+    "Matched fast aggregate RSS increased by 24.16 to 37.29 percent and was investigated separately.",
+    "Changing candidate threads to processes adds 46.78 percent TXT and 47.16 percent ZIP aggregate RSS.",
+    "The annual campaign overlapped quality gates and is integrity evidence rather than a controlled performance comparison.",
+    "Three samples per version/configuration, a balanced synthetic corpus with market 010 and warm operating-system caches limit extrapolation.",
+    "Aggregate RSS can count shared pages more than once; sampling includes the bounded post-API comparison, while independent raw audits are timed separately.",
+    "The caller workspace retains its original index. Direct pre-commit there requires staging the reviewed .secrets.baseline update; the final native all-files gate passed in an identical isolated staged proposal."
+  ],
+  "review_followup": {
+    "date": "2026-10-20",
+    "changes": [
+      "Validate pathname and capture the outer identity before opening the preflight pass handle; retain the final pathname hash check.",
+      "Add TXT/ZIP rename-replacement regressions on both sides of container opening, through the validator and facade, with handle closure and no publication.",
+      "Remove the unused temporary-Parquet helper.",
+      "Remove the four unused exported processing-mode resource properties and their private configuration with explicit user authorization; retain actual ResourcePolicyB3 admission limits."
+    ],
+    "validation_report": "/tmp/gdf-b3-review-fix-20261020/validation.json",
+    "performance_measurements_repeated": false,
+    "single_source_zip_target": "unmet; the original criterion has not been revised",
+    "historical_evidence_preserved": true
+  }
+}

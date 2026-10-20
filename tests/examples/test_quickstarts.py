@@ -300,6 +300,7 @@ def _run_cvm_script(monkeypatch, **settings):
         'INITIAL_YEAR': 2023,
         'LAST_YEAR': 2023,
         'DOCUMENTS': ['DFP'],
+        'AUTOMATIC_EXTRACTOR': True,
     }
     configured.update(settings)
     namespace = _configured_example(

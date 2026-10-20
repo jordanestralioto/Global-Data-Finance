@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from contextlib import suppress
 from pathlib import Path
+from typing import Any
 
 from ...cotahist_parser import CsvRow
 from ...parquet_writer.schema import build_b3_schema, schema_fingerprint
@@ -14,12 +17,19 @@ def write_csv_rows(
     rows: list[CsvRow],
     temp_output: Path,
     schema_metadata: dict[bytes, bytes] | None,
+    *,
+    batch_observer: Callable[[Any], None] | None = None,
 ) -> tuple[B3ParquetWriterSession, str]:
     """Write strict parser rows without a typed-dictionary round trip."""
     session, fingerprint = session_for_write(
         session, temp_output, schema_metadata
     )
-    session.write_csv_rows(rows)
+    try:
+        session.write_csv_rows(rows, batch_observer=batch_observer)
+    except BaseException:
+        with suppress(Exception):
+            session.close()
+        raise
     return session, fingerprint
 
 

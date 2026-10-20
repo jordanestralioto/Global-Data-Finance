@@ -1,0 +1,502 @@
+{
+  "1-100000-txt-baseline": {
+    "aggregate_rss_peak_mib": 136.27734375,
+    "child_process_count_peak": 0,
+    "cpu_seconds": 9.05,
+    "elapsed_seconds": 8.880451339995489,
+    "parent_rss_after_mib": 118.73828125,
+    "parent_rss_before_mib": 51.33984375,
+    "parent_rss_peak_mib": 136.27734375,
+    "reconciliation": {
+      "blankLines": {
+        "COTAHIST_A2021.TXT": 0
+      },
+      "blockLotDistinctTradingCodes": 0,
+      "blockLotRowsByYear": {},
+      "blockLotVolumeTotal": "0.00",
+      "firstTradingDate": "2021-01-15",
+      "intentionalExclusions": 0,
+      "lastTradingDate": "2021-01-15",
+      "marketCounts": {
+        "010": 100000
+      },
+      "missingYears": [],
+      "outputSha256": "3d6780b1d896fa86e07a5803e9989194e6530adec0378a4bf56dfea5a40c1fd3",
+      "previousSupportedRows": 100000,
+      "previousTwentyFieldsEqual": true,
+      "previousTwentyOutputSha256": "802f18110c7674452e48c3c366ecbbd25367d981a08684c7123a70bfbdae5bd4",
+      "previousTwentySourceSha256": "802f18110c7674452e48c3c366ecbbd25367d981a08684c7123a70bfbdae5bd4",
+      "rawQuotes": 100000,
+      "schemaVersion": 2,
+      "selectedQuotes": 100000,
+      "sourceChecksums": [
+        {
+          "contentSha256": "83b964d066a8799dbc2e9d5f90023bbb55c6321b6efd106847d291ca7daf4385",
+          "outerSha256": "83b964d066a8799dbc2e9d5f90023bbb55c6321b6efd106847d291ca7daf4385",
+          "source": "COTAHIST_A2021.TXT"
+        }
+      ],
+      "sourceCount": 1,
+      "trailerConventions": {
+        "COTAHIST_A2021.TXT": "quotes_and_controls"
+      },
+      "unknownMarketCounts": {},
+      "verifiedRows": 100000
+    },
+    "rss_after_mib": 118.73828125,
+    "rss_before_mib": 51.33984375,
+    "rss_peak_mib": 136.27734375,
+    "scope": "independent reconcile_sources call; outside API timing",
+    "source_manifest_sha256": "7a88b7022f7efd696799da6a10df4812c8b52c75ae083ad29a0270084e4d805e",
+    "status": "passed",
+    "worker_pids_observed": []
+  },
+  "1-100000-txt-candidate": {
+    "aggregate_rss_peak_mib": 137.34375,
+    "child_process_count_peak": 0,
+    "cpu_seconds": 9.38,
+    "elapsed_seconds": 9.194302818999859,
+    "parent_rss_after_mib": 115.6171875,
+    "parent_rss_before_mib": 51.35546875,
+    "parent_rss_peak_mib": 137.34375,
+    "reconciliation": {
+      "blankLines": {
+        "COTAHIST_A2021.TXT": 0
+      },
+      "blockLotDistinctTradingCodes": 0,
+      "blockLotRowsByYear": {},
+      "blockLotVolumeTotal": "0.00",
+      "firstTradingDate": "2021-01-15",
+      "intentionalExclusions": 0,
+      "lastTradingDate": "2021-01-15",
+      "marketCounts": {
+        "010": 100000
+      },
+      "missingYears": [],
+      "outputSha256": "3d6780b1d896fa86e07a5803e9989194e6530adec0378a4bf56dfea5a40c1fd3",
+      "previousSupportedRows": 100000,
+      "previousTwentyFieldsEqual": true,
+      "previousTwentyOutputSha256": "802f18110c7674452e48c3c366ecbbd25367d981a08684c7123a70bfbdae5bd4",
+      "previousTwentySourceSha256": "802f18110c7674452e48c3c366ecbbd25367d981a08684c7123a70bfbdae5bd4",
+      "rawQuotes": 100000,
+      "schemaVersion": 2,
+      "selectedQuotes": 100000,
+      "sourceChecksums": [
+        {
+          "contentSha256": "83b964d066a8799dbc2e9d5f90023bbb55c6321b6efd106847d291ca7daf4385",
+          "outerSha256": "83b964d066a8799dbc2e9d5f90023bbb55c6321b6efd106847d291ca7daf4385",
+          "source": "COTAHIST_A2021.TXT"
+        }
+      ],
+      "sourceCount": 1,
+      "trailerConventions": {
+        "COTAHIST_A2021.TXT": "quotes_and_controls"
+      },
+      "unknownMarketCounts": {},
+      "verifiedRows": 100000
+    },
+    "rss_after_mib": 115.6171875,
+    "rss_before_mib": 51.35546875,
+    "rss_peak_mib": 137.34375,
+    "scope": "independent reconcile_sources call; outside API timing",
+    "source_manifest_sha256": "9ada4e6122a1878ea1b38eee0e757dd5bedd608dce071450129985a2510c6a40",
+    "status": "passed",
+    "worker_pids_observed": []
+  },
+  "1-100000-zip-baseline": {
+    "aggregate_rss_peak_mib": 137.62890625,
+    "child_process_count_peak": 0,
+    "cpu_seconds": 9.47,
+    "elapsed_seconds": 9.283526472005178,
+    "parent_rss_after_mib": 110.953125,
+    "parent_rss_before_mib": 51.1015625,
+    "parent_rss_peak_mib": 137.62890625,
+    "reconciliation": {
+      "blankLines": {
+        "COTAHIST_A2021.ZIP": 0
+      },
+      "blockLotDistinctTradingCodes": 0,
+      "blockLotRowsByYear": {},
+      "blockLotVolumeTotal": "0.00",
+      "firstTradingDate": "2021-01-15",
+      "intentionalExclusions": 0,
+      "lastTradingDate": "2021-01-15",
+      "marketCounts": {
+        "010": 100000
+      },
+      "missingYears": [],
+      "outputSha256": "2924d591b869f215b5cef7099574beb0597430517f9c5ff6d929d8f097f0ba3f",
+      "previousSupportedRows": 100000,
+      "previousTwentyFieldsEqual": true,
+      "previousTwentyOutputSha256": "802f18110c7674452e48c3c366ecbbd25367d981a08684c7123a70bfbdae5bd4",
+      "previousTwentySourceSha256": "802f18110c7674452e48c3c366ecbbd25367d981a08684c7123a70bfbdae5bd4",
+      "rawQuotes": 100000,
+      "schemaVersion": 2,
+      "selectedQuotes": 100000,
+      "sourceChecksums": [
+        {
+          "contentSha256": "83b964d066a8799dbc2e9d5f90023bbb55c6321b6efd106847d291ca7daf4385",
+          "outerSha256": "efd2fe737174998bf122dd96d73c16409649e038606fb2f1eeab809a0e606c6c",
+          "source": "COTAHIST_A2021.ZIP"
+        }
+      ],
+      "sourceCount": 1,
+      "trailerConventions": {
+        "COTAHIST_A2021.ZIP": "quotes_and_controls"
+      },
+      "unknownMarketCounts": {},
+      "verifiedRows": 100000
+    },
+    "rss_after_mib": 110.953125,
+    "rss_before_mib": 51.1015625,
+    "rss_peak_mib": 137.62890625,
+    "scope": "independent reconcile_sources call; outside API timing",
+    "source_manifest_sha256": "7a88b7022f7efd696799da6a10df4812c8b52c75ae083ad29a0270084e4d805e",
+    "status": "passed",
+    "worker_pids_observed": []
+  },
+  "1-100000-zip-candidate": {
+    "aggregate_rss_peak_mib": 137.2578125,
+    "child_process_count_peak": 0,
+    "cpu_seconds": 9.5,
+    "elapsed_seconds": 9.316122459997132,
+    "parent_rss_after_mib": 116.640625,
+    "parent_rss_before_mib": 51.05859375,
+    "parent_rss_peak_mib": 137.2578125,
+    "reconciliation": {
+      "blankLines": {
+        "COTAHIST_A2021.ZIP": 0
+      },
+      "blockLotDistinctTradingCodes": 0,
+      "blockLotRowsByYear": {},
+      "blockLotVolumeTotal": "0.00",
+      "firstTradingDate": "2021-01-15",
+      "intentionalExclusions": 0,
+      "lastTradingDate": "2021-01-15",
+      "marketCounts": {
+        "010": 100000
+      },
+      "missingYears": [],
+      "outputSha256": "2924d591b869f215b5cef7099574beb0597430517f9c5ff6d929d8f097f0ba3f",
+      "previousSupportedRows": 100000,
+      "previousTwentyFieldsEqual": true,
+      "previousTwentyOutputSha256": "802f18110c7674452e48c3c366ecbbd25367d981a08684c7123a70bfbdae5bd4",
+      "previousTwentySourceSha256": "802f18110c7674452e48c3c366ecbbd25367d981a08684c7123a70bfbdae5bd4",
+      "rawQuotes": 100000,
+      "schemaVersion": 2,
+      "selectedQuotes": 100000,
+      "sourceChecksums": [
+        {
+          "contentSha256": "83b964d066a8799dbc2e9d5f90023bbb55c6321b6efd106847d291ca7daf4385",
+          "outerSha256": "efd2fe737174998bf122dd96d73c16409649e038606fb2f1eeab809a0e606c6c",
+          "source": "COTAHIST_A2021.ZIP"
+        }
+      ],
+      "sourceCount": 1,
+      "trailerConventions": {
+        "COTAHIST_A2021.ZIP": "quotes_and_controls"
+      },
+      "unknownMarketCounts": {},
+      "verifiedRows": 100000
+    },
+    "rss_after_mib": 116.640625,
+    "rss_before_mib": 51.05859375,
+    "rss_peak_mib": 137.2578125,
+    "scope": "independent reconcile_sources call; outside API timing",
+    "source_manifest_sha256": "9ada4e6122a1878ea1b38eee0e757dd5bedd608dce071450129985a2510c6a40",
+    "status": "passed",
+    "worker_pids_observed": []
+  },
+  "4-500000-txt-baseline": {
+    "aggregate_rss_peak_mib": 163.43359375,
+    "child_process_count_peak": 0,
+    "cpu_seconds": 45.28,
+    "elapsed_seconds": 44.51082983800006,
+    "parent_rss_after_mib": 150.81640625,
+    "parent_rss_before_mib": 51.09375,
+    "parent_rss_peak_mib": 163.43359375,
+    "reconciliation": {
+      "blankLines": {
+        "COTAHIST_A2021.TXT": 0,
+        "COTAHIST_A2022.TXT": 0,
+        "COTAHIST_A2023.TXT": 0,
+        "COTAHIST_A2024.TXT": 0
+      },
+      "blockLotDistinctTradingCodes": 0,
+      "blockLotRowsByYear": {},
+      "blockLotVolumeTotal": "0.00",
+      "firstTradingDate": "2021-01-15",
+      "intentionalExclusions": 0,
+      "lastTradingDate": "2024-01-15",
+      "marketCounts": {
+        "010": 500000
+      },
+      "missingYears": [],
+      "outputSha256": "f3cbf7f5aac9702881fa4d4ee0ed385cf80368d43c0f64f23701a9e1cef81a96",
+      "previousSupportedRows": 500000,
+      "previousTwentyFieldsEqual": true,
+      "previousTwentyOutputSha256": "6d2371cf711fa57459409fab94ec703b573747ba2dc3f61b7425d7057b369d5a",
+      "previousTwentySourceSha256": "6d2371cf711fa57459409fab94ec703b573747ba2dc3f61b7425d7057b369d5a",
+      "rawQuotes": 500000,
+      "schemaVersion": 2,
+      "selectedQuotes": 500000,
+      "sourceChecksums": [
+        {
+          "contentSha256": "343fbb938693bc28da40fe15ff5a900846a7873ca4e467f1f2bca992ef645d50",
+          "outerSha256": "343fbb938693bc28da40fe15ff5a900846a7873ca4e467f1f2bca992ef645d50",
+          "source": "COTAHIST_A2021.TXT"
+        },
+        {
+          "contentSha256": "2f34ea95e359f68b038e2d20d3cd0ed789e64193ab119fba27c620228308a5bd",
+          "outerSha256": "2f34ea95e359f68b038e2d20d3cd0ed789e64193ab119fba27c620228308a5bd",
+          "source": "COTAHIST_A2022.TXT"
+        },
+        {
+          "contentSha256": "fd4f227ba43162f57730d178120bd7e41438c105e3721c0244c5606ab82be439",
+          "outerSha256": "fd4f227ba43162f57730d178120bd7e41438c105e3721c0244c5606ab82be439",
+          "source": "COTAHIST_A2023.TXT"
+        },
+        {
+          "contentSha256": "86b1193c90337900568a5b5c31d997cb89a87c205b4f8848c3c1fc2d92de3028",
+          "outerSha256": "86b1193c90337900568a5b5c31d997cb89a87c205b4f8848c3c1fc2d92de3028",
+          "source": "COTAHIST_A2024.TXT"
+        }
+      ],
+      "sourceCount": 4,
+      "trailerConventions": {
+        "COTAHIST_A2021.TXT": "quotes_and_controls",
+        "COTAHIST_A2022.TXT": "quotes_and_controls",
+        "COTAHIST_A2023.TXT": "quotes_and_controls",
+        "COTAHIST_A2024.TXT": "quotes_and_controls"
+      },
+      "unknownMarketCounts": {},
+      "verifiedRows": 500000
+    },
+    "rss_after_mib": 150.81640625,
+    "rss_before_mib": 51.09375,
+    "rss_peak_mib": 163.43359375,
+    "scope": "independent reconcile_sources call; outside API timing",
+    "source_manifest_sha256": "7a88b7022f7efd696799da6a10df4812c8b52c75ae083ad29a0270084e4d805e",
+    "status": "passed",
+    "worker_pids_observed": []
+  },
+  "4-500000-txt-candidate": {
+    "aggregate_rss_peak_mib": 161.74609375,
+    "child_process_count_peak": 0,
+    "cpu_seconds": 45.42,
+    "elapsed_seconds": 44.62904329199955,
+    "parent_rss_after_mib": 148.22265625,
+    "parent_rss_before_mib": 51.01953125,
+    "parent_rss_peak_mib": 161.74609375,
+    "reconciliation": {
+      "blankLines": {
+        "COTAHIST_A2021.TXT": 0,
+        "COTAHIST_A2022.TXT": 0,
+        "COTAHIST_A2023.TXT": 0,
+        "COTAHIST_A2024.TXT": 0
+      },
+      "blockLotDistinctTradingCodes": 0,
+      "blockLotRowsByYear": {},
+      "blockLotVolumeTotal": "0.00",
+      "firstTradingDate": "2021-01-15",
+      "intentionalExclusions": 0,
+      "lastTradingDate": "2024-01-15",
+      "marketCounts": {
+        "010": 500000
+      },
+      "missingYears": [],
+      "outputSha256": "f3cbf7f5aac9702881fa4d4ee0ed385cf80368d43c0f64f23701a9e1cef81a96",
+      "previousSupportedRows": 500000,
+      "previousTwentyFieldsEqual": true,
+      "previousTwentyOutputSha256": "6d2371cf711fa57459409fab94ec703b573747ba2dc3f61b7425d7057b369d5a",
+      "previousTwentySourceSha256": "6d2371cf711fa57459409fab94ec703b573747ba2dc3f61b7425d7057b369d5a",
+      "rawQuotes": 500000,
+      "schemaVersion": 2,
+      "selectedQuotes": 500000,
+      "sourceChecksums": [
+        {
+          "contentSha256": "343fbb938693bc28da40fe15ff5a900846a7873ca4e467f1f2bca992ef645d50",
+          "outerSha256": "343fbb938693bc28da40fe15ff5a900846a7873ca4e467f1f2bca992ef645d50",
+          "source": "COTAHIST_A2021.TXT"
+        },
+        {
+          "contentSha256": "2f34ea95e359f68b038e2d20d3cd0ed789e64193ab119fba27c620228308a5bd",
+          "outerSha256": "2f34ea95e359f68b038e2d20d3cd0ed789e64193ab119fba27c620228308a5bd",
+          "source": "COTAHIST_A2022.TXT"
+        },
+        {
+          "contentSha256": "fd4f227ba43162f57730d178120bd7e41438c105e3721c0244c5606ab82be439",
+          "outerSha256": "fd4f227ba43162f57730d178120bd7e41438c105e3721c0244c5606ab82be439",
+          "source": "COTAHIST_A2023.TXT"
+        },
+        {
+          "contentSha256": "86b1193c90337900568a5b5c31d997cb89a87c205b4f8848c3c1fc2d92de3028",
+          "outerSha256": "86b1193c90337900568a5b5c31d997cb89a87c205b4f8848c3c1fc2d92de3028",
+          "source": "COTAHIST_A2024.TXT"
+        }
+      ],
+      "sourceCount": 4,
+      "trailerConventions": {
+        "COTAHIST_A2021.TXT": "quotes_and_controls",
+        "COTAHIST_A2022.TXT": "quotes_and_controls",
+        "COTAHIST_A2023.TXT": "quotes_and_controls",
+        "COTAHIST_A2024.TXT": "quotes_and_controls"
+      },
+      "unknownMarketCounts": {},
+      "verifiedRows": 500000
+    },
+    "rss_after_mib": 148.22265625,
+    "rss_before_mib": 51.01953125,
+    "rss_peak_mib": 161.74609375,
+    "scope": "independent reconcile_sources call; outside API timing",
+    "source_manifest_sha256": "9ada4e6122a1878ea1b38eee0e757dd5bedd608dce071450129985a2510c6a40",
+    "status": "passed",
+    "worker_pids_observed": []
+  },
+  "4-500000-zip-baseline": {
+    "aggregate_rss_peak_mib": 164.1484375,
+    "child_process_count_peak": 0,
+    "cpu_seconds": 47.220000000000006,
+    "elapsed_seconds": 46.328665834000276,
+    "parent_rss_after_mib": 148.65625,
+    "parent_rss_before_mib": 51.00390625,
+    "parent_rss_peak_mib": 164.1484375,
+    "reconciliation": {
+      "blankLines": {
+        "COTAHIST_A2021.ZIP": 0,
+        "COTAHIST_A2022.ZIP": 0,
+        "COTAHIST_A2023.ZIP": 0,
+        "COTAHIST_A2024.ZIP": 0
+      },
+      "blockLotDistinctTradingCodes": 0,
+      "blockLotRowsByYear": {},
+      "blockLotVolumeTotal": "0.00",
+      "firstTradingDate": "2021-01-15",
+      "intentionalExclusions": 0,
+      "lastTradingDate": "2024-01-15",
+      "marketCounts": {
+        "010": 500000
+      },
+      "missingYears": [],
+      "outputSha256": "3618e7e63d8647bdd1c2a3e85da1f855ccab21c82c8effb1201933b934adaacd",
+      "previousSupportedRows": 500000,
+      "previousTwentyFieldsEqual": true,
+      "previousTwentyOutputSha256": "6d2371cf711fa57459409fab94ec703b573747ba2dc3f61b7425d7057b369d5a",
+      "previousTwentySourceSha256": "6d2371cf711fa57459409fab94ec703b573747ba2dc3f61b7425d7057b369d5a",
+      "rawQuotes": 500000,
+      "schemaVersion": 2,
+      "selectedQuotes": 500000,
+      "sourceChecksums": [
+        {
+          "contentSha256": "343fbb938693bc28da40fe15ff5a900846a7873ca4e467f1f2bca992ef645d50",
+          "outerSha256": "7c062d644848fbb2e3e6bd2e087466d06f9aab3ff5c4d4f582bd7668518cde05",
+          "source": "COTAHIST_A2021.ZIP"
+        },
+        {
+          "contentSha256": "2f34ea95e359f68b038e2d20d3cd0ed789e64193ab119fba27c620228308a5bd",
+          "outerSha256": "e8b49cfd50ecb361c30ca34b1e4f12d014837350b1836d1cf78275079447e2a2",
+          "source": "COTAHIST_A2022.ZIP"
+        },
+        {
+          "contentSha256": "fd4f227ba43162f57730d178120bd7e41438c105e3721c0244c5606ab82be439",
+          "outerSha256": "86747c3ab76ec647fc46bd931367119064d6cac5e2bdcaf6041ad2567d5ba048",
+          "source": "COTAHIST_A2023.ZIP"
+        },
+        {
+          "contentSha256": "86b1193c90337900568a5b5c31d997cb89a87c205b4f8848c3c1fc2d92de3028",
+          "outerSha256": "3e335974ef2bf29685ec6804d8bd83dc62c323f5bb02923bb42ad2365503990a",
+          "source": "COTAHIST_A2024.ZIP"
+        }
+      ],
+      "sourceCount": 4,
+      "trailerConventions": {
+        "COTAHIST_A2021.ZIP": "quotes_and_controls",
+        "COTAHIST_A2022.ZIP": "quotes_and_controls",
+        "COTAHIST_A2023.ZIP": "quotes_and_controls",
+        "COTAHIST_A2024.ZIP": "quotes_and_controls"
+      },
+      "unknownMarketCounts": {},
+      "verifiedRows": 500000
+    },
+    "rss_after_mib": 148.65625,
+    "rss_before_mib": 51.00390625,
+    "rss_peak_mib": 164.1484375,
+    "scope": "independent reconcile_sources call; outside API timing",
+    "source_manifest_sha256": "7a88b7022f7efd696799da6a10df4812c8b52c75ae083ad29a0270084e4d805e",
+    "status": "passed",
+    "worker_pids_observed": []
+  },
+  "4-500000-zip-candidate": {
+    "aggregate_rss_peak_mib": 164.56640625,
+    "child_process_count_peak": 0,
+    "cpu_seconds": 47.44,
+    "elapsed_seconds": 46.54485448900232,
+    "parent_rss_after_mib": 151.82421875,
+    "parent_rss_before_mib": 51.015625,
+    "parent_rss_peak_mib": 164.56640625,
+    "reconciliation": {
+      "blankLines": {
+        "COTAHIST_A2021.ZIP": 0,
+        "COTAHIST_A2022.ZIP": 0,
+        "COTAHIST_A2023.ZIP": 0,
+        "COTAHIST_A2024.ZIP": 0
+      },
+      "blockLotDistinctTradingCodes": 0,
+      "blockLotRowsByYear": {},
+      "blockLotVolumeTotal": "0.00",
+      "firstTradingDate": "2021-01-15",
+      "intentionalExclusions": 0,
+      "lastTradingDate": "2024-01-15",
+      "marketCounts": {
+        "010": 500000
+      },
+      "missingYears": [],
+      "outputSha256": "3618e7e63d8647bdd1c2a3e85da1f855ccab21c82c8effb1201933b934adaacd",
+      "previousSupportedRows": 500000,
+      "previousTwentyFieldsEqual": true,
+      "previousTwentyOutputSha256": "6d2371cf711fa57459409fab94ec703b573747ba2dc3f61b7425d7057b369d5a",
+      "previousTwentySourceSha256": "6d2371cf711fa57459409fab94ec703b573747ba2dc3f61b7425d7057b369d5a",
+      "rawQuotes": 500000,
+      "schemaVersion": 2,
+      "selectedQuotes": 500000,
+      "sourceChecksums": [
+        {
+          "contentSha256": "343fbb938693bc28da40fe15ff5a900846a7873ca4e467f1f2bca992ef645d50",
+          "outerSha256": "7c062d644848fbb2e3e6bd2e087466d06f9aab3ff5c4d4f582bd7668518cde05",
+          "source": "COTAHIST_A2021.ZIP"
+        },
+        {
+          "contentSha256": "2f34ea95e359f68b038e2d20d3cd0ed789e64193ab119fba27c620228308a5bd",
+          "outerSha256": "e8b49cfd50ecb361c30ca34b1e4f12d014837350b1836d1cf78275079447e2a2",
+          "source": "COTAHIST_A2022.ZIP"
+        },
+        {
+          "contentSha256": "fd4f227ba43162f57730d178120bd7e41438c105e3721c0244c5606ab82be439",
+          "outerSha256": "86747c3ab76ec647fc46bd931367119064d6cac5e2bdcaf6041ad2567d5ba048",
+          "source": "COTAHIST_A2023.ZIP"
+        },
+        {
+          "contentSha256": "86b1193c90337900568a5b5c31d997cb89a87c205b4f8848c3c1fc2d92de3028",
+          "outerSha256": "3e335974ef2bf29685ec6804d8bd83dc62c323f5bb02923bb42ad2365503990a",
+          "source": "COTAHIST_A2024.ZIP"
+        }
+      ],
+      "sourceCount": 4,
+      "trailerConventions": {
+        "COTAHIST_A2021.ZIP": "quotes_and_controls",
+        "COTAHIST_A2022.ZIP": "quotes_and_controls",
+        "COTAHIST_A2023.ZIP": "quotes_and_controls",
+        "COTAHIST_A2024.ZIP": "quotes_and_controls"
+      },
+      "unknownMarketCounts": {},
+      "verifiedRows": 500000
+    },
+    "rss_after_mib": 151.82421875,
+    "rss_before_mib": 51.015625,
+    "rss_peak_mib": 164.56640625,
+    "scope": "independent reconcile_sources call; outside API timing",
+    "source_manifest_sha256": "9ada4e6122a1878ea1b38eee0e757dd5bedd608dce071450129985a2510c6a40",
+    "status": "passed",
+    "worker_pids_observed": []
+  }
+}

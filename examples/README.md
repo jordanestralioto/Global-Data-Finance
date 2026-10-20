@@ -27,6 +27,18 @@ Use essa mesma pasta para executar os exemplos. Um caminho como `./dados_b3`
 significa a pasta `dados_b3` dentro dela. A biblioteca cria a pasta de saída
 quando necessário.
 
+Você também pode executar como módulo, usando `-m` e pontos entre os nomes:
+
+```bash
+uv run --locked --no-sync python -m examples.01_quickstart_cvm
+uv run --locked --no-sync python -m examples.02_quickstart_b3
+uv run --locked --no-sync python -m examples.03_advanced_options_b3
+```
+
+Execute apenas o exemplo desejado. Com `-m`, use `examples.nome_do_exemplo`,
+sem `/` e sem a extensão `.py`. Para usar o caminho `examples/arquivo.py`,
+execute sem `-m`, como nos comandos abaixo.
+
 ## 2. Escolher o que processar
 
 As variáveis têm nomes em inglês, iguais aos usados nos arquivos. Use a tabela

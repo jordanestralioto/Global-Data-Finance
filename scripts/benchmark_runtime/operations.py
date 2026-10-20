@@ -79,6 +79,7 @@ def run_b3(
     previous_environment = {name: os.environ.get(name) for name in overrides}
     os.environ.update(overrides)
     try:
+        cpu_before = os.times()
         started = time.perf_counter()
         client = HistoricalQuotesB3()
         result = client.extract(
@@ -94,7 +95,22 @@ def run_b3(
         if not result['success']:
             raise RuntimeError(f'B3 extraction failed: {result["errors"]}')
         op_sec = time.perf_counter() - started
+        cpu_after = os.times()
         _last_b3_phase_timings = dict(client.last_phase_timings)
+        _last_b3_phase_timings.update(
+            api_parent_cpu_seconds=(
+                cpu_after.user
+                + cpu_after.system
+                - cpu_before.user
+                - cpu_before.system
+            ),
+            api_worker_cpu_seconds=(
+                cpu_after.children_user
+                + cpu_after.children_system
+                - cpu_before.children_user
+                - cpu_before.children_system
+            ),
+        )
     finally:
         for name, previous_value in previous_environment.items():
             if previous_value is None:

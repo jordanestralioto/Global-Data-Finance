@@ -505,6 +505,7 @@ def _corrupt_private_artifact(
     monkeypatch: pytest.MonkeyPatch, mutation: str
 ) -> None:
     """Corrupt the first private artifact right after its worker closes it."""
+    monkeypatch.setenv('GDF_B3_EXECUTOR_BACKEND', 'thread')
     processor = extraction_service.zip_processor.ZipProcessorB3
     process_source = processor.process
     corrupted: list[Path] = []

@@ -18,6 +18,7 @@ from ...parquet_writer.session import (
     RECORD_BATCH_LIMIT,
     B3ParquetWriterSession,
 )
+from ...parquet_writer.verification import canonical_columns
 from ...row_digest import B3OrderedRowDigest
 from ..types import SourceExtractionResult
 from .replay import LineReader, preflight_source, validate_source_replay
@@ -167,6 +168,10 @@ class ZipProcessorB3:
         lines_read = 0
         content_digest = hashlib.sha256()
         rows_digest = B3OrderedRowDigest()
+
+        def observe_batch(batch: Any) -> None:
+            rows_digest.update_columns(canonical_columns(batch))
+
         cancellation_check = partial(self._check_cancellation, source)
         outer_digest = sha256_file(
             source, cancellation_check=cancellation_check
@@ -185,11 +190,10 @@ class ZipProcessorB3:
                 if lines_read % CANCELLATION_LINE_STRIDE == 0:
                     self._check_cancellation(source)
                 content_digest.update(raw_line.complete_bytes)
-                line = raw_line.content.decode('latin-1')
                 context = raw_line.context
                 member = context.zip_member or member
-                row = parser.parse_line_to_csv_row(
-                    line,
+                row = parser._parse_bytes_to_csv_row(
+                    raw_line.content,
                     target_tpmerc_codes,
                     context=context,
                     all_markets=all_markets,
@@ -198,17 +202,24 @@ class ZipProcessorB3:
                 )
                 if row is None:
                     continue
-                rows_digest.update(row)
                 rows.append(row)
                 if len(rows) >= self.python_record_limit:
                     self._check_cancellation(source)
                     session, fingerprint = write_csv_rows(
-                        session, rows, temp_output, schema_metadata
+                        session,
+                        rows,
+                        temp_output,
+                        schema_metadata,
+                        batch_observer=observe_batch,
                     )
             self._check_cancellation(source)
             if rows:
                 session, fingerprint = write_csv_rows(
-                    session, rows, temp_output, schema_metadata
+                    session,
+                    rows,
+                    temp_output,
+                    schema_metadata,
+                    batch_observer=observe_batch,
                 )
             validate_source_replay(
                 source,

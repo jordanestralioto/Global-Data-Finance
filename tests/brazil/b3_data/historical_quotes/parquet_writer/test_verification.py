@@ -386,3 +386,91 @@ def test_readback_preserves_source_segments_across_batch_boundaries(
     )
     assert result.first_trading_date == date(2022, 1, 15)
     assert result.last_trading_date == date(2024, 1, 15)
+
+
+@pytest.mark.parametrize(
+    ('column', 'value', 'message'),
+    [
+        ('linha_origem', 0, 'one-based COTAHIST'),
+        ('linha_origem', -1, 'one-based COTAHIST'),
+        ('data_pregao', date(2023, 1, 15), 'source trading year'),
+    ],
+)
+def test_vector_coordinates_reject_invalid_values(
+    tmp_path: Path,
+    verified_input: tuple[pa.Table, ValidatedCotahistSource],
+    column: str,
+    value: object,
+    message: str,
+) -> None:
+    """Arrow predicates retain the contextual coordinate diagnostics."""
+    table, source = verified_input
+    rows = table.to_pylist()
+    rows[0][column] = value
+    output = tmp_path / 'invalid-coordinate.parquet'
+    pq.write_table(pa.Table.from_pylist(rows, schema=table.schema), output)
+    with pytest.raises(ExtractionError, match=message):
+        b3_verification.verify_b3_parquet(
+            output, expected_schema=table.schema, sources=(source,)
+        )
+
+
+@pytest.mark.parametrize(
+    'column',
+    ['data_pregao', 'id_fonte', 'linha_origem', 'registro_original'],
+)
+def test_required_nulls_fail_before_vector_reductions(
+    tmp_path: Path,
+    verified_input: tuple[pa.Table, ValidatedCotahistSource],
+    column: str,
+) -> None:
+    """A nullable Arrow reduction cannot hide an invalid required value."""
+    table, source = verified_input
+    batch = table.to_batches()[0]
+    index = table.schema.get_field_index(column)
+    arrays = list(batch.columns)
+    arrays[index] = pa.array([None, None], type=arrays[index].type)
+    damaged = pa.RecordBatch.from_arrays(arrays, schema=table.schema)
+    with pytest.raises(ExtractionError, match=f'required column.*{column}'):
+        b3_verification._validate_batch(tmp_path, damaged, table.schema)
+    assert source.selected_quotes == 2
+
+
+def test_multiple_coordinate_errors_report_first_row_in_scalar_order(
+    tmp_path: Path,
+    verified_input: tuple[pa.Table, ValidatedCotahistSource],
+) -> None:
+    """A later provenance error cannot mask an earlier invalid line."""
+    table, source = verified_input
+    rows = table.to_pylist()
+    rows[0]['linha_origem'] = 0
+    rows[0]['data_pregao'] = date(2023, 1, 15)
+    rows[1]['id_fonte'] = '0' * 64
+    output = tmp_path / 'multiple-errors.parquet'
+    pq.write_table(pa.Table.from_pylist(rows, schema=table.schema), output)
+    with pytest.raises(ExtractionError, match='one-based COTAHIST'):
+        b3_verification.verify_b3_parquet(
+            output, expected_schema=table.schema, sources=(source,)
+        )
+
+
+def test_successful_coordinates_never_enter_scalar_diagnostics(
+    tmp_path: Path,
+    verified_input: tuple[pa.Table, ValidatedCotahistSource],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Valid Arrow segments prove coordinates without a per-row callback."""
+    table, source = verified_input
+    output = tmp_path / 'native.parquet'
+    pq.write_table(table, output)
+
+    def reject_scalar(*_args: object) -> None:
+        pytest.fail('Successful coordinates entered scalar diagnostics')
+
+    monkeypatch.setattr(
+        b3_verification, '_verify_source_coordinates', reject_scalar
+    )
+    result = b3_verification.verify_b3_parquet(
+        output, expected_schema=table.schema, sources=(source,)
+    )
+    assert result.source_digests == (source.expected_rows_sha256,)

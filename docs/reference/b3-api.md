@@ -56,16 +56,16 @@ impede que o caminho de saída substitua uma fonte COTAHIST.
 
 **Parâmetros**:
 
-| Nome               | Tipo                | Obrigatório | Padrão                 | Descrição                                                                      |
-| ------------------ | ------------------- | ----------- | ---------------------- | ------------------------------------------------------------------------------ |
-| `path_of_docs`     | `str`               | Sim         | -                      | Diretório contendo arquivos COTAHIST ZIP ou TXT                                 |
-| `assets_list`      | `list[str] \| None` | Não         | `None` (`["todos"]`)   | Classes; `todos` seleciona todo TPMERC numérico válido                           |
-| `initial_year`     | `int \| None`       | Não         | `None` (1986)          | Ano inicial da extração (inclusivo, >= 1986)                                   |
-| `last_year`        | `int \| None`       | Não         | `None` (ano atual)     | Ano final da extração (inclusivo)                                              |
-| `destination_path` | `str \| None`       | Não         | `None` (`path_of_docs`)| Diretório de destino do Parquet gerado                                         |
-| `output_filename`  | `str`               | Não         | `"cotahist_extracted"` | Nome base obrigatório (basename); `.parquet` é opcional e acrescentado apenas quando ausente |
-| `processing_mode`  | `str`               | Não         | `"fast"`               | Modo de processamento: `"fast"` (paralelo) ou `"slow"` (baixo consumo de RAM) |
-| `verbose`          | `bool`              | Não         | `True`                 | Se `True`, imprime o resumo formatado no console                               |
+| Nome               | Tipo                | Obrigatório | Padrão                  | Descrição                                                                                    |
+| ------------------ | ------------------- | ----------- | ----------------------- | -------------------------------------------------------------------------------------------- |
+| `path_of_docs`     | `str`               | Sim         | -                       | Diretório contendo arquivos COTAHIST ZIP ou TXT                                              |
+| `assets_list`      | `list[str] \| None` | Não         | `None` (`["todos"]`)    | Classes; `todos` seleciona todo TPMERC numérico válido                                       |
+| `initial_year`     | `int \| None`       | Não         | `None` (1986)           | Ano inicial da extração (inclusivo, >= 1986)                                                 |
+| `last_year`        | `int \| None`       | Não         | `None` (ano atual)      | Ano final da extração (inclusivo)                                                            |
+| `destination_path` | `str \| None`       | Não         | `None` (`path_of_docs`) | Diretório de destino do Parquet gerado                                                       |
+| `output_filename`  | `str`               | Não         | `"cotahist_extracted"`  | Nome base obrigatório (basename); `.parquet` é opcional e acrescentado apenas quando ausente |
+| `processing_mode`  | `str`               | Não         | `"fast"`                | Modo de processamento: `"fast"` (paralelo) ou `"slow"` (baixo consumo de RAM)                |
+| `verbose`          | `bool`              | Não         | `True`                  | Se `True`, imprime o resumo formatado no console                                             |
 
 As barras `Validating B3 files` e `Processing B3 files` aparecem em `stdout`
 nos modos `fast` e `slow`, independentemente de `verbose`. Elas contam fontes
@@ -233,38 +233,37 @@ ______________________________________________________________________
 
 ## Configuração de Execução e Variáveis de Ambiente
 
-As variáveis abaixo são resolvidas ao construir `HistoricalQuotesB3()`. Elas não
-alteram uma instância já existente, nem adicionam parâmetros ao construtor
-público. O backend por processos é experimental e requer ativação explícita.
-Avalie o tempo completo, CPU e RSS agregado no corpus do consumidor antes de
-adotá-lo. As condições e medições estão no
+`GDF_B3_EXECUTOR_BACKEND` é resolvido ao construir `HistoricalQuotesB3()` e não
+altera uma instância existente. `GDF_B3_WORKER_LIMIT` é lido pela política de
+recursos ao calcular a admissão de workers. Essas opções não adicionam parâmetros
+ao construtor público. O padrão `process` é aplicado em `fast` com duas fontes, dois
+workers e contexto compatível com `spawn`. As condições e medições estão no
 [guia de performance COTAHIST](../dev-guide/cotahist-performance.md).
 
-- `GDF_B3_EXECUTOR_BACKEND`: Define o backend executor de paralelismo no modo `fast` (`"thread"` ou `"process"`). O padrão é `"thread"`.
-  - `"thread"`: Utiliza `ThreadPoolExecutor`. Menor sobrecarga de inicialização e menor consumo global de memória. Recomendado para a maioria dos fluxos.
-  - `"process"`: Utiliza `ProcessPoolExecutor` com contexto `spawn` somente para experimentos controlados. Ele pode reduzir o RSS medido do processo pai ao isolar buffers de cada arquivo em processos separados, mas também acrescenta custo de `spawn`, pode aumentar a soma de RSS dos workers e não oferece ganho de tempo garantido.
-  - Fallback automático: Se `processing_mode="slow"`, houver apenas 1 arquivo de entrada ou o limite de workers for inferior a 2, o sistema realiza fallback seguro para `"thread"`.
-  - Preflight anual: Em `fast` com `process`, a validação pode usar processos quando a política admite pelo menos dois workers e os candidatos anuais somam pelo menos 64 MiB armazenados. ZIP e TXT coexistentes entram na soma. Cargas menores e erros de leitura do tamanho seguem a validação serial. A ordem das fontes, o primeiro erro e suas causas tipadas são preservados; todos os workers são encerrados antes de concluir um cancelamento ou uma falha.
-  - Limitações de contrato:
-    1. Os workers filhos criam instâncias padrão de leitor e parser; colaboradores customizados injetados internamente não são serializados entre processos nesta versão.
-    2. O multiprocessing via `spawn` requer módulos Python importáveis e não oferece suporte à execução interativa via `<stdin>` (`python -`).
+- `GDF_B3_EXECUTOR_BACKEND`: Aceita `"thread"` ou `"process"`; o padrão é `"process"`.
+  - `"thread"`: Usa `ThreadPoolExecutor`, com menor custo de inicialização e buffers no processo pai.
+  - `"process"`: Usa `ProcessPoolExecutor` com `spawn` nas condições elegíveis. Isola buffers por fonte e pode aumentar o RSS agregado. Avalie tempo completo, CPU e memória no corpus do consumidor.
+  - Fallback: `slow`, uma fonte ou limite de um worker usam um worker de thread. Daemons e sessões sem módulo principal importável ou script legível usam threads. O logger registra a incompatibilidade e `last_phase_timings['effective_backend']` informa o backend efetivo. Falhas após a submissão mantêm diagnósticos e limpeza normal.
+  - Preflight anual: Em `fast` com `process`, admite processos quando a política permite pelo menos dois workers, o contexto é compatível e os candidatos anuais somam pelo menos 64 MiB armazenados. ZIP e TXT coexistentes entram na soma. Cargas menores e erros de leitura do tamanho seguem validação serial. Ordem, primeiro erro, causas tipadas e encerramento dos workers antes da limpeza são preservados.
+  - Os workers filhos criam leitores e parsers padrão; colaboradores customizados injetados internamente não são serializados. Use threads para esses colaboradores.
+  - Scripts devem proteger a chamada com `if __name__ == '__main__':`. Defina `GDF_B3_EXECUTOR_BACKEND=thread` para selecionar threads explicitamente. Valores inválidos geram `ValueError` na construção.
 - `GDF_B3_WORKER_LIMIT`: Limite opcional de workers para o modo `fast`. Use um inteiro positivo; o limite efetivo continua sendo o menor entre esse valor, a quantidade de arquivos, CPUs disponíveis e orçamento de memória. O modo `slow` continua com um worker. Um valor não numérico preserva o teto padrão; valores menores que um são limitados a um worker.
 
 ______________________________________________________________________
 
 ## Classes de Ativos
 
-| Código           | Descrição           | Códigos TPMERC B3                                       |
-| ---------------- | ------------------- | ------------------------------------------------------- |
-| `ações`          | Ações               | 010 (Mercado à Vista), 020 (Mercado Fracionário)        |
-| `etf`            | ETFs                | 010 (Mercado à Vista), 020 (Mercado Fracionário)        |
-| `opções`         | Opções              | 070 (Opções de Compra), 080 (Opções de Venda)           |
-| `termo`          | Mercado a Termo     | 030 (Mercado a Termo)                                   |
-| `exercicio_opcoes`| Exercício de Opções| 012 (Exercício Compra), 013 (Exercício Venda)           |
-| `forward`        | Contratos forward   | 050 (Forward c/ Ganho), 060 (Forward c/ Movimentação)  |
-| `leilao`         | Leilão              | 017 (Mercado de Leilão)                                 |
-| `lote_bloco`     | Lote em bloco       | 021 (BBT e Midpoint)                                    |
-| `todos`          | Seleção completa    | Todo TPMERC numérico válido                             |
+| Código             | Descrição           | Códigos TPMERC B3                                     |
+| ------------------ | ------------------- | ----------------------------------------------------- |
+| `ações`            | Ações               | 010 (Mercado à Vista), 020 (Mercado Fracionário)      |
+| `etf`              | ETFs                | 010 (Mercado à Vista), 020 (Mercado Fracionário)      |
+| `opções`           | Opções              | 070 (Opções de Compra), 080 (Opções de Venda)         |
+| `termo`            | Mercado a Termo     | 030 (Mercado a Termo)                                 |
+| `exercicio_opcoes` | Exercício de Opções | 012 (Exercício Compra), 013 (Exercício Venda)         |
+| `forward`          | Contratos forward   | 050 (Forward c/ Ganho), 060 (Forward c/ Movimentação) |
+| `leilao`           | Leilão              | 017 (Mercado de Leilão)                               |
+| `lote_bloco`       | Lote em bloco       | 021 (BBT e Midpoint)                                  |
+| `todos`            | Seleção completa    | Todo TPMERC numérico válido                           |
 
 As strings em português desta tabela são valores canônicos de `assets_list` e
 devem ser passadas exatamente como mostradas. BDRs e Futures são **Planned** e
@@ -274,10 +273,10 @@ ______________________________________________________________________
 
 ## Modos de Processamento
 
-| Modo     | Throughput medido* | Pico RSS medido* | Paralelismo padrão                                  | Cenário Indicado        |
-| -------- | -----------------: | ---------------: | --------------------------------------------------- | ----------------------- |
-| **fast** | 34.313,8 reg/s    | 429,88 MiB       | Até 4 workers, limitado por CPUs, memória e arquivos-fonte | Priorizar velocidade    |
-| **slow** | 29.759,9 reg/s    | 331,11 MiB       | 1 worker                                            | Reduzir uso de memória  |
+| Modo     | Throughput medido\* | Pico RSS medido\* | Paralelismo padrão                                         | Cenário Indicado       |
+| -------- | ------------------: | ----------------: | ---------------------------------------------------------- | ---------------------- |
+| **fast** |      34.313,8 reg/s |        429,88 MiB | Até 4 workers, limitado por CPUs, memória e arquivos-fonte | Priorizar velocidade   |
+| **slow** |      29.759,9 reg/s |        331,11 MiB | 1 worker                                                   | Reduzir uso de memória |
 
 *Medição histórica da implementação v3 em 27 arquivos anuais (2000–2026),
 22.303.577 registros e sem 2.283 cotações `021`. Não representa o schema v2 e
@@ -285,6 +284,13 @@ não é comparável diretamente. Consulte os [detalhes do benchmark](../dev-guid
 
 O modo `fast` coordena o paralelismo por arquivo-fonte. O modo `slow` utiliza um
 único worker para reduzir o consumo de memória.
+
+Para consumidores que importam `ProcessingModeEnumB3` pelo namespace da fonte,
+os valores `FAST` e `SLOW` permanecem. Na revisão de 20/10/2026, foram removidas
+as propriedades `desired_concurrent_files`, `desired_workers`,
+`use_parallel_parsing` e `memory_threshold_mb`, que não controlavam a extração.
+Os limites efetivos continuam sendo calculados por `ResourcePolicyB3`, e o
+backend e a quantidade efetiva de workers são expostos pela telemetria.
 
 ______________________________________________________________________
 

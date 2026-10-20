@@ -73,20 +73,6 @@ def validate_and_resolve_cotahist_input(
         _raise_public_input_error(candidate, error)
 
 
-@contextmanager
-def open_resolved_cotahist_zip(
-    path: Path,
-    *,
-    limits: ArchiveSafetyLimits | None = None,
-) -> Iterator[tuple[zipfile.ZipFile, str]]:
-    """Keep the fully validated archive open for bounded member reading."""
-    try:
-        with _open_validated_zip(path, limits=limits) as validated:
-            yield validated
-    except CotahistCatalogError as error:
-        _raise_public_input_error(path, error)
-
-
 def _raise_public_input_error(
     path: Path, error: CotahistCatalogError
 ) -> Never:
@@ -105,12 +91,12 @@ def _validate_zip(
     limits: ArchiveSafetyLimits | None = None,
 ) -> str:
     """Validate archive safety and resolve the unique annual member."""
-    with _open_validated_zip(path, limits=limits) as (_archive, member):
+    with open_resolved_cotahist_zip(path, limits=limits) as (_archive, member):
         return member
 
 
 @contextmanager
-def _open_validated_zip(
+def open_resolved_cotahist_zip(
     path: Path,
     *,
     limits: ArchiveSafetyLimits | None = None,

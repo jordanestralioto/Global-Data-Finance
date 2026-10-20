@@ -54,7 +54,7 @@ class HistoricalQuotesB3:
                 a fresh :class:`~globaldatafinance.core.config.Settings`
                 instance is constructed from current environment variables.
         """
-        backend = os.environ.get('GDF_B3_EXECUTOR_BACKEND', 'thread')
+        backend = os.environ.get('GDF_B3_EXECUTOR_BACKEND', 'process')
         if backend not in ('thread', 'process'):
             raise ValueError(
                 f'Invalid executor_backend: {backend!r}. '

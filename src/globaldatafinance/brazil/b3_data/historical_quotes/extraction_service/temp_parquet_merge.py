@@ -5,7 +5,7 @@ from __future__ import annotations
 import contextlib
 from collections.abc import Iterator, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from .....macro_exceptions import ExtractionError, ParquetWriteError
 from ..async_execution import check_phase_cancellation
@@ -82,32 +82,6 @@ def _cancellable_batches(source: Any) -> Iterator[Any]:
     for batch in source.iter_batches(batch_size=ROW_GROUP_LIMIT):
         check_phase_cancellation()
         yield batch
-
-
-def validate_one_temp_file(
-    temp_file: Path,
-    expected_schema: Schema,
-    expected_rows: int,
-) -> int:
-    """Validate one source artifact before publishing it without a merge.
-
-    The one-source path is logically a degenerate ordered merge.  It keeps
-    the same integrity checks as the multi-source implementation while
-    avoiding a needless read-and-rewrite of a fully validated Parquet file.
-    """
-    _validate_merge_inputs([temp_file], [expected_rows])
-    source = _open_validated_temporary(
-        temp_file, expected_schema, expected_rows
-    )
-    try:
-        metadata = source.metadata
-        if metadata is None:
-            raise ExtractionError(
-                str(temp_file), 'B3 temporary Parquet metadata is missing'
-            )
-        return cast(int, metadata.num_rows)
-    finally:
-        source.close()
 
 
 def _validate_merge_inputs(

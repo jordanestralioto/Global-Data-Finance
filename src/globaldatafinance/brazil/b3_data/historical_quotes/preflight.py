@@ -24,7 +24,7 @@ from .catalog import (
     resolve_catalog_sources,
 )
 from .errors import CotahistCatalogError
-from .executors import create_b3_executor
+from .executors import can_use_b3_processes, create_b3_executor
 from .extraction_service.resource_policy import ResourcePolicyB3
 from .models import CotahistCatalogResolution
 from .processing import ProcessingModeEnumB3
@@ -85,7 +85,7 @@ def resolve_extraction_sources(
     processing_mode: ProcessingModeEnumB3 = ProcessingModeEnumB3.FAST,
     executor_backend: str = 'thread',
 ) -> CotahistCatalogResolution:
-    """Preserve serial defaults and opt into eligible fast process requests."""
+    """Resolve sources with eligible fast process requests or serial scans."""
     return resolve_catalog_sources(
         directory,
         expected_years=expected_years,
@@ -123,7 +123,6 @@ def _resolve_preflight_year(
             validator=validator,
             target_tpmerc_codes=selection.codes,
             all_markets=selection.all_markets,
-            limits=selection.limits,
         )
     except CotahistCatalogError as error:
         return AnnualFailure.capture(error)
@@ -194,6 +193,14 @@ def _iter_preflight_results(
     policy = ResourcePolicyB3(processing_mode)
     workers = policy.worker_limit(len(years))
     if workers < 2 or not _has_large_workload(selection, years):
+        yield from iter_serial_sources(selection)
+        return
+    if not can_use_b3_processes(
+        len(years),
+        workers,
+        processing_mode=processing_mode,
+        executor_backend=executor_backend,
+    ):
         yield from iter_serial_sources(selection)
         return
     executor, stop, _ = create_b3_executor(

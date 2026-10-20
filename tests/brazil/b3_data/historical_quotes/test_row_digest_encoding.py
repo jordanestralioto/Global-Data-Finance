@@ -162,6 +162,31 @@ def test_empty_arrow_segment_preserves_the_existing_stream() -> None:
     assert digest.hexdigest() == before
 
 
+@pytest.mark.parametrize('nullable', [False, True])
+def test_fixed_binary_slices_keep_offsets_nulls_duplicates_and_batch_order(
+    nullable: bool,
+) -> None:
+    """Buffer framing preserves primitive Base64 framing at nonzero offsets."""
+    binaries: list[bytes | None] = [
+        bytes(245),
+        bytes(range(245)),
+        b'\xff' * 245,
+        bytes(range(245)),
+    ]
+    if nullable:
+        binaries.insert(2, None)
+    rows = [['ação'] * 31 + [value] for value in binaries]
+    columns = [pa.array(['ação'] * len(rows), type=pa.large_string())] * 31
+    columns.append(pa.array(binaries, type=pa.binary(245)))
+    digest = B3OrderedRowDigest()
+    digest.update(rows[0])
+    digest.update_columns([column.slice(1, 2) for column in columns])
+    digest.update_columns([column.slice(3) for column in columns])
+    digest.update_columns([column.slice(1, 0) for column in columns])
+    assert digest.rows == len(rows)
+    assert digest.hexdigest() == _reference_digest(rows)
+
+
 @pytest.mark.parametrize('mutation', ['width', 'height', 'type'])
 def test_invalid_arrow_segment_is_rejected_before_touching_the_stream(
     mutation: str,

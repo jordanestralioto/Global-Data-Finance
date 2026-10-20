@@ -26,6 +26,18 @@ Use this same directory when running the examples. A path such as `./dados_b3`
 means the `dados_b3` folder inside it. The library creates the output directory
 when needed.
 
+You can also run an example as a module, using `-m` and dots between names:
+
+```bash
+uv run --locked --no-sync python -m examples.01_quickstart_cvm
+uv run --locked --no-sync python -m examples.02_quickstart_b3
+uv run --locked --no-sync python -m examples.03_advanced_options_b3
+```
+
+Run only the example you need. With `-m`, use `examples.example_name`,
+without `/` or the `.py` extension. To use the `examples/file.py` path,
+run without `-m`, as shown in the commands below.
+
 ## 2. Choose what to process
 
 The variable names are in English, matching the files. Use this table to find

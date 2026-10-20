@@ -18,13 +18,13 @@ pytestmark = pytest.mark.integration
 
 @pytest.mark.parametrize('extension', ['TXT', 'ZIP'])
 @pytest.mark.parametrize('mode', ['fast', 'slow'])
-@pytest.mark.parametrize('backend', ['thread', 'process'])
+@pytest.mark.parametrize('backend', [None, 'thread', 'process'])
 def test_all_execution_combinations_preserve_selected_occurrences(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     extension: str,
     mode: str,
-    backend: str,
+    backend: str | None,
 ) -> None:
     """Sources retain duplicates, block lots, and unknown numeric markets."""
     sources = tmp_path / 'sources'
@@ -51,7 +51,10 @@ def test_all_execution_combinations_preserve_selected_occurrences(
                 ],
             )
         )
-    monkeypatch.setenv('GDF_B3_EXECUTOR_BACKEND', backend)
+    if backend is None:
+        monkeypatch.delenv('GDF_B3_EXECUTOR_BACKEND', raising=False)
+    else:
+        monkeypatch.setenv('GDF_B3_EXECUTOR_BACKEND', backend)
     monkeypatch.setenv('GDF_B3_WORKER_LIMIT', '2')
     facade = HistoricalQuotesB3()
 
@@ -70,7 +73,7 @@ def test_all_execution_combinations_preserve_selected_occurrences(
     assert result['error_count'] == 0
     assert result['integrity']['intentional_exclusions'] == 0
     expected_backend = (
-        'process' if mode == 'fast' and backend == 'process' else 'thread'
+        'process' if mode == 'fast' and backend != 'thread' else 'thread'
     )
     assert facade.last_phase_timings['effective_backend'] == expected_backend
     assert facade.last_phase_timings['effective_worker_limit'] == (

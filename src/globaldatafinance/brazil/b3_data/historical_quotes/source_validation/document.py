@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import hashlib
+from datetime import date
 from pathlib import Path
 
 from .....macro_exceptions import ExtractionError
+from ..input_validation import _validate_input_path
 from ..integrity import sha256_file
 from ..models import B3SourceWarning, ValidatedCotahistSource
-from ..zip_reader import ZipFileReaderB3
+from ..zip_reader import ZipFileReaderB3, _OpenedCotahistSource
 from .control_records import trailer_convention
 from .scanner import ScannedDocument, scan_document
 
@@ -25,31 +27,30 @@ class CotahistDocumentValidator:
         path: Path,
         *,
         year: int,
-        member: str,
+        member: str | None = None,
         target_tpmerc_codes: set[str],
         all_markets: bool,
     ) -> ValidatedCotahistSource:
         """Return immutable facts only after the complete source is valid."""
+        _validate_input_path(path)
         outer_sha256 = sha256_file(path)
-        content_sha256, uncompressed_bytes = _sha256_uncompressed(
-            self._reader, path, member
-        )
-        scanned = scan_document(
-            self._reader,
-            path,
-            year,
-            member,
-            target_tpmerc_codes,
-            all_markets,
-            content_sha256,
-        )
-        trailer_convention = _validate_scanned_document(
-            path,
-            outer_sha256,
-            content_sha256,
-            uncompressed_bytes,
-            scanned,
-        )
+        with self._reader._open_source(path, expected_member=member) as source:
+            member = source.member
+            content_sha256, uncompressed_bytes = _sha256_uncompressed(source)
+            scanned = scan_document(
+                source,
+                year,
+                target_tpmerc_codes,
+                all_markets,
+                content_sha256,
+            )
+            trailer_convention = _validate_scanned_document(
+                path,
+                outer_sha256,
+                content_sha256,
+                uncompressed_bytes,
+                scanned,
+            )
         warnings = _source_warnings(scanned, trailer_convention)
         return _validated_source(
             path,
@@ -202,21 +203,19 @@ def _validated_source(
         declared_records=scanned.declared_records,
         trailer_convention=trailer_convention,
         blank_lines=scanned.blank_lines,
-        first_trading_date=scanned.first_date,
-        last_trading_date=scanned.last_date,
+        first_trading_date=date.fromisoformat(scanned.first_date),
+        last_trading_date=date.fromisoformat(scanned.last_date),
         warnings=tuple(warnings),
     )
 
 
 def _sha256_uncompressed(
-    reader: ZipFileReaderB3,
-    path: Path,
-    member: str,
+    source: _OpenedCotahistSource,
 ) -> tuple[str, int]:
     """Hash the complete uncompressed physical stream before parsing rows."""
     digest = hashlib.sha256()
     byte_count = 0
-    for raw_line in reader.iter_raw_lines(str(path), expected_member=member):
-        digest.update(raw_line.complete_bytes)
-        byte_count += len(raw_line.complete_bytes)
+    for chunk in source.iter_chunks():
+        digest.update(chunk)
+        byte_count += len(chunk)
     return digest.hexdigest(), byte_count

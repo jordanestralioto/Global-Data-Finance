@@ -39,6 +39,16 @@
         "tests/brazil/b3_data/historical_quotes/test_zip_reader.py::test_reader_does_not_schedule_a_coroutine_for_each_source_batch"
       ],
       "reason": "Reader coroutine scheduler removed in favor of streaming batches; full zip/txt processing invariants and error boundaries remain verified."
+    },
+    {
+      "path": "tests/brazil/b3_data/historical_quotes/test_processing_mode.py",
+      "diff_sha256": "a153654acb35868fcc39257d407d9aa76bb1358fa92098bd6b460eca19b01e1c",
+      "replacement_test_ids": [
+        "tests/brazil/b3_data/historical_quotes/test_processing_mode.py::TestProcessingModeEnumB3::test_enum_has_exactly_two_members",
+        "tests/brazil/b3_data/historical_quotes/extraction_service/test_resource_policy.py::test_fast_worker_limit_is_bounded_by_cpu_memory_and_file_count",
+        "tests/brazil/b3_data/historical_quotes/extraction_service/test_resource_policy.py::test_slow_worker_limit_is_always_one"
+      ],
+      "reason": "The user explicitly authorized removal of the four unused exported enum properties and _ProcessingModeConfig on 2026-10-20. Remove their two tests of obsolete, nonoperative constants. Retained enum value/construction tests and ResourcePolicyB3 tests cover supported modes and actual admission/worker limits."
     }
   ]
 }

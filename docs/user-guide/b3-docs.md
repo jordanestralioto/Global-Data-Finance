@@ -286,23 +286,24 @@ ______________________________________________________________________
 
 ## Modos de Processamento
 
-A extração suporta dois modos de processamento:
-
 ### Modo Fast (Padrão) ⚡
 
-Usa o parser canônico e escrita Arrow em lotes de até 25.000 registros. Pode
-processar várias fontes em paralelo, conforme CPUs, memória disponível e
-quantidade de arquivos; o limite padrão é de quatro workers.
+Usa o parser canônico e escrita Arrow em lotes de até 25.000 registros. Pode processar várias fontes em paralelo, conforme CPUs, memória disponível e quantidade de arquivos; o limite padrão é de quatro workers.
+
+O backend padrão é `process`: com pelo menos duas fontes resolvidas e dois workers permitidos, a extração usa processos iniciados por `spawn`. Uma fonte, limite de um worker e o modo `slow` usam um worker de thread. Processos daemon e sessões interativas sem módulo principal importável ou script legível usam threads; o logger registra o motivo e `last_phase_timings['effective_backend']` informa o backend efetivo. Falhas de inicialização do pool ou de execução dos workers preservam os erros e a limpeza transacional.
+
+Scripts devem proteger a chamada com `if __name__ == '__main__':`. Para escolher threads explicitamente, defina `GDF_B3_EXECUTOR_BACKEND=thread` antes de construir o cliente; `process` também continua aceito como escolha explícita. Valores inválidos geram `ValueError` na construção.
 
 ```python
 from globaldatafinance import HistoricalQuotesB3
 
-b3 = HistoricalQuotesB3()
-result = b3.extract(
-    path_of_docs="/data/cotahist",
-    assets_list=["ações"],
-    processing_mode="fast",  # Padrão
-)
+if __name__ == "__main__":
+    b3 = HistoricalQuotesB3()
+    result = b3.extract(
+        path_of_docs="/data/cotahist", assets_list=["ações"],
+        initial_year=2023, last_year=2024,
+        processing_mode="fast",
+    )
 ```
 
 ### Modo Slow 🐢
@@ -496,5 +497,4 @@ a lista completa de campos, tipos, leitura e proveniência. Arquivos de schema
 v1 precisam ser regenerados a partir dos COTAHIST originais conforme o
 [guia de migração da versão 2](migration-pyarrow-integrity.md#b3-schema-v2-e-regeneracao).
 
-Para recomendações de operação, particionamento e consumo dos artefatos, veja
-[Boas práticas B3](b3-operations.md).
+Para recomendações de operação, particionamento e consumo dos artefatos, veja [Boas práticas B3](b3-operations.md).

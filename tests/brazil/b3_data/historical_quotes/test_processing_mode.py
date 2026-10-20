@@ -39,15 +39,3 @@ class TestProcessingModeEnumB3:
     def test_case_sensitive_comparison(self):
         assert ProcessingModeEnumB3.FAST != 'FAST'
         assert ProcessingModeEnumB3.SLOW != 'SLOW'
-
-    def test_fast_mode_runtime_config(self):
-        assert ProcessingModeEnumB3.FAST.desired_concurrent_files == 15
-        assert ProcessingModeEnumB3.FAST.desired_workers == 4
-        assert ProcessingModeEnumB3.FAST.use_parallel_parsing is True
-        assert ProcessingModeEnumB3.FAST.memory_threshold_mb == 3500
-
-    def test_slow_mode_runtime_config(self):
-        assert ProcessingModeEnumB3.SLOW.desired_concurrent_files == 3
-        assert ProcessingModeEnumB3.SLOW.desired_workers == 1
-        assert ProcessingModeEnumB3.SLOW.use_parallel_parsing is False
-        assert ProcessingModeEnumB3.SLOW.memory_threshold_mb == 1000

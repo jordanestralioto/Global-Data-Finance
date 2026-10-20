@@ -4,16 +4,22 @@ from __future__ import annotations
 
 import zipfile
 from collections.abc import AsyncIterator, Iterator
+from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
+from typing import BinaryIO
 
 from ....core.archive_safety import (
     ArchiveSafetyLimits,
     open_limited_zip_member,
 )
 from ....macro_exceptions import CorruptedZipError, ExtractionError
+from .async_execution import check_phase_cancellation
+from .errors import CotahistCatalogError
 from .input_validation import (
+    _raise_public_input_error,
     open_resolved_cotahist_zip,
-    validate_and_resolve_cotahist_input,
+    validate_cotahist_input,
 )
 from .integrity import (
     B3RawLine,
@@ -45,17 +51,32 @@ class ZipFileReaderB3:
     ) -> Iterator[B3RawLine]:
         """Yield bounded records before decoding, preserving physical bytes."""
         path = Path(source_path)
+        try:
+            with self._open_source(
+                path, expected_member=expected_member
+            ) as source:
+                yield from source.iter_raw_lines()
+        except CotahistCatalogError as error:
+            _raise_public_input_error(path, error)
+
+    @contextmanager
+    def _open_source(
+        self, path: Path, *, expected_member: str | None = None
+    ) -> Iterator[_OpenedCotahistSource]:
+        """Own one validated container through bounded hash and scan passes."""
+        check_phase_cancellation()
         if path.suffix.casefold() == '.txt':
-            member = self._validate_cotahist_input(path)
+            member = validate_cotahist_input(path, limits=self._limits)
             _check_expected_member(path, member or '', expected_member)
-            yield from self._iter_txt(path)
+            with path.open('rb') as stream:
+                yield _OpenedCotahistSource(path, '', self._limits, txt=stream)
             return
         with open_resolved_cotahist_zip(path, limits=self._limits) as (
             archive,
             member,
         ):
             _check_expected_member(path, member, expected_member)
-            yield from self._iter_zip(path, member, archive)
+            yield _OpenedCotahistSource(path, member, self._limits, archive)
 
     def iter_lines(
         self, source_path: str
@@ -69,44 +90,62 @@ class ZipFileReaderB3:
         for line, _context in self.iter_lines(zip_path):
             yield line
 
-    def _validate_cotahist_input(self, path: Path) -> str | None:
-        return validate_and_resolve_cotahist_input(path, limits=self._limits)
 
-    def _iter_txt(self, path: Path) -> Iterator[B3RawLine]:
-        with path.open('rb') as source:
+@dataclass
+class _OpenedCotahistSource:
+    """Provide repeatable bounded passes only on an owned validated handle."""
+
+    path: Path
+    member: str
+    limits: ArchiveSafetyLimits
+    archive: zipfile.ZipFile | None = None
+    txt: BinaryIO | None = None
+
+    @contextmanager
+    def _open_stream(self) -> Iterator[BinaryIO]:
+        """Reopen the validated ZIP member or rewind the owned TXT stream."""
+        if self.txt is not None:
+            self.txt.seek(0)
+            yield self.txt
+            return
+        if self.archive is None:
+            raise RuntimeError('COTAHIST source has no owned container')
+        try:
+            with open_limited_zip_member(
+                self.archive,
+                self.member,
+                archive_path=self.path,
+                limits=self.limits,
+            ) as source:
+                yield source
+        except zipfile.BadZipFile as error:
+            raise CorruptedZipError(str(self.path), str(error)) from error
+
+    def iter_raw_lines(self) -> Iterator[B3RawLine]:
+        """Build record contexts during a strict document or worker scan."""
+        with self._open_stream() as source:
             try:
                 for line_number, raw_line in iter_bounded_cotahist_lines(
                     source
                 ):
                     yield _raw_line_with_context(
-                        raw_line, path.name, '', line_number
+                        raw_line, self.path.name, self.member, line_number
                     )
             except CotahistLineTooLongError as error:
-                raise ExtractionError(str(path), str(error)) from error
+                detail = (
+                    f'{self.member}: {error}' if self.member else str(error)
+                )
+                raise ExtractionError(str(self.path), detail) from error
 
-    def _iter_zip(
-        self, path: Path, member: str, archive: zipfile.ZipFile
-    ) -> Iterator[B3RawLine]:
-        try:
-            with open_limited_zip_member(
-                archive,
-                member,
-                archive_path=path,
-                limits=self._limits,
-            ) as source:
-                try:
-                    for line_number, raw_line in iter_bounded_cotahist_lines(
-                        source
-                    ):
-                        yield _raw_line_with_context(
-                            raw_line, path.name, member, line_number
-                        )
-                except CotahistLineTooLongError as error:
-                    raise ExtractionError(
-                        str(path), f'{member}: {error}'
-                    ) from error
-        except zipfile.BadZipFile as error:
-            raise CorruptedZipError(str(path), str(error)) from error
+    def iter_chunks(self) -> Iterator[bytes]:
+        """Hash exact uncompressed bytes without per-line materialization."""
+        with self._open_stream() as source:
+            while True:
+                check_phase_cancellation()
+                chunk = source.read(64 * 1024)
+                if not chunk:
+                    break
+                yield chunk
 
 
 def _check_expected_member(

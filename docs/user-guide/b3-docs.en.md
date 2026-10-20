@@ -282,15 +282,20 @@ Uses the canonical parser and Arrow writes in batches of up to 25,000 records.
 It can process sources concurrently, bounded by CPU count, available memory,
 and source file count; the default limit is four workers.
 
+The default backend is `process`: extraction uses spawned processes when at least two sources are resolved and resource policy allows at least two workers. One source, a one-worker limit, and `slow` use one thread worker. Daemon processes and interactive sessions without an importable main module or readable script use threads; the logger records the reason and `last_phase_timings['effective_backend']` reports the actual backend. Pool initialization and worker failures preserve their errors and transactional cleanup.
+
+Scripts must guard the call with `if __name__ == '__main__':`. To select threads explicitly, set `GDF_B3_EXECUTOR_BACKEND=thread` before constructing the client; `process` also remains an explicit choice. Invalid values raise `ValueError` at construction.
+
 ```python
 from globaldatafinance import HistoricalQuotesB3
 
-b3 = HistoricalQuotesB3()
-result = b3.extract(
-    path_of_docs="/data/cotahist",
-    assets_list=["ações"],
-    processing_mode="fast",  # Default configuration
-)
+if __name__ == "__main__":
+    b3 = HistoricalQuotesB3()
+    result = b3.extract(
+        path_of_docs="/data/cotahist", assets_list=["ações"],
+        initial_year=2023, last_year=2024,
+        processing_mode="fast",
+    )
 ```
 
 ### Slow Mode 🐢
@@ -480,5 +485,4 @@ See the [B3 v2 schema reference](../reference/b3-schema-v2.en.md) for the full
 field list, data types, reading guidance, and provenance. Schema v1 files must
 be regenerated from original COTAHIST sources using the
 [v2 migration guide](migration-pyarrow-integrity.en.md#b3-schema-v2-and-regeneration).
-For operational recommendations, partitioning, and artifact consumption, see
-[B3 Operational Practices](b3-operations.en.md).
+For operational recommendations, partitioning, and artifact consumption, see [B3 Operational Practices](b3-operations.en.md).

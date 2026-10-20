@@ -129,7 +129,6 @@ def iter_serial_sources(
                 validator=validator,
                 target_tpmerc_codes=selection.codes,
                 all_markets=selection.all_markets,
-                limits=selection.limits,
             )
 
 
@@ -141,19 +140,16 @@ def resolve_annual_source(
     validator: CotahistDocumentValidator,
     target_tpmerc_codes: set[str],
     all_markets: bool,
-    limits: ArchiveSafetyLimits | None,
 ) -> tuple[ValidatedCotahistSource, str | None]:
     """Validate all annual representations before selecting one source."""
     _reject_same_format_conflicts(candidates, year, directory)
     validated: list[ValidatedCotahistSource] = []
     for candidate in sorted(candidates, key=_candidate_sort_key):
         try:
-            member = validate_cotahist_input(candidate, limits=limits)
             validated.append(
                 validator.validate(
                     candidate,
                     year=year,
-                    member=member or '',
                     target_tpmerc_codes=target_tpmerc_codes,
                     all_markets=all_markets,
                 )

@@ -90,6 +90,11 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument('--repeats', type=int, default=3)
     parser.add_argument('--rows', type=int)
+    parser.add_argument(
+        '--b3-input-format',
+        choices=('txt', 'zip'),
+        help='Synthetic B3 container format (default: txt).',
+    )
     parser.add_argument('--cotahist-path', type=Path)
     parser.add_argument('--output', type=Path)
     parser.add_argument('--child', action='store_true')
@@ -144,6 +149,11 @@ def _validate_arguments(
         raise SystemExit('--source-count must be at least one')
     if arguments.worker_limit is not None and arguments.worker_limit < 1:
         raise SystemExit('--worker-limit must be at least one')
+    if arguments.b3_input_format is not None and any(
+        scenario not in {'b3_100k', 'b3_250k', 'b3_multi_4x25k'}
+        for scenario in selected
+    ):
+        raise SystemExit('--b3-input-format requires a synthetic B3 scenario')
     if (
         arguments.source_count is not None
         and arguments.rows is not None
@@ -179,6 +189,7 @@ def _prepare_parent_source(
             processing_mode=arguments.processing_mode,
             source_count=arguments.source_count,
             worker_limit=arguments.worker_limit,
+            b3_input_format=arguments.b3_input_format or 'txt',
         )
     except ValueError as error:
         raise SystemExit(str(error)) from None

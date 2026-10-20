@@ -5,13 +5,12 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass, field
 from datetime import date
-from pathlib import Path
 from typing import Any
 
 from ..cotahist_parser import CotahistParserB3
 from ..integrity import B3RawLine
 from ..row_digest import B3OrderedRowDigest
-from ..zip_reader import ZipFileReaderB3
+from ..zip_reader import _OpenedCotahistSource
 from .control_records import (
     HEADER_SIZE,
     line_error,
@@ -35,22 +34,20 @@ class ScannedDocument:
     quote_count: int = 0
     blank_lines: int = 0
     content_bytes: int = 0
-    first_date: date | None = None
-    last_date: date | None = None
+    first_date: str | None = None
+    last_date: str | None = None
 
 
 def scan_document(
-    reader: ZipFileReaderB3,
-    path: Path,
+    source: _OpenedCotahistSource,
     year: int,
-    member: str,
     target_tpmerc_codes: set[str],
     all_markets: bool,
     content_sha256: str,
 ) -> ScannedDocument:
     """Scan one document and accumulate parser and digest results."""
     scanned = ScannedDocument()
-    for raw_line in reader.iter_raw_lines(str(path), expected_member=member):
+    for raw_line in source.iter_raw_lines():
         scanned.content_hash.update(raw_line.complete_bytes)
         scanned.content_bytes += len(raw_line.complete_bytes)
         if not raw_line.content:
@@ -141,9 +138,8 @@ def _scan_quote(
             '01',
             'Quotation is before the header or after the trailer',
         )
-    line = raw_line.content.decode('latin-1')
-    parsed = scanned.parser.parse_line_to_csv_row(
-        line,
+    parsed = scanned.parser._parse_bytes_to_csv_row(
+        raw_line.content,
         target_tpmerc_codes,
         context=raw_line.context,
         all_markets=all_markets,
@@ -153,7 +149,7 @@ def _scan_quote(
     if parsed is not None:
         scanned.rows_digest.update(parsed)
     scanned.quote_count += 1
-    trading_date = date.fromisoformat(line[2:10])
+    trading_date = raw_line.content[2:10].decode('ascii')
     scanned.first_date = (
         trading_date
         if scanned.first_date is None

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date
 from typing import Any, cast
 
 from .....macro_exceptions import ExtractionError
@@ -103,6 +102,59 @@ class CotahistParserB3:
         so malformed data in an excluded market still fails the extraction.
         """
         normalized = _remove_one_line_terminator(line)
+        return self._parse_normalized_line(
+            normalized,
+            target_tpmerc_codes,
+            context,
+            all_markets,
+            source_year,
+            source_sha256,
+            None,
+        )
+
+    def _parse_bytes_to_csv_row(
+        self,
+        content: bytes,
+        target_tpmerc_codes: set[str],
+        context: B3RecordContext | None = None,
+        *,
+        all_markets: bool = False,
+        source_year: int | None = None,
+        source_sha256: str = '',
+    ) -> CsvRow | None:
+        """Decode and retain the same source bytes without re-encoding them."""
+        if type(self) is not CotahistParserB3:
+            return self.parse_line_to_csv_row(
+                content.decode('latin-1'),
+                target_tpmerc_codes,
+                context,
+                all_markets=all_markets,
+                source_year=source_year,
+                source_sha256=source_sha256,
+            )
+        original = content.removesuffix(b'\r\n').removesuffix(b'\n')
+        original = original.removesuffix(b'\r')
+        return self._parse_normalized_line(
+            original.decode('latin-1'),
+            target_tpmerc_codes,
+            context,
+            all_markets,
+            source_year,
+            source_sha256,
+            original,
+        )
+
+    def _parse_normalized_line(
+        self,
+        normalized: str,
+        target_tpmerc_codes: set[str],
+        context: B3RecordContext | None,
+        all_markets: bool,
+        source_year: int | None,
+        source_sha256: str,
+        original_record: bytes | None,
+    ) -> CsvRow | None:
+        """Share validation, metrics and selection across entrypoints."""
         if not normalized:
             self.metrics.blank_lines += 1
             return None
@@ -129,6 +181,7 @@ class CotahistParserB3:
             all_markets,
             source_year,
             source_sha256,
+            original_record,
         )
 
     def _parse_quote(
@@ -139,6 +192,7 @@ class CotahistParserB3:
         all_markets: bool,
         source_year: int | None,
         source_sha256: str,
+        original_record: bytes | None,
     ) -> CsvRow | None:
         """Validate one quotation and apply market selection."""
         record_type = normalized[:2]
@@ -152,17 +206,18 @@ class CotahistParserB3:
                 str(len(normalized)),
                 f'Expected exactly {_EXPECTED_LENGTH} characters',
             )
-        try:
-            original_record = normalized.encode('latin-1')
-        except UnicodeEncodeError as error:
-            raise self._record_error(
-                context,
-                normalized,
-                record_type,
-                'record_encoding',
-                normalized[:80],
-                error,
-            ) from error
+        if original_record is None:
+            try:
+                original_record = normalized.encode('latin-1')
+            except UnicodeEncodeError as error:
+                raise self._record_error(
+                    context,
+                    normalized,
+                    record_type,
+                    'record_encoding',
+                    normalized[:80],
+                    error,
+                ) from error
 
         source_context = context or B3RecordContext('', '', 0, 0)
         values = canonical_row(
@@ -182,15 +237,13 @@ class CotahistParserB3:
                 self.metrics.unknown_market_counts.get(market, 0) + 1
             )
         if source_year is not None:
-            trading_date = date.fromisoformat(
-                cast(str, values[_TRADING_DATE_INDEX])
-            )
-            if trading_date.year != source_year:
+            trading_year = cast(str, values[_TRADING_DATE_INDEX])[:4]
+            if trading_year != f'{source_year:04d}':
                 raise field_error(
                     context,
                     'data_pregao',
                     normalized[2:10],
-                    f'Trading date year {trading_date.year} does not match '
+                    f'Trading date year {int(trading_year)} does not match '
                     f'source year {source_year}',
                 )
 

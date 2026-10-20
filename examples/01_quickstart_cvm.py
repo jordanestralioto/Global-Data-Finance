@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
+if TYPE_CHECKING or __package__:
     from examples import support
 else:
     import support
@@ -14,7 +14,7 @@ INITIAL_YEAR = 2010
 LAST_YEAR = 2026
 DESTINATION_PATH = './dados_cvm'
 DOCUMENTS: list[str] = []  # All types; use ['DFP'] for annual statements.
-AUTOMATIC_EXTRACTOR = True  # Create Parquet files and retain the source ZIPs.
+AUTOMATIC_EXTRACTOR = False  # Set True to also convert the ZIPs to Parquet.
 
 
 def main() -> None:
