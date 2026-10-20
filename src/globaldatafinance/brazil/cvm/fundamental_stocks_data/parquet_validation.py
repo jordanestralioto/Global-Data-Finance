@@ -39,13 +39,7 @@ def validate_parquet_data(
     ):
         batch.validate(full=True)
         if digest is not None:
-            for column in batch.columns:
-                if column.null_count:
-                    raise ValueError('Exact-text CVM Parquet contains nulls')
-            for row in zip(
-                *(column.to_pylist() for column in batch.columns), strict=True
-            ):
-                digest.update(row)
+            digest.update_batch(batch)
         read_rows += batch.num_rows
     if read_rows != expected_rows:
         raise ValueError(

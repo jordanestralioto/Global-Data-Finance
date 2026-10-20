@@ -238,39 +238,40 @@ ______________________________________________________________________
 
 ### Incremental Data Synchronizer
 
-Execute selective historical synchronization to avoid re-downloading existing archives, respecting the partitioned directory hierarchy:
+Record `successful_downloads` in an application-owned checkpoint. A year directory may remain after a failure. Request each pending year separately to respect gaps in history:
 
 ```python
-import os
+import json
+from pathlib import Path
+
 from globaldatafinance import FundamentalStocksDataCVM
 
 cvm = FundamentalStocksDataCVM()
-base_path = "/data/cvm"
-
-# Inspect existing partitioned local storage subdirectories {base_path}/DFP/{YEAR}/
-existing_years = set()
-dfp_dir = os.path.join(base_path, "DFP")
-if os.path.exists(dfp_dir):
-    for entry in os.listdir(dfp_dir):
-        if entry.isdigit() and os.path.isdir(os.path.join(dfp_dir, entry)):
-            existing_years.add(int(entry))
-
-# Download only missing historical fiscal periods
+base_path = Path("/data/cvm")
+checkpoint = base_path / "completed-downloads.json"
+completed_downloads = set()
+if checkpoint.is_file():
+    completed_downloads.update(json.loads(checkpoint.read_text(encoding="utf-8")))
 current_year = cvm.get_available_years().current_year
-all_years = set(range(2020, current_year + 1))
-missing_years = all_years - existing_years
-
-if missing_years:
-    min_year = min(missing_years)
-    max_year = max(missing_years)
-
-    cvm.download(
-        destination_path=base_path,
-        list_docs=["DFP"],
-        initial_year=min_year,
-        last_year=max_year
+refresh_years = {current_year}
+for year in range(2020, current_year + 1):
+    identifier = f"DFP_{year}"
+    if identifier in completed_downloads and year not in refresh_years:
+        continue
+    result = cvm.download(
+        destination_path=str(base_path), list_docs=["DFP"],
+        initial_year=year, last_year=year, automatic_extractor=True,
     )
+    if identifier in result.successful_downloads:
+        completed_downloads.add(identifier)
+        pending = checkpoint.with_suffix(".tmp")
+        pending.write_text(json.dumps(sorted(completed_downloads)), encoding="utf-8")
+        pending.replace(checkpoint)
+    if result.has_errors():
+        print(result.failed_downloads)
 ```
+
+The example uses a checkpoint owned by a single process and refreshes the current year on each run. CVM may also revise earlier years: include them in `refresh_years` according to your application's policy. The checkpoint records previous successes; revalidate local artifacts before reusing them and remove identifiers whose files are missing or corrupted.
 
 ### Pre-execution Input Validation
 

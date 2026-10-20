@@ -42,7 +42,7 @@
     },
     {
       "path": "tests/brazil/b3_data/historical_quotes/test_processing_mode.py",
-      "diff_sha256": "a153654acb35868fcc39257d407d9aa76bb1358fa92098bd6b460eca19b01e1c",
+      "diff_sha256": "be4e14101bec6e00dc5d0e213eccbf2b4980f0c4b3cab74e28707d6597fac1d3",
       "replacement_test_ids": [
         "tests/brazil/b3_data/historical_quotes/test_processing_mode.py::TestProcessingModeEnumB3::test_enum_has_exactly_two_members",
         "tests/brazil/b3_data/historical_quotes/extraction_service/test_resource_policy.py::test_fast_worker_limit_is_bounded_by_cpu_memory_and_file_count",
