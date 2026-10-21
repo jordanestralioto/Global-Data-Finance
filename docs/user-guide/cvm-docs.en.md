@@ -1,242 +1,102 @@
-# CVM Regulatory Documents
+# CVM filings
 
-Comprehensive documentation guide for utilizing the `FundamentalStocksDataCVM` class to download corporate fundamental financial filings from CVM (Securities and Exchange Commission of Brazil).
+Use `FundamentalStocksDataCVM` to download CVM filings by document type and year.
+Downloads require internet access; Parquet conversion is optional.
 
-______________________________________________________________________
+## Choose documents and years
 
-## Overview
+| Code | Content | First year |
+| --- | --- | --- |
+| `DFP` | Annual financial statements | 2010 |
+| `ITR` | Quarterly information | 2011 |
+| `FRE` | Reference form | 2010 |
+| `FCA` | Registration form | 2010 |
+| `CGVN` | Governance report | 2018 |
+| `VLMO` | Traded and held securities | 2018 |
+| `IPE` | Periodic and occasional documents | 2003 |
 
-The `FundamentalStocksDataCVM` class exposes a clean, highly extensible interface designed to retrieve official filings directly from regulatory servers, including annual financial statements, quarterly disclosures, corporate governance forms, and reference reports of Brazilian public companies.
+Start and end years are inclusive. In mixed selections, each document respects
+its first year. `get_available_docs()` returns codes and descriptions;
+`get_available_years()` returns the limits by group and the current year.
 
-### Highlights
-
-- ✅ Automated processing across diverse document types and categories
-- ✅ Flexible temporal parameter boundaries
-- ✅ Native automated conversion into columnar Apache Parquet files (optional)
-- ✅ Asynchronous concurrent downloads
-- ✅ Resilient connection exception handling and automated retry policies
-- ✅ Transparent structured tracking and status console output
-
-______________________________________________________________________
-
-## Available Document Types
-
-CVM publishes official disclosures under the following classifications:
-
-| Document Code | Complete Portuguese Title           | Description                                    | Available Since |
-| ------------- | ----------------------------------- | ---------------------------------------------- | --------------- |
-| **DFP**       | Demonstração Financeira Padronizada | Standardized Annual Financial Statements       | 2010            |
-| **ITR**       | Informação Trimestral               | Quarterly Interim Financial Reports            | 2011            |
-| **FRE**       | Formulário de Referência            | Complete Reference Form Disclosures            | 2010            |
-| **FCA**       | Formulário Cadastral                | Corporate Cadastral Registration Forms         | 2010            |
-| **CGVN**      | Código de Governança                | Corporate Governance Practices Reports         | 2018            |
-| **VLMO**      | Valores Mobiliários                 | Securities Trading and Holding Declarations    | 2018            |
-| **IPE**       | Informações Periódicas e Eventuais  | Periodic and Eventual Filings (Material Facts) | 2003            |
-
-!!! info "Historical Data Depth"
-
-    IPE starts in 2003; DFP/FRE/FCA start in 2010, ITR in 2011, and CGVN/VLMO in 2018.
-
-______________________________________________________________________
-
-## Basic Usage
-
-### Library Import
+## Download and convert
 
 ```python
 from globaldatafinance import FundamentalStocksDataCVM
-```
 
-### Instantiate Public Client
-
-```python
-cvm = FundamentalStocksDataCVM()
-```
-
-### Minimal Download Script
-
-```python
-# Download DFP archives covering the past 3 fiscal years
-cvm.download(
-    destination_path="/home/user/cvm_data",
-    list_docs=["DFP"],
-    initial_year=2021,
-    last_year=2023
+result = FundamentalStocksDataCVM().download(
+    destination_path="./data_cvm",
+    list_docs=["DFP", "ITR"],
+    initial_year=2023,
+    last_year=2023,
+    automatic_extractor=True,
 )
+if result.error_count_downloads > 0 or result.success_count_downloads == 0:
+    raise RuntimeError(result.failed_downloads)
+print(result.successful_downloads)
 ```
 
-______________________________________________________________________
+Choose a small range for the first run. The destination can be relative or
+absolute and must allow writing.
 
-## Core Public Methods
+| Option | Behavior |
+| --- | --- |
+| `list_docs` | List of codes. `None` or `[]` selects all types. |
+| `initial_year` / `last_year` | Inclusive limits. Without explicit limits, selection uses the available minimums and the current year. |
+| `automatic_extractor=False` | Default: saves ZIPs. |
+| `automatic_extractor=True` | Saves ZIPs and converts their CSV files to Parquet. |
 
-### `download()`
+The [CVM reference](../reference/cvm-api.md) contains the full signature,
+year limits, and exceptions.
 
-Downloads regulatory CVM archives directly into a designated filesystem destination.
+## Understand the generated files
 
-#### Method Signature
+Original ZIPs are retained, including attachments that are not CSV. Extraction
+creates one Parquet per CSV with the same base name. ZIPs and Parquets go under
+`{destination_path}/{DOC}/{YEAR}/`, for example:
 
-```python
-def download(
-    self,
-    destination_path: str,
-    list_docs: list[str] | None = None,
-    initial_year: int | None = None,
-    last_year: int | None = None,
-    automatic_extractor: bool = False,
-) -> DownloadResultCVM:
-    ...
+```text
+data_cvm/DFP/2023/
+├── dfp_cia_aberta_2023.zip
+└── dfp_cia_aberta_BPA_con_2023.parquet
 ```
 
-#### Parameters
+Each Parquet name depends on the CSV files present in the ZIP.
 
-| Parameter             | Type                | Mandatory | Description                                                                                |
-| --------------------- | ------------------- | --------- | ------------------------------------------------------------------------------------------ |
-| `destination_path`    | `str`               | ✅ Yes    | Target filesystem directory where downloaded bundles are saved                             |
-| `list_docs`           | `list[str] \| None` | ❌ No     | Specific document codes to fetch. Defaults to all codes when `None`                        |
-| `initial_year`        | `int \| None`       | ❌ No     | Starting historical fiscal year (inclusive). Defaults to minimal supported year            |
-| `last_year`           | `int \| None`       | ❌ No     | Ending fiscal year (inclusive). Defaults to current operating year                         |
-| `automatic_extractor` | `bool`              | ❌ No     | When set to `True`, automatically unpacks and normalizes ZIP bundles into Parquet datasets |
+Under the `exact-text-v1` contract, **all CVM columns contain text**. Leading
+zeros, decimal separators, and literal tokens are preserved; empty fields are
+`""`. Convert dates and numbers explicitly in your analysis. A header-only CSV
+produces an empty Parquet with the defined columns.
 
-#### Return Value
+Content is verified before publication. The Parquet batch can be recovered
+after a failure; concurrent readers do not receive an instantaneous swap of
+the whole directory. Details are in the [CVM reference](../reference/cvm-api.md)
+and the [publication protocol](../reference/transactional-publication.md).
 
-Returns a `DownloadResultCVM` object with the following attributes and methods:
+## Check success and handle failures
 
-- `success_count_downloads: int` — Total number of successfully downloaded bundles.
-- `error_count_downloads: int` — Total number of failed download tasks.
-- `successful_downloads: list[str]` — List of completed document identifiers in `{DOC}_{YEAR}` format (e.g., `"DFP_2023"`).
-- `failed_downloads: dict[str, str]` — Dictionary mapping failed items to error messages.
-- `elapsed_time: float` — Total execution duration in seconds.
-- `has_errors() -> bool` — Returns `True` if one or more downloads failed.
+The return value is a `DownloadResultCVM`, not a data table:
 
-#### Usage Examples
+- `successful_downloads` lists completed identifiers, such as `DFP_2023`.
+- `failed_downloads` maps failures to their diagnostics.
+- `success_count_downloads` and `error_count_downloads` summarize the batch.
 
-**Example 1: Basic DFP Download**
+Individual file failures are recorded in the result and may coexist with
+completed downloads. Check these fields before continuing your analysis.
+Parameter or path errors can raise exceptions immediately; see the
+[documented exceptions](../reference/cvm-api.md).
 
-```python
-cvm = FundamentalStocksDataCVM()
-cvm.download(
-    destination_path="/data/cvm",
-    list_docs=["DFP"],
-    initial_year=2020,
-    last_year=2023
-)
-```
+In notebooks or applications with an active event loop, use
+`await cvm.async_download(...)` with the same arguments and result, as described
+in the [async API](../reference/cvm-api.md#async_download).
 
-**Example 2: Downloading Multiple Document Types**
+To adjust logs and attempts, see [logging](../dev-guide/logging-system.md)
+and [retry](../dev-guide/retry-strategy.md). If you previously consumed Parquets
+with inferred types, follow the [exact-text migration](migration-cvm-exact-text.md).
 
-```python
-cvm.download(
-    destination_path="/data/cvm",
-    list_docs=["DFP", "ITR", "FRE"],
-    initial_year=2022
-)
-```
+## Resume downloads with a checkpoint
 
-**Example 3: Download with Automated Parquet Extraction**
-
-```python
-cvm.download(
-    destination_path="/data/cvm",
-    list_docs=["DFP"],
-    initial_year=2022,
-    automatic_extractor=True  # Automatically normalizes ZIP records directly into Apache Parquet
-)
-```
-
-**Example 4: Full Spectrum Download**
-
-```python
-# Omitting list_docs retrieves every supported document category in parallel
-cvm.download(
-    destination_path="/data/cvm_complete",
-    initial_year=2023
-)
-```
-
-### Security of URL-derived filenames
-See the [CVM API reference](../reference/cvm-api.en.md) for the `SecurityError`
-rules applied before downloading.
-
-______________________________________________________________________
-
-### `get_available_docs()`
-
-Retrieves a mapped catalog containing all supported regulatory document types along with descriptive definitions.
-
-#### Method Signature
-
-```python
-def get_available_docs(self) -> dict[str, str]:
-    ...
-```
-
-#### Return Value
-
-A dictionary mapping acronym document codes to their full professional titles.
-
-#### Example Execution
-
-```python
-cvm = FundamentalStocksDataCVM()
-docs = cvm.get_available_docs()
-
-for code, description in docs.items():
-    print(f"{code}: {description}")
-```
-
-**Console Output**:
-
-```
-DFP: Demonstração Financeira Padronizada
-ITR: Informação Trimestral
-FRE: Formulário de Referência
-FCA: Formulário Cadastral
-CGVN: Código de Governança
-VLMO: Valores Mobiliários
-IPE: Informações Periódicas e Eventuais
-```
-
-______________________________________________________________________
-
-#### `get_available_years()`
-
-Returns descriptive information detailing permissible temporal intervals across supported filings.
-
-#### Method Signature
-
-```python
-def get_available_years(self) -> AvailableYearsInfoCVM:
-    ...
-```
-
-#### Return Value (`AvailableYearsInfoCVM`)
-
-A structural `NamedTuple` container describing historical floor boundaries:
-
-| Attribute Name       | Type  | Description                                                  |
-| -------------------- | ----- | ------------------------------------------------------------ |
-| `general_min_year`   | `int` | Minimum historical starting year for general filings (2010)  |
-| `itr_min_year`       | `int` | Minimum historical year for ITR quarterly disclosures (2011) |
-| `cgvn_vlmo_min_year` | `int` | Minimum historical year for governance disclosures (2018)    |
-| `ipe_min_year` | `int` | IPE: 2003 (property) |
-| `current_year`       | `int` | Real-time operational system year                            |
-
-#### Example Execution
-
-```python
-cvm = FundamentalStocksDataCVM()
-years = cvm.get_available_years()
-
-print(f"General disclosures available since: {years.general_min_year}")
-print(f"Interim statements (ITR) available since: {years.itr_min_year}")
-print(f"Active operating system year: {years.current_year}")
-```
-
-______________________________________________________________________
-
-## Advanced Implementations
-
-### Incremental Data Synchronizer
+Set `base_path` to a directory where the application has write access.
 
 Record `successful_downloads` in an application-owned checkpoint. A year directory may remain after a failure. Request each pending year separately to respect gaps in history:
 
@@ -272,227 +132,3 @@ for year in range(2020, current_year + 1):
 ```
 
 The example uses a checkpoint owned by a single process and refreshes the current year on each run. CVM may also revise earlier years: include them in `refresh_years` according to your application's policy. The checkpoint records previous successes; revalidate local artifacts before reusing them and remove identifiers whose files are missing or corrupted.
-
-### Pre-execution Input Validation
-
-Validate parameters prior to initiating heavy network downloads:
-
-```python
-from globaldatafinance import FundamentalStocksDataCVM
-
-cvm = FundamentalStocksDataCVM()
-
-# Validate document parameter compliance
-requested_docs = ["DFP", "ITR", "FRE"]
-available_docs = cvm.get_available_docs()
-
-valid_docs = [doc for doc in requested_docs if doc in available_docs]
-invalid_docs = [doc for doc in requested_docs if doc not in available_docs]
-
-if invalid_docs:
-    print(f"⚠️  Discarding unsupported document strings: {invalid_docs}")
-    print(f"✓ Authorized processing items: {valid_docs}")
-
-# Safety guard: empty list would trigger downloading all documents
-if not valid_docs:
-    raise ValueError("No valid document codes provided.")
-
-# Validate temporal input limits
-years_info = cvm.get_available_years()
-requested_year = 2015
-
-if requested_year < years_info.general_min_year:
-    print(f"⚠️  Requested fiscal period {requested_year} is prior to floor {years_info.general_min_year}")
-else:
-    # Trigger safe downstream extraction
-    cvm.download(
-        destination_path="/data/cvm",
-        list_docs=valid_docs,
-        initial_year=requested_year
-    )
-```
-
-______________________________________________________________________
-
-## Error Handling & Exceptions
-
-### Synchronous Exceptions
-
-The CVM module enforces fail-fast error behavior by validating parameters at public boundaries:
-
-| Exception Class               | Trigger Condition                             | Recommended Handling Pattern                    |
-| ----------------------------- | --------------------------------------------- | ----------------------------------------------- |
-| `InvalidDocumentName`         | Provided document string is unrecognized      | Validate inputs via `get_available_docs()`      |
-| `InvalidFirstYear`            | Requested initial year below historical floor | Inspect boundaries with `get_available_years()` |
-| `InvalidLastYear`             | End year is prior to start year or invalid    | Validate parameters prior to invocation         |
-| `InvalidDestinationPathError` | Target filesystem path fails safety check     | Confirm folder write and creation access        |
-
-> Transient network failures during asynchronous downloads follow the [retry and HTTP policies](../dev-guide/retry-strategy.md). Unresolved errors are consolidated in the `failed_downloads` dictionary of the returned `DownloadResultCVM` object.
-
-______________________________________________________________________
-
-## Directory & File Layout
-
-### Download Repository Hierarchy
-
-Persisted ZIP archives are systematically grouped within individual category folders:
-
-```
-destination_path/
-    DFP/
-        2020/
-            dfp_cia_aberta_2020.zip
-        2021/
-            dfp_cia_aberta_2021.zip
-        ...
-    ITR/
-        2020/
-            itr_cia_aberta_2020.zip
-        ...
-    FRE/
-        2020/
-            fre_cia_aberta_2020.zip
-        ...
-```
-
-### Internal ZIP Structure
-
-Each downloaded archive encloses separate structured tables covering distinct accounting dimensions:
-
-```
-dfp_cia_aberta_2023.zip
-├── dfp_cia_aberta_2023.csv # General company metadata
-├── dfp_cia_aberta_BPA_con_2023.csv # Consolidated Balance Sheet - Active Assets
-├── dfp_cia_aberta_BPP_con_2023.csv # Consolidated Balance Sheet - Liabilities & Equity
-├── dfp_cia_aberta_DRE_con_2023.csv # Income Statement (Profit & Loss)
-├── dfp_cia_aberta_DFC_MD_con_2023.csv # Statement of Cash Flows (Direct Method)
-├── dfp_cia_aberta_DFC_MI_con_2023.csv # Statement of Cash Flows (Indirect Method)
-├── dfp_cia_aberta_DVA_con_2023.csv # Value Added Statement
-└── ...
-```
-
-### Automated Parquet Extraction Output
-
-When initializing requests with `automatic_extractor=True`, all enclosed files are unpacked and transformed into high-performance Parquet format:
-
-```
-destination_path/
-├── DFP/
-    2023/
-    │ ├── dfp_cia_aberta_2023.parquet
-    │ ├── dfp_cia_aberta_BPA_con_2023.parquet
-    │ ├── dfp_cia_aberta_BPP_con_2023.parquet
-    │ └── ...
-└── ...
-```
-
-### Extraction integrity and recovery
-
-Every ZIP is validated before consumption. All columns are Arrow `string`
-under `exact-text-v1`, preserving decimals, leading zeroes, case, literals
-such as `N/A`, and empty fields as `""`. Header-only CSVs produce zero rows
-with string columns. `QUOTE_NONE` retains literal quotes; short rows receive
-trailing empty fields and excess fields abort.
-
-The SHA-256 of every record is checked against reopened Parquet content before
-publication. Checksums, `fsync`, and association with the consumed ZIP prevent
-confirmation of incomplete or differing data. The original ZIP remains in the
-destination, including non-CSV attachments. Parquets use recoverable batch
-publication; concurrent readers do not get instantaneous combined visibility.
-
-Concurrent writers to one destination fail before ZIP promotion. A
-`.cvm-write-lock` left by abrupt termination requires explicit inspection
-before recovery. See the [CVM exact text migration](migration-cvm-exact-text.en.md)
-for limits, encoding, and consumer migration.
-
-## Best Practices
-
-### 1. Partition Long Temporal Intervals
-
-```python
-# ❌ Avoid sweeping multidecade synchronous downloads
-cvm.download(
-    destination_path="/data",
-    list_docs=["DFP"],
-    initial_year=2003,  # Includes the full IPE history
-    last_year=2023
-)
-
-# ✅ Execute segmented, highly predictable batch slices
-cvm.download(
-    destination_path="/data",
-    list_docs=["DFP"],
-    initial_year=2020,  # Controlled 3–4 year slices
-    last_year=2023
-)
-```
-
-### 2. Verify Available Filesystem Space
-
-```python
-import shutil
-
-# Measure accessible filesystem capacity
-stats = shutil.disk_usage("/data")
-free_gb = stats.free / (1024**3)
-
-if free_gb < 10:
-    print(f"⚠️  Insufficient workspace capacity detected: {free_gb:.2f} GB")
-else:
-    cvm.download(
-        destination_path="/data/cvm",
-        list_docs=["DFP"],
-        initial_year=2023
-    )
-```
-
-### 3. Rely on Parquet for Quantitative Processing
-
-```python
-# Whenever downstream statistical workloads are intended, enforce automatic Parquet extraction
-cvm.download(
-    destination_path="/data/cvm",
-    list_docs=["DFP"],
-    initial_year=2022,
-    automatic_extractor=True  # Massively accelerates dataframe loading
-)
-```
-
-## Performance & Optimization
-
-### Asynchronous Concurrency
-
-The CVM implementation utilizes `AsyncDownloadAdapterCVM` by default, delivering significant throughput improvements:
-
-- ⚡ Up to **10 concurrent downloads** by default
-- 🔄 **Automated Fault Recovery** utilizing exponential retry backoff loops
-- 📊 **Real-time Diagnostic Logs** detailing active concurrent thread transfers
-
-### Benchmark Comparisons
-
-**Baseline v2 — full pipeline: download + CSV→Parquet extraction
-(2010–2026, revision `703d9ab`):**
-
-This historical measurement uses the contract preceding `exact-text-v1`.
-
-| Docs                | Period    | ZIPs | Parquets | Extracted Rows |    Output |     Time | Peak RSS | Errors |
-| ------------------- | --------- | ---: | -------: | -------------: | --------: | -------: | -------: | -----: |
-| DFP, ITR, FRE, etc. | 2010–2026 |  102 |    1,569 |     70,821,466 | 382.27 MB | 906.85 s | 333.91 MB |      0 |
-
-Elapsed time includes connecting, downloading, validating, extracting CSV,
-and generating Parquet for all 102 ZIPs. It varies with network and CVM server
-conditions and is not an isolated comparison against sequential downloads. See
-the [benchmark details and limitations](../dev-guide/benchmarks.en.md).
-
-## Next Steps
-
-- 📈 **[B3 Quotes](b3-docs.md)** - Explore historical market exchange extraction
-- 💻 **[Practical Examples](examples.md)** - Review comprehensive production code workflows
-- 🔧 **[API Reference](../reference/cvm-api.md)** - Inspect technical signatures and contracts
-- ❓ **[FAQ](faq.md)** - Answers to common setup and troubleshooting questions
-
-______________________________________________________________________
-
-!!! tip "Performance Best Practice"
-
-    For analytical pipeline integrations, consistently specify `automatic_extractor=True`. Columnar Parquet data structures bypass repetitive textual CSV decoding overhead during dataframe initialization.

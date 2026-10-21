@@ -1,21 +1,31 @@
-# CVM API - Technical Specification
+# CVM API Reference
 
-Detailed technical specification governing the CVM corporate disclosure API.
+Inputs, results, and persistence contracts for `FundamentalStocksDataCVM`.
+For a first run, see the [CVM guide](../user-guide/cvm-docs.md).
 
 ______________________________________________________________________
 
 ## FundamentalStocksDataCVM
 
-### Primary Class Definition
+### Import
 
 ```python
-class FundamentalStocksDataCVM:
-    """High-level facade for CVM financial statement ingestion."""
+from globaldatafinance import FundamentalStocksDataCVM
 ```
 
-### Public Methods
+### Construction and configuration
 
-#### `download()`
+```python
+def __init__(self, *, settings: Settings | None = None) -> None:
+    ...
+```
+
+Import `Settings` from `globaldatafinance.core.config`. The optional argument
+injects an immutable snapshot; with `None`, the client creates a snapshot from
+the current environment. The `settings` property returns the configuration
+used. See [configuration](../dev-guide/advanced-usage.md).
+
+### `download()`
 
 ```python
 def download(
@@ -29,7 +39,7 @@ def download(
     ...
 ```
 
-**Description**: Downloads official CVM disclosure packages into a targeted filesystem directory.
+**Description**: Downloads CVM document archives into a local directory.
 
 **Parameters**:
 
@@ -38,7 +48,7 @@ def download(
 | `destination_path`    | `str`               | Yes      | -       | Target local filesystem output folder      |
 | `list_docs`           | `list[str] \| None` | No       | `None`  | Targeted document codes (None = fetch all) |
 | `initial_year`        | `int \| None`       | No       | `None`  | Starting year (None = earliest available)  |
-| `last_year`           | `int \| None`       | No       | `None`  | Ending fiscal year (None = current year)   |
+| `last_year`           | `int \| None`       | No       | `None`  | Last year, inclusive (None = current year) |
 | `automatic_extractor` | `bool`              | No       | `False` | Convert to Parquet through PyArrow         |
 
 With `automatic_extractor=True`, every CVM column is Arrow `string`
@@ -73,9 +83,9 @@ characters, controls, trailing periods or spaces, and reserved DOS devices
 such as `CON`, `AUX`, `COM1`, and `LPT1` with `SecurityError`, before starting
 the download or creating staging.
 
-**Return Structure**:
+**Returns**:
 
-Returns a `DownloadResultCVM` object containing consolidated download metrics:
+Returns a `DownloadResultCVM` object:
 
 - `success_count_downloads: int` — Total count of successfully completed download tasks.
 - `error_count_downloads: int` — Total count of failed download tasks.
@@ -86,10 +96,15 @@ Returns a `DownloadResultCVM` object containing consolidated download metrics:
 
 **Synchronous Exceptions**:
 
-- `InvalidDocumentName`: Supplied document code string falls outside whitelist.
-- `InvalidFirstYear`: Requested initial year below historic floor or above upper boundaries.
-- `InvalidLastYear`: Ending year preceded initial year or surpassed active year limits.
-- `InvalidDestinationPathError`: Destination filesystem directory access blocked or restricted.
+- `InvalidDocumentName`: Unsupported document code.
+- `InvalidDocumentType`: An item in `list_docs` is not a string.
+- `InvalidFirstYear`: Invalid initial year.
+- `InvalidLastYear`: Invalid final year.
+- `TypeError`: Invalid type for `list_docs`, `automatic_extractor`, or a path.
+- `InvalidDestinationPathError`: Empty or whitespace-only path.
+- `PathIsNotDirectoryError`: A document or year directory already exists as a file.
+- `PathPermissionError`: No permission to create or write to the destination.
+- `PathCreationError`: Destination creation failed, including when a parent is a file.
 - `SecurityError`: URL-derived filename or local destination is unsafe.
 
 Transient HTTP transmission failures during asynchronous downloads are handled
@@ -134,41 +149,51 @@ result = cvm.download(
     last_year=2023,
     automatic_extractor=True
 )
+if result.has_errors():
+    raise RuntimeError(result.failed_downloads)
 ```
 
-#### `get_available_docs()`
+### `async_download()`
+
+Async counterpart of `download()`, with identical arguments, defaults, and
+result. In notebooks or applications with an active event loop, use
+`await client.async_download(...)` instead of the synchronous wrapper. The full
+signature is also in the [API overview](../dev-guide/api-reference.md).
+
+### `get_available_docs()`
 
 ```python
 def get_available_docs(self) -> dict[str, str]:
     ...
 ```
 
-**Description**: Retrieves mapping catalog connecting short acronym codes to full Portuguese administrative descriptions.
+**Description**: Returns document codes and their descriptions.
 
-**Return Structure**: Dictionary `{acronym_code: full_legal_title}`
+**Returns**: Dictionary `{code: description}`. Descriptions are the English
+text returned by the library; the table below provides Portuguese document names.
 
 **Execution Example**:
 
 ```python
 docs = cvm.get_available_docs()
-# Returns: {'DFP': 'Demonstração Financeira Padronizada', ...}
+# Returns: {'DFP': '(Standardized Financial Statements) ...', ...}
 ```
 
-#### `get_available_years()`
+### `get_available_years()`
 
 ```python
 def get_available_years(self) -> AvailableYearsInfoCVM:
     ...
 ```
 
-**Description**: Queries structural historical year boundary metrics across supported filing categories.
+**Description**: Returns supported first years and the current system year.
 
-**Return Structure (`AvailableYearsInfoCVM`)**: `NamedTuple` container featuring:
+**Returns (`AvailableYearsInfoCVM`)**: A `NamedTuple` with these attributes:
 
 - `general_min_year` (`int`): Earliest year for general accounting forms (`DFP`, `FRE`, `FCA`) — `2010`.
 - `itr_min_year` (`int`): Earliest year for interim quarterly reports (`ITR`) — `2011`.
 - `cgvn_vlmo_min_year` (`int`): Earliest year for governance disclosures (`CGVN`, `VLMO`) — `2018`.
-- `current_year` (`int`): Real-time operational system year limit.
+- `current_year` (`int`): Current system year.
 - `ipe_min_year` (`int`, property): Earliest IPE year — `2003`; accessed as a tuple property.
 
 **Execution Example**:

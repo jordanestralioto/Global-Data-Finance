@@ -64,6 +64,7 @@ def run_process(
     check: bool = True,
     capture_output: bool = True,
     env: Mapping[str, str] | None = None,
+    encoding_errors: str = 'strict',
 ) -> ProcessResult:
     """Run an allowlisted command without invoking a shell.
 
@@ -73,6 +74,7 @@ def run_process(
         check: Raise ``ProcessRunnerError`` when the command exits non-zero.
         capture_output: Capture standard output and standard error when true.
         env: Optional environment variables for the child process.
+        encoding_errors: UTF-8 error handler used to decode captured output.
 
     Returns:
         The completed process result, including its return code and output.
@@ -97,6 +99,7 @@ def run_process(
             capture_output=capture_output,
             check=check,
             encoding='utf-8',
+            errors=encoding_errors,
             shell=False,
             text=True,
         )

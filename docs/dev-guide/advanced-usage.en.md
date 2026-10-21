@@ -23,7 +23,7 @@ from globaldatafinance.core.logging_config import (
 setup_logging(LoggingSettings(level="INFO", log_file="app.log"))
 
 # Retrieve module-specific logger instance
-logger = get_logger(__name__)
+logger = get_logger("globaldatafinance.example")
 cvm = FundamentalStocksDataCVM()
 
 # Emit structured contextual logging events
@@ -42,7 +42,7 @@ with log_execution_time(logger, "CVM Filing Ingestion", total=5):
     )
 ```
 
-[View comprehensive logging documentation →](logging-system.md)
+[See logging configuration](logging-system.md)
 
 The `globaldatafinance` logger starts quiet with a `NullHandler` and
 `propagate=False`; `setup_logging()` does not alter the application root
@@ -60,6 +60,13 @@ environment. It does not search for or load a `.env` file automatically from
 the current working directory. Advanced callers may pass `_env_file=...`
 directly to `Settings` when they explicitly want pydantic-settings to load a
 file; this does not add a dotenv option to the public facades.
+
+When passing `_env_file` to the root `Settings`, configure networking through
+a nested JSON object, such as `DATAFINANCE_NETWORK={"timeout": 240}` in the file.
+The flat `DATAFINANCE_NETWORK_TIMEOUT` key works in the process environment;
+do not assume the root model's file propagates to `NetworkSettings`.
+Inject the explicit snapshot with `FundamentalStocksDataCVM(settings=...)`
+or `HistoricalQuotesB3(settings=...)`.
 
 ```bash
 # Expand socket timeout threshold for high-latency connections
@@ -119,7 +126,7 @@ validated empty selection).
 
 ### Resource Monitoring Engine
 
-Autonomously evaluate system telemetry to dynamically constrain concurrency patterns:
+Use the monitor to inspect resources and choose how many workers to start:
 
 ```python
 from globaldatafinance.core import ResourceMonitor, ResourceState
@@ -132,12 +139,13 @@ state = monitor.check_resources()
 if state == ResourceState.CRITICAL:
     print("Warning: System resources entering critical saturation!")
 
-# Calculate dynamically throttled worker thread limits
+# Calculate a safe worker count for the current resources
 safe_workers = monitor.get_safe_worker_count(max_workers=16)
 print(f"Allocated {safe_workers} safe concurrent worker threads")
 
 # Pause execution until system resources return below saturation thresholds
-monitor.wait_for_resources(timeout_seconds=120)
+if not monitor.wait_for_resources(timeout_seconds=120):
+    raise TimeoutError("Resources unavailable after 120 seconds")
 ```
 
 [View resource monitoring documentation →](resource-monitoring.md)
@@ -184,7 +192,11 @@ ______________________________________________________________________
 
 ## Custom Adapter Substitution & Duck Typing
 
-The HTTP network adapter (`AsyncDownloadAdapterCVM`) and extractor adapter (`ParquetExtractorAdapterCVM`) operate as concrete classes enforcing clean, observable method signatures. The core orchestrator (`DownloadDocumentsUseCaseCVM`) accepts any dependency injection object exposing the expected target method (`download_docs(tasks)`), leveraging idiomatic duck typing. To supersede standard adapter behavior, inject a custom class matching the target signature.
+The CVM download and extraction adapters are concrete classes.
+`DownloadDocumentsUseCaseCVM` accepts a collaborator with the expected
+`download_docs(tasks, *, automatic_extractor=False)` method. This is an internal
+extension example: its result is illustrative. Implement the transport and
+record actual outcomes before using a custom adapter.
 
 ### Replacing the HTTP Download Adapter
 
@@ -229,7 +241,8 @@ result = use_case.execute(
 )
 ```
 
-> The library architecture values clarity and extensible composition: orchestrators interact with operational adapters purely through public method signatures (duck typing), enabling custom implementations to be injected seamlessly without burdensome abstract base class inheritance. Review `docs/dev-guide/architecture.md` for complete architectural details.
+The orchestrator uses the collaborator's method contract without requiring a
+shared base class. See [architecture](architecture.md) for ownership and boundaries.
 
 ______________________________________________________________________
 
@@ -243,6 +256,7 @@ from globaldatafinance.core import get_logger
 
 # Register custom module logger
 logger = get_logger("my_custom_pipeline")
+logger.setLevel(logging.DEBUG)
 
 # Attach file output handler with explicit debugging threshold
 file_handler = logging.FileHandler("globaldatafinance_debug.log")
@@ -263,28 +277,50 @@ ______________________________________________________________________
 
 ### Spawning Concurrent Multi-Year Extractions
 
-The B3 extractor accepts `COTAHIST_A{YYYY}.ZIP` or `.TXT`; when both formats for one year are present, only ZIP is processed.
+The B3 extractor accepts `COTAHIST_A{YYYY}.ZIP` or `.TXT`. When both exist
+for one year, both are validated; ZIP is selected only when their decompressed
+contents are identical. Different contents cause failure.
+
+For one consolidated output, prefer a single call covering the full range:
+the extractor coordinates its sources. The example below produces one file
+per year. Its outer pool is caller-managed: `GDF_B3_WORKER_LIMIT` applies to
+each extraction, not the total number of external processes. Set the outer
+limit from the total CPU and RAM budget; each call uses `slow` to keep one
+source worker.
+
+Each parallel call uses its own destination directory: the publication lock
+is directory-scoped, even when output filenames differ.
 
 ```python
 from concurrent.futures import ProcessPoolExecutor
-from globaldatafinance import HistoricalQuotesB3
+from globaldatafinance import ExtractionResultB3, HistoricalQuotesB3
 
-def extract_year(year):
+def extract_year(year: int) -> ExtractionResultB3:
     b3 = HistoricalQuotesB3()
     return b3.extract(
         path_of_docs="/data/cotahist",
         assets_list=["ações"],
         initial_year=year,
         last_year=year,
-        output_filename=f"stocks_{year}"
+        destination_path=f"./data_b3/{year}",
+        output_filename=f"stocks_{year}",
+        processing_mode="slow",
     )
 
-years = range(2020, 2024)
-with ProcessPoolExecutor(max_workers=4) as executor:
-    results = list(executor.map(extract_year, years))
+def main() -> None:
+    years = range(2020, 2024)
+    caller_worker_limit = 2
+    with ProcessPoolExecutor(max_workers=caller_worker_limit) as executor:
+        results = list(executor.map(extract_year, years))
 
-for year, result in zip(years, results):
-    print(f"Fiscal Year {year}: Normalized {result['total_records']:,} trading records")
+    for year, result in zip(years, results):
+        if not result["success"]:
+            raise RuntimeError(result["errors"] or result["message"])
+        print(f"{year}: {result['total_records']:,} records")
+
+
+if __name__ == "__main__":
+    main()
 ```
 
 ______________________________________________________________________
@@ -403,6 +439,9 @@ ______________________________________________________________________
 ## Monitoring & Visual Tracking
 
 ### Interactive Progress Visualizations with Tqdm
+
+This example uses `tqdm`, an optional dependency that must be installed
+separately in the consuming environment.
 
 ```python
 from tqdm import tqdm

@@ -1,6 +1,8 @@
 # Referência da API
 
-Documentação completa da API pública do Global-Data-Finance.
+Assinaturas e resultados da API pública do Global-Data-Finance. Os detalhes de
+validação e persistência estão nas referências [CVM](../reference/cvm-api.md)
+e [B3](../reference/b3-api.md).
 
 ______________________________________________________________________
 
@@ -27,11 +29,15 @@ Interface de alto nível para download e extração de demonstrativos financeiro
 **`__init__()`**
 
 ```python
-def __init__(self) -> None:
+def __init__(self, *, settings: Settings | None = None) -> None:
     ...
 ```
 
 Inicializa o cliente CVM com adaptadores assíncronos e pipelines de validação padrão.
+
+`settings` recebe um snapshot imutável `Settings`, importado de
+`globaldatafinance.core.config`. Com `None`, cada cliente lê um novo snapshot
+do ambiente atual; a propriedade `settings` expõe o snapshot utilizado.
 
 **`download()`**
 
@@ -97,7 +103,7 @@ def get_available_docs(self) -> dict[str, str]:
     ...
 ```
 
-Retorna um dicionário mapeando os códigos de documentos disponíveis (ex.: `"DFP"`, `"ITR"`, `"FCA"`, `"FRE"`, `"CGVN"`, `"VLMO"`, `"IPE"`) para suas descrições legais em português.
+Retorna um dicionário mapeando os códigos de documentos disponíveis (ex.: `"DFP"`, `"ITR"`, `"FCA"`, `"FRE"`, `"CGVN"`, `"VLMO"`, `"IPE"`) para suas descrições.
 
 **`get_available_years()`**
 
@@ -112,8 +118,10 @@ Retorna uma `namedtuple` `AvailableYearsInfoCVM` contendo os limites de anos dis
 - `itr_min_year` (`int`): Ano mínimo para ITR (ex.: 2011).
 - `cgvn_vlmo_min_year` (`int`): Ano mínimo para relatórios CGVN e VLMO (ex.: 2018).
 - `current_year` (`int`): Ano corrente do sistema.
+- `ipe_min_year` (`int`, propriedade): Ano mínimo de IPE, 2003.
 
-Também suporta conversão para dicionário via `years._asdict()`.
+`years._asdict()` contém os quatro campos da tupla; `ipe_min_year` é uma
+propriedade adicional e deve ser acessada pelo atributo.
 
 ______________________________________________________________________
 
@@ -126,11 +134,15 @@ Interface de alto nível para extração e consolidação de cotações históri
 **`__init__()`**
 
 ```python
-def __init__(self) -> None:
+def __init__(self, *, settings: Settings | None = None) -> None:
     ...
 ```
 
 Inicializa o cliente B3 com pipelines de parser posicional e formatadores padrão.
+
+`settings` recebe um snapshot imutável `Settings`, importado de
+`globaldatafinance.core.config`. Com `None`, cada cliente lê um novo snapshot
+do ambiente atual; a propriedade `settings` expõe o snapshot utilizado.
 
 **`extract()`**
 
@@ -177,7 +189,8 @@ Analisa arquivos COTAHIST (`COTAHIST_A{YYYY}.ZIP` ou `.TXT`), filtra os registro
   - `elapsed_time` (`float`): Tempo total de extração em segundos.
   - `schema_version` (`int`): Versão do schema Parquet (`2`).
   - `integrity` (`B3IntegrityReport`): Cobertura solicitada, fontes, contagens,
-    verificações, avisos e hash do artefato publicado.
+    verificações, avisos e hash do artefato publicado. Veja o
+    [contrato de todas as chaves](../reference/b3-api.md#relatorio-de-integridade).
 - `errors` (`dict[str, str]`): Dicionário mapeando arquivos com falha para suas respectivas mensagens de erro. A chave está sempre presente e pode ser vazia.
 
 O download oficial da B3 usa arquivos ZIP, mas a API aceita tanto
@@ -197,9 +210,7 @@ cotações, a extração publica um resultado vazio (`success=True`). Em caso de
 falha no preflight, `integrity` preserva as fontes já validadas e os anos
 ausentes; `success_count` e `total_records` permanecem zerados.
 
-Um arquivo válido cujos registros sejam todos filtrados pelo TPMERC solicitado
-também retorna sucesso e publica um Parquet vazio com o schema B3. Em contraste,
-todos os registros `01` são validados antes do filtro. TPMERC `021` pode ser
+Todos os registros `01` são validados antes do filtro. TPMERC `021` pode ser
 selecionado com `lote_bloco`; `todos` também inclui códigos numéricos desconhecidos.
 Cada ano solicitado precisa estar presente e a saída inteira é lida de volta
 antes da publicação. Consulte a [referência do schema B3 v2](../reference/b3-schema-v2.md)
@@ -243,9 +254,10 @@ Retorna a lista de todas as classes de ativos suportadas para extração:
 - `'lote_bloco'`: Lote em bloco (TPMERC `021`)
 - `'todos'`: Todos os TPMERCs numéricos válidos
 
-As strings em português acima são valores canônicos de `assets_list` e devem
-ser passadas exatamente como mostradas. BDRs e Futures são **Planned** e não
-são aceitos pelo contrato atual do runtime.
+As strings em português acima são valores canônicos de `assets_list`; a
+validação converte a caixa para minúsculas. Os aliases `bdr` e `futuro` não fazem
+parte desse catálogo; o filtro seleciona tipos de mercado, sem classificar
+emissores ou instrumentos dentro de um mesmo TPMERC.
 
 **`get_available_years()`**
 

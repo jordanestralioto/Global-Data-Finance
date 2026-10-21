@@ -1,447 +1,120 @@
 # Testes
 
-Guia completo sobre testes no Global-Data-Finance.
+Use o ambiente preparado no [guia de contribuição](contributing.md). O gate
+padrão combina testes unitários e integrações determinísticas; cada teste cria
+suas próprias entradas locais.
 
-______________________________________________________________________
-
-## Estrutura de Testes
-
-A árvore de testes espelha cada fonte. Os subdiretórios dentro de cada feature são **organizacionais** (agrupam por tópico para legibilidade), não arquiteturais — qualquer teste importa diretamente dos módulos da fonte (`from globaldatafinance.brazil.<país>.<fonte>.<módulo> import ...`).
-
-```
-tests/
-├── application/                       # tests do facade público
-│   ├── cvm_docs/
-│   └── b3_docs/
-│       └── result_formatters/
-├── brazil/
-│   ├── b3_data/
-│   │   └── historical_quotes/
-│   │       ├── test_*.py              # tópicos de domínio e facade de uso
-│   │       ├── extraction_service/    # serviço, parser em lote, recursos e merge
-│   │       ├── parquet_writer/        # escrita e streaming Parquet
-│   │       └── integration/            # COTAHIST local opt-in
-│   └── cvm/
-│       └── fundamental_stocks_data/
-│           ├── application/use_cases/ # tests de orquestração (client.py)
-│           ├── domain/                # tests de value objects e validators (core.py)
-│           ├── infra/adapters/        # tests dos adapters concretos (http.py, extract.py)
-│           ├── exceptions/            # tests das exceções (errors.py)
-│           └── integration/           # fluxos CVM com filesystem/ZIP reais
-├── core/
-├── macro_infra/
-└── macro_exceptions/
-```
-
-______________________________________________________________________
-
-## Executando Testes
-
-### Gate Determinístico Padrão
+## Executar o gate padrão
 
 ```bash
 uv run --locked --no-sync pytest -m "not slow and not real_data and not perf" \
   --cov --cov-report=xml --cov-report=term-missing
 ```
 
-Esse comando inclui testes unitários e integrações determinísticas criadas
-pelos próprios testes. `perf`, dados reais e cenários `slow` não fazem parte do
-gate padrão.
-
-### Com Cobertura
-
-A configuração de coverage, incluindo o limite `fail_under = 85`, fica em
-`[tool.coverage.report]` no `pyproject.toml`. O `pytest.ini` mantém a
-descoberta, os markers e as opções do pytest.
+Para uma mudança localizada, comece pelo módulo afetado, por exemplo:
 
 ```bash
-uv run --locked --no-sync pytest -m "not slow and not real_data and not perf" \
-  --cov --cov-report=html
+uv run --locked --no-sync pytest tests/application/b3_docs
 ```
 
-### Marcadores
+`pytest.ini` define descoberta e marcadores; `pyproject.toml` define cobertura.
+Para o relatório HTML, acrescente `--cov-report=html` ao comando com cobertura.
 
-Os markers registrados em `pytest.ini` têm contratos distintos. Cada teste
-deve ter exatamente um tier primário:
+## Classificar cada teste
 
-- `unit`: comportamento isolado com fakes, stubs ou colaboradores puros;
-- `integration`: vários componentes reais de produção e filesystem local
-  determinístico;
-- `perf`: benchmark ou medição de recursos, somente opt-in.
+Todo teste tem **exatamente um tier primário**:
 
-`slow`, `asyncio` e `real_data` são qualificadores ortogonais. `real_data`
-exige `integration`, e `asyncio` não substitui o tier primário.
+| Tier | Contrato |
+| --- | --- |
+| `unit` | Comportamento isolado, com colaboradores puros, fakes ou stubs. |
+| `integration` | Vários componentes reais e filesystem local determinístico. |
+| `perf` | Benchmark ou medição de recursos; sempre opt-in. |
 
-O gate `scripts/check_test_quality.py` é uma proteção estrutural e heurística:
-ele verifica a classificação e a presença de uma observação aceita no corpo
-executável direto do teste, sem descer em helpers, lambdas ou classes
-aninhadas. Ele não prova que toda asserção protege uma regressão nem elimina a
-necessidade de revisão contra tautologias semânticas.
+Use `slow` para cenários pesados e `asyncio` para execução assíncrona.
+`real_data` exige `integration`, usa COTAHIST fornecido pelo chamador e é
+opt-in. Esses qualificadores não substituem o tier.
 
 ```bash
-# Apenas testes unitários
 uv run --locked --no-sync pytest -m unit
-
-# Integrações determinísticas, sem dados externos ou cenários lentos
-uv run --locked --no-sync pytest -m "integration and not slow and not real_data and not perf"
-
-# Benchmarks e medições (opt-in explícito)
+uv run --locked --no-sync pytest -m "integration and not slow and not real_data"
 uv run --locked --no-sync pytest tests/perf -m perf -o addopts=''
 ```
 
-### COTAHIST local
+O comando com `-m` substitui a seleção padrão; use qualificadores explícitos
+para manter cenários externos e lentos fora da execução desejada.
 
-Os testes `real_data` nunca baixam arquivos nem versionam dados financeiros.
-O diretório é caller-owned e pode ser fornecido por `COTAHIST_PATH`; a
-biblioteca não lê `.env` implicitamente. Para usar um arquivo dotenv local, o
-chamador precisa selecionar isso explicitamente com `uv run --env-file .env`.
-Sem `COTAHIST_PATH`, somente a suíte selecionada explicitamente é pulada; com
-a variável definida, caminho inválido, vazio, ilegível ou sem o ano escolhido
-falha.
+## Escrever testes úteis
 
-A fixture inspeciona o catálogo de todos os arquivos locais antes de selecionar
-um ano. Quando existe um único ano, ele pode ser inferido. Com vários anos,
-`COTAHIST_TEST_YEAR` é obrigatório; ela nunca escolhe silenciosamente o maior
-ano. O catálogo valida o central directory e a resolução do membro interno. A
-paridade limitada cria uma amostra real não vazia de até 20.000 registros `01`
-e compara fast/slow nos 32 campos Arrow, com tipos e valores exatos; como
-executa os dois modos de processamento, ela é marcada `slow`. A prova anual em
-`fast` valida o schema Arrow v2, contagem de registros e limites de data. Outra
-prova anual `slow` compara contagens, schema e igualdade de tabela ou digest
-lógico entre `fast` e `slow`. A auditoria completa também compara cada campo e
-os bytes originais dos registros COTAHIST ao Parquet usando um decoder
-independente. Todas as provas que processam dados são `slow`; a verificação sem
-`slow` apenas inspeciona uma linha por arquivo no catálogo local.
+- Espelhe a fronteira afetada: `tests/application/`, a fonte em `tests/brazil/`
+  ou as fundações compartilhadas. Subdiretórios organizam assuntos.
+- Prove comportamento, limites, transições e regressões com resultados
+  observáveis; contagem de linhas cobertas não substitui uma asserção útil.
+- Use `tmp_path` e entradas ZIP, CSV ou Parquet criadas pelo teste. Substitua
+  rede com `httpx.MockTransport` ou colaboradores locais.
+- Leitura e escrita Parquet precisam também de provas com PyArrow real,
+  schema, tipos, conteúdo e limpeza de temporários. Pandas e Polars não são
+  dependências de runtime da biblioteca.
+- Documente exclusões e consolidações em `.test-integrity-policy.json`.
+
+O gate estrutural abaixo verifica tiers e observações no corpo do teste;
+ele é heurístico e não comprova a qualidade semântica das asserções:
 
 ```bash
-COTAHIST_PATH=./cotahist_b3 COTAHIST_TEST_YEAR=2000 \
+uv run --locked --no-sync python scripts/check_test_quality.py
+```
+
+## Usar COTAHIST local
+
+Dados oficiais ficam em um diretório do chamador, como `cotahist_b3_local/`,
+ignorado pelo Git. Os testes não baixam esses arquivos nem leem `.env`
+implicitamente. Defina os caminhos e o ano explicitamente:
+
+```bash
+COTAHIST_PATH=./cotahist_b3_local COTAHIST_TEST_YEAR=2023 \
   uv run --locked --no-sync pytest -m "real_data and not slow"
-COTAHIST_PATH=./cotahist_b3 COTAHIST_TEST_YEAR=2000 \
-  uv run --locked --no-sync pytest -m "real_data and slow"
-COTAHIST_PATH=./cotahist_b3 COTAHIST_TEST_YEAR=2024 \
-  uv run --locked --no-sync pytest -m "real_data and not slow"
-COTAHIST_PATH=./cotahist_b3 COTAHIST_TEST_YEAR=2024 \
+COTAHIST_PATH=./cotahist_b3_local COTAHIST_TEST_YEAR=2023 \
   uv run --locked --no-sync pytest -m "real_data and slow"
 ```
 
-`COTAHIST_TEST_YEAR` deve ter quatro dígitos. O ZIP tem precedência sobre o
-TXT do mesmo ano. ZIPs modernos usam o membro `COTAHIST_A{YYYY}.TXT`; ZIPs
-históricos podem usar `COTAHIST.A{YYYY}` ou `COTAHIST_A{YYYY}` sem extensão.
-O diretório `cotahist_b3/` é ignorado pelo Git. A adoção de um dataset oficial anual no CI
-só pode ocorrer após fixture versionado ou artefato de CI publicado com licença
-compatível; até lá, a validação permanece opt-in.
+A primeira seleção não gera Parquet, mas a fixture atual faz preflight completo
+de todos os anos do catálogo, incluindo hashes e validação de cada registro.
+Mesmo com `not slow`, esse preparo pode ler integralmente arquivos grandes.
+As provas de extração, incluindo amostra, validação anual e paridade
+`fast`/`slow`, são `slow`. A auditoria completa usa um decoder independente.
 
-### Campanha real auditável
+A fixture inspeciona todo o catálogo antes de selecionar o ano. Sem
+`COTAHIST_PATH`, a suíte selecionada é pulada. Com a variável definida, entrada
+inválida, vazia, ilegível ou sem o ano pedido falha. Um ano único pode ser
+inferido; com vários, `COTAHIST_TEST_YEAR` é obrigatório e tem quatro dígitos.
+ZIP tem precedência sobre TXT. Os membros internos aceitam o nome moderno
+`COTAHIST_A{YYYY}.TXT` e os históricos `COTAHIST.A{YYYY}` e
+`COTAHIST_A{YYYY}`, sempre com o ano correspondente.
 
-Para auditar a matriz completa sem depender da configuração implícita do
-ambiente, use o executor opt-in com todos os caminhos explícitos. O relatório e
-os artefatos temporários devem ficar fora do repositório:
+`cotahist_b3/` contém apenas as amostras sintéticas versionadas dos exemplos,
+geradas por `scripts/generate_example_cotahist.py`. Elas são testadas em
+`tests/examples` sem `real_data`. Um dataset anual oficial só poderá se tornar
+obrigatório na CI após existir uma fixture versionada ou artefato publicado
+com licença compatível.
 
-```bash
-uv run --locked --no-sync python scripts/real_validation.py \
-  --source all \
-  --cotahist-path /caminho/externo/COTAHIST \
-  --cvm-output /tmp/globaldatafinance-cvm-output \
-  --report /tmp/globaldatafinance-real-validation/run-2026-09-01 \
-  --timeout 3600
-```
+## Cobertura e CI
 
-`all` cria casos COTAHIST para cada ano do catálogo local dentro do intervalo
-solicitado (ou de todos os anos disponíveis quando o intervalo é omitido) e
-as combinações válidas das sete janelas documentais CVM, 109 combinações em 2026, incluindo IPE desde 2003. Anos
-ausentes no intervalo pedido fazem a campanha falhar antes do processamento.
-Com `--cotahist-mode all`, cada ano recebe uma prova `fast` e uma paridade
-integral `fast`/`slow`; a campanha também inclui uma paridade integral
-multi-anual para todo o intervalo. A preparação confere nomes, containers,
-anos e hashes e aplica a precedência ZIP. Representações ZIP/TXT do mesmo ano
-continuam exigindo conteúdo completo equivalente. A validação de todas as
-cotações acontece na API antes da publicação e novamente na reconciliação
-independente; a preparação do manifesto não repete esse parsing completo.
-Um container inválido impede a criação da campanha; campos inválidos nas
-cotações produzem um caso `failed`, sem publicação pela API.
-COTAHIST nunca é baixado pelo executor.
-Na CVM, `--verify-cvm-catalog` grava `cvm-catalog.json` com todos os anos
-publicados e omissões da seleção. Se um ano publicado dos documentos escolhidos
-ficar fora da matriz, interrompe a campanha com código 1; omita essa opção em
-campanhas intencionalmente parciais. Cada CSV é reconciliado campo a campo por
-um parser independente, incluindo cabeçalho, ordem, vazios e contagem. O
-resultado registra hashes de todos os membros ZIP, anexos e campos conferidos.
-Para toda a história CVM, use `--initial-year 2003 --document all`; os ZIPs
-retidos pela fachada no workspace isolado são removidos pelo executor somente
-após persistir a evidência, junto com os demais artefatos da campanha.
-A matriz CVM acessa somente os URLs oficiais explicitamente definidos pelo
-código e classifica HTTP 404/410 como
-`not_published`, indisponibilidade de rede como `external_failure` e conteúdo
-inválido ou falha de processamento como `failed`.
-
-Por padrão, a campanha COTAHIST reconcilia os arquivos fornecidos com os hashes
-congelados no próprio manifesto da execução. Selecionar 2000–2026 não impõe
-automaticamente o corpus histórico usado na auditoria inicial. Para exigir
-aquele corpus específico, seus 27 checksums e as métricas históricas, selecione
-explicitamente a paridade multi-anual com `--cotahist-frozen-baseline`:
+O produto exige **85% de cobertura agregada de `src/`, incluindo branches**.
+O executor de validação real tem um piso separado de 85%, também com branches.
+Para executar seu gate sem copiar a lista de módulos e opções:
 
 ```bash
-uv run --locked --no-sync python scripts/real_validation.py \
-  --source cotahist --cotahist-path /caminho/externo/COTAHIST \
-  --initial-year 2000 --last-year 2026 --cotahist-mode all \
-  --cotahist-frozen-baseline --case cotahist-multi-parity-2000-2026 \
-  --report /caminho/externo/cotahist-historical-acceptance --timeout 43200 --progress
+uv run --locked --no-sync pre-commit run real-validation-coverage \
+  --hook-stage pre-push --all-files
 ```
 
-A opção `--progress` escreve em stderr a preparação, o início e o resultado
-dos casos, e uma atualização a cada 30 segundos enquanto o worker está ativo.
-O stdout continua contendo o resumo JSON final. As etapas de extração,
-validação do Parquet e reconciliação aparecem no log individual do caso.
-Uma atualização de atividade não equivale a progresso de linhas nem comprova
-que a etapa atual está livre de bloqueios. A campanha completa lê todas as
-cotações nos dois modos e pode levar horas; não inicie uma segunda execução
-para substituir uma que ainda está ativa.
+A matriz de qualidade roda em Python 3.12, 3.13 e 3.14. As configurações
+canônicas são `pyproject.toml`, `pytest.ini`, `.pre-commit-config.yaml` e
+`.github/workflows/pipeline.yml`. O [aceite de release](release-readiness.md)
+acrescenta evidências nativas em Windows/macOS, falhas de publicação e pacotes.
 
-A opção exige o intervalo completo e a seleção do caso multi-anual. A intenção
-fica em `frozenBaseline` no caso e é preservada por `--resume`; uma retomada
-não troca uma campanha genérica pela aceitação histórica. Para mudar essa
-seleção, use uma nova pasta de relatório. Sem `--resume`, o CLI rejeita pastas
-com evidência de campanha anterior, preservando os arquivos existentes.
-Caminhos de saída são resolvidos de forma
-consistente, inclusive quando a pasta possui um link simbólico na ancestralidade;
-a contenção no destino e a exigência de um único Parquet continuam obrigatórias.
+## Auditar dados externos
 
-Na campanha COTAHIST, `DiskFullError` e `PathPermissionError` reportados pela
-extração são `external_failure`; os diagnósticos originais permanecem no
-relatório. Conteúdo inválido e divergências de integridade continuam `failed`.
-
-Cada caso roda em um processo isolado. O diretório indicado por `--report`
-contém `manifest.json`, um `results.jsonl` com apenas o resultado atual de cada
-caso, `summary.json`, logs individuais e evidências de artefatos. Use
-`--resume --report <mesmo-diretório>` para reexecutar somente casos
-`external_failure` ou ainda não classificados; resultados funcionais e
-`not_published` são preservados. Os resultados persistidos são evidência do
-chamador, não uma atestação assinada: use `--resume` somente em um diretório
-de relatório confiável quando a conclusão aprovada/reprovada precisar ter
-valor probatório. Antes da retomada, cada arquivo COTAHIST é
-comparado ao `inputSizeBytes` e ao `inputSha256` do manifesto. O hash é
-calculado uma vez por caminho compartilhado; qualquer drift gera
-`ReportFormatError`, não reexecuta nem sobrescreve resultados antigos e exige
-uma nova campanha. O `caseId`, ano, modo e input COTAHIST também precisam
-corresponder ao catálogo atual. Casos CVM primeiro validam o
-`campaign.cvmOutput` persistido com a política de destinos externos e depois
-são reconstruídos da matriz oficial de documento/ano: os campos persistidos,
-inclusive `inputPath`, `url` e `outputRoot`, precisam ser idênticos ao caso
-reconstruído e ao destino da campanha antes de um worker ser iniciado. Um
-`outputRoot` adulterado falha antes de `mkdir`, `mkdtemp`, worker ou cliente
-HTTP. A sonda CVM usa somente HTTPS no endpoint canônico, não segue
-redirecionamentos e não persiste um corpo de preflight. O limite de bytes do
-arquivo comprimido é aplicado tanto ao `Content-Length` quanto ao streaming da
-fachada pública; o hash registrado é calculado no ZIP imediatamente antes da
-extração pela própria fachada. `--report` e `--cvm-output` passam pela política
-de destinos sensíveis antes de qualquer criação de diretório; raízes do
-sistema, diretórios protegidos, drives Windows relativos e UNC não confiáveis
-são rejeitados, enquanto `/tmp` e uma UNC explicitamente permitida podem ser
-usados conforme a política compartilhada. O código de saída é `0` somente
-quando toda a matriz foi executada sem falhas funcionais, falhas externas,
-combinações não executadas ou processos órfãos; `1` indica falha funcional e
-`2` indica dependência externa, timeout, execução incompleta ou processo órfão.
-
-______________________________________________________________________
-
-## Escrevendo Testes
-
-### Teste Unitário
-
-```python
-import pytest
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.core import (
-    validate_docs_name,
-)
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.errors import (
-    InvalidDocumentName,
-)
-
-
-@pytest.mark.unit
-class TestValidateDocsName:
-    def test_validate_valid_doc(self):
-        """Verifica validação de documento válido."""
-        assert validate_docs_name('DFP') is None  # Passa sem exceção
-
-    def test_validate_invalid_doc(self):
-        """Verifica se InvalidDocumentName é lançada para documento inválido."""
-        with pytest.raises(InvalidDocumentName):
-            validate_docs_name('INVALID')
-```
-
-> Tipos e exceções de cada fonte vivem nos módulos da própria fonte: para CVM em `brazil.cvm.fundamental_stocks_data.core` e `brazil.cvm.fundamental_stocks_data.errors`; para B3 a divisão é mais granular — entidades em `models.py`, value objects em `years.py`/`processing.py`, validators de filesystem em `filesystem.py`, asset services em `assets.py`, exceções em `errors.py`.
-
-### Estratégias de Mocking
-
-Para desacoplar chamadas de I/O de rede ou sistema de arquivos, os testes substituem as dependências via stubs com duck typing ou `monkeypatch.setattr`:
-
-```python
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.client import (
-    DownloadDocumentsUseCaseCVM,
-)
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.core import (
-    DownloadResultCVM,
-)
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.http import (
-    DownloadTaskCVM,
-)
-
-
-class MockRepository:
-    def download_docs(
-        self,
-        tasks: list[DownloadTaskCVM],
-        *,
-        automatic_extractor: bool | None = None,
-    ) -> DownloadResultCVM:
-        return DownloadResultCVM(
-            successful_downloads=['DFP_2023', 'ITR_2023'],
-            failed_downloads={},
-            elapsed_time=0.5,
-        )
-
-
-use_case = DownloadDocumentsUseCaseCVM(MockRepository())
-result = use_case.execute(destination_path='/tmp/cvm')
-assert result.success_count_downloads == 2
-```
-
-### Engines obrigatórios e provas reais
-
-PyArrow é o engine obrigatório de leitura/escrita produtiva. Pandas não é
-instalado pela biblioteca e, quando necessário para análise downstream, deve
-ser uma dependência explícita do consumidor. Polars também não faz parte do
-runtime. Testes unitários podem usar fakes para
-colaboradores do próprio projeto, como monitor de recursos, parser ou a seam de
-filesystem. Eles não substituem testes de um componente que lê ou grava
-Parquet: esse componente também precisa de integrações com PyArrow real,
-leitura do artefato e verificação de schema, tipos e limpeza de temporários.
-
-### Teste de Integração
-
-```python
-import pytest
-from globaldatafinance import FundamentalStocksDataCVM
-
-
-@pytest.mark.integration
-class TestFundamentalStocksDataIntegration:
-    def test_get_available_docs(self):
-        """Testa obtenção de documentos disponíveis."""
-        cvm = FundamentalStocksDataCVM()
-        docs = cvm.get_available_docs()
-
-        assert isinstance(docs, dict)
-        assert len(docs) > 0
-        assert 'DFP' in docs
-```
-
-______________________________________________________________________
-
-## Fixtures
-
-```python
-import pytest
-from pathlib import Path
-
-
-@pytest.fixture
-def temp_dir(tmp_path):
-    """Cria diretório temporário para testes."""
-    return tmp_path
-
-
-@pytest.fixture
-def sample_zip_file(tmp_path):
-    """Cria arquivo ZIP de exemplo."""
-    zip_path = tmp_path / 'test.zip'
-    # Criar ZIP...
-    return zip_path
-```
-
-______________________________________________________________________
-
-## Cobertura
-
-Objetivo: **>= 85% de cobertura agregada** (enforced via `fail_under = 85` em
-`[tool.coverage.report]` no `pyproject.toml`). Esse é também o piso para
-módulos novos.
-
-```bash
-# Gerar relatório
-uv run --locked --no-sync pytest -m "not slow and not real_data and not perf" \
-  --cov --cov-report=term-missing
-
-# Relatório HTML
-uv run --locked --no-sync pytest --cov --cov-report=html
-open htmlcov/index.html
-```
-
-### Cobertura do executor de validação real
-
-Os scripts `real_validation*.py` são código operacional de desenvolvimento e
-possuem um gate separado do produto. O hook `real-validation-coverage`, no
-estágio `pre-push`, executa os testes determinísticos do executor e exige
-`>= 85%` de cobertura agregada, incluindo branches:
-
-```bash
-uv run --locked --no-sync pytest -q \
-  tests/tooling/test_cotahist_oracle.py \
-  tests/tooling/test_file_digests.py \
-  tests/tooling/test_cvm_archive_oracle.py \
-  tests/tooling/test_cvm_catalog.py \
-  tests/tooling/test_real_validation.py \
-  tests/tooling/test_real_validation_b3.py \
-  tests/tooling/test_real_validation_cases.py \
-  tests/tooling/test_real_validation_cvm.py \
-  tests/tooling/test_real_validation_cvm_integration.py \
-  tests/tooling/test_real_validation_matrix.py \
-  tests/tooling/test_real_validation_process.py \
-  tests/tooling/test_real_validation_report.py \
-  tests/tooling/test_real_validation_resume.py \
-  tests/tooling/test_real_validation_runner.py \
-  tests/tooling/test_real_validation_types.py \
-  tests/tooling/test_real_validation_utils.py \
-  --cov=scripts.cotahist_oracle \
-  --cov=scripts.file_digests \
-  --cov=scripts.cvm_archive_oracle \
-  --cov=scripts.cvm_catalog \
-  --cov=scripts.real_validation \
-  --cov=scripts.real_validation_b3 \
-  --cov=scripts.real_validation_cases \
-  --cov=scripts.real_validation_cvm \
-  --cov=scripts.real_validation_matrix \
-  --cov=scripts.real_validation_report \
-  --cov=scripts.real_validation_resume \
-  --cov=scripts.real_validation_runner \
-  --cov=scripts.real_validation_types \
-  --cov=scripts.real_validation_utils \
-  --cov-report=term-missing --cov-fail-under=85
-```
-
-Esse gate não altera o piso de 85% da cobertura de `src`; ele impede que
-timeout, limpeza, relatórios, classificações CVM, paridade B3 ou retomada
-percam cobertura sem um sinal separado. A mesma verificação é executada como
-passo próprio na pipeline de qualidade.
-
-______________________________________________________________________
-
-## CI/CD
-
-O [aceite de release](release-readiness.md) acrescenta regressões nativas
-em Windows e macOS, campanha completa de falhas e verificação das distribuições.
-Resultados locais em Linux não substituem esses ambientes nativos.
-
-Testes são executados automaticamente em:
-
-- Push para `main` ou `develop`
-- Pull Requests
-- Releases
-
-______________________________________________________________________
-
-## Próximos Passos
-
-- [Como Contribuir](contributing.md)
-- [Arquitetura](architecture.md)
+A campanha completa de CVM/COTAHIST é opt-in e pode levar horas. Use o
+[guia de validação com dados externos](real-data-validation.md) para executá-la,
+interpretar relatórios e retomar uma campanha. Ela não faz parte do gate
+local determinístico.

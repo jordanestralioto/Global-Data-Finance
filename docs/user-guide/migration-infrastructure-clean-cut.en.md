@@ -97,21 +97,31 @@ not installed or imported by the package.
 
 ## B3 catch boundary
 
-Concrete B3 exceptions preserve their own types and now inherit from `B3Error`:
+B3 input-validation exceptions preserve their own types and inherit from
+`B3Error`. The example uses execution and handling functions defined by the
+consumer:
 
 ```python
 from globaldatafinance.brazil.b3_data.historical_quotes.errors import B3Error
 
 try:
-    run_b3_operation()
+    result = run_b3_operation()
 except B3Error as error:
-    handle_b3_input_or_processing_error(error)
+    handle_b3_input_error(error)
+else:
+    if not result["success"]:
+        raise RuntimeError(result["errors"] or result["message"])
 ```
 
 `B3Error` is source-local and is not exported from `globaldatafinance` or used
 as a global base. Year policies remain separate: B3 still has its 1986 minimum,
 and each source retains its own `InvalidFirstYear` and `InvalidLastYear`
 classes.
+
+`CotahistCatalogError` inherits from `ValueError` and `CotahistPreflightError`
+from `ExtractionError`; they are internal types outside this hierarchy. The
+facade returns source failures in `errors`, with `success=False`. The
+[exception reference](../reference/exceptions.md) distinguishes these paths.
 
 ## CVM Parquet write failures
 

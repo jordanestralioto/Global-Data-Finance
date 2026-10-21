@@ -74,8 +74,12 @@ foi confirmado pela leitura de todas as linhas `01`; a diferença dos controles
 
 Esses números descrevem os bytes dos arquivos congelados no manifesto, não uma
 verificação contra calendário ou cadastro externo de instrumentos. O corpus
-local não contém 1986–1999 nem dados posteriores a 2026-09-02. A campanha v2
-deve reconciliar novamente cada linha e cada Parquet com estes arquivos antes
-de usar os números como critério de aceitação da implementação.
+local não contém 1986–1999 nem dados posteriores a 2026-09-02. Uma campanha v2
+posterior registrou a reconciliação integral dos 32 campos e da ordem das
+linhas, além dos 27 checksums do manifesto; veja a
+[aceitação de 2000–2026](../dev-guide/cotahist-performance.md#aceitacao-integral-de-20002026).
+Esses resultados são históricos. Uma nova campanha precisa reconferir os
+hashes e reconciliar os dados antes de usar estes números como critério de
+aceitação.
 
 Formato e offsets oficiais: [layout de séries históricas da B3](https://www.b3.com.br/data/files/33/67/B9/50/D84057102C784E47AC094EA8/SeriesHistoricas_Layout.pdf).

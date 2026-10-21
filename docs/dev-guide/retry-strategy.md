@@ -6,16 +6,16 @@ ______________________________________________________________________
 
 ## Visão Geral
 
-A classe `RetryStrategy` determina quais exceções garantem retry e calcula o tempo de backoff exponencial.
+A classe `RetryStrategy` classifica exceções por tipo e mensagem e calcula o
+backoff exponencial com jitter. O chamador decide quando repetir a operação.
 
 ______________________________________________________________________
 
 ## Características
 
-- ✅ **Inteligente**: Apenas retries em erros transientes
-- ✅ **Backoff Exponencial**: Aumenta tempo de espera progressivamente
-- ✅ **Configurável**: Backoff inicial, máximo e multiplicador customizáveis
-- ✅ **Type-safe**: Usa hierarquia de exceções do projeto
+- Classificação por exceção, com fallback para palavras na mensagem.
+- Backoff exponencial com jitter multiplicativo e teto configurável.
+- Exclusões explícitas para `PathPermissionError`, `DiskFullError` e `ValueError`.
 
 ______________________________________________________________________
 
@@ -28,7 +28,8 @@ ______________________________________________________________________
 
 ### Baseado em Mensagem
 
-Erros com keywords retryáveis na mensagem:
+Para qualquer outra exceção não excluída, a estratégia procura estas palavras
+na mensagem convertida para minúsculas:
 
 - `"timeout"`
 - `"connection refused"`
@@ -37,6 +38,11 @@ Erros com keywords retryáveis na mensagem:
 - `"temporarily"`
 - `"unavailable"`
 - `"try again"`
+
+Esse fallback também aceita uma exceção genérica, como
+`Exception("Operation timeout occurred")`. A mensagem não comprova que a
+falha é transitória. Ao usar retry manual, escolha operações idempotentes ou
+aplique sua própria classificação antes de repetir uma alteração de estado.
 
 ### Nunca Retryable
 

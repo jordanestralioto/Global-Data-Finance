@@ -168,6 +168,7 @@ result = b3.extract(
     path_of_docs="/data/cotahist",
     assets_list=["ações"],
     initial_year=2023,
+    last_year=2023,
     output_filename="stocks_2023"
 )
 
@@ -342,11 +343,14 @@ sns.set_style("darkgrid")
 
 # Cell 2: Trigger historical quotes extraction
 b3 = HistoricalQuotesB3()
-result = b3.extract(
+result = await b3.extract_async(
     path_of_docs="/data/cotahist",
     assets_list=["ações"],
-    initial_year=2023
+    initial_year=2023,
+    last_year=2023,
 )
+if not result["success"]:
+    raise RuntimeError(result["errors"])
 
 # Cell 3: Load Parquet dataset and isolate instrument records
 df = pd.read_parquet(result['output_file'])

@@ -157,7 +157,7 @@ def process_pool_spy(monkeypatch):
 
 
 _LOCAL_DATA_COMMAND = (
-    'COTAHIST_PATH=./cotahist_b3 COTAHIST_TEST_YEAR=2023 '
+    'COTAHIST_PATH=./cotahist_b3_local COTAHIST_TEST_YEAR=2023 '
     'uv run --locked --no-sync pytest -m "real_data and not slow"'
 )
 

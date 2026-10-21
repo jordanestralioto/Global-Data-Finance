@@ -1,265 +1,92 @@
-# Como Contribuir
+# Como contribuir
 
-Guia para contribuir com o projeto Global-Data-Finance.
+Use Python `>=3.12,<4.0`, Git e uv. Crie a branch a partir de `develop` e
+abra o pull request para essa mesma branch.
 
-______________________________________________________________________
-
-## Configurando Ambiente de Desenvolvimento
-
-### 1. Fork e Clone
+## Preparar o ambiente
 
 ```bash
-# Fork no GitHub, depois:
 git clone https://github.com/jordanestralioto/Global-Data-Finance.git
 cd Global-Data-Finance
-```
-
-### 2. Instalar Dependências
-
-`uv` é o gestor canônico do projeto (`uv.lock` é commitado). O desenvolvimento
-usa **Python >=3.12,<4.0**. O workflow atual de CI exercita Python 3.12, 3.13 e
-3.14.
-
-```bash
-# Sincronizar exatamente o ambiente aprovado pelo lockfile (cria .venv)
 uv sync --locked --all-extras --dev
-
-# Para rodar comandos sem sincronização implícita:
-uv run --locked --no-sync pytest
-uv run --locked --no-sync mypy src
-```
-
-### 3. Instalar Pre-commit Hooks
-
-```bash
 uv run --locked --no-sync pre-commit install --install-hooks
+git switch -c fix/cotahist-validation develop
 ```
 
-______________________________________________________________________
+`uv sync` prepara o ambiente uma vez. Depois disso, execute as ferramentas com
+`uv run --locked --no-sync` para usar as dependências já resolvidas.
 
-## Padrões de Código
+## Fazer a alteração
 
-### Style Guide
+- Siga a [arquitetura](architecture.md): comportamento CVM e B3 pertence à
+  respectiva fonte; compartilhe apenas o que for reutilizável.
+- Preserve assinaturas, resultados, exceções e schemas públicos. Mudanças
+  incompatíveis exigem uma decisão explícita e migração documentada.
+- Use nomes, código, comentários e commits em inglês. Anote tipos, use
+  docstrings Google e mantenha o formato Ruff de 79 caracteres.
+- Use `_` para helpers restritos ao módulo. Um nome compartilhado entre
+  módulos não se torna, por isso, parte da API pública. Mantenha estado mutável
+  privado e exponha operações quando outro módulo precisar acessá-lo.
+- Valide entradas e caminhos antes de escrever. Preserve as causas das falhas.
+- Atualize testes que comprovem o comportamento e a regressão, e mantenha as
+  páginas de produto em português e inglês.
 
-- Seguir **PEP 8**
-- Usar **type hints** em todo código
-- Docstrings no formato **Google Style**
-- Máximo de 79 caracteres por linha (ruff, Blue-style formatting)
-
-Use o prefixo `_` para auxiliares restritos ao próprio módulo e atributos
-encapsulados de objetos. Funções, tipos e constantes compartilhados entre
-módulos, inclusive auxiliares consumidos diretamente por testes, devem ter
-nomes sem esse prefixo. Mantenha estado mutável privado e ofereça operações
-para acessá-lo quando outro módulo precisar dele. Testes podem inspecionar ou
-substituir atributos privados para comprovar encapsulamento e falhas; isso não
-torna esses atributos uma interface compartilhada. Um nome sem `_` não implica
-exportação na API pública: essa fronteira continua definida pelos exports e
-contratos documentados da biblioteca.
-
-### Perfis Ruff
-
-O Ruff usa uma seleção base explícita para `src/`, `tests/`, `scripts/` e
-`examples/`. O script `scripts/check-ruff-policy.py` é o único entrypoint
-interno para os perfis completos: `base` verifica a seleção base, `docs` aplica
-as regras Google de docstrings em `src/`, `scripts/` e `examples/` (exceto
-`**/__init__.py`) e `security` aplica as regras `S` ao código e aos scripts e
-aos testes com somente `S101` ignorado.
-
-A seleção base preserva as regras de simplificação e correção existentes e
-adiciona dois contratos focados. `C901` limita a complexidade ciclomática
-McCabe a **10 por função**: complexidade 10 é aceita e 11 ou mais falha.
-`BLE001`, `TRY203`, `TRY400` e `TRY401` impedem capturas cegas, relançamentos
-inúteis e logs que descartem ou repitam o contexto da exceção. O grupo `TRY`
-completo e `PLR0912` não fazem parte deste gate.
-
-```bash
-# Verificar todos os perfis e a forma da política no pyproject.toml
-uv run --locked --no-sync python scripts/check-ruff-policy.py --profile all
-
-# Reproduzir somente o gate de complexidade e exceções
-uv run --locked --no-sync ruff check --select C901,BLE001,TRY203,TRY400,TRY401 src tests scripts examples
-
-# Verificar apenas formatação, sem alterar arquivos
-uv run --locked --no-sync ruff format --check src tests scripts examples
-```
-
-Esta é uma política fechada: o checker rejeita qualquer chave Ruff fora da
-forma e dos valores canônicos, inclusive `exclude`, `extend`, `ignore`,
-`extend-ignore`, `extend-select`, `extend-per-file-ignores` e tabelas aninhadas
-inesperadas. A única exceção por arquivo permitida é `S603` em
-`scripts/process_runner.py`, que centraliza a execução de comandos allowlisted,
-resolvidos e sem shell para os scripts de tooling. Esses scripts não devem
-chamar `subprocess` diretamente.
-
-### Exemplo de Docstring
-
-```python
-def download_docs(
-    self,
-    destination_path: str,
-    list_docs: list[str] | None = None,
-) -> DownloadResultCVM:
-    """Baixa documentos CVM.
-
-    Args:
-        destination_path: Diretório onde salvar arquivos.
-        list_docs: Lista de tipos de documentos. Se None, baixa todos.
-
-    Returns:
-        Objeto DownloadResultCVM com resultados do download.
-
-    Raises:
-        InvalidDocumentName: Se tipo de documento for inválido.
-        InvalidDestinationPathError: Se o caminho de destino for inválido ou não seguro.
-    """
-    pass
-```
-
-______________________________________________________________________
-
-## Testes
-
-### Executar Testes
-
-```bash
-# Todos os testes
-uv run --locked --no-sync pytest
-
-# Com cobertura
-uv run --locked --no-sync pytest --cov
-
-# Apenas unitários
-uv run --locked --no-sync pytest -m unit
-```
-
-Antes de abrir PR, rode o pipeline completo:
+## Validar antes do PR
 
 ```bash
 uv run --locked --no-sync pre-commit run --all-files --show-diff-on-failure
 uv run --locked --no-sync pytest
 ```
 
-### Quality Gates Locais
+O pytest padrão seleciona testes determinísticos. Para cobertura, marcadores,
+integrações e dados locais, use o [guia de testes](testing.md).
 
-O hook `pre-commit` valida o índice staged e mantém a atualização de
-dependências fora do fluxo de commit. Ele nunca executa `uv sync`, `uv lock`
-ou atualização de versões: `uv lock --check` apenas comprova a coerência atual
-do lockfile. O hook `pre-push` executa as verificações mais caras de tipos,
-cobertura e vulnerabilidades antes de publicar uma branch.
+| Mudança | Validação adicional |
+| --- | --- |
+| Código Python | `uv run --locked --no-sync mypy src --pretty` |
+| Documentação | `uv run --locked --no-sync mkdocs build --strict` |
+| Empacotamento | `uv build` e [aceite de release](release-readiness.md) |
 
-O hook local do Gitleaks verifica somente o conteúdo staged para manter o
-feedback de commit rápido. A CI executa uma varredura adicional em modo de
-diretório sobre um checkout limpo, portanto ela não depende de haver arquivos
-staged. A auditoria exporta dependências fixadas em `uv.lock` para um arquivo
-temporário e executa `pip-audit` sem resolver ou instalar pacotes. Ela permanece
-fora do estágio `pre-commit` rápido e roda no `pre-push` e na CI.
+Os hooks instalados distribuem as verificações por custo:
 
-Quando uma dependência precisar mudar, faça isso explicitamente, revise o
-diff de `uv.lock`, sincronize o ambiente e só então faça o commit:
+| Estágio | O que verifica |
+| --- | --- |
+| `pre-commit` | Integridade do diff, lockfile, sintaxe, formatação, lint e contratos. |
+| `commit-msg` | Formato Conventional Commits. |
+| `pre-push` | Tipos, testes com cobertura e auditoria de dependências. |
 
-```bash
-uv lock --upgrade
-uv sync --locked --all-extras --dev
-git add pyproject.toml uv.lock
-```
+As entradas canônicas ficam em `.pre-commit-config.yaml` e `pyproject.toml`.
+Para reproduzir o estágio completo de push, execute
+`uv run --locked --no-sync pre-commit run --hook-stage pre-push --all-files`.
+Os gates de diff durante o commit inspecionam o índice; na CI, inspecionam o
+intervalo cumulativo desde a release anterior. Sem alterações staged, gates
+baseados em diff podem retornar `SKIP` mesmo com `--all-files`; isso não
+comprova aprovação desses gates. O Gitleaks local examina o índice; a CI também
+verifica o checkout completo.
 
-Os gates de diff, integridade de testes e sintaxe shell examinam apenas o
-conteúdo staged durante um commit. Na CI, os mesmos scripts examinam o intervalo
-cumulativo desde a tag de release anterior até o commit candidato. Isso mantém
-as autorizações de integridade de testes válidas para as remoções incluídas
-nesse intervalo; um `SKIP` local por não haver arquivos staged não equivale à
-aprovação da CI.
+## Enviar o PR
 
-`.agents/` permanece rastreado para que cada clone distribua os validadores
-portáteis, mas é uma projeção gerada e mantida pelo repositório separado
-`central-skills`; seus arquivos gerados nunca devem ser editados manualmente.
-Colaboradores comuns e usuários do projeto não precisam instalar
-`central-skills`. Um mantenedor que alterar a seleção ou a projeção deve
-corrigir a fonte canônica, regenerar com `harness-sync` e executar o check:
+Revise o diff e adicione somente os caminhos da alteração. Formatação automática
+precisa ser revisada antes de entrar no índice.
 
 ```bash
-harness-sync --check
+git commit -m "fix: validate COTAHIST inputs before writing"
 ```
 
-O hook `check-harness-sync` é manual e somente para mantenedores que possuem o
-executável opcional instalado. Ele não participa dos estágios padrão de
-`pre-commit`, `pre-push` ou da CI; se o executável não existir, o check falha
-explicitamente em vez de produzir um `SKIP` enganoso.
+Descreva o problema, o comportamento final, os comandos de validação e os checks
+pulados ou dependentes de ambiente externo. Para exclusões ou consolidações de
+testes, registre a justificativa em `.test-integrity-policy.json`.
 
-Os hooks genéricos recebem uma exclusão explícita para `.agents/`, `.claude/`,
-`.codex/`, `.opencode/` e `.github/prompts/`. Portanto, eles não formatam nem
-analisam essas projeções. Os validadores rastreados dentro de `.agents/` são a
-exceção deliberada: podem ser executados diretamente do clone e não dependem
-de uma instalação externa. A ausência do executável opcional de sincronização
-não bloqueia commits ou pushes normais; falhas reais dos validadores devem ser
-corrigidas, nunca contornadas desativando os hooks.
+## Dependências e tooling interno
 
-### Escrever Testes
+Altere dependências deliberadamente com uv e revise `pyproject.toml` e `uv.lock`.
+Não edite o lockfile à mão. Os hooks validam a resolução; atualizações e
+sincronização do ambiente ficam fora do commit.
 
-```python
-import pytest
-from globaldatafinance import FundamentalStocksDataCVM
+As projeções de agentes em `.agents/`, `.claude/`, `.codex/` e `.opencode/`
+são mantidas pelo repositório `central-skills`. Altere a fonte e regenere em
+vez de editar os arquivos gerados. `harness-sync --check` é um check manual de
+mantenedores; colaboradores comuns não precisam instalar essa ferramenta.
 
-@pytest.mark.unit
-class TestFundamentalStocksData:
-    def test_get_available_docs(self):
-        """Testa obtenção de documentos disponíveis."""
-        cvm = FundamentalStocksDataCVM()
-        docs = cvm.get_available_docs()
-
-        assert isinstance(docs, dict)
-        assert "DFP" in docs
-        assert len(docs) > 0
-```
-
-______________________________________________________________________
-
-## Workflow Git
-
-### Branches
-
-- `main`: Código estável
-- `develop`: Desenvolvimento
-- `feature/nome-feature`: Novas funcionalidades
-- `fix/nome-bug`: Correções de bugs
-
-### Commits
-
-Use mensagens descritivas:
-
-```bash
-# Bom
-git commit -m "feat: add asynchronous parallel worker pool for CVM downloads"
-git commit -m "fix: resolve socket timeout during multi-year COTAHIST extraction"
-
-# Evite
-git commit -m "update"
-git commit -m "fix bug"
-```
-
-### Pull Requests
-
-1. Crie branch a partir de `develop`
-2. Faça suas alterações
-3. Adicione testes
-4. Atualize documentação
-5. Abra PR para `develop`
-
-______________________________________________________________________
-
-## Checklist de PR
-
-- [ ] Código segue PEP 8
-- [ ] Type hints adicionados
-- [ ] Docstrings completas
-- [ ] Testes adicionados
-- [ ] Testes passando
-- [ ] Documentação atualizada
-- [ ] Pre-commit hooks passando
-
-______________________________________________________________________
-
-## Contato
-
-- GitHub Issues: [Abrir issue](https://github.com/jordanestralioto/Global-Data-Finance/issues)
-- Email: estraliotojordan@gmail.com
+Para reportar vulnerabilidades, siga a
+[política de segurança](https://github.com/jordanestralioto/Global-Data-Finance/blob/develop/SECURITY.md).

@@ -67,7 +67,7 @@ public, source, and shared boundaries.
 | Run the aggregate local gate         | `uv run --locked --no-sync pre-commit run --all-files --show-diff-on-failure`                                                    |
 | Run deterministic tests and coverage | `uv run --locked --no-sync pytest -m "not slow and not real_data and not perf" --cov --cov-report=xml --cov-report=term-missing` |
 | Run the structural test-quality gate | `uv run --locked --no-sync python scripts/check_test_quality.py`                                                                 |
-| Run local COTAHIST fast tests        | `COTAHIST_PATH=./cotahist_b3 COTAHIST_TEST_YEAR=2023 uv run --locked --no-sync pytest -m "real_data and not slow"`               |
+| Run local COTAHIST fast tests        | `COTAHIST_PATH=./cotahist_b3_local COTAHIST_TEST_YEAR=2023 uv run --locked --no-sync pytest -m "real_data and not slow"`         |
 | Type-check product code              | `uv run --locked --no-sync mypy src --pretty`                                                                                    |
 | Run the repository Ruff gate         | `uv run --locked --no-sync python scripts/check-ruff-policy.py --profile all`                                                    |
 | Check formatting                     | `uv run --locked --no-sync ruff format --check src tests scripts examples`                                                       |

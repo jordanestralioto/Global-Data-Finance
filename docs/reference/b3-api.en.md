@@ -1,16 +1,16 @@
-# B3 API - Technical Specification
+# B3 API Reference
 
-Detailed technical specification covering the B3 historical quote extraction API.
+Inputs, results, and execution contracts for `HistoricalQuotesB3`.
+For local input preparation, see the [B3 guide](../user-guide/b3-docs.md).
 
 ______________________________________________________________________
 
 ## HistoricalQuotesB3
 
-### Primary Class Definition
+### Import
 
 ```python
-class HistoricalQuotesB3:
-    """High-level facade for B3 market quote extraction and normalization."""
+from globaldatafinance import HistoricalQuotesB3
 ```
 
 ### Execution telemetry
@@ -21,9 +21,19 @@ when a new extraction begins. Observations include the effective backend,
 worker limit, and timings of executed phases. This diagnostic is separate from
 the `ExtractionResultB3` result and Parquet metadata.
 
-### Public Methods
+### Construction and configuration
 
-#### `extract()`
+```python
+def __init__(self, *, settings: Settings | None = None) -> None:
+    ...
+```
+
+Import `Settings` from `globaldatafinance.core.config`. The optional argument
+injects an immutable snapshot; with `None`, the client creates a snapshot from
+the current environment. The `settings` property returns the configuration
+used. See [configuration](../dev-guide/advanced-usage.md).
+
+### `extract()`
 
 ```python
 def extract(
@@ -59,11 +69,11 @@ the output path from replacing a COTAHIST source.
 | ------------------ | ------------------- | -------- | ----------------------- | -------------------------------------------------------------------------- |
 | `path_of_docs`     | `str`               | Yes      | -                       | Directory containing COTAHIST ZIP or TXT inputs                            |
 | `assets_list`      | `list[str] \| None` | No       | `None` (`["todos"]`)    | Asset classes; `todos` selects every valid numeric TPMERC                  |
-| `initial_year`     | `int \| None`       | No       | `None` (1986)           | Initial historical fiscal year (inclusive, >= 1986)                        |
-| `last_year`        | `int \| None`       | No       | `None` (current year)   | Ending historical fiscal year (inclusive)                                  |
+| `initial_year`     | `int \| None`       | No       | `None` (1986)           | First annual COTAHIST year, inclusive (>= 1986)                            |
+| `last_year`        | `int \| None`       | No       | `None` (current year)   | Last annual COTAHIST year, inclusive                                       |
 | `destination_path` | `str \| None`       | No       | `None` (`path_of_docs`) | Output artifact destination directory                                      |
 | `output_filename`  | `str`               | No       | `"cotahist_extracted"`  | Required basename; optional `.parquet` suffix is appended only when absent |
-| `processing_mode`  | `str`               | No       | `"fast"`                | Execution mode: `"fast"` (parallel) or `"slow"` (minimal RAM)              |
+| `processing_mode`  | `str`               | No       | `"fast"`                | `"fast"` permits concurrent sources; `"slow"` uses one source worker      |
 | `verbose`          | `bool`              | No       | `True`                  | When `True`, prints formatted execution summary to console                 |
 
 The `Validating B3 files` and `Processing B3 files` bars appear on `stdout`
@@ -76,11 +86,11 @@ the returned result confirms complete success. Failures and cancellation
 finish the bar's output line at the observed count. Selections without files
 do not display empty bars.
 
-**Return Contract (`ExtractionResultB3`)**:
+**Returns (`ExtractionResultB3`)**:
 
 Typed dictionary (`TypedDict`) containing execution results:
 
-- `success: bool` — Success status confirmation for overall execution.
+- `success: bool` — Whether extraction completed successfully.
 - `message: str` — Human-readable summary of the execution outcome.
 - `total_files: int` — Number of annual inputs resolved for the request.
 - `success_count: int` — Number of sources included in the committed output.
@@ -164,38 +174,59 @@ failed outcome and preserve the previous output through rollback.
 **Raised Exceptions**:
 
 - `EmptyAssetListError`: Empty array supplied for `assets_list` parameter.
-- `InvalidAssetsName`: Supplied instrument keyword unsupported by filter rules.
-- `InvalidFirstYear`: Initial year parameter set below 1986 historical floor.
-- `InvalidLastYear`: Ending year preceded initial year or surpassed active year limits.
+- `InvalidAssetsName`: Non-string filter item or unsupported alias.
+- `InvalidFirstYear`: Invalid initial year; supported range is 1986 through the current year.
+- `InvalidLastYear`: Invalid final year, above the current year, or before the initial year.
 - `InvalidOutputFilename`: Output filename contains path separators or traversal segments.
-- `ExtractionError`: Corruption or positional alignment errors encountered during parsing.
+- `InvalidProcessingMode`: Mode other than `"fast"` or `"slow"`.
+- `InvalidDestinationPathError`: Empty or whitespace-only path.
+- `PathIsNotDirectoryError`: Missing input path or an input path that is not a directory.
+- `SecurityError`: Path rejected by the security policy.
 
-**Execution Example**:
+Content and processing failures are collected in `errors` with `success=False`.
+See the [exception reference](exceptions.md) for types used by lower-level
+calls.
+
+**Example**:
 
 ```python
 from globaldatafinance import HistoricalQuotesB3
 
-b3 = HistoricalQuotesB3()
-result = b3.extract(
-    path_of_docs="/data/cotahist",
-    assets_list=["ações", "etf"],
-    initial_year=2022,
-    last_year=2023,
-    processing_mode="fast",
-)
-print(f"Extracted {result['total_records']:,} records")
+def main() -> None:
+    b3 = HistoricalQuotesB3()
+    result = b3.extract(
+        path_of_docs="/data/cotahist",
+        assets_list=["ações", "opções"],
+        initial_year=2022,
+        last_year=2023,
+        processing_mode="fast",
+    )
+    if not result["success"]:
+        raise RuntimeError(result["errors"] or result["message"])
+    print(f"Extracted {result['total_records']:,} records")
+
+
+if __name__ == "__main__":
+    main()
 ```
 
-#### `get_available_assets()`
+### `extract_async()`
+
+Async counterpart of `extract()`, with identical arguments, defaults, and
+result. In notebooks or applications with an active event loop, use
+`await client.extract_async(...)` instead of the synchronous wrapper. The full
+signature is also in the [API overview](../dev-guide/api-reference.md).
+
+### `get_available_assets()`
 
 ```python
 def get_available_assets(self) -> list[str]:
     ...
 ```
 
-**Description**: Returns an exhaustive whitelist of permissible asset filter strings.
+**Description**: Returns the supported asset filter aliases.
 
-**Return Structure**: List of instrument string identifiers.
+**Returns**: List of alias strings.
 
 **Execution Example**:
 
@@ -204,7 +235,7 @@ assets = b3.get_available_assets()
 # Returns: ['ações', 'etf', 'opções', 'termo', 'exercicio_opcoes', 'forward', 'leilao', 'lote_bloco', 'todos']
 ```
 
-#### `get_available_years()`
+### `get_available_years()`
 
 ```python
 def get_available_years(self) -> dict[str, int]:
@@ -225,11 +256,84 @@ years = b3.get_available_years()
 # `current_year` is the current execution year returned by the API.
 ```
 
-#### Instance Properties
+### Instance properties
 
 - `settings: Settings`: Immutable snapshot of the client runtime configuration.
 
 ______________________________________________________________________
+
+## Integrity report
+
+`result["integrity"]` is a `B3IntegrityReport`. Every key below is present,
+including on failure; nullable values use `None`. Dates are ISO `YYYY-MM-DD`
+strings. Counts and flags describe the supplied sources, without reconciliation
+against an external trading calendar or instrument registry.
+
+| Key | Type | Meaning |
+| --- | --- | --- |
+| `status` | `Literal["passed", "failed", "not_run"]` | Verification status |
+| `schema_version` | `int` | Schema version, `2` |
+| `verification_method` | `str` | Verification method or `"not completed"` |
+| `requested_years` | `list[int]` | Requested years |
+| `selected_years` | `list[int]` | Years of selected, validated sources |
+| `missing_years` | `list[int]` | Requested years without an input source |
+| `complete_market_selection` | `bool` | `todos` selection, including unknown numeric codes |
+| `market_codes` | `list[str]` | Selected codes; empty for complete market selection |
+| `asset_classes` | `list[str]` | Normalized, deduplicated aliases |
+| `raw_quotes` | `int` | Total `01` records in validated sources |
+| `selected_quotes` | `int` | Records selected by the filter |
+| `intentional_exclusions` | `int` | Records excluded by the filter |
+| `excluded_records` | `int` | Same value as `intentional_exclusions` |
+| `written_rows` | `int` | Rows written |
+| `verified_rows` | `int` | Rows checked during readback |
+| `selection_complete` | `bool` | Verification passed and selected = written = verified |
+| `source_complete` | `bool` | Complete row selection, no exclusions, and raw = written = verified |
+| `source_first_trading_date` | `str \| None` | First date in validated sources |
+| `source_last_trading_date` | `str \| None` | Last date in validated sources |
+| `output_first_trading_date` | `str \| None` | First date in verified output |
+| `output_last_trading_date` | `str \| None` | Last date in verified output |
+| `unknown_market_counts` | `dict[str, int]` | Counts by unknown TPMERC code |
+| `warnings` | `list[B3IntegrityWarning]` | Warnings associated with an input or published output |
+| `sources` | `list[B3SourceIntegrityReport]` | Per-source evidence, detailed below |
+| `ignored_duplicate_sources` | `list[str]` | Equivalent TXT inputs skipped in favor of ZIP |
+| `output_sha256` | `str \| None` | SHA-256 of published output; `None` without confirmed output |
+
+Each item in `sources` contains these required keys:
+
+| Key | Type | Meaning |
+| --- | --- | --- |
+| `source` | `str` | Input filename |
+| `year` | `int` | Source year |
+| `member` | `str` | ZIP member; empty for TXT |
+| `outer_sha256` | `str` | SHA-256 of the input file |
+| `content_sha256` | `str` | SHA-256 of uncompressed COTAHIST bytes |
+| `uncompressed_bytes` | `int` | Uncompressed content size |
+| `market_counts` | `dict[str, int]` | Counts by TPMERC code |
+| `unknown_market_counts` | `dict[str, int]` | Counts by unknown TPMERC code |
+| `header_records` | `int` | Number of `00` controls |
+| `trailer_records` | `int` | Number of `99` controls |
+| `generation_date` | `str` | Declared generation date |
+| `blank_lines` | `int` | Observed blank lines |
+| `warnings` | `list[B3SourceWarningReport]` | Source warnings |
+| `raw_quotes` | `int` | Total `01` records |
+| `selected_quotes` | `int` | Selected records |
+| `intentional_exclusions` | `int` | Records excluded by the filter |
+| `excluded_records` | `int` | Same value as `intentional_exclusions` |
+| `written_rows` | `int` | Rows written for this source |
+| `verified_rows` | `int` | Rows verified for this source |
+| `declared_records` | `int` | Count declared in the trailer |
+| `trailer_convention` | `str` | Trailer count convention |
+| `first_trading_date` | `str` | First source trading date |
+| `last_trading_date` | `str` | Last source trading date |
+| `header_base64` | `str` | Original `00` control in Base64 |
+| `trailer_base64` | `str` | Original `99` control in Base64 |
+| `expected_rows_sha256` | `str` | Ordered preflight digest of selected rows |
+| `verified_rows_sha256` | `str \| None` | Verified output digest; `None` before verification |
+
+`B3SourceWarningReport` contains `code: str`, `count: int`, and `explanation: str`.
+`B3IntegrityWarning` adds `source: str`, the input or published Parquet basename.
+Post-commit cleanup warning codes are described under `extract()`.
+The [B3 v2 schema](b3-schema-v2.md) defines the row-digest framing.
 
 ## Execution Configuration and Environment Variables
 
@@ -265,25 +369,26 @@ ______________________________________________________________________
 | `lote_bloco`       | Block lot             | 021 (BBT and Midpoint)                               |
 | `todos`            | Complete selection    | Every valid numeric TPMERC                           |
 
-The Portuguese strings in this table are canonical `assets_list` values and
-must be passed exactly as shown. BDRs and Futures are **Planned** and are not
-accepted by the current runtime contract.
+The Portuguese strings in this table are the accepted `assets_list` aliases.
+Validation lowercases the input; spelling and accents still matter. `ações`
+and `etf` select the same markets, `010` and `020`, without distinguishing
+stocks from ETFs or classifying issuers. The aliases `bdr` and `futuro` are not
+in the catalog. Use `get_available_assets()` to query the installed version.
 
 ______________________________________________________________________
 
-## Computational Execution Modes
+## Processing modes
 
-| Processing Mode | Measured Throughput\* | Measured Peak RSS\* | Default Parallelism                                             | Recommended Operating Profile |
-| --------------- | --------------------: | ------------------: | --------------------------------------------------------------- | ----------------------------- |
-| **fast**        |       34,313.8 rows/s |          429.88 MiB | Up to 4 workers, bounded by CPU count, memory, and source files | Prioritize throughput         |
-| **slow**        |       29,759.9 rows/s |          331.11 MiB | 1 worker                                                        | Reduce memory use             |
+| Mode | Execution | Use |
+| --- | --- | --- |
+| `fast` | Concurrent sources within CPU, memory, and file-count limits; default cap of 4 workers | Allow source-level parallelism |
+| `slow` | One source worker and smaller batches | Limit concurrency and memory use |
 
-*Historical implementation v3 measurement on 27 annual files (2000–2026),
-22,303,577 rows, excluding 2,283 TPMERC `021` quotations. It does not describe
-schema v2 and is not directly comparable. See the [benchmark details](../dev-guide/benchmarks.en.md).*
-
-The `fast` mode coordinates parallelism by source file. The `slow` mode uses a
-single worker to reduce memory use.
+Both modes use bounded batches and the same schema and validation.
+`slow` does not reduce the requested data or the space needed for temporary
+files and output. [COTAHIST measurements](../dev-guide/cotahist-performance.md)
+record the environment, corpus, and results. Previous-schema measurements
+remain in the [historical benchmarks](../dev-guide/benchmarks.md).
 
 For consumers importing `ProcessingModeEnumB3` through the source namespace,
 the `FAST` and `SLOW` values remain. The 2026-10-20 revision removes

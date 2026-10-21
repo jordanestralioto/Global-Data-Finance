@@ -10,12 +10,9 @@ else:
 from globaldatafinance import HistoricalQuotesB3
 
 # SETTINGS: change the values here. The README explains each option.
-INITIAL_YEAR = 2010
-LAST_YEAR = 2026
-PATH_OF_DOCS = (
-    '/mnt/f4ec9d54-a0c2-4385-9e66-533d8f9307ae/Downloads/'
-    'Databases/dados_bolsa_br/COTAHIST'
-)
+INITIAL_YEAR = 2022
+LAST_YEAR = 2023
+PATH_OF_DOCS = './cotahist_b3'
 DESTINATION_PATH = './dados_b3'
 ASSETS = ['ações', 'etf', 'opções']  # Use ['todos'] for every market.
 OUTPUT_NAME = 'carteira_completa'  # Years are added automatically.

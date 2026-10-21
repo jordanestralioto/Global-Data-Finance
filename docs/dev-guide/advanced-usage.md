@@ -23,7 +23,7 @@ from globaldatafinance.core.logging_config import (
 setup_logging(LoggingSettings(level="INFO", log_file="app.log"))
 
 # Obter logger
-logger = get_logger(__name__)
+logger = get_logger("globaldatafinance.example")
 cvm = FundamentalStocksDataCVM()
 
 # Logging estruturado
@@ -61,6 +61,13 @@ partir do diretório de trabalho atual. Em casos avançados, os consumidores
 podem passar `_env_file=...` diretamente para `Settings` quando quiserem que o
 pydantic-settings carregue um arquivo explicitamente; isso não adiciona uma
 opção dotenv às facades públicas.
+
+Ao passar `_env_file` ao `Settings` raiz, use o objeto aninhado em JSON para
+configurar a rede, por exemplo `DATAFINANCE_NETWORK={"timeout": 240}` no arquivo.
+A chave plana `DATAFINANCE_NETWORK_TIMEOUT` funciona no ambiente do processo;
+não presuma que o arquivo do modelo raiz seja propagado ao `NetworkSettings`.
+O snapshot explícito pode ser injetado com `FundamentalStocksDataCVM(settings=...)`
+ou `HistoricalQuotesB3(settings=...)`.
 
 ```bash
 # Aumentar timeout para conexões lentas
@@ -120,7 +127,7 @@ validada).
 
 ### Resource Monitoring
 
-Monitore e gerencie recursos automaticamente:
+Use o monitor para consultar recursos e decidir quantos workers iniciar:
 
 ```python
 from globaldatafinance.core import ResourceMonitor, ResourceState
@@ -138,7 +145,8 @@ safe_workers = monitor.get_safe_worker_count(max_workers=16)
 print(f"Usando {safe_workers} workers")
 
 # Aguardar recursos disponíveis
-monitor.wait_for_resources(timeout_seconds=120)
+if not monitor.wait_for_resources(timeout_seconds=120):
+    raise TimeoutError("Resources unavailable after 120 seconds")
 ```
 
 [Ver documentação completa →](resource-monitoring.md)
@@ -185,7 +193,11 @@ ______________________________________________________________________
 
 ## Customização de Adapters
 
-O adapter HTTP (`AsyncDownloadAdapterCVM`) e o adapter de extração (`ParquetExtractorAdapterCVM`) operam como classes concretas com contratos limpos e bem definidos. O orquestrador (`DownloadDocumentsUseCaseCVM`) aceita qualquer objeto que exponha o método público (`download_docs(tasks)`), utilizando duck typing. Para substituir o adapter, basta passar uma classe alternativa que implemente o mesmo contrato de métodos.
+Os adaptadores CVM de download e extração são classes concretas.
+`DownloadDocumentsUseCaseCVM` aceita um colaborador com o método esperado
+`download_docs(tasks, *, automatic_extractor=False)`. Este é um exemplo de
+extensão interna: o resultado é ilustrativo. Implemente o transporte e
+registre os resultados reais antes de usar um adaptador próprio.
 
 ### Substituir o Adapter HTTP
 
@@ -229,7 +241,8 @@ result = use_case.execute(
 )
 ```
 
-> O sistema foi desenhado visando clareza e extensibilidade: o orquestrador interage com adaptadores através do seu contrato público de métodos (duck typing), permitindo que customizações sejam injetadas sem burocracia ou herança complexa. Veja `docs/dev-guide/architecture.md` para detalhes.
+O orquestrador usa o contrato de métodos do colaborador sem exigir uma classe
+base comum. Veja [arquitetura](architecture.md) para os limites e responsáveis.
 
 ______________________________________________________________________
 
@@ -243,6 +256,7 @@ from globaldatafinance.core import get_logger
 
 # Criar logger personalizado
 logger = get_logger("meu_modulo")
+logger.setLevel(logging.DEBUG)
 
 # Adicionar handler para arquivo
 file_handler = logging.FileHandler("globaldatafinance.log")
@@ -263,28 +277,50 @@ ______________________________________________________________________
 
 ### Múltiplos Anos em Paralelo
 
-O extrator B3 aceita `COTAHIST_A{YYYY}.ZIP` ou `.TXT`; se os dois formatos do mesmo ano estiverem no diretório, somente o ZIP será processado.
+O extrator B3 aceita `COTAHIST_A{YYYY}.ZIP` ou `.TXT`. Se ambos existirem para
+o mesmo ano, ambos são validados; o ZIP é selecionado somente quando seus
+conteúdos descompactados são idênticos. Conteúdos diferentes causam falha.
+
+Para uma saída consolidada, prefira uma única chamada com o intervalo completo:
+o próprio extrator coordena as fontes. O exemplo abaixo cria uma saída por ano.
+Seu pool externo é responsabilidade do consumidor: `GDF_B3_WORKER_LIMIT`
+limita cada extração e não a soma de processos externos. Defina o limite do
+pool conforme o orçamento total de CPU e RAM; cada chamada usa `slow` para
+manter um worker de fonte.
+
+Cada execução paralela usa um diretório de destino próprio: o lock de
+publicação é por diretório, mesmo quando os nomes dos arquivos são diferentes.
 
 ```python
 from concurrent.futures import ProcessPoolExecutor
-from globaldatafinance import HistoricalQuotesB3
+from globaldatafinance import ExtractionResultB3, HistoricalQuotesB3
 
-def extract_year(year):
+def extract_year(year: int) -> ExtractionResultB3:
     b3 = HistoricalQuotesB3()
     return b3.extract(
         path_of_docs="/data/cotahist",
         assets_list=["ações"],
         initial_year=year,
         last_year=year,
-        output_filename=f"acoes_{year}"
+        destination_path=f"./data_b3/{year}",
+        output_filename=f"acoes_{year}",
+        processing_mode="slow",
     )
 
-years = range(2020, 2024)
-with ProcessPoolExecutor(max_workers=4) as executor:
-    results = list(executor.map(extract_year, years))
+def main() -> None:
+    years = range(2020, 2024)
+    caller_worker_limit = 2
+    with ProcessPoolExecutor(max_workers=caller_worker_limit) as executor:
+        results = list(executor.map(extract_year, years))
 
-for year, result in zip(years, results):
-    print(f"{year}: {result['total_records']:,} registros")
+    for year, result in zip(years, results):
+        if not result["success"]:
+            raise RuntimeError(result["errors"] or result["message"])
+        print(f"{year}: {result['total_records']:,} registros")
+
+
+if __name__ == "__main__":
+    main()
 ```
 
 ______________________________________________________________________
@@ -405,6 +441,9 @@ ______________________________________________________________________
 ## Monitoramento e Métricas
 
 ### Tracking de Progresso
+
+Este exemplo usa `tqdm`, uma dependência opcional que deve ser instalada
+separadamente no ambiente consumidor.
 
 ```python
 from tqdm import tqdm

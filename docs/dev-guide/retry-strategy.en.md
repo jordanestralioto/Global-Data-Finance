@@ -1,21 +1,21 @@
 # Retry Strategy
 
-Technical documentation outlining the error retry and back-off strategies enforced within Global-Data-Finance.
+Retry classification and exponential backoff used by Global-Data-Finance.
 
 ______________________________________________________________________
 
 ## Overview
 
-The `RetryStrategy` domain class evaluates execution exceptions to determine retry eligibility and computes optimized exponential back-off delays between attempts.
+`RetryStrategy` classifies exceptions by type and message and calculates
+exponential backoff with jitter. The caller decides when to repeat an operation.
 
 ______________________________________________________________________
 
 ## Highlights
 
-- ✅ **Transient Intelligence**: Filters failures to trigger retries strictly upon encountering transient network interruptions
-- ✅ **Exponential Back-off**: Progressively elongates rest intervals between successive unsuccessful execution attempts
-- ✅ **Configurable Thresholds**: Full support for tailoring initial delays, max ceilings, and scaling multiplier coefficients
-- ✅ **Type-Safe Hierarchy**: Evaluates errors leveraging the repository's dedicated custom exception hierarchy
+- Exception classification with a message-keyword fallback.
+- Exponential backoff with multiplicative jitter and a configurable cap.
+- Explicit exclusions for `PathPermissionError`, `DiskFullError`, and `ValueError`.
 
 ______________________________________________________________________
 
@@ -28,7 +28,8 @@ ______________________________________________________________________
 
 ### Keyword-Based Exception Matchers
 
-Standard runtime exceptions triggered by underlying transports are marked retryable if their error string matches standard connection keywords:
+For any other non-excluded exception, the strategy searches its lowercased
+message for these keywords:
 
 - `"timeout"`
 - `"connection refused"`
@@ -38,11 +39,16 @@ Standard runtime exceptions triggered by underlying transports are marked retrya
 - `"unavailable"`
 - `"try again"`
 
+This fallback also accepts a generic exception, such as
+`Exception("Operation timeout occurred")`. Its message does not prove the
+failure is transient. For manual retry, use idempotent operations or apply
+your own classification before repeating a state change.
+
 ### Never Retryable (Fail-Fast) Exceptions
 
 - `PathPermissionError` - File system authorization blocks
 - `DiskFullError` - Local volume capacity exhaustion
-- `ValueError` / `InvalidDocumentName` - Invalid API parameters or unapproved inputs
+- `ValueError` - Validation error
 
 ### HTTP Statuses in CVM Downloads
 

@@ -130,7 +130,8 @@ ______________________________________________________________________
 Download raw historical bundles directly from B3's official data portal:
 🔗 [https://www.b3.com.br/pt_br/market-data-e-indices/servicos-de-dados/market-data/historico/mercado-a-vista/cotacoes-historicas/](https://www.b3.com.br/pt_br/market-data-e-indices/servicos-de-dados/market-data/historico/mercado-a-vista/cotacoes-historicas/)
 
-The API accepts `COTAHIST_A{YYYY}.ZIP` or the uncompressed `COTAHIST_A{YYYY}.TXT`; for the same year, ZIP takes precedence. `path_of_docs`
+The API accepts `COTAHIST_A{YYYY}.ZIP` or the uncompressed `COTAHIST_A{YYYY}.TXT`. When both formats exist for a year, both are validated; ZIP is selected
+only when their decompressed contents are identical. Conflicting contents fail. `path_of_docs`
 is an existing local input directory; the library does not download or populate
 the B3 files. BDRs and Futures are **Planned**, not currently accepted asset
 categories.
@@ -177,6 +178,7 @@ result = b3.extract(
     path_of_docs="/data/cotahist",
     assets_list=["ações"],  # Selects TPMERC 010 and 020 equity records
     initial_year=2023,
+    last_year=2023,
 )
 ```
 
@@ -192,6 +194,7 @@ result = b3.extract(
     path_of_docs="/data/cotahist",
     assets_list=["ações", "etf", "opções"],
     initial_year=2023,
+    last_year=2023,
 )
 ```
 
@@ -205,6 +208,8 @@ from globaldatafinance import HistoricalQuotesB3
 b3 = HistoricalQuotesB3()
 result = b3.extract(
     path_of_docs="/data/cotahist",
+    initial_year=2023,
+    last_year=2023,
     assets_list=["ações"],
     output_filename="equities_2023",  # Generates an artifact titled: equities_2023.parquet
 )
@@ -326,16 +331,13 @@ docs = cvm.get_available_docs()
 print(list(docs.keys()))
 ```
 
-### "EmptyDirectoryError"
+### Empty B3 directory or missing year
 
-**Cause**: `EmptyDirectoryError` is raised only when the input directory is
-physically empty. If the directory is not empty but has no COTAHIST file for
-any requested year, the API returns `success=False`, lists the year in
-`integrity.missing_years`, and does not publish a new output.
-**Solution**: When the directory is empty, place files matching
-`COTAHIST_A{YYYY}.ZIP` or the uncompressed `.TXT` pattern inside it. For a
-non-empty directory, select only the available annual range and inspect
-`integrity.missing_years` if the request fails.
+An empty input directory returns `success=False`, `total_files=0`, and
+`output_file=""`; requested years appear in `integrity.missing_years`.
+The call also fails when any requested year is missing. Add the annual files
+or restrict the range to available years. No new output is published.
+See the [B3 contract](../reference/b3-api.md).
 
 ### Download Failures or Network Timeouts
 

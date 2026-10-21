@@ -3,7 +3,8 @@
 site_name: Global-Data-Finance
 site_author: Jordan Estralioto
 site_description: >-
-  Biblioteca Python para extração e processamento de dados financeiros globais
+  Biblioteca Python para baixar documentos da CVM e processar cotações
+  históricas da B3 em Parquet
 site_url: https://jordanestralioto.github.io/Global-Data-Finance/
 # Repository
 repo_name: jordanestralioto/Global-Data-Finance
@@ -99,6 +100,10 @@ plugins:
             Guia do Usuário: User Guide
             Guia do Desenvolvedor: Developer Guide
             Referência Técnica: Technical Reference
+            Configuração e operação: Configuration and operation
+            Manutenção e evidências: Maintenance and evidence
+            Migrações: Migrations
+            Validação com dados externos: Validation with external data
             Publicação transacional: Transactional publication
             Instalação: Installation
             Início Rápido: Quickstart
@@ -174,20 +179,18 @@ nav:
       - Início Rápido: user-guide/quickstart.md
       - Documentos CVM: user-guide/cvm-docs.md
       - Cotações Históricas B3: user-guide/b3-docs.md
-      - Boas práticas B3: user-guide/b3-operations.md
       - Exemplos Práticos: user-guide/examples.md
       - FAQ: user-guide/faq.md
-      - Migração major: user-guide/migration-pyarrow-integrity.md
-      - Migração de infraestrutura: user-guide/migration-infrastructure-clean-cut.md
-      - Migração CVM exata: user-guide/migration-cvm-exact-text.md
   - Guia do Desenvolvedor:
-      - Arquitetura: dev-guide/architecture.md
-      - Referência da API: dev-guide/api-reference.md
       - Como Contribuir: dev-guide/contributing.md
-      - Aceite de release: dev-guide/release-readiness.md
+      - Arquitetura: dev-guide/architecture.md
       - Testes: dev-guide/testing.md
-      - Benchmarks: dev-guide/benchmarks.md
-      - Performance COTAHIST: dev-guide/cotahist-performance.md
+      - Manutenção e evidências:
+          - Aceite de release: dev-guide/release-readiness.md
+          - Benchmarks: dev-guide/benchmarks.md
+          - Performance COTAHIST: dev-guide/cotahist-performance.md
+          - Validação com dados externos: dev-guide/real-data-validation.md
+          - Auditoria do corpus COTAHIST: reference/cotahist-v2-supplied-corpus.md
       - Decisões Técnicas:
           - Níveis de Execução de Testes: decisions/test-execution-tiers.md
           - Campanha Real Auditável: decisions/real-validation-campaign.md
@@ -195,14 +198,20 @@ nav:
           - Commit CVM Tolerante a Falhas: decisions/cvm-failure-atomic-batch-commit.md
           - Cutover PyArrow e Integridade: decisions/pyarrow-ingestion-integrity-cutover.md
           - Corte limpo da infraestrutura compartilhada: decisions/shared-infrastructure-clean-cut.md
-      - Uso Avançado: dev-guide/advanced-usage.md
-      - Sistema de Logging: dev-guide/logging-system.md
-      - Monitoramento de Recursos: dev-guide/resource-monitoring.md
-      - Estratégia de Retry: dev-guide/retry-strategy.md
   - Referência Técnica:
-      - Publicação transacional: reference/transactional-publication.md
+      - Referência da API: dev-guide/api-reference.md
       - API CVM: reference/cvm-api.md
       - API B3: reference/b3-api.md
       - Schema Parquet B3 v2: reference/b3-schema-v2.md
-      - Auditoria do corpus COTAHIST: reference/cotahist-v2-supplied-corpus.md
       - Exceções: reference/exceptions.md
+      - Publicação transacional: reference/transactional-publication.md
+      - Configuração e operação:
+          - Uso Avançado: dev-guide/advanced-usage.md
+          - Boas práticas B3: user-guide/b3-operations.md
+          - Sistema de Logging: dev-guide/logging-system.md
+          - Monitoramento de Recursos: dev-guide/resource-monitoring.md
+          - Estratégia de Retry: dev-guide/retry-strategy.md
+      - Migrações:
+          - Migração major: user-guide/migration-pyarrow-integrity.md
+          - Migração de infraestrutura: user-guide/migration-infrastructure-clean-cut.md
+          - Migração CVM exata: user-guide/migration-cvm-exact-text.md

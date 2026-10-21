@@ -310,13 +310,9 @@ class FundamentalStocksDataCVM:
         full descriptions, helping you understand what data is available.
 
         Returns:
-            Dictionary mapping document codes to descriptions.
-            Example: {
-                'DFP': 'Demonstração Financeira Padronizada',
-                'ITR': 'Informação Trimestral',
-                'FCA': 'Formulário Cadastral',
-                ...
-            }
+            Dictionary mapping document codes to English descriptions.
+            Values are explanatory text; the DFP description starts with
+            "(Standardized Financial Statements)".
 
         Example:
             >>> cvm = FundamentalStocksDataCVM()
@@ -346,6 +342,9 @@ class FundamentalStocksDataCVM:
             - itr_min_year: Minimum year for ITR documents (e.g., 2011)
             - cgvn_vlmo_min_year: Minimum year for CGVN/VLMO (e.g., 2018)
             - current_year: Current year (e.g., 2026)
+
+            The additional ipe_min_year property returns 2003. It is not a
+            tuple field and is not included in the result of _asdict().
 
         Example:
             >>> cvm = FundamentalStocksDataCVM()

@@ -127,7 +127,9 @@ Baixe do site oficial da B3:
 🔗 [https://www.b3.com.br/pt_br/market-data-e-indices/servicos-de-dados/market-data/historico/mercado-a-vista/cotacoes-historicas/](https://www.b3.com.br/pt_br/market-data-e-indices/servicos-de-dados/market-data/historico/mercado-a-vista/cotacoes-historicas/)
 
 A API aceita `COTAHIST_A{YYYY}.ZIP` e o TXT descompactado
-`COTAHIST_A{YYYY}.TXT`; para o mesmo ano, o ZIP tem precedência. `path_of_docs`
+`COTAHIST_A{YYYY}.TXT`. Para o mesmo ano, ambos são validados e o ZIP é
+selecionado somente se os conteúdos descompactados forem idênticos;
+conteúdos diferentes causam falha. `path_of_docs`
 é um diretório de entrada local já existente; a biblioteca não baixa nem o
 preenche com arquivos B3. BDRs e Futures são **Planned**, não categorias aceitas
 atualmente.
@@ -174,6 +176,7 @@ result = b3.extract(
     path_of_docs="/data/cotahist",
     assets_list=["ações"],  # Seleciona os códigos TPMERC 010 e 020
     initial_year=2023,
+    last_year=2023,
 )
 ```
 
@@ -189,6 +192,7 @@ result = b3.extract(
     path_of_docs="/data/cotahist",
     assets_list=["ações", "etf", "opções"],
     initial_year=2023,
+    last_year=2023,
 )
 ```
 
@@ -202,6 +206,8 @@ from globaldatafinance import HistoricalQuotesB3
 b3 = HistoricalQuotesB3()
 result = b3.extract(
     path_of_docs="/data/cotahist",
+    initial_year=2023,
+    last_year=2023,
     assets_list=["ações"],
     output_filename="acoes_2023",  # Gera: acoes_2023.parquet
 )
@@ -326,16 +332,13 @@ docs = cvm.get_available_docs()
 print(list(docs.keys()))
 ```
 
-### "EmptyDirectoryError"
+### Diretório B3 vazio ou ano ausente
 
-**Causa**: `EmptyDirectoryError` ocorre somente quando o diretório de entrada
-está fisicamente vazio. Se o diretório não está vazio, mas não contém COTAHIST
-para algum ano solicitado, a API retorna `success=False`, lista o ano em
-`integrity.missing_years` e não publica uma nova saída.
-
-**Solução**: Quando o diretório estiver vazio, coloque nele arquivos
-`COTAHIST_A{YYYY}.ZIP` ou `.TXT`. Informe somente o intervalo anual disponível
-e inspecione `integrity.missing_years` quando a chamada falhar.
+Uma pasta de entrada vazia retorna `success=False`, `total_files=0` e
+`output_file=""`; os anos pedidos aparecem em `integrity.missing_years`.
+O mesmo resultado de falha ocorre quando falta qualquer ano solicitado.
+Adicione os arquivos anuais ou restrinja o intervalo aos anos disponíveis.
+Nenhuma nova saída é publicada. Veja o [contrato B3](../reference/b3-api.md).
 
 ### Falhas de Download ou Timeout
 

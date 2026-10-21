@@ -49,9 +49,11 @@ uv run --locked --no-sync pytest tests/perf -m perf -o addopts=''
 ## COTAHIST local
 
 O diretório configurado em `COTAHIST_PATH` é sempre caller-owned.
-`cotahist_b3/` é ignorado pelo Git e não é baixado pela suíte. A fixture da
-suíte `tests/brazil/b3_data/historical_quotes/integration/test_real_cotahist.py`
-aplica estas regras:
+`cotahist_b3_local/` é ignorado pelo Git e não é baixado pela suíte. As duas
+amostras sintéticas versionadas em `cotahist_b3/` pertencem aos exemplos e
+à validação determinística em `tests/examples`, sem `real_data`. A fixture da
+suíte fica em `tests/brazil/b3_data/historical_quotes/conftest.py` e é
+consumida por `integration/test_real_cotahist.py`. Ela aplica estas regras:
 
 1. Sem `COTAHIST_PATH`, somente a suíte explicitamente selecionada com
    `-m real_data` é pulada, com instrução acionável. O gate padrão não a
@@ -64,9 +66,10 @@ aplica estas regras:
    com vários anos, falha com instrução acionável e nunca escolhe o maior ano.
 4. A extração recebe o ano resolvido explicitamente. Nunca usa o ano corrente
    do sistema nem baixa dados durante o teste.
-5. O catálogo inspeciona todos os arquivos externos disponíveis, seus anos,
-   central directories, limites ZIP e resolução do membro interno, sem
-   processar integralmente todos os registros.
+5. Na implementação atual, o catálogo faz preflight completo de todos os
+   arquivos disponíveis: anos, limites ZIP, membros, hashes e cada registro.
+   Esse preparo também ocorre com `real_data and not slow`; a seleção evita
+   extração para Parquet, mas não garante uma leitura curta das fontes.
 6. A paridade limitada cria uma amostra não vazia de até 20.000 registros
    reais `01` no `tmp_path` e compara `fast` e `slow` pelos 32 campos Arrow,
    tipos e valores exatos. Como executa os dois modos, ela é marcada `slow`.
@@ -77,13 +80,13 @@ aplica estas regras:
 Para executar a verificação do catálogo e as provas de processamento:
 
 ```bash
-COTAHIST_PATH=./cotahist_b3 COTAHIST_TEST_YEAR=2000 \
+COTAHIST_PATH=./cotahist_b3_local COTAHIST_TEST_YEAR=2000 \
   uv run --locked --no-sync pytest -m "real_data and not slow"
-COTAHIST_PATH=./cotahist_b3 COTAHIST_TEST_YEAR=2000 \
+COTAHIST_PATH=./cotahist_b3_local COTAHIST_TEST_YEAR=2000 \
   uv run --locked --no-sync pytest -m "real_data and slow"
-COTAHIST_PATH=./cotahist_b3 COTAHIST_TEST_YEAR=2024 \
+COTAHIST_PATH=./cotahist_b3_local COTAHIST_TEST_YEAR=2024 \
   uv run --locked --no-sync pytest -m "real_data and not slow"
-COTAHIST_PATH=./cotahist_b3 COTAHIST_TEST_YEAR=2024 \
+COTAHIST_PATH=./cotahist_b3_local COTAHIST_TEST_YEAR=2024 \
   uv run --locked --no-sync pytest -m "real_data and slow"
 ```
 

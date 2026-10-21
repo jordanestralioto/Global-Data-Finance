@@ -128,3 +128,38 @@ def test_run_process_passes_custom_environment(
     )
 
     assert received_env == {'CUSTOM_VAR': '1'}
+
+
+def test_run_process_keeps_strict_utf8_decoding_by_default(
+    tmp_path: Path,
+) -> None:
+    """Undecodable output must remain an error for existing callers."""
+    with pytest.raises(process_runner.ProcessRunnerError) as caught:
+        process_runner.run_process(
+            [
+                'python',
+                '-c',
+                'import sys; sys.stdout.buffer.write(bytes([255]))',
+            ],
+            cwd=tmp_path,
+        )
+
+    assert isinstance(caught.value.__cause__, UnicodeDecodeError)
+
+
+def test_run_process_can_preserve_non_utf8_output(tmp_path: Path) -> None:
+    """Opting into surrogate escapes must permit lossless byte recovery."""
+    result = process_runner.run_process(
+        [
+            'python',
+            '-c',
+            'import sys; sys.stdout.buffer.write(bytes([182, 255]))',
+        ],
+        cwd=tmp_path,
+        encoding_errors='surrogateescape',
+    )
+
+    assert result.returncode == 0
+    assert (
+        result.stdout.encode('utf-8', errors='surrogateescape') == b'\xb6\xff'
+    )

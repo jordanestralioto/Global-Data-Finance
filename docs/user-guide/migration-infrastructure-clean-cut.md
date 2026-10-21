@@ -98,21 +98,31 @@ mas não são instalados nem importados pelo pacote.
 
 ## Fronteira de captura B3
 
-As exceções concretas B3 preservam seus tipos e agora herdam de `B3Error`:
+As exceções de validação de entrada B3 preservam seus tipos e herdam de
+`B3Error`. A captura abaixo usa funções de execução e tratamento definidas
+pelo consumidor:
 
 ```python
 from globaldatafinance.brazil.b3_data.historical_quotes.errors import B3Error
 
 try:
-    run_b3_operation()
+    result = run_b3_operation()
 except B3Error as error:
-    handle_b3_input_or_processing_error(error)
+    handle_b3_input_error(error)
+else:
+    if not result["success"]:
+        raise RuntimeError(result["errors"] or result["message"])
 ```
 
 `B3Error` é source-local e não é exportado por `globaldatafinance` nem usado
 como base global. As regras de ano continuam separadas das regras CVM: o limite
 mínimo B3 continua sendo 1986, e `InvalidFirstYear`/`InvalidLastYear` de cada
 fonte continuam sendo classes distintas.
+
+`CotahistCatalogError` herda de `ValueError` e `CotahistPreflightError` de
+`ExtractionError`; são tipos internos fora dessa hierarquia. A fachada retorna
+as falhas de fonte em `errors`, com `success=False`. O
+[catálogo de exceções](../reference/exceptions.md) distingue esses caminhos.
 
 ## Falhas de escrita Parquet CVM
 

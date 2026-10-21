@@ -1,16 +1,16 @@
 # API B3 - Referência Técnica
 
-Documentação técnica detalhada da API B3.
+Contratos de entrada, resultados e execução de `HistoricalQuotesB3`.
+Para preparar os arquivos locais, consulte o [guia B3](../user-guide/b3-docs.md).
 
 ______________________________________________________________________
 
 ## HistoricalQuotesB3
 
-### Classe Principal
+### Importação
 
 ```python
-class HistoricalQuotesB3:
-    """Interface de alto nível para cotações B3."""
+from globaldatafinance import HistoricalQuotesB3
 ```
 
 ### Telemetria de execução
@@ -21,9 +21,19 @@ reiniciada quando uma nova extração começa. As observações incluem o backen
 efetivo, o limite de workers e os tempos das fases executadas. Esse diagnóstico
 é separado do resultado `ExtractionResultB3` e dos metadados Parquet.
 
-### Métodos
+### Construção e configuração
 
-#### `extract()`
+```python
+def __init__(self, *, settings: Settings | None = None) -> None:
+    ...
+```
+
+Importe `Settings` de `globaldatafinance.core.config`. O argumento opcional
+injeta um snapshot imutável; com `None`, o cliente cria um snapshot do ambiente
+atual. A propriedade `settings` retorna a configuração usada. Consulte
+[configuração](../dev-guide/advanced-usage.md#configuracao-global).
+
+### `extract()`
 
 ```python
 def extract(
@@ -171,25 +181,46 @@ anterior por rollback.
 - `InvalidFirstYear`: Ano inicial fora da faixa válida (1986 até o ano atual).
 - `InvalidLastYear`: Ano final fora da faixa válida ou menor que o ano inicial.
 - `InvalidOutputFilename`: Nome de arquivo de saída inválido (contém barras ou traversal).
-- `ExtractionError`: Erro durante a leitura ou escrita dos dados.
+- `InvalidProcessingMode`: Modo diferente de `"fast"` ou `"slow"`.
+- `InvalidDestinationPathError`: Caminho vazio ou composto apenas por espaços.
+- `PathIsNotDirectoryError`: Caminho de entrada ausente ou que não é diretório.
+- `SecurityError`: Caminho rejeitado pela política de segurança.
+
+Falhas de conteúdo e processamento são consolidadas em `errors` com
+`success=False`. Consulte o [catálogo de exceções](exceptions.md) para os
+tipos usados por chamadas de baixo nível.
 
 **Exemplo**:
 
 ```python
 from globaldatafinance import HistoricalQuotesB3
 
-b3 = HistoricalQuotesB3()
-result = b3.extract(
-    path_of_docs="/data/cotahist",
-    assets_list=["ações", "etf"],
-    initial_year=2022,
-    last_year=2023,
-    processing_mode="fast",
-)
-print(f"Extraídos {result['total_records']:,} registros")
+def main() -> None:
+    b3 = HistoricalQuotesB3()
+    result = b3.extract(
+        path_of_docs="/data/cotahist",
+        assets_list=["ações", "opções"],
+        initial_year=2022,
+        last_year=2023,
+        processing_mode="fast",
+    )
+    if not result["success"]:
+        raise RuntimeError(result["errors"] or result["message"])
+    print(f"Extraídos {result['total_records']:,} registros")
+
+
+if __name__ == "__main__":
+    main()
 ```
 
-#### `get_available_assets()`
+### `extract_async()`
+
+Variante assíncrona de `extract()`, com os mesmos argumentos, padrões e
+resultado. Em notebooks ou aplicações com event loop ativo, use
+`await client.extract_async(...)` em vez do wrapper síncrono. A assinatura
+completa também está na [visão geral da API](../dev-guide/api-reference.md).
+
+### `get_available_assets()`
 
 ```python
 def get_available_assets(self) -> list[str]:
@@ -207,7 +238,7 @@ assets = b3.get_available_assets()
 # ['ações', 'etf', 'opções', 'termo', 'exercicio_opcoes', 'forward', 'leilao', 'lote_bloco', 'todos']
 ```
 
-#### `get_available_years()`
+### `get_available_years()`
 
 ```python
 def get_available_years(self) -> dict[str, int]:
@@ -225,11 +256,84 @@ years = b3.get_available_years()
 # `current_year` corresponde ao ano corrente de execução.
 ```
 
-#### Propriedades da Instância
+### Propriedades da instância
 
 - `settings: Settings`: Snapshot imutável da configuração de runtime do cliente.
 
 ______________________________________________________________________
+
+## Relatório de integridade
+
+`result["integrity"]` é um `B3IntegrityReport`. Todas as chaves abaixo estão
+presentes, inclusive em falhas; valores anuláveis usam `None`. Datas são strings
+ISO `YYYY-MM-DD`. Contagens e flags se referem às fontes fornecidas, sem
+reconciliação com um calendário ou cadastro externo de instrumentos.
+
+| Chave | Tipo | Significado |
+| --- | --- | --- |
+| `status` | `Literal["passed", "failed", "not_run"]` | Estado da verificação |
+| `schema_version` | `int` | Versão do schema, `2` |
+| `verification_method` | `str` | Método de verificação ou `"not completed"` |
+| `requested_years` | `list[int]` | Anos solicitados |
+| `selected_years` | `list[int]` | Anos das fontes selecionadas e validadas |
+| `missing_years` | `list[int]` | Anos solicitados sem fonte |
+| `complete_market_selection` | `bool` | Seleção `todos`, incluindo códigos numéricos desconhecidos |
+| `market_codes` | `list[str]` | Códigos selecionados; vazio na seleção completa |
+| `asset_classes` | `list[str]` | Aliases normalizados e sem duplicatas |
+| `raw_quotes` | `int` | Total de registros `01` nas fontes validadas |
+| `selected_quotes` | `int` | Registros selecionados pelo filtro |
+| `intentional_exclusions` | `int` | Registros excluídos pelo filtro |
+| `excluded_records` | `int` | Mesmo valor de `intentional_exclusions` |
+| `written_rows` | `int` | Linhas escritas |
+| `verified_rows` | `int` | Linhas conferidas na leitura de verificação |
+| `selection_complete` | `bool` | Verificação passou e selecionadas = escritas = verificadas |
+| `source_complete` | `bool` | Seleção completa em linhas, sem exclusões, e brutas = escritas = verificadas |
+| `source_first_trading_date` | `str \| None` | Primeira data nas fontes validadas |
+| `source_last_trading_date` | `str \| None` | Última data nas fontes validadas |
+| `output_first_trading_date` | `str \| None` | Primeira data na saída verificada |
+| `output_last_trading_date` | `str \| None` | Última data na saída verificada |
+| `unknown_market_counts` | `dict[str, int]` | Contagens por TPMERC desconhecido |
+| `warnings` | `list[B3IntegrityWarning]` | Avisos associados a uma fonte ou saída publicada |
+| `sources` | `list[B3SourceIntegrityReport]` | Evidência por fonte, detalhada abaixo |
+| `ignored_duplicate_sources` | `list[str]` | TXTs equivalentes preteridos em favor do ZIP |
+| `output_sha256` | `str \| None` | SHA-256 da saída publicada; `None` sem saída confirmada |
+
+Cada item de `sources` contém estas chaves obrigatórias:
+
+| Chave | Tipo | Significado |
+| --- | --- | --- |
+| `source` | `str` | Nome do arquivo de entrada |
+| `year` | `int` | Ano da fonte |
+| `member` | `str` | Membro ZIP; vazio para TXT |
+| `outer_sha256` | `str` | SHA-256 do arquivo de entrada |
+| `content_sha256` | `str` | SHA-256 dos bytes COTAHIST descompactados |
+| `uncompressed_bytes` | `int` | Tamanho do conteúdo descompactado |
+| `market_counts` | `dict[str, int]` | Contagens por TPMERC |
+| `unknown_market_counts` | `dict[str, int]` | Contagens por TPMERC desconhecido |
+| `header_records` | `int` | Contagem de controles `00` |
+| `trailer_records` | `int` | Contagem de controles `99` |
+| `generation_date` | `str` | Data de geração declarada |
+| `blank_lines` | `int` | Linhas vazias observadas |
+| `warnings` | `list[B3SourceWarningReport]` | Avisos da fonte |
+| `raw_quotes` | `int` | Total de registros `01` |
+| `selected_quotes` | `int` | Registros selecionados |
+| `intentional_exclusions` | `int` | Registros excluídos pelo filtro |
+| `excluded_records` | `int` | Mesmo valor de `intentional_exclusions` |
+| `written_rows` | `int` | Linhas escritas desta fonte |
+| `verified_rows` | `int` | Linhas verificadas desta fonte |
+| `declared_records` | `int` | Contagem declarada no trailer |
+| `trailer_convention` | `str` | Convenção usada na contagem do trailer |
+| `first_trading_date` | `str` | Primeira data de pregão da fonte |
+| `last_trading_date` | `str` | Última data de pregão da fonte |
+| `header_base64` | `str` | Controle `00` original em Base64 |
+| `trailer_base64` | `str` | Controle `99` original em Base64 |
+| `expected_rows_sha256` | `str` | Digest ordenado das linhas selecionadas no preflight |
+| `verified_rows_sha256` | `str \| None` | Digest conferido na saída; `None` antes da verificação |
+
+`B3SourceWarningReport` contém `code: str`, `count: int` e `explanation: str`.
+`B3IntegrityWarning` acrescenta `source: str`, o nome da fonte ou do Parquet
+publicado. Os códigos de limpeza pós-commit estão descritos em `extract()`.
+O [schema B3 v2](b3-schema-v2.md) define o framing do digest de linhas.
 
 ## Configuração de Execução e Variáveis de Ambiente
 
@@ -265,25 +369,27 @@ ______________________________________________________________________
 | `lote_bloco`       | Lote em bloco       | 021 (BBT e Midpoint)                                  |
 | `todos`            | Seleção completa    | Todo TPMERC numérico válido                           |
 
-As strings em português desta tabela são valores canônicos de `assets_list` e
-devem ser passadas exatamente como mostradas. BDRs e Futures são **Planned** e
-não são aceitos pelo contrato atual do runtime.
+As strings em português desta tabela são os aliases aceitos por `assets_list`.
+A validação converte os valores para minúsculas; grafia e acentos continuam
+relevantes. `ações` e `etf` selecionam os mesmos mercados `010` e `020`, sem
+distinguir ações de ETFs ou classificar emissores. Os aliases `bdr` e `futuro`
+não estão no catálogo. Use `get_available_assets()` para consultar os valores
+aceitos na versão instalada.
 
 ______________________________________________________________________
 
 ## Modos de Processamento
 
-| Modo     | Throughput medido\* | Pico RSS medido\* | Paralelismo padrão                                         | Cenário Indicado       |
-| -------- | ------------------: | ----------------: | ---------------------------------------------------------- | ---------------------- |
-| **fast** |      34.313,8 reg/s |        429,88 MiB | Até 4 workers, limitado por CPUs, memória e arquivos-fonte | Priorizar velocidade   |
-| **slow** |      29.759,9 reg/s |        331,11 MiB | 1 worker                                                   | Reduzir uso de memória |
+| Modo | Execução | Uso |
+| --- | --- | --- |
+| `fast` | Fontes concorrentes dentro dos limites de CPU, memória e quantidade de arquivos; teto padrão de 4 workers | Permitir paralelismo por fonte |
+| `slow` | Um worker de fonte e lotes menores | Limitar concorrência e uso de memória |
 
-*Medição histórica da implementação v3 em 27 arquivos anuais (2000–2026),
-22.303.577 registros e sem 2.283 cotações `021`. Não representa o schema v2 e
-não é comparável diretamente. Consulte os [detalhes do benchmark](../dev-guide/benchmarks.md).*
-
-O modo `fast` coordena o paralelismo por arquivo-fonte. O modo `slow` utiliza um
-único worker para reduzir o consumo de memória.
+Ambos usam lotes limitados e o mesmo schema e validações. `slow` não reduz o
+conjunto solicitado nem o espaço necessário para os temporários e a saída.
+As [medições COTAHIST](../dev-guide/cotahist-performance.md) registram ambiente,
+corpus e resultados. Os números do schema anterior permanecem nos
+[benchmarks históricos](../dev-guide/benchmarks.md).
 
 Para consumidores que importam `ProcessingModeEnumB3` pelo namespace da fonte,
 os valores `FAST` e `SLOW` permanecem. Na revisão de 20/10/2026, foram removidas

@@ -28,7 +28,7 @@ def test_missing_dataset_skip_message_has_a_self_contained_command(
         fixture_module.configured_dataset_path()
 
     assert (
-        'COTAHIST_PATH=./cotahist_b3 COTAHIST_TEST_YEAR=2023 '
+        'COTAHIST_PATH=./cotahist_b3_local COTAHIST_TEST_YEAR=2023 '
         'uv run --locked --no-sync pytest -m "real_data and not slow"'
     ) in str(error.value)
 

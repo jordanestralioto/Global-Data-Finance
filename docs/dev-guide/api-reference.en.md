@@ -1,12 +1,14 @@
 # API Reference
 
-Complete high-level architectural documentation reference covering the public surface of Global-Data-Finance.
+Signatures and results for the public Global-Data-Finance API. The
+[CVM](../reference/cvm-api.md) and [B3](../reference/b3-api.md) references
+describe validation and persistence in detail.
 
 ______________________________________________________________________
 
 ## Module `globaldatafinance` (Public Root Exports)
 
-The primary entrypoint classes and contracts are exposed directly at the top-level package boundary:
+Import the main clients and the B3 result type from the package root:
 
 ```python
 from globaldatafinance import (
@@ -20,18 +22,22 @@ ______________________________________________________________________
 
 ### `FundamentalStocksDataCVM`
 
-Public interface facade responsible for managing regulatory CVM financial filing downloads and Parquet extractions.
+Downloads CVM regulatory filings and optionally extracts them to Parquet.
 
 #### Methods
 
 **`__init__()`**
 
 ```python
-def __init__(self) -> None:
+def __init__(self, *, settings: Settings | None = None) -> None:
     ...
 ```
 
-Initializes the CVM client facade configuring standard async down-streaming adapters and underlying use case pipelines.
+Creates a CVM client with the standard download and validation components.
+
+`settings` accepts an immutable `Settings` snapshot imported from
+`globaldatafinance.core.config`. With `None`, each client reads a fresh snapshot
+of the current environment; the `settings` property exposes the snapshot used.
 
 **`download()`**
 
@@ -53,9 +59,9 @@ Downloads regulatory CVM archives directly into a local filesystem directory.
 
 - `destination_path` (`str`): Target destination storage directory.
 - `list_docs` (`list[str]`, optional): Selected document type codes (e.g., `["DFP", "ITR"]`). Defaults to all supported document categories when omitted.
-- `initial_year` (`int`, optional): Starting historical fiscal year (inclusive). If `None`, defaults to the earliest available year for each document type.
-- `last_year` (`int`, optional): Ending fiscal year (inclusive). Defaults to the active system year.
-- `automatic_extractor` (`bool`): When set to `True`, deconstructs downloaded ZIP archives into columnar Apache Parquet files. Default: `False`.
+- `initial_year` (`int`, optional): First year, inclusive. `None` uses the first supported year for each document type.
+- `last_year` (`int`, optional): Last year, inclusive. `None` uses the current system year.
+- `automatic_extractor` (`bool`): Extract downloaded ZIP archives to Apache Parquet. Default: `False`.
 
 When enabled, the CVM extractor uses PyArrow and `QUOTE_NONE`, with Arrow
 `string` columns and exact text preservation, including empty fields as `""`.
@@ -97,7 +103,7 @@ def get_available_docs(self) -> dict[str, str]:
     ...
 ```
 
-Returns an introspectable dictionary mapping permissible document acronym codes (e.g., `"DFP"`, `"ITR"`, `"FCA"`, `"FRE"`, `"CGVN"`, `"VLMO"`, `"IPE"`) to their descriptive Portuguese legal classifications.
+Returns document codes (`"DFP"`, `"ITR"`, `"FCA"`, `"FRE"`, `"CGVN"`, `"VLMO"`, `"IPE"`) and their descriptions.
 
 **`get_available_years()`**
 
@@ -106,31 +112,38 @@ def get_available_years(self) -> AvailableYearsInfoCVM:
     ...
 ```
 
-Returns an `AvailableYearsInfoCVM` namedtuple summarizing permissible temporal starting floors and current operating system year limits across distinct document categories:
+Returns an `AvailableYearsInfoCVM` named tuple with the first supported years
+and the current system year:
 
 - `general_min_year` (`int`): Minimum available year for standard documents (e.g. 2010).
 - `itr_min_year` (`int`): Minimum available year for quarterly ITR filings (e.g. 2011).
 - `cgvn_vlmo_min_year` (`int`): Minimum available year for CGVN / VLMO filings (e.g. 2018).
-- `current_year` (`int`): Active system calendar year.
+- `current_year` (`int`): Current system year.
+- `ipe_min_year` (`int`, property): First IPE year, 2003.
 
-Also supports dictionary conversion via `years._asdict()`.
+`years._asdict()` contains the four tuple fields; `ipe_min_year` is an
+additional property accessed through its attribute.
 
 ______________________________________________________________________
 
 ### `HistoricalQuotesB3`
 
-Public interface facade governing historical market exchange quote extraction from official B3 COTAHIST repositories.
+Extracts and consolidates historical B3 quotations from local COTAHIST files.
 
 #### Methods
 
 **`__init__()`**
 
 ```python
-def __init__(self) -> None:
+def __init__(self, *, settings: Settings | None = None) -> None:
     ...
 ```
 
-Initializes the B3 extraction facade and registers underlying asset classification mappers and extraction service pipelines.
+Creates a B3 client with the standard parser and extraction components.
+
+`settings` accepts an immutable `Settings` snapshot imported from
+`globaldatafinance.core.config`. With `None`, each client reads a fresh snapshot
+of the current environment; the `settings` property exposes the snapshot used.
 
 **`extract()`**
 
@@ -149,14 +162,17 @@ def extract(
     ...
 ```
 
-Parses COTAHIST ZIP or TXT archives (`COTAHIST_A{YYYY}.ZIP` or `.TXT`), extracts transaction registers corresponding to selected asset classifications, and compiles them directly into a consolidated Apache Parquet output file. The public method returns an `ExtractionResultB3` mapping with operation status, counts, errors, and the output artifact path; it does not return a DataFrame as its primary contract.
+Parses COTAHIST ZIP or TXT files (`COTAHIST_A{YYYY}.ZIP` or `.TXT`), filters
+quotations by market type, and writes one consolidated Parquet file. It returns
+an `ExtractionResultB3` mapping containing status, counts, errors, and the
+output path.
 
 **Parameters**:
 
-- `path_of_docs` (`str`): Source directory enclosing target raw COTAHIST archives (`COTAHIST_A{YYYY}.ZIP` or `.TXT`).
+- `path_of_docs` (`str`): Directory containing local COTAHIST ZIP or TXT files.
 - `assets_list` (`list[str] | None`): Asset categories; `None` selects `todos`, every valid numeric TPMERC.
-- `initial_year` (`int`, optional): Historical beginning fiscal year (lower bound floor: 1986).
-- `last_year` (`int`, optional): Ending fiscal year (defaults to current system operational year).
+- `initial_year` (`int`, optional): First year, inclusive. `None` uses 1986.
+- `last_year` (`int`, optional): Last year, inclusive. `None` uses the current system year.
 - `destination_path` (`str`, optional): Custom directory destination for the generated Parquet artifact (defaults to `path_of_docs` when omitted).
 - `output_filename` (`str`): Base output filename for the created Parquet file (must be a basename without path separators; a `.parquet` suffix is optional and is appended when omitted). Default: `"cotahist_extracted"`.
 - `processing_mode` (`str`): Both modes use bounded batches and the same Parquet schema. `"fast"` allows concurrent sources within resource limits; `"slow"` uses one source worker and smaller batches. Default: `"fast"`.
@@ -164,7 +180,7 @@ Parses COTAHIST ZIP or TXT archives (`COTAHIST_A{YYYY}.ZIP` or `.TXT`), extracts
 
 **Returns**:
 
-- `ExtractionResultB3` (`TypedDict`): A diagnostic mapping containing runtime confirmation metrics:
+- `ExtractionResultB3` (`TypedDict`): A result mapping with these keys:
   - `success` (`bool`): `True` if extraction completed without errors.
   - `message` (`str`): Human-readable execution outcome summary.
   - `total_files` (`int`): Number of annual inputs resolved for the request.
@@ -177,7 +193,8 @@ Parses COTAHIST ZIP or TXT archives (`COTAHIST_A{YYYY}.ZIP` or `.TXT`), extracts
   - `elapsed_time` (`float`): Elapsed execution time in seconds.
   - `schema_version` (`int`): Parquet schema version (`2`).
   - `integrity` (`B3IntegrityReport`): Requested coverage, sources, counts,
-    verification, warnings, and published-artifact hash.
+    verification, warnings, and published-artifact hash. See the
+    [complete key contract](../reference/b3-api.md#integrity-report).
 - `errors` (`dict[str, str]`): Dictionary mapping failed files to failure error messages. The key is always present and may be empty.
 
 Official B3 downloads use ZIP archives, but the API accepts both
@@ -197,9 +214,7 @@ extraction publishes an empty result (`success=True`). On preflight failure,
 `integrity` retains previously validated sources and missing years;
 `success_count` and `total_records` remain zero.
 
-A valid input whose records are all filtered by the requested TPMERC also
-returns success and publishes an empty Parquet with the B3 schema. In contrast,
-all `01` records are validated before filtering. TPMERC `021` is selected with
+All `01` records are validated before filtering. TPMERC `021` is selected with
 `lote_bloco`; `todos` also includes unknown numeric codes. Every requested year
 must be present, and the complete output is read back before publication. See
 the [B3 v2 schema reference](../reference/b3-schema-v2.en.md) and
@@ -231,7 +246,7 @@ def get_available_assets(self) -> list[str]:
     ...
 ```
 
-Returns a comprehensive list of permissible asset category string parameters supported by extraction filtering rules:
+Returns the supported asset filter aliases:
 
 - `'ações'`: Equities (cash and fractional market)
 - `'etf'`: Exchange Traded Funds
@@ -243,9 +258,10 @@ Returns a comprehensive list of permissible asset category string parameters sup
 - `'lote_bloco'`: Block lot (TPMERC `021`)
 - `'todos'`: Every valid numeric TPMERC
 
-The Portuguese strings above are canonical `assets_list` values and must be
-passed exactly as shown. BDRs and Futures are **Planned** and are not accepted
-by the current runtime contract.
+The Portuguese strings above are canonical `assets_list` values; validation
+lowercases the input. The aliases `bdr` and `futuro` are not in this catalog;
+filtering selects market types rather than classifying issuers or instruments
+within a TPMERC code.
 
 **`get_available_years()`**
 
@@ -254,14 +270,15 @@ def get_available_years(self) -> dict[str, int]:
     ...
 ```
 
-Returns dictionary defining available lower temporal boundaries (`minimal_year`: 1986) and upper bound operational limits (`current_year`).
+Returns a dictionary with `minimal_year` (`1986`) and `current_year` (the current
+system year).
 
 ______________________________________________________________________
 
 ## Related References
 
-For specialized technical contracts and deep internal structural references, consult:
+For detailed contracts, see:
 
-- [CVM API Specification](../reference/cvm-api.md) - Deep architectural breakdown of CVM processing pipelines
-- [B3 API Specification](../reference/b3-api.md) - Detailed technical documentation for B3 extraction contracts
-- [Exception Hierarchy](../reference/exceptions.md) - Diagnostic reference covering project exception classes
+- [CVM API](../reference/cvm-api.md) — Inputs, results, and extraction behavior
+- [B3 API](../reference/b3-api.md) — Local inputs, filtering, results, and execution
+- [Exceptions](../reference/exceptions.md) — Exception types and returned failures

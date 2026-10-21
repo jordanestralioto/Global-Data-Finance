@@ -55,10 +55,16 @@ def _run_git(
     root: Path,
     *,
     check: bool = True,
+    encoding_errors: str = 'strict',
 ) -> ProcessResult:
     """Run Git in a repository and translate infrastructure failures."""
     try:
-        return run_process(['git', *arguments], cwd=root, check=check)
+        return run_process(
+            ['git', *arguments],
+            cwd=root,
+            check=check,
+            encoding_errors=encoding_errors,
+        )
     except ProcessRunnerError as err:
         raise GitInspectionError(str(err)) from err
 
@@ -206,8 +212,9 @@ def read_git_file(
     *,
     revision_range: str | None = None,
     repo_root: Path | None = None,
+    encoding_errors: str = 'strict',
 ) -> str | None:
-    """Read a file from the staged index or from a revision range endpoint."""
+    """Read a Git snapshot file with the requested UTF-8 error handler."""
     if is_external_harness_path(file_path):
         return None
     root = _root(repo_root)
@@ -223,4 +230,6 @@ def read_git_file(
         if exists.returncode != 0:
             return None
 
-    return _run_git(['show', object_name], root).stdout
+    return _run_git(
+        ['show', object_name], root, encoding_errors=encoding_errors
+    ).stdout

@@ -1,345 +1,78 @@
-# Início Rápido
+# Início rápido
 
-Bem-vindo ao **Global-Data-Finance**! Este guia irá ajudá-lo a dar os primeiros passos com a biblioteca através de exemplos práticos e simples.
+Após [instalar a biblioteca](installation.md), escolha uma fonte. CVM requer
+internet; B3 usa arquivos locais. Os exemplos abaixo processam somente 2023.
 
-______________________________________________________________________
-
-## Pré-requisitos
-
-Antes de começar, certifique-se de que você:
-
-- ✅ Instalou o Global-Data-Finance ([ver guia de instalação](installation.md))
-- ✅ Possui Python >=3.12,<4.0
-- ✅ Tem acesso à internet para downloads
-
-______________________________________________________________________
-
-## Primeiro Exemplo: Documentos CVM
-
-Vamos começar baixando documentos fundamentalistas da CVM (Comissão de Valores Mobiliários).
-
-### Código Básico
+## Baixar documentos CVM
 
 ```python
 from globaldatafinance import FundamentalStocksDataCVM
 
-# 1. Criar instância do cliente CVM
-cvm = FundamentalStocksDataCVM()
-
-# 2. Baixar documentos DFP (Demonstrações Financeiras Padronizadas)
-result = cvm.download(
-    destination_path="/home/usuario/dados_cvm",
+result = FundamentalStocksDataCVM().download(
+    destination_path="./data_cvm",
     list_docs=["DFP"],
-    initial_year=2022,
-    last_year=2023
+    initial_year=2023,
+    last_year=2023,
+    automatic_extractor=True,
 )
 if result.error_count_downloads > 0 or result.success_count_downloads == 0:
-    print(f"Download incompleto: {result.failed_downloads}")
-    raise SystemExit(1)
+    raise RuntimeError(result.failed_downloads)
+print(result.successful_downloads)
 ```
 
-### O que acontece?
+O download salva o ZIP original e converte seus CSVs em Parquet na pasta
+indicada. As colunas CVM são texto; datas e números são convertidos na análise,
+quando necessário. Para baixar somente ZIPs, use `automatic_extractor=False`.
 
-1. **Criação do cliente**: Inicializa o cliente CVM com configurações padrão
-2. **Download**: Baixa todos os arquivos DFP dos anos 2022 e 2023
-3. **Resultado**: Arquivos ZIP são salvos em `/home/usuario/dados_cvm`
+Confira o [guia CVM](cvm-docs.md) para escolher documentos e tratar falhas
+parciais.
 
-### Saída Esperada
+## Extrair cotações B3
+
+Obtenha os arquivos na [página oficial da B3](https://www.b3.com.br/pt_br/market-data-e-indices/servicos-de-dados/market-data/historico/mercado-a-vista/cotacoes-historicas/)
+e coloque o ano desejado na pasta de entrada. O extrator aceita ZIP ou TXT
+locais, com nomes `COTAHIST_A{YYYY}.ZIP` ou `COTAHIST_A{YYYY}.TXT`.
+A biblioteca não baixa esses arquivos. Para este exemplo, forneça 2023:
 
 ```text
-📥 CVM Documents Download
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✓ Documents downloaded successfully!
-
-📊 Summary:
-  • Total files: 2
-  • Success: 2
-  • Errors: 0
-  • Elapsed time: 45.3s
-
-📁 Downloaded files:
-  ✓ DFP - 2022
-  ✓ DFP - 2023
+cotahist/
+└── COTAHIST_A2023.ZIP
 ```
 
-______________________________________________________________________
-
-## Segundo Exemplo: Cotações Históricas B3
-
-Agora vamos extrair cotações históricas da B3 (Bolsa de Valores do Brasil).
-
-!!! note "Obtenção dos Arquivos COTAHIST da B3"
-
-    Diferente dos dados CVM que são baixados via HTTP pela biblioteca, as cotações históricas da B3 são fornecidas em arquivos anuais no portal oficial da B3 ([Cotações Históricas B3](https://www.b3.com.br/pt_br/market-data-e-indices/servicos-de-dados/market-data/historico/mercado-a-vista/cotacoes-historicas/)).
-    Baixe os arquivos anuais no formato oficial `COTAHIST_A{YYYY}.ZIP` (por exemplo, `COTAHIST_A2023.ZIP` e `COTAHIST_A2024.ZIP`) e coloque-os no diretório de entrada desejado (ex: `/home/usuario/cotahist_zips`). `path_of_docs` é esse diretório de entrada existente; a biblioteca não baixa nem o preenche automaticamente. O extrator também aceita o TXT descompactado `COTAHIST_A{YYYY}.TXT`; quando ZIP e TXT do mesmo ano coexistem, o ZIP é escolhido.
-
-### Código Básico
-
 ```python
-from pathlib import Path
 from globaldatafinance import HistoricalQuotesB3
 
-# 1. Criar instância do cliente B3
 b3 = HistoricalQuotesB3()
-
-# 2. Extrair cotações de ações
 result = b3.extract(
-    path_of_docs="/home/usuario/cotahist_zips",
+    path_of_docs="./cotahist",
+    destination_path="./data_b3",
     assets_list=["ações"],
     initial_year=2023,
     last_year=2023,
-    destination_path="/home/usuario/cotacoes_extraidas"
 )
-output_file = Path(result["output_file"])
-if (
-    not result["success"]
-    or result["total_files"] == 0
-    or result["total_records"] == 0
-    or not result["output_file"]
-    or not output_file.is_file()
-    or output_file.stat().st_size == 0
-):
-    print(f"Extração incompleta: {result['errors']}")
-    raise SystemExit(1)
-
+if not result["success"]:
+    raise RuntimeError(result["errors"])
+print(result["output_file"], result["total_records"])
 ```
 
-### O que acontece?
+`ações` seleciona os mercados à vista e fracionário. O resultado é um dicionário
+com status e metadados; os dados ficam no Parquet informado em `output_file`.
+Veja o [guia B3](b3-docs.md) para outros mercados, anos e modos de processamento.
 
-1. **Criação do cliente**: Inicializa o cliente B3
-1. **Extração**: Processa arquivos COTAHIST (ZIP ou TXT) e extrai dados da classe de ações nos mercados à vista (010) e fracionário (020)
-2. **Conversão**: Converte para formato Parquet otimizado
-3. **Resultado**: Arquivo `.parquet` com todas as cotações
+## Ler o Parquet
 
-### Saída Esperada
-
-```text
-📊 B3 Historical Quotes Extraction
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✓ Extraction completed successfully!
-
-📈 Summary:
-  • Processed files: 1
-  • Total records: 836,978
-  • Asset classes: ações
-  • Processing mode: fast
-  • Elapsed time: 77.9s
-
-💾 Generated file:
-  /home/usuario/cotacoes_extraidas/cotahist_extracted.parquet
-```
-
-______________________________________________________________________
-
-## Explorando Dados Disponíveis
-
-Antes de baixar ou extrair dados, você pode descobrir o que está disponível.
-
-### Descobrir Documentos CVM
-
-```python
-from globaldatafinance import FundamentalStocksDataCVM
-
-cvm = FundamentalStocksDataCVM()
-
-# Listar todos os tipos de documentos disponíveis
-docs = cvm.get_available_docs()
-for code, description in docs.items():
-    print(f"{code}: {description}")
-
-# Verificar anos disponíveis
-years = cvm.get_available_years()
-print(f"\nDados disponíveis de {years.general_min_year} até {years.current_year}")
-```
-
-**Saída**:
-
-```
-DFP: Demonstração Financeira Padronizada
-ITR: Informação Trimestral
-FRE: Formulário de Referência
-FCA: Formulário Cadastral
-...
-
-Dados disponíveis de 2010 até o ano atual
-```
-
-### Descobrir Classes de Ativos B3
-
-```python
-from globaldatafinance import HistoricalQuotesB3
-
-b3 = HistoricalQuotesB3()
-
-# Listar classes de ativos disponíveis
-assets = b3.get_available_assets()
-print("Classes de ativos disponíveis:")
-for asset in assets:
-    print(f"  • {asset}")
-
-# Verificar intervalo de anos
-years = b3.get_available_years()
-print(f"\nDados disponíveis de {years['minimal_year']} até {years['current_year']}")
-```
-
-**Saída**:
-
-```
-Classes de ativos disponíveis:
-  • ações
-  • etf
-  • opções
-  • termo
-  • exercicio_opcoes
-  • forward
-  • leilao
-
-Dados disponíveis de 1986 até o ano atual
-```
-
-______________________________________________________________________
-
-## Exemplo Completo: Pipeline de Dados
-
-Aqui está um exemplo mais completo que combina download e extração:
-
-```python
-from pathlib import Path
-from globaldatafinance import FundamentalStocksDataCVM, HistoricalQuotesB3
-
-# === PARTE 1: Download de Documentos CVM ===
-print("=" * 60)
-print("ETAPA 1: Download de Documentos CVM")
-print("=" * 60)
-
-cvm = FundamentalStocksDataCVM()
-cvm_result = cvm.download(
-    destination_path="/home/usuario/dados_financeiros/cvm",
-    list_docs=["DFP", "ITR"],
-    initial_year=2022,
-    last_year=2023,
-    automatic_extractor=True  # Extrai automaticamente para Parquet
-)
-if (
-    cvm_result.error_count_downloads > 0
-    or cvm_result.success_count_downloads == 0
-):
-    print(f"Download CVM incompleto: {cvm_result.failed_downloads}")
-    raise SystemExit(1)
-
-# === PARTE 2: Extração de Cotações B3 ===
-print("\n" + "=" * 60)
-print("ETAPA 2: Extração de Cotações B3")
-print("=" * 60)
-
-b3 = HistoricalQuotesB3()
-result = b3.extract(
-    path_of_docs="/home/usuario/dados_financeiros/cotahist",
-    assets_list=["ações", "etf"],
-    initial_year=2022,
-    last_year=2023,
-    destination_path="/home/usuario/dados_financeiros/cotacoes",
-    output_filename="acoes_etf_2022_2023",
-    processing_mode="fast"
-)
-
-# === PARTE 3: Análise dos Resultados ===
-print("\n" + "=" * 60)
-print("RESUMO FINAL")
-print("=" * 60)
-
-output_file = Path(result["output_file"])
-if (
-    result["success"]
-    and result["total_files"] > 0
-    and result["total_records"] > 0
-    and result["output_file"]
-    and output_file.is_file()
-    and output_file.stat().st_size > 0
-):
-    print(f"✓ Pipeline concluído com sucesso!")
-    print(f"✓ Total de registros extraídos: {result['total_records']:,}")
-    print(f"✓ Arquivo de cotações: {result['output_file']}")
-else:
-    print(f"✗ Houve erros durante a extração")
-    if 'errors' in result and result['errors']:
-        for file_name, message in result['errors'].items():
-            print(f"  • {file_name}: {message}")
-    raise SystemExit(1)
-```
-
-______________________________________________________________________
-
-## Trabalhando com os Dados Extraídos
-
-Após extrair os dados, leia os artefatos com PyArrow, o engine usado pela
-biblioteca para produzir Parquet. Pandas é uma opção downstream; instale-o
-separadamente (`python -m pip install pandas`) se quiser trabalhar com
-DataFrames.
-
-### Com PyArrow em batches
+Use o caminho retornado pela extração B3 anterior. Para inspecionar uma pequena
+amostra sem carregar o arquivo inteiro:
 
 ```python
 import pyarrow.parquet as pq
 
-# Ler o arquivo sem materializar todas as linhas de uma vez
-parquet = pq.ParquetFile(
-    "/home/usuario/cotacoes_extraidas/cotahist_extracted.parquet"
-)
-
-for batch in parquet.iter_batches(batch_size=100_000, columns=["ticker"]):
-    print(batch.slice(0, min(5, batch.num_rows)))
+parquet = pq.ParquetFile(result["output_file"])
+print(parquet.schema_arrow)
+for batch in parquet.iter_batches(batch_size=5):
+    print(batch.to_pydict())
+    break
 ```
 
-### Com Pandas (opcional)
-
-```python
-import pandas as pd
-
-# Ler arquivo Parquet gerado
-df = pd.read_parquet("/home/usuario/cotacoes_extraidas/cotahist_extracted.parquet")
-
-# Visualizar primeiras linhas
-print(df.head())
-
-# Informações sobre o dataset
-print(f"\nTotal de registros: {len(df):,}")
-print(f"Colunas: {list(df.columns)}")
-print(f"Período: {df['data_pregao'].min()} a {df['data_pregao'].max()}")
-```
-
-Polars não é instalado como dependência da biblioteca. Caso seja o leitor
-preferido da sua aplicação, instale-o explicitamente no ambiente consumidor.
-
-______________________________________________________________________
-
-## Dicas para Iniciantes
-
-!!! tip "Comece Pequeno"
-
-    Ao testar pela primeira vez, use intervalos de anos pequenos (ex: 1-2 anos) para entender o comportamento da biblioteca antes de fazer downloads grandes.
-
-!!! tip "Use Modo Fast"
-
-    Para COTAHIST, `processing_mode="fast"` usa lotes limitados e permite fontes concorrentes conforme os recursos disponíveis. O modo `"slow"` usa um trabalhador de fonte e lotes menores. Ambos preservam o mesmo schema, ordem e precisão. Consulte os [modos de processamento](b3-docs.md).
-
-!!! tip "Verifique Espaço em Disco"
-
-    Documentos CVM e cotações históricas podem ocupar bastante espaço. Certifique-se de ter espaço suficiente antes de baixar muitos anos.
-
-______________________________________________________________________
-
-## Próximos Passos
-
-Agora que você conhece o básico, explore:
-
-- 📄 **[Documentos CVM](cvm-docs.md)** - Guia completo da API CVM
-- 📈 **[Cotações B3](b3-docs.md)** - Guia completo da API B3
-- 💻 **[Exemplos Práticos](examples.md)** - Casos de uso avançados
-- ❓ **[FAQ](faq.md)** - Perguntas frequentes
-
-______________________________________________________________________
-
-!!! success "Parabéns!"
-
-    Você completou o guia de início rápido! Agora você está pronto para explorar todo o potencial do Global-Data-Finance. 🚀
+Para executar os exemplos do repositório com amostras B3 sintéticas já
+incluídas, consulte [exemplos práticos](examples.md).

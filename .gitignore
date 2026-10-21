@@ -201,7 +201,11 @@ docs/ideias/
 openspec/
 dados_cvm/
 dados_b3/
-cotahist_b3/
+# Only the generated example inputs belong in Git.
+/cotahist_b3/*
+!/cotahist_b3/COTAHIST_A2022.ZIP
+!/cotahist_b3/COTAHIST_A2023.ZIP
+/cotahist_b3_local/
 .benchmarks/
 .agents/sessions/
 

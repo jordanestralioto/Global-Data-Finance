@@ -107,10 +107,14 @@ setup_logging(LoggingSettings(level="INFO"))
 
 ### 2. Obter Logger em um Módulo
 
+Os exemplos usam um filho de `globaldatafinance` para receber os handlers
+configurados acima. Para loggers da sua aplicação, configure os handlers da
+aplicação separadamente.
+
 ```python
 from globaldatafinance.core.logging_config import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger("globaldatafinance.example")
 logger.info("Processamento iniciado")
 logger.debug("Detalhes de debug")
 logger.warning("Aviso importante")
@@ -209,7 +213,7 @@ Use o context manager `log_execution_time()` para medir tempo de operações:
 ```python
 from globaldatafinance.core.logging_config import log_execution_time, get_logger
 
-logger = get_logger(__name__)
+logger = get_logger("globaldatafinance.example")
 
 with log_execution_time(logger, "Parse ZIP file", file_target="data.zip"):
     parse_file("data.zip")
@@ -233,7 +237,7 @@ Failed: Parse ZIP file | operation=Parse ZIP file | elapsed_seconds=1.23 | error
 ```python
 from globaldatafinance.core.logging_config import log_with_context, get_logger
 
-logger = get_logger(__name__)
+logger = get_logger("globaldatafinance.example")
 
 log_with_context(
     logger,
@@ -289,7 +293,7 @@ from globaldatafinance.core.logging_config import (
 # Habilitar logging
 setup_logging(LoggingSettings(level="INFO", log_file="app.log"))
 
-logger = get_logger(__name__)
+logger = get_logger("globaldatafinance.example")
 logger.info("Aplicação iniciada")
 
 # Usar a biblioteca
@@ -342,7 +346,7 @@ from globaldatafinance.core.logging_config import (
 setup_logging(LoggingSettings(level="INFO"))
 
 # Criar logger para este módulo
-logger = get_logger(__name__)
+logger = get_logger("globaldatafinance.example")
 
 def processar_dados():
     logger.info("Iniciando processamento")
@@ -389,14 +393,15 @@ ______________________________________________________________________
 
 ## Boas Práticas
 
-### 1. Sempre use `get_logger(__name__)`
+### 1. Escolha um nome na hierarquia configurada
+
+Nos módulos da biblioteca, use `get_logger(__name__)`: esses nomes já começam
+com `globaldatafinance`. Em aplicações, um nome como o exemplo abaixo herda os
+handlers da biblioteca; nomes fora dessa hierarquia precisam de configuração
+própria.
 
 ```python
-# ✅ Correto - hierarquia de nomes
-logger = get_logger(__name__)
-
-# ❌ Evite - nome hardcoded
-logger = get_logger("meu_logger")
+logger = get_logger("globaldatafinance.example")
 ```
 
 ### 2. Use Níveis Apropriados

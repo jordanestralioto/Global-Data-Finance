@@ -6,23 +6,28 @@ ______________________________________________________________________
 
 ## Visão Geral
 
-O `ResourceMonitor` é um sistema avançado de monitoramento de CPU e memória que:
+`ResourceMonitor` mede CPU e memória e oferece operações para o chamador:
 
-- ✅ **Singleton**: Uma única instância global
-- ✅ **Automático**: Ajusta workers e batch sizes baseado em recursos disponíveis
-- ✅ **Circuit Breaker**: Para operações quando recursos estão críticos
-- ✅ **Garbage Collection**: GC automático quando memória está alta
+- Construtor singleton para uso compartilhado ou `create_isolated()` para isolamento.
+- Helpers manuais para calcular workers, batches e aguardar recursos.
+- Estados e circuit breaker consultados pelo fluxo que usa o monitor.
+- Garbage collection em warning quando habilitado nos limites.
+
+O estado informado não redimensiona automaticamente uma operação em andamento.
 
 ______________________________________________________________________
 
 ## Estados de Recursos
 
-| Estado        | Descrição                | Ação                          |
-| ------------- | ------------------------ | ----------------------------- |
-| **HEALTHY**   | Recursos normais         | Nenhuma ação necessária       |
-| **WARNING**   | Recursos acima de 70-80% | Considera ativar GC           |
-| **CRITICAL**  | Recursos acima de 85-90% | Reduz workers/batch, força GC |
-| **EXHAUSTED** | Recursos acima de 95%    | Ativa circuit breaker         |
+| Estado        | Descrição                                                                                           | Ação                                         |
+| ------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| **HEALTHY**   | Memória e CPU abaixo dos limites de aviso                                                            | Nenhuma ação necessária                      |
+| **WARNING**   | Limite de aviso de memória ou CPU atingido                                                           | Considera GC quando habilitado               |
+| **CRITICAL**  | Limite crítico atingido ou falha na leitura de recursos                                               | Chamador decide reduzir carga                |
+| **EXHAUSTED** | Limite de esgotamento de memória atingido, memória livre insuficiente ou circuit breaker ainda ativo | Ativa o circuit breaker quando habilitado    |
+
+Os limites são configuráveis em `ResourceLimits`; o exemplo abaixo mostra os
+padrões. CPU alta, isoladamente, chega a `CRITICAL`.
 
 ______________________________________________________________________
 
@@ -130,9 +135,11 @@ O fluxo CVM usa um semáforo estático de concorrência no
 workers durante downloads. O limite é definido por `max_concurrent` na
 construção do adapter.
 
-O fluxo B3 usa `ResourceMonitor` por meio de `ResourcePolicyB3`. Essa política
-consulta o singleton para limitar arquivos concorrentes, workers de parsing e
-tamanhos de batch conforme a pressão de CPU e memória.
+`ResourcePolicyB3` cria um monitor isolado, sem GC em warning e sem usar a
+utilização de CPU como gatilho. `fast` calcula o limite de workers pelo número
+de fontes, CPUs, RAM disponível e teto `GDF_B3_WORKER_LIMIT` (padrão 4);
+`slow` usa um worker. A admissão aguarda memória crítica e falha em exaustão
+ou timeout. Helpers manuais do singleton não redimensionam os batches da B3.
 
 ______________________________________________________________________
 
@@ -148,7 +155,8 @@ state = monitor.check_resources()
 
 if state == ResourceState.EXHAUSTED:
     print("Recursos críticos! Aguardando...")
-    monitor.wait_for_resources(timeout_seconds=120)
+    if not monitor.wait_for_resources(timeout_seconds=120):
+        raise TimeoutError("Resources remain unavailable")
 
 # Ajustar workers baseado em recursos
 workers = monitor.get_safe_worker_count(max_workers=16)

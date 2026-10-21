@@ -107,10 +107,14 @@ setup_logging(LoggingSettings(level="INFO"))
 
 ### 2. Retrieve a Module Logger Instance
 
+The examples use a child of `globaldatafinance` to receive the handlers
+configured above. Configure application loggers with application-owned
+handlers separately.
+
 ```python
 from globaldatafinance.core.logging_config import get_logger
 
-logger = get_logger(__name__)
+logger = get_logger("globaldatafinance.example")
 logger.info("Processing job started")
 logger.debug("Detailed debug tracing")
 logger.warning("Potential configuration warning")
@@ -211,7 +215,7 @@ Leverage the automated `log_execution_time()` context manager to track operation
 ```python
 from globaldatafinance.core.logging_config import log_execution_time, get_logger
 
-logger = get_logger(__name__)
+logger = get_logger("globaldatafinance.example")
 
 with log_execution_time(logger, "Parse COTAHIST ZIP archive", file_target="COTAHIST_A2023.ZIP"):
     parse_file("COTAHIST_A2023.ZIP")
@@ -235,7 +239,7 @@ Failed: Parse COTAHIST ZIP archive | operation=Parse COTAHIST ZIP archive | elap
 ```python
 from globaldatafinance.core.logging_config import log_with_context, get_logger
 
-logger = get_logger(__name__)
+logger = get_logger("globaldatafinance.example")
 
 log_with_context(
     logger,
@@ -291,7 +295,7 @@ from globaldatafinance.core.logging_config import (
 # Activate operational logging
 setup_logging(LoggingSettings(level="INFO", log_file="pipeline.log"))
 
-logger = get_logger(__name__)
+logger = get_logger("globaldatafinance.example")
 logger.info("Application execution commenced")
 
 # Execute library operations
@@ -341,7 +345,7 @@ from globaldatafinance.core.logging_config import (
 )
 
 setup_logging(LoggingSettings(level="INFO"))
-logger = get_logger(__name__)
+logger = get_logger("globaldatafinance.example")
 
 def process_financial_filings():
     logger.info("Starting filing processing workflow")
@@ -388,14 +392,15 @@ ______________________________________________________________________
 
 ## Best Practices
 
-### 1. Consistently Register Module Hierarchies via `get_logger(__name__)`
+### 1. Choose a name within the configured logger hierarchy
+
+Inside library modules, use `get_logger(__name__)`: those names already start
+with `globaldatafinance`. In applications, a name such as the example below
+inherits the library handlers; names outside that hierarchy need their own
+configuration.
 
 ```python
-# ✅ Correct - preserve clean namespace nesting
-logger = get_logger(__name__)
-
-# ❌ Discouraged - using isolated literal identifier names
-logger = get_logger("my_logger")
+logger = get_logger("globaldatafinance.example")
 ```
 
 ### 2. Match Severity Levels Accurately to Impact

@@ -8,6 +8,7 @@ from collections.abc import Callable
 from importlib import import_module
 from pathlib import Path
 from typing import Protocol, cast
+from zipfile import ZipFile
 
 import pytest
 
@@ -158,6 +159,83 @@ def test_shell_syntax_scans_an_explicit_commit_range(tmp_path: Path) -> None:
 
     assert result.returncode == 1
     assert '[SHELL_SYNTAX]' in result.stderr
+
+
+@pytest.mark.parametrize(
+    'revision_range', [None, 'HEAD~1..HEAD', 'HEAD~1...HEAD']
+)
+@pytest.mark.parametrize(
+    ('shell_content', 'expected_status'),
+    [
+        (None, 0),
+        (b'#!/usr/bin/env bash\necho "\xb6"\n', 0),
+        (b'#!/usr/bin/env bash\nif true; then\necho "\xb6"\n', 1),
+        (b'#!/usr/bin/env bash\n)\xb6\n', 1),
+    ],
+)
+def test_shell_syntax_handles_binary_candidates_in_git_snapshots(
+    tmp_path: Path,
+    revision_range: str | None,
+    shell_content: bytes | None,
+    expected_status: int,
+) -> None:
+    """Binary blobs must not hide shell syntax failures in either Git mode."""
+    initialize_git_repository(tmp_path)
+    if revision_range is not None:
+        run_git(
+            tmp_path, 'commit', '--quiet', '--allow-empty', '-m', 'baseline'
+        )
+
+    with ZipFile(tmp_path / 'COTAHIST_A2022.ZIP', 'w') as archive:
+        archive.writestr('COTAHIST_A2022.TXT', b'\xb6\xff\x00')
+    (tmp_path / 'binary').write_bytes(
+        (tmp_path / 'COTAHIST_A2022.ZIP').read_bytes()
+    )
+    (tmp_path / 'notes.txt').write_bytes(b'Non-UTF-8 text: \xb6\n')
+    run_git(tmp_path, 'add', '--', 'COTAHIST_A2022.ZIP', 'binary', 'notes.txt')
+
+    shell_file = tmp_path / 'check'
+    if shell_content is not None:
+        shell_file.write_bytes(shell_content)
+        run_git(tmp_path, 'add', '--', 'check')
+    if revision_range is not None:
+        run_git(
+            tmp_path, 'commit', '--quiet', '-m', 'add binary and shell inputs'
+        )
+    shell_file.write_text('echo "worktree only"\n', encoding='utf-8')
+
+    arguments = ('--range', revision_range) if revision_range else ()
+    result = run_gate(SHELL_SYNTAX, tmp_path, *arguments)
+
+    assert result.returncode == expected_status, result.stderr
+    if shell_content is None:
+        assert 'SKIP [SHELL_SYNTAX]' in result.stdout
+    elif expected_status == 1:
+        assert 'check: [SYNTAX]' in result.stderr
+
+
+def test_shell_validation_preserves_non_utf8_bytes(
+    shell_syntax_module,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The shell must receive the original non-UTF-8 script bytes."""
+    original = b'#!/bin/sh\necho "\xb6\xff"\n'
+    inspected: list[bytes] = []
+
+    def inspect_script(command, **kwargs):
+        inspected.append(Path(command[-1]).read_bytes())
+        return run_process(command, **kwargs)
+
+    monkeypatch.setattr(shell_syntax_module, 'run_process', inspect_script)
+
+    diagnostic = shell_syntax_module.validate_shell_file(
+        'check.sh',
+        original.decode('utf-8', errors='surrogateescape'),
+        ('sh', '-n'),
+    )
+
+    assert diagnostic is None
+    assert inspected == [original]
 
 
 def test_shell_syntax_allocation_failure_returns_gate_error(

@@ -74,8 +74,11 @@ two records.
 
 These figures describe the bytes of the frozen files in the manifest; they do
 not verify an external trading calendar or instrument registry. The local
-corpus does not include 1986–1999 or dates after 2026-09-02. Before these
-figures are used as implementation acceptance criteria, the v2 campaign must
-reconcile every source row and Parquet against these files again.
+corpus does not include 1986–1999 or dates after 2026-09-02. A later v2 campaign
+recorded complete reconciliation of all 32 fields and row order, along with
+the 27 manifest checksums; see the
+[2000–2026 acceptance](../dev-guide/cotahist-performance.md#complete-20002026-acceptance).
+These results are historical. A new campaign must recheck input hashes and
+reconcile the data before using these numbers as acceptance criteria.
 
 Official format and offsets: [B3 historical series layout](https://www.b3.com.br/data/files/33/67/B9/50/D84057102C784E47AC094EA8/SeriesHistoricas_Layout.pdf).

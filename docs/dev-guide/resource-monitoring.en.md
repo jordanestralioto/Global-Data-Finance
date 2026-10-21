@@ -1,28 +1,33 @@
 # Resource Monitoring
 
-Comprehensive documentation detailing the telemetry and resource monitoring subsystem built into Global-Data-Finance.
+Resource measurements, limits, and admission helpers used by Global-Data-Finance.
 
 ______________________________________________________________________
 
 ## Overview
 
-The `ResourceMonitor` class represents an advanced, dynamic CPU and RAM telemetry engine offering:
+`ResourceMonitor` measures CPU and memory and offers operations to its caller:
 
-- ✅ **Singleton Architecture**: Guaranteed singular telemetry instance across application lifecycles
-- ✅ **Automated Throttling**: Automatically adjusts concurrent worker limits and batch dimensions according to real-time resources
-- ✅ **Circuit Breaker Integration**: Temporarily pauses I/O processing operations whenever hardware saturation reaches critical thresholds
-- ✅ **Automated Garbage Collection**: Explicitly invokes memory garbage collection cycles during memory pressure spikes
+- A singleton constructor for shared use, or `create_isolated()` for isolation.
+- Manual helpers to size workers and batches and wait for resources.
+- States and a circuit breaker consulted by the flow using the monitor.
+- Garbage collection on warning when enabled in the limits.
+
+A reported state does not automatically resize an operation already running.
 
 ______________________________________________________________________
 
 ## Resource Saturation States
 
-| State Definition | Operational Description              | Triggered Response Action             |
-| ---------------- | ------------------------------------ | ------------------------------------- |
-| **HEALTHY**      | Normal execution resource footprint  | No throttling or remediation required |
-| **WARNING**      | Resource consumption exceeds 70-80%  | Evaluates and registers GC execution  |
-| **CRITICAL**     | Consumption exceeds 85-90%           | Downscales workers/batches, forces GC |
-| **EXHAUSTED**    | System usage surpasses 95% threshold | Activates execution circuit breaker   |
+| State         | Description                                                                                         | Action                                    |
+| ------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| **HEALTHY**   | Memory and CPU below warning thresholds                                                              | No action required                        |
+| **WARNING**   | Memory or CPU warning threshold reached                                                              | Considers GC when enabled                 |
+| **CRITICAL**  | Critical threshold reached or resource telemetry failed                                              | Caller decides how to reduce work         |
+| **EXHAUSTED** | Memory exhaustion threshold reached, insufficient free memory, or circuit breaker still active        | Activates the circuit breaker when enabled |
+
+Thresholds are configurable through `ResourceLimits`; the example below shows
+the defaults. High CPU alone reaches `CRITICAL`.
 
 ______________________________________________________________________
 
@@ -130,9 +135,11 @@ The CVM flow uses a static concurrency semaphore in
 workers during downloads. The limit is set by `max_concurrent` when the
 adapter is constructed.
 
-The B3 flow consumes `ResourceMonitor` through `ResourcePolicyB3`. This policy
-uses the singleton to limit concurrent files, parsing workers, and batch sizes
-according to CPU and memory pressure.
+`ResourcePolicyB3` creates an isolated monitor, without warning GC or CPU
+utilization as a trigger. `fast` bounds workers by source count, CPU count,
+available RAM, and `GDF_B3_WORKER_LIMIT` (default 4); `slow` uses one worker.
+Admission waits under critical memory and fails on exhaustion or timeout.
+The singleton's manual helpers do not resize B3 batches.
 
 ______________________________________________________________________
 
@@ -148,7 +155,8 @@ state = monitor.check_resources()
 
 if state == ResourceState.EXHAUSTED:
     print("System entering EXHAUSTED capacity state! Awaiting cooldown...")
-    monitor.wait_for_resources(timeout_seconds=120)
+    if not monitor.wait_for_resources(timeout_seconds=120):
+        raise TimeoutError("Resources remain unavailable")
 
 # Retrieve safe concurrent worker threshold
 workers = monitor.get_safe_worker_count(max_workers=16)

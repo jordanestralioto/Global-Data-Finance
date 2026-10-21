@@ -1,387 +1,168 @@
-# Exception Reference
+# Exceptions and failure results
+
+This reference distinguishes input errors, failures collected in results, and
+lower-level exceptions. See also the [CVM](cvm-api.md) and [B3](b3-api.md)
+contracts.
+
+## Handling a public call
+
+| Situation | Behavior |
+| --- | --- |
+| Invalid parameter or path | Validation may raise an exception before the main operation |
+| A CVM download fails | The result records its identifier and cause in `failed_downloads`; other downloads continue |
+| A B3 input is missing, corrupt, or invalid | The facade returns `success=False`, details in `errors`, and no new `output_file` |
+| An empty B3 directory | Returns zero `total_files` and requested years in `integrity.missing_years` |
+| Valid B3 sources with no quotations after filtering | Returns success and publishes an empty Parquet with the B3 schema |
+| B3 async cancellation before the commit decision | Waits for workers, cleans temporary files, and propagates `asyncio.CancelledError` |
+
+Check `result.has_errors()` for CVM and `result["success"]` for B3 before
+consuming artifacts. [Transactional publication](transactional-publication.md)
+describes recovery, cancellation, and visibility limits.
+
+## Shared exceptions
+
+Import these types from `globaldatafinance.macro_exceptions`.
+
+| Exception | Base | Condition |
+| --- | --- | --- |
+| `InvalidDestinationPathError` | `ValueError` | Empty or whitespace-only path |
+| `PathIsNotDirectoryError` | `ValueError` | A required directory is missing or is a file |
+| `PathPermissionError` | `OSError` | No permission to create or write to the destination |
+| `PathCreationError` | `OSError` | Destination creation fails for another I/O reason |
+| `FileWriteError` | `OSError` | File write failure |
+| `ParquetWriteError` | `OSError` | Filesystem failure while writing or reopening Parquet |
+| `DiskFullError` | `OSError` | Insufficient destination storage |
+| `ExtractionError` | `Exception` | Extraction or content-validation failure |
+| `CorruptedZipError` | `ExtractionError` | Corrupt or unreadable ZIP |
+| `SecurityError` | `Exception` | Violation of path, file, or extraction policy |
+| `NetworkError` | `Exception` | Transport failure translated by the CVM adapter |
+| `DownloadTimeoutError` | `Exception` | CVM download timeout |
+| `EmptyDirectoryError` | `Exception` | Shared type representing the absence of input files |
+
+A sensitive destination raises `SecurityError`. Type errors may raise the
+built-in `TypeError`. The B3 facade reports an empty directory through its
+result as described above; catching `EmptyDirectoryError` does not replace
+that check.
+
+During staged CVM Parquet writes, filesystem failures other than `ENOSPC`
+become `ParquetWriteError` with the original cause preserved; `ENOSPC` becomes
+`DiskFullError`. Download aggregation records `ParquetWrite: ...` when
+applicable and retains the ZIP for diagnosis. CSV, schema, count, and integrity
+failures continue to follow the extraction contract.
+
+The CVM adapter translates transport failures, applies the
+[retry policy](../dev-guide/retry-strategy.md), and collects persistent failures
+in `failed_downloads`. Catching `NetworkError` synchronously around the facade
+is not how callers identify these failed downloads.
+
+## CVM exceptions
+
+These types are defined in
+`globaldatafinance.brazil.cvm.fundamental_stocks_data.errors`.
+`CvmError` inherits from `Exception`; every other type in this table inherits
+from `CvmError`.
+
+| Exception | Condition |
+| --- | --- |
+| `InvalidDocumentName` | Unsupported CVM document code |
+| `InvalidDocumentType` | An item in `list_docs` is not a string |
+| `InvalidFirstYear` | Initial year is not an integer, is below 2003, or exceeds the current year |
+| `InvalidLastYear` | Final year is not an integer, exceeds the current year, or precedes the initial year |
+| `EmptyDocumentListError` | Internal resolution type for an empty selection |
+| `MissingDownloadUrlError` | Internal resolution type for a document without a configured URL |
+
+An outer `list_docs` value other than a list or `None` raises `TypeError`.
+`None` and `[]` select all document types. The catalog accepts `DFP`, `ITR`,
+`FCA`, `FRE`, `CGVN`, `VLMO`, and `IPE`.
+
+The global year-validation floor is 2003. Per-document first years filter the
+URLs: a valid interval before DFP begins, for example, generates no DFP URLs
+for those years. See the first years in the
+[CVM reference](cvm-api.md#supported-document-classifications).
+
+## B3 exceptions
+
+These types are defined in
+`globaldatafinance.brazil.b3_data.historical_quotes.errors`.
+`B3Error(Exception)` is the base for the validation exceptions in this table:
+
+| Exception | Condition |
+| --- | --- |
+| `EmptyAssetListError` | `assets_list` is empty or not a list; `None` selects `todos` |
+| `InvalidAssetsName` | Non-string item or unknown alias |
+| `InvalidFirstYear` | Initial year outside 1986 through the current year, or an invalid type |
+| `InvalidLastYear` | Invalid final year, above the current year, or before the initial year |
+| `InvalidProcessingMode` | Mode other than `fast` or `slow` |
+| `InvalidOutputFilename` | Invalid output name or a name that is not a basename |
+
+Accepted aliases: `ações`, `etf`, `opções`, `termo`, `exercicio_opcoes`,
+`forward`, `leilao`, `lote_bloco`, and `todos`. Validation normalizes letter
+case. The output name accepts an optional `.parquet` suffix, appended when
+absent. Path separators and traversal are rejected.
 
-Complete catalog of exceptions and error handling contracts in Global-Data-Finance.
+The module also defines `CotahistCatalogError(ValueError)` and
+`CotahistPreflightError(ExtractionError)` for internal resolution and preflight.
+Neither inherits from `B3Error`. The facade converts these input-source
+failures into unsuccessful results. Catching `B3Error` handles input validation;
+processing failures require checking `result["success"]` and `errors`.
 
-______________________________________________________________________
+The CVM and B3 `InvalidFirstYear` and `InvalidLastYear` types are distinct
+classes. Source-specific exceptions are imported from their source modules;
+the `globaldatafinance` root exports the facades and `ExtractionResultB3`.
 
-## Overview
+## Handling examples
 
-Global-Data-Finance adheres to a strict error handling policy:
+### CVM
 
-- **Fail-Fast Parameter Validation**: Invalid input parameters, unknown document codes, unsupported asset classes, or unsafe destination directories synchronously raise typed domain exceptions before any network or file I/O operations commence.
-- **Network Resilience**: In asynchronous CVM downloads, transient connection disruptions trigger automatic retries with exponential backoff. Persistent network failures are compiled into the `failed_downloads` attribute of the returned `DownloadResultCVM` without aborting other concurrent tasks.
-- **Explicit Hierarchy**: No artificial catch-all exception exists (such as `GlobalDataFinanceError`). Every source domain and infrastructure boundary provides clear, predictable, and typed exception classes.
-
-______________________________________________________________________
-
-## Infrastructure Exceptions (`macro_exceptions`)
-
-Infrastructure exceptions represent cross-cutting errors originating from filesystem interactions, low-level network transports, path security validation, and archive integrity.
-
-### Filesystem & Permissions
-
-#### `InvalidDestinationPathError`
-
-```python
-class InvalidDestinationPathError(ValueError):
-    """Target destination path is invalid, malformed, or violates security constraints."""
-```
-
-- **Inheritance**: `ValueError`
-- **When Raised**: Destination path points to a protected system directory, a file rather than a directory, or contains path traversal sequences.
-
-#### `PathIsNotDirectoryError`
-
-```python
-class PathIsNotDirectoryError(ValueError):
-    """Supplied path is not a valid directory."""
-```
-
-- **Inheritance**: `ValueError`
-
-#### `PathPermissionError`
-
-```python
-class PathPermissionError(OSError):
-    """Insufficient filesystem permissions to create or access directory."""
-```
-
-- **Inheritance**: `OSError`
-
-#### `PathCreationError`
-
-```python
-class PathCreationError(OSError):
-    """Failed to create directory structure on filesystem."""
-```
-
-- **Inheritance**: `OSError`
-
-#### `FileWriteError` & `ParquetWriteError`
-
-```python
-class FileWriteError(OSError):
-    """Failed to write file to disk storage."""
-
-
-class ParquetWriteError(OSError):
-    """Failed to serialize or write Apache Parquet artifact."""
-```
-
-- **Inheritance**: `OSError`
-
-During staged CVM Parquet writes, filesystem failures other than `ENOSPC` are
-reported as `ParquetWriteError` with the original cause preserved; `ENOSPC`
-remains `DiskFullError`. Download aggregation records `ParquetWrite: ...` and
-keeps the ZIP for diagnosis.
-
-#### `DiskFullError`
-
-```python
-class DiskFullError(OSError):
-    """Insufficient storage capacity on destination filesystem."""
-```
-
-- **Inheritance**: `OSError`
-
-### Extraction & Archive Operations
-
-#### `EmptyDirectoryError`
-
-```python
-class EmptyDirectoryError(Exception):
-    """Input directory is physically empty."""
-```
-
-- **When Raised**: Only when the input directory is physically empty. A
-  missing COTAHIST file for any requested year is returned as a B3 result
-  failure; `integrity.missing_years` lists the gaps and no new output is
-  published.
-
-#### `ExtractionError` & `CorruptedZipError`
-
-```python
-class ExtractionError(Exception):
-    """Error encountered during archive decompression or data extraction."""
-
-
-class CorruptedZipError(ExtractionError):
-    """ZIP archive is corrupted or unreadable."""
-```
-
-- **Inheritance**: `CorruptedZipError` inherits from `ExtractionError`.
-
-#### `SecurityError`
-
-```python
-class SecurityError(Exception):
-    """Security policy violation detected during path or file operations."""
-```
-
-### Low-Level Network & HTTP
-#### `NetworkError` & `DownloadTimeoutError`
-
-```python
-class NetworkError(Exception):
-    """Network transport disruption translated during CVM downloads."""
-
-
-class DownloadTimeoutError(Exception):
-    """Socket read or connection timeout translated during CVM downloads."""
-```
-
-- **Origin and Pipeline Translation**:
-  1. The low-level HTTP adapter (`RequestsAdapter.async_download_file`) executes streaming transfers via `httpx` and may propagate transport failures (`httpx.RequestError`, `httpx.HTTPStatusError`, `httpx.TimeoutException`, `ConnectionError`) or filesystem write faults.
-  2. The CVM download adapter (`AsyncDownloadAdapterCVM._download_with_retry`) intercepts these low-level transport errors and translates them into domain exceptions `NetworkError` and `DownloadTimeoutError`.
-  3. `RetryStrategy` applies automated retries with exponential backoff up to configured retry limits.
-  4. Persistent failures after retry exhaustion are consolidated into the `result.failed_downloads` dictionary of `DownloadResultCVM` without aborting concurrent transfers of other years or document types.
-
-______________________________________________________________________
-
-## CVM Domain Exceptions (`fundamental_stocks_data.errors`)
-
-All CVM-specific exceptions inherit from `CvmError`.
-
-```python
-class CvmError(Exception):
-    """Base exception class for all CVM domain failures."""
-```
-
-### `InvalidDocumentName` & `InvalidDocumentType`
-
-```python
-class InvalidDocumentName(CvmError):
-    """Supplied CVM document identifier is unrecognized."""
-
-
-class InvalidDocumentType(CvmError):
-    """Invalid parameter type supplied for document list."""
-```
-
-- **When Raised**: Document code does not belong to the official catalog (`"DFP"`, `"ITR"`, `"FCA"`, `"FRE"`, `"CGVN"`, `"VLMO"`, `"IPE"`), or parameter is not a valid list/string.
-
-### `InvalidFirstYear` & `InvalidLastYear`
-
-```python
-class InvalidFirstYear(CvmError):
-    """Starting fiscal year falls below minimum historical boundary."""
-
-
-class InvalidLastYear(CvmError):
-    """Ending fiscal year is invalid or precedes starting year."""
-```
-
-- **When Raised**: Year is below the historical floor for that document type or exceeds current system year.
-
-### `EmptyDocumentListError` & `MissingDownloadUrlError`
-
-```python
-class EmptyDocumentListError(CvmError):
-    """No document download targets remained after internal resolution."""
-
-
-class MissingDownloadUrlError(CvmError):
-    """Download URL prefix not registered for requested document."""
-```
-
-- **Semantic Note**: On the public facade `FundamentalStocksDataCVM.download()`, supplying `list_docs=None` or `list_docs=[]` downloads **all available document types**. `EmptyDocumentListError` is an internal domain exception used when URL resolution produces an empty set.
-
-______________________________________________________________________
-
-## B3 Domain Exceptions (`historical_quotes.errors`)
-
-Exceptions governing historical market exchange quote processing. Every concrete
-class inherits from `B3Error`, the source-specific catch boundary.
-
-### `InvalidAssetsName` & `EmptyAssetListError`
-
-```python
-class B3Error(Exception):
-    """Base class for B3 domain exceptions."""
-
-
-class InvalidAssetsName(B3Error):
-    """Asset class keyword is unrecognized by B3 extractor."""
-
-
-class EmptyAssetListError(B3Error):
-    """Required asset class list parameter was supplied empty."""
-```
-
-- **When Raised**: `assets_list` is empty or contains identifiers outside the supported whitelist (`'ações'`, `'etf'`, `'opções'`, `'termo'`, `'exercicio_opcoes'`, `'forward'`, `'leilao'`).
-
-### `InvalidProcessingMode`
-
-```python
-class InvalidProcessingMode(B3Error):
-    """Invalid execution profile (must be 'fast' or 'slow')."""
-```
-
-### `InvalidOutputFilename`
-
-```python
-class InvalidOutputFilename(B3Error):
-    """Output filename is invalid (must be a basename without path segments)."""
-```
-
-- **When Raised**: `output_filename` contains directory separators (`/` or `\`) or traversal segments (`..`). The `.parquet` suffix is optional and is appended automatically when omitted.
-
-### `InvalidFirstYear` & `InvalidLastYear` (B3)
-
-```python
-class InvalidFirstYear(B3Error):
-    """Starting year precedes historical floor (1986) or exceeds current year."""
-
-
-class InvalidLastYear(B3Error):
-    """Ending year precedes initial year or exceeds current system year."""
-```
-
-______________________________________________________________________
-
-## Exception Class Hierarchy
-
-```
-Exception
-├── macro_exceptions
-│   ├── EmptyDirectoryError
-│   ├── NetworkError
-│   ├── DownloadTimeoutError
-│   ├── ExtractionError
-│   │   └── CorruptedZipError
-│   └── SecurityError
-├── CvmError
-│   ├── InvalidDocumentName
-│   ├── InvalidDocumentType
-│   ├── InvalidFirstYear
-│   ├── InvalidLastYear
-│   ├── EmptyDocumentListError
-│   └── MissingDownloadUrlError
-└── B3Error
-    ├── InvalidAssetsName
-    ├── EmptyAssetListError
-    ├── InvalidProcessingMode
-    ├── InvalidOutputFilename
-    ├── InvalidFirstYear
-    └── InvalidLastYear
-
-ValueError
-├── InvalidDestinationPathError
-└── PathIsNotDirectoryError
-
-OSError
-├── PathPermissionError
-├── PathCreationError
-├── FileWriteError
-├── ParquetWriteError
-└── DiskFullError
-```
-
-______________________________________________________________________
-
-## Exception Handling Examples
-
-### Example 1: Handling CVM Operations
+This example requires access to CVM and a writable destination.
 
 ```python
 from globaldatafinance import FundamentalStocksDataCVM
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.errors import (
-    CvmError,
-    InvalidDocumentName,
-    InvalidFirstYear,
-    InvalidLastYear,
-)
-from globaldatafinance.macro_exceptions import (
-    InvalidDestinationPathError,
-    PathPermissionError,
-)
-
-cvm = FundamentalStocksDataCVM()
+from globaldatafinance.brazil.cvm.fundamental_stocks_data.errors import CvmError
+from globaldatafinance.macro_exceptions import SecurityError
 
 try:
-    # 1. Synchronous parameter and directory validation
-    result = cvm.download(
-        destination_path="/data/cvm",
+    result = FundamentalStocksDataCVM().download(
+        destination_path="./data_cvm",
         list_docs=["DFP"],
-        initial_year=2022,
+        initial_year=2023,
         last_year=2023,
     )
+except (CvmError, TypeError, ValueError, OSError, SecurityError) as error:
+    raise SystemExit(f"CVM request failed: {error}") from error
 
-    # 2. Result evaluation (network failures are retried and compiled into failed_downloads)
-    if result.has_errors():
-        print(
-            f"Encountered {result.error_count_downloads} persistent failure(s):"
-        )
-        for doc_key, message in result.failed_downloads.items():
-            print(f"  • {doc_key}: {message}")
-    else:
-        print(
-            f"Success: {result.success_count_downloads} files downloaded cleanly."
-        )
-
-except InvalidDocumentName as exc:
-    print(f"Invalid document parameter: {exc}")
-except (InvalidFirstYear, InvalidLastYear) as exc:
-    print(f"Temporal parameter boundary violation: {exc}")
-except InvalidDestinationPathError as exc:
-    print(f"Unsafe or invalid destination path: {exc}")
-except PathPermissionError as exc:
-    print(f"Insufficient filesystem permission: {exc}")
-except CvmError as exc:
-    print(f"General CVM domain failure: {exc}")
+if result.has_errors():
+    raise RuntimeError(result.failed_downloads)
+print(f"Downloaded: {result.success_count_downloads}")
 ```
 
-### Example 2: Handling B3 Operations
+### B3
+
+Place `COTAHIST_A2023.ZIP` or `.TXT` in the input directory before running.
 
 ```python
 from globaldatafinance import HistoricalQuotesB3
-from globaldatafinance.brazil.b3_data.historical_quotes.errors import (
-    EmptyAssetListError,
-    InvalidAssetsName,
-    InvalidFirstYear,
-    InvalidLastYear,
-    InvalidOutputFilename,
-    InvalidProcessingMode,
-)
-from globaldatafinance.macro_exceptions import (
-    EmptyDirectoryError,
-    InvalidDestinationPathError,
-)
+from globaldatafinance.brazil.b3_data.historical_quotes.errors import B3Error
+from globaldatafinance.macro_exceptions import SecurityError
 
-b3 = HistoricalQuotesB3()
 
-try:
-    result = b3.extract(
-        path_of_docs="/data/cotahist",
-        assets_list=["ações", "etf"],
-        initial_year=2023,
-        output_filename="quotes_2023",
-        processing_mode="fast",
-    )
-    print(
-        f"Extracted {result['total_records']:,} rows into {result['output_file']}"
-    )
+def main() -> None:
+    try:
+        result = HistoricalQuotesB3().extract(
+            path_of_docs="./cotahist_b3",
+            assets_list=["ações", "opções"],
+            initial_year=2023,
+            last_year=2023,
+            output_filename="quotes_2023",
+        )
+    except (B3Error, TypeError, ValueError, OSError, SecurityError) as error:
+        raise SystemExit(f"B3 request failed: {error}") from error
 
-except EmptyAssetListError:
-    print("Asset classes filter list cannot be empty.")
-except InvalidAssetsName as exc:
-    print(f"Unrecognized asset class keyword: {exc}")
-except (InvalidFirstYear, InvalidLastYear) as exc:
-    print(f"Invalid historical year range: {exc}")
-except InvalidOutputFilename as exc:
-    print(f"Invalid output filename basename: {exc}")
-except InvalidProcessingMode as exc:
-    print(f"Processing mode must be 'fast' or 'slow': {exc}")
-except EmptyDirectoryError as exc:
-    print(f"Source directory contains no COTAHIST archives: {exc}")
-except InvalidDestinationPathError as exc:
-    print(f"Invalid destination directory: {exc}")
+    if not result["success"]:
+        raise RuntimeError(result["errors"] or result["message"])
+    print(f"Rows: {result['total_records']}; output: {result['output_file']}")
+
+
+if __name__ == "__main__":
+    main()
 ```
-
-______________________________________________________________________
-
-See also:
-
-- [CVM API Reference](cvm-api.md)
-- [B3 API Reference](b3-api.md)
-- [FAQ](../user-guide/faq.md)

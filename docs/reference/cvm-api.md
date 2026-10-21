@@ -1,21 +1,31 @@
 # API CVM - Referência Técnica
 
-Documentação técnica detalhada da API CVM.
+Contratos de entrada, resultados e persistência de `FundamentalStocksDataCVM`.
+Para uma primeira execução, consulte o [guia CVM](../user-guide/cvm-docs.md).
 
 ______________________________________________________________________
 
 ## FundamentalStocksDataCVM
 
-### Classe Principal
+### Importação
 
 ```python
-class FundamentalStocksDataCVM:
-    """Interface de alto nível para documentos CVM."""
+from globaldatafinance import FundamentalStocksDataCVM
 ```
 
-### Métodos
+### Construção e configuração
 
-#### `download()`
+```python
+def __init__(self, *, settings: Settings | None = None) -> None:
+    ...
+```
+
+Importe `Settings` de `globaldatafinance.core.config`. O argumento opcional
+injeta um snapshot imutável; com `None`, o cliente cria um snapshot do ambiente
+atual. A propriedade `settings` retorna a configuração usada. Consulte
+[configuração](../dev-guide/advanced-usage.md#configuracao-global).
+
+### `download()`
 
 ```python
 def download(
@@ -88,9 +98,14 @@ Retorna um objeto `DownloadResultCVM` contendo os resultados consolidados:
 **Exceções Síncronas**:
 
 - `InvalidDocumentName`: Tipo de documento inválido.
+- `InvalidDocumentType`: Um item de `list_docs` não é uma string.
 - `InvalidFirstYear`: Ano inicial inválido.
 - `InvalidLastYear`: Ano final inválido.
-- `InvalidDestinationPathError`: Caminho de destino inválido ou não seguro.
+- `TypeError`: Tipo inválido para `list_docs`, `automatic_extractor` ou caminho.
+- `InvalidDestinationPathError`: Caminho vazio ou composto apenas por espaços.
+- `PathIsNotDirectoryError`: Uma pasta de documento ou ano já existe como arquivo.
+- `PathPermissionError`: Sem permissão para criar ou gravar no destino.
+- `PathCreationError`: Falha de criação do destino, inclusive quando um pai é arquivo.
 - `SecurityError`: Nome derivado da URL ou destino local não é seguro.
 
 Falhas de rede ou indisponibilidade transitória de arquivos específicos durante
@@ -136,9 +151,18 @@ result = cvm.download(
     last_year=2023,
     automatic_extractor=True
 )
+if result.has_errors():
+    raise RuntimeError(result.failed_downloads)
 ```
 
-#### `get_available_docs()`
+### `async_download()`
+
+Variante assíncrona de `download()`, com os mesmos argumentos, padrões e
+resultado. Em notebooks ou aplicações com event loop ativo, use
+`await client.async_download(...)` em vez do wrapper síncrono. A assinatura
+completa também está na [visão geral da API](../dev-guide/api-reference.md).
+
+### `get_available_docs()`
 
 ```python
 def get_available_docs(self) -> dict[str, str]:
@@ -147,16 +171,17 @@ def get_available_docs(self) -> dict[str, str]:
 
 **Descrição**: Retorna mapeamento de códigos para descrições de documentos.
 
-**Retorno**: Dicionário `{código: descrição}`
+**Retorno**: Dicionário `{código: descrição}`. As descrições são os textos em
+inglês retornados pela biblioteca; a tabela abaixo apresenta os nomes em português.
 
 **Exemplo**:
 
 ```python
 docs = cvm.get_available_docs()
-# {'DFP': 'Demonstração Financeira Padronizada', ...}
+# {'DFP': '(Standardized Financial Statements) ...', ...}
 ```
 
-#### `get_available_years()`
+### `get_available_years()`
 
 ```python
 def get_available_years(self) -> AvailableYearsInfoCVM:

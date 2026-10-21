@@ -5,11 +5,11 @@ salve e execute o comando indicado abaixo**. Você pode fazer isso no editor de
 texto que já usa. As opções que precisam ser alteradas estão juntas, perto do
 início de cada arquivo.
 
-| Arquivo                                                | O que faz                           | O que precisa                   |
-| ------------------------------------------------------ | ----------------------------------- | ------------------------------- |
-| [01_quickstart_cvm.py](01_quickstart_cvm.py)           | Baixa documentos financeiros da CVM | Internet                        |
-| [02_quickstart_b3.py](02_quickstart_b3.py)             | Lê cotações dos mercados de ações   | Arquivos COTAHIST no computador |
-| [03_advanced_options_b3.py](03_advanced_options_b3.py) | Lê também os mercados de opções     | Arquivos COTAHIST no computador |
+| Arquivo                                                | O que faz                           | O que precisa                 |
+| ------------------------------------------------------ | ----------------------------------- | ----------------------------- |
+| [01_quickstart_cvm.py](01_quickstart_cvm.py)           | Baixa documentos financeiros da CVM | Internet                      |
+| [02_quickstart_b3.py](02_quickstart_b3.py)             | Lê cotações dos mercados de ações   | Amostras incluídas no projeto |
+| [03_advanced_options_b3.py](03_advanced_options_b3.py) | Lê também os mercados de opções     | Amostras incluídas no projeto |
 
 ## 1. Preparar o ambiente uma vez
 
@@ -95,18 +95,25 @@ para todos os tipos. Para uma primeira execução menor, use o bloco acima.
 
 ### Exemplo 02: cotações da B3
 
-A biblioteca lê arquivos que já estão no seu computador. Para obter a entrada,
-siga o [guia B3](../docs/user-guide/b3-docs.md). Para processar 2023, organize
-a pasta assim:
+A biblioteca lê arquivos locais. O repositório inclui duas amostras sintéticas
+pequenas, prontas para executar os exemplos após preparar o ambiente:
 
 ```text
 cotahist_b3/
+├── COTAHIST_A2022.ZIP
 └── COTAHIST_A2023.ZIP
 ```
 
-Também funciona com `COTAHIST_A2023.TXT`. Preserve o nome oficial; cada ano
-solicitado precisa ter seu arquivo na pasta. Os exemplos não incluem esses
-arquivos nem fazem o download deles.
+Cada amostra contém seis cotações fictícias, com os controles e campos
+obrigatórios do layout COTAHIST. Os preços servem apenas para demonstração.
+Esses arquivos são gerados por
+[`scripts/generate_example_cotahist.py`](../scripts/generate_example_cotahist.py);
+edite o gerador e regenere os ZIPs para mudar as amostras.
+
+Para usar bases reais, siga o [guia B3](../docs/user-guide/b3-docs.md), guarde
+os arquivos em `cotahist_b3_local/` e ajuste `PATH_OF_DOCS` e os anos do
+exemplo. Essa pasta é ignorada pelo Git. Também funciona com TXT descompactado;
+preserve o nome oficial `COTAHIST_AYYYY.ZIP` ou `.TXT` e forneça cada ano pedido.
 
 O exemplo 02 já está configurado para 2023. Se a entrada estiver em outra
 pasta, substitua a linha `PATH_OF_DOCS` por algo como:
@@ -124,6 +131,7 @@ uv run --locked --no-sync python examples/02_quickstart_b3.py
 O resultado padrão é `dados_b3/cotacoes_acoes_2023.parquet`. Para processar
 2022 e 2023, mude `INITIAL_YEAR` para `2022` e `LAST_YEAR` para `2023`. O nome
 passa automaticamente a ser `cotacoes_acoes_2022_2023.parquet`.
+Com a amostra incluída e os valores padrão, são geradas **3 cotações**.
 
 `ASSETS = ['ações']` seleciona os mercados à vista (010) e fracionário (020).
 ETFs desses mercados também podem aparecer. Essa opção escolhe **mercados**;
@@ -134,10 +142,10 @@ ela não escolhe empresas por códigos como PETR4.
 Use este arquivo para incluir opções. Ele funciona da mesma forma que o exemplo
 02; a seleção inicial é `ASSETS = ['ações', 'etf', 'opções']`.
 
-O arquivo está configurado para **2010 a 2026** e o caminho local já
-configurado em `PATH_OF_DOCS`. Para experimentar só 2023, mude os dois anos
-para `2023`. Se precisar mudar a pasta, substitua todo o trecho de
-`PATH_OF_DOCS = (` até o `)` por uma única linha como a mostrada no exemplo 02.
+O arquivo está configurado para **2022 a 2023**, com entradas locais em
+`./cotahist_b3`. A pasta precisa conter os arquivos dos dois anos. Para
+experimentar só 2023, mude os dois anos para `2023`. Se precisar mudar a pasta,
+edite `PATH_OF_DOCS` como no exemplo 02.
 
 Execute:
 
@@ -146,9 +154,11 @@ uv run --locked --no-sync python examples/03_advanced_options_b3.py
 ```
 
 Com a configuração atual, o resultado é
-`dados_b3/carteira_completa_2010_2026.parquet`. Com os dois anos em 2023, será
+`dados_b3/carteira_completa_2022_2023.parquet`. Com os dois anos em 2023, será
 `dados_b3/carteira_completa_2023.parquet`. Para incluir todos os mercados em
 qualquer exemplo B3, mude `ASSETS` para `['todos']`.
+As amostras incluídas produzem **10 cotações** com a configuração padrão do
+exemplo 03. O mercado a termo (030) das amostras é excluído por essa seleção.
 
 ## 3. Conferir o resultado
 
@@ -208,6 +218,19 @@ Na pasta principal do projeto:
 ```bash
 uv run --locked --no-sync pytest tests/examples
 ```
+
+Para regenerar as duas amostras versionadas, ou conferir que correspondem ao
+gerador sem alterá-las:
+
+```bash
+uv run --locked --no-sync python scripts/generate_example_cotahist.py
+uv run --locked --no-sync python scripts/generate_example_cotahist.py --check
+```
+
+O gerador substitui somente os ZIPs de 2022 e 2023 em `cotahist_b3/`. Os ZIPs
+têm timestamps fixos para evitar mudanças causadas pela data de geração.
+Os testes também executam os scripts com as amostras incluídas, sem editar
+suas configurações e sem depender de bases anuais locais.
 
 Os testes usam ZIP, TXT, CSV e Parquet locais criados para a validação. O HTTP
 da CVM é substituído por respostas locais, sem baixar dados reais.

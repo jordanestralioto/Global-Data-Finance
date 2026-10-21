@@ -53,7 +53,11 @@ def staged_shell_files(
     """Return changed shell files with the exact Git content to validate."""
     files: list[tuple[str, str, tuple[str, ...]]] = []
     for path in get_changed_paths(revision_range=revision_range):
-        content = read_git_file(path, revision_range=revision_range)
+        content = read_git_file(
+            path,
+            revision_range=revision_range,
+            encoding_errors='surrogateescape',
+        )
         if content is None:
             raise ShellInspectionError(
                 f'Changed shell candidate is absent from inspected Git state: '
@@ -76,6 +80,7 @@ def validate_shell_file(
         with tempfile.NamedTemporaryFile(
             mode='w',
             encoding='utf-8',
+            errors='surrogateescape',
             suffix=Path(path).suffix or '.sh',
             delete=False,
         ) as temporary_file:
@@ -85,6 +90,7 @@ def validate_shell_file(
             [*command, str(temporary_path)],
             check=False,
             cwd=temporary_path.parent,
+            encoding_errors='surrogateescape',
         )
     except (OSError, UnicodeError, ProcessRunnerError) as err:
         command_text = ' '.join(command)

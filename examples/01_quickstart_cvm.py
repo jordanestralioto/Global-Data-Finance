@@ -14,7 +14,7 @@ INITIAL_YEAR = 2010
 LAST_YEAR = 2026
 DESTINATION_PATH = './dados_cvm'
 DOCUMENTS: list[str] = []  # All types; use ['DFP'] for annual statements.
-AUTOMATIC_EXTRACTOR = False  # Set True to also convert the ZIPs to Parquet.
+AUTOMATIC_EXTRACTOR = True  # Set True to also convert the ZIPs to Parquet.
 
 
 def main() -> None:
