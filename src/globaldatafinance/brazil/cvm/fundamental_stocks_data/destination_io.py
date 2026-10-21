@@ -13,6 +13,7 @@ from ....macro_exceptions import SecurityError
 from ....macro_infra.transactional_publication import FileOperations
 
 logger = get_logger(__name__)
+_DESCRIPTOR_ROOTS = (Path('/proc/self/fd'), Path('/dev/fd'))
 
 
 @dataclass(frozen=True)
@@ -54,6 +55,37 @@ def _supports_directory_descriptors() -> bool:
         operation in os.supports_dir_fd
         for operation in (os.open, os.mkdir, os.unlink, os.rmdir, os.rename)
     ) and bool(getattr(os, 'O_DIRECTORY', 0))
+
+
+def _descriptor_directory(descriptor: int) -> Path | None:
+    """Distinguish unavailable descriptor paths from unsupported traversal."""
+    expected = os.fstat(descriptor)
+    available = False
+    for base in _DESCRIPTOR_ROOTS:
+        opened = base / str(descriptor)
+        try:
+            status = opened.stat()
+        except FileNotFoundError:
+            continue
+        if not os.path.samestat(expected, status):
+            raise SecurityError('CVM descriptor path changed its identity')
+        available = True
+        try:
+            child_descriptor = os.open(
+                f'{opened}/.', os.O_RDONLY | os.O_DIRECTORY
+            )
+        except (FileNotFoundError, NotADirectoryError):
+            continue
+        try:
+            child_status = os.fstat(child_descriptor)
+        finally:
+            os.close(child_descriptor)
+        if not os.path.samestat(expected, child_status):
+            raise SecurityError('CVM descriptor child path changed identity')
+        return opened
+    if not available:
+        raise SecurityError('CVM descriptor-backed file paths are unavailable')
+    return None
 
 
 class DestinationFileOperationsCVM(FileOperations):
@@ -167,10 +199,9 @@ class DestinationFileOperationsCVM(FileOperations):
         """Address file readers and writers through the held directory."""
         name = None if path == self.snapshot.path else self._basename(path)
         if self.descriptor is not None:
-            for base in (Path('/proc/self/fd'), Path('/dev/fd')):
-                opened = base / str(self.descriptor)
-                if opened.is_dir():
-                    return opened if name is None else opened / name
+            opened = _descriptor_directory(self.descriptor)
+            if opened is not None:
+                return opened if name is None else opened / name
             raise SecurityError(
                 'CVM descriptor-backed file paths are unavailable',
                 path=str(path),
@@ -222,7 +253,12 @@ def open_download_destination(
             status.st_ino,
         ):
             raise SecurityError('CVM destination changed while opening it')
-        yield DestinationFileOperationsCVM(snapshot, descriptor)
+        operations_descriptor = (
+            descriptor
+            if _descriptor_directory(descriptor) is not None
+            else None
+        )
+        yield DestinationFileOperationsCVM(snapshot, operations_descriptor)
     finally:
         os.close(descriptor)
 

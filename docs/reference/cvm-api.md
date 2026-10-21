@@ -103,7 +103,8 @@ de I/O ao criar o lock após o download, a finalização registra a falha em
 `failed_downloads` e continua os outros destinos. A substituição por outro
 diretório ou por um link simbólico é rejeitada com `SecurityError`.
 
-Em sistemas com operações relativas a descritores de diretório, o lock, a
+Em sistemas com operações relativas a descritores de diretório e suporte ao
+acesso a arquivos filhos por caminhos vinculados ao descritor, o lock, a
 promoção do ZIP e a limpeza permanecem vinculados ao diretório aberto. A
 extração automática reutiliza essa ownership para ler o ZIP, escrever o staging
 e publicar os Parquet. Os leitores e escritores usam caminhos vinculados ao
@@ -113,8 +114,11 @@ mutável. Os manifestos persistem os nomes relativos originais. A limpeza
 preserva o staging e registra um diagnóstico quando não consegue confirmar a
 identidade do diretório originalmente validado.
 
-Nos sistemas sem esse suporte, a biblioteca confere a identidade antes das
-operações por caminho. Nesses sistemas, alterações simultâneas por processos
+Nos sistemas sem esse suporte completo, a biblioteca confere a identidade antes
+das operações por caminho. A capacidade de resolver filhos pelo descritor é
+verificada antes de criar o lock; sistemas como o macOS, cujo `/dev/fd` não
+permite esse acesso, usam esse fallback. Nesses sistemas, alterações simultâneas
+por processos
 que não seguem o protocolo de ownership não têm a mesma garantia atômica.
 
 A seleção de URLs respeita o primeiro ano de cada documento: IPE em 2003;

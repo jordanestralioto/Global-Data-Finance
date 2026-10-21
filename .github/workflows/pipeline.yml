@@ -329,6 +329,7 @@ jobs:
             tests/macro_infra/test_requests_adapter.py \
             tests/macro_infra/test_http_safety.py \
             "$cvm_tests/infra/adapters/test_http_retry.py" \
+            "$cvm_tests/integration/test_destination_io_platforms.py" \
             "$cvm_tests/integration/test_transaction_recovery.py" \
             "$cvm_tests/integration/test_cvm_log_redaction.py" \
             tests/application/b3_docs/test_release_regressions.py

@@ -102,7 +102,8 @@ while creating the lock after the download, finalization records the failure
 in `failed_downloads` and continues other destinations. Replacement by another
 directory or a symbolic link raises `SecurityError`.
 
-On systems supporting directory-descriptor-relative operations, the lock,
+On systems supporting directory-descriptor-relative operations and child access
+through descriptor-backed paths, the lock,
 ZIP promotion, and cleanup remain bound to the opened directory. Automatic
 extraction reuses that ownership to read the ZIP, write staging, and publish
 Parquet. Readers and writers use descriptor-backed paths through `/proc/self/fd`
@@ -111,8 +112,10 @@ writing data through a mutable pathname. Manifests retain the original relative
 names. Cleanup preserves staging and logs a diagnostic when it cannot confirm
 the originally validated directory identity.
 
-On systems without this support, the library verifies directory identity before
-path-based operations. Concurrent changes by processes that do not follow the
+On systems without this complete support, the library verifies directory identity
+before path-based operations. Child traversal is checked before creating the
+lock; systems such as macOS, whose `/dev/fd` does not support this access, use
+this fallback. Concurrent changes by processes that do not follow the
 ownership protocol do not have the same atomic guarantee on those systems.
 
 URL selection respects each document's first year: IPE in 2003; DFP, FCA, and

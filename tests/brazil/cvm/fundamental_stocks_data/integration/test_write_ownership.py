@@ -578,12 +578,12 @@ def test_missing_descriptor_paths_rejects_extraction_before_publication(
     foreign_bytes = foreign_source.read_bytes()
     foreign_output = outside / 'data.parquet'
     foreign_output.write_bytes(b'foreign output sentinel')
-    original_is_dir = Path.is_dir
+    original_stat = Path.stat
 
-    def hide_descriptor_paths(path: Path) -> bool:
+    def hide_descriptor_paths(path: Path, *args, **kwargs):
         if path.parent in (Path('/proc/self/fd'), Path('/dev/fd')):
-            return False
-        return original_is_dir(path)
+            raise FileNotFoundError('Descriptor paths are unavailable')
+        return original_stat(path, *args, **kwargs)
 
     original_convert = transaction.CvmCsvParquetPipeline.convert
 
@@ -592,7 +592,7 @@ def test_missing_descriptor_paths_rejects_extraction_before_publication(
         destination.symlink_to(outside, target_is_directory=True)
         return original_convert(self, **kwargs)
 
-    monkeypatch.setattr(Path, 'is_dir', hide_descriptor_paths)
+    monkeypatch.setattr(Path, 'stat', hide_descriptor_paths)
     monkeypatch.setattr(
         transaction.CvmCsvParquetPipeline, 'convert', convert_after_swap
     )
