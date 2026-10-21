@@ -116,10 +116,10 @@ identidade do diretório originalmente validado.
 
 Nos sistemas sem esse suporte completo, a biblioteca confere a identidade antes
 das operações por caminho. A capacidade de resolver filhos pelo descritor é
-verificada antes de criar o lock; sistemas como o macOS, cujo `/dev/fd` não
-permite esse acesso, usam esse fallback. Nesses sistemas, alterações simultâneas
-por processos
-que não seguem o protocolo de ownership não têm a mesma garantia atômica.
+verificada antes de comparar a identidade do caminho virtual e criar o lock;
+sistemas como o macOS, cujo `/dev/fd` não permite esse acesso, usam esse fallback.
+Nesses sistemas, alterações simultâneas por processos que não seguem o protocolo
+de ownership não têm a mesma garantia atômica.
 
 A seleção de URLs respeita o primeiro ano de cada documento: IPE em 2003;
 DFP, FCA e FRE em 2010; ITR em 2011; CGVN e VLMO em 2018. Um intervalo misto

@@ -113,10 +113,11 @@ names. Cleanup preserves staging and logs a diagnostic when it cannot confirm
 the originally validated directory identity.
 
 On systems without this complete support, the library verifies directory identity
-before path-based operations. Child traversal is checked before creating the
-lock; systems such as macOS, whose `/dev/fd` does not support this access, use
-this fallback. Concurrent changes by processes that do not follow the
-ownership protocol do not have the same atomic guarantee on those systems.
+before path-based operations. Child traversal is checked before comparing the
+virtual path's identity or creating the lock; systems such as macOS, whose
+`/dev/fd` does not support this access, use this fallback. Concurrent changes by
+processes that do not follow the ownership protocol do not have the same atomic
+guarantee on those systems.
 
 URL selection respects each document's first year: IPE in 2003; DFP, FCA, and
 FRE in 2010; ITR in 2011; CGVN and VLMO in 2018. A mixed interval does not

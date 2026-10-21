@@ -47,18 +47,28 @@ def test_missing_or_failed_prerequisite_job_cannot_authorize_publication(
         collect_acceptance(tmp_path, '0.2.0', SHA, STATUSES | {job: status})
 
 
-@pytest.mark.parametrize('kind', ['native', 'campaign', 'coverage'])
+@pytest.mark.parametrize(
+    'directory',
+    [
+        *[
+            f'native-{system}-{version}'
+            for system in ('Windows', 'Darwin')
+            for version in ('3.12', '3.13', '3.14')
+        ],
+        *[f'publication-campaign-{shard}' for shard in range(8)],
+        *[
+            f'coverage-report-py{version}'
+            for version in ('3.12', '3.13', '3.14')
+        ],
+    ],
+)
 def test_evidence_from_another_candidate_is_rejected(
-    tmp_path: Path, kind: str
+    tmp_path: Path, directory: str
 ) -> None:
-    """Reusing a passing report from an older commit fails acceptance."""
+    """A stale SHA in any required environment must fail acceptance."""
     acceptance_bundle(tmp_path, SHA)
-    prefixes = {
-        'native': 'native-*',
-        'campaign': 'publication-campaign-*',
-        'coverage': 'coverage-report-*',
-    }
-    path = next(tmp_path.glob(prefixes[kind])) / 'environment.txt'
+    path = tmp_path / directory / 'environment.txt'
+    assert path.is_file()
     path.write_text('a' * 40 + '\n')
 
     with pytest.raises(ValueError, match='candidate SHA'):

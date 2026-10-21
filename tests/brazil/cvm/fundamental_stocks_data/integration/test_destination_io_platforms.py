@@ -26,9 +26,12 @@ pytestmark = [
 ]
 
 
-@pytest.fixture
+@pytest.fixture(
+    params=[True, False], ids=['same-identity', 'different-identity']
+)
 def non_traversable_descriptors(
     monkeypatch: pytest.MonkeyPatch,
+    request: pytest.FixtureRequest,
 ) -> None:
     """Model macOS descriptor entries that cannot resolve child paths."""
     if not destination_io._supports_directory_descriptors():
@@ -49,6 +52,12 @@ def non_traversable_descriptors(
 
     def stat(path: Any, *args: Any, **kwargs: Any) -> os.stat_result:
         reject_descriptor_children(path)
+        if isinstance(path, (str, os.PathLike)):
+            entry = Path(path)
+            if entry.parent == Path('/dev/fd'):
+                attributes = list(os.fstat(int(entry.name)))
+                attributes[2] += int(not request.param)
+                return os.stat_result(attributes)
         return original_stat(path, *args, **kwargs)
 
     def open_file(path: Any, *args: Any, **kwargs: Any) -> Any:

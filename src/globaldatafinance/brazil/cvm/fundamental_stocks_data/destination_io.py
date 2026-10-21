@@ -67,8 +67,6 @@ def _descriptor_directory(descriptor: int) -> Path | None:
             status = opened.stat()
         except FileNotFoundError:
             continue
-        if not os.path.samestat(expected, status):
-            raise SecurityError('CVM descriptor path changed its identity')
         available = True
         try:
             child_descriptor = os.open(
@@ -80,6 +78,8 @@ def _descriptor_directory(descriptor: int) -> Path | None:
             child_status = os.fstat(child_descriptor)
         finally:
             os.close(child_descriptor)
+        if not os.path.samestat(expected, status):
+            raise SecurityError('CVM descriptor path changed its identity')
         if not os.path.samestat(expected, child_status):
             raise SecurityError('CVM descriptor child path changed identity')
         return opened
