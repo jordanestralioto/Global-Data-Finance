@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
+import psutil
 import pytest
 
 from scripts import real_validation_runner as runner
@@ -18,6 +20,17 @@ from scripts.real_validation_utils import sha256_file
 from tests.support.builders import build_cotahist_record, write_cotahist_zip
 
 pytestmark = pytest.mark.integration
+
+
+@pytest.fixture
+def stable_memory_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep tiny corpus checks independent of host memory pressure."""
+    memory = SimpleNamespace(
+        total=8 * 1024**3,
+        available=6 * 1024**3,
+        percent=25.0,
+    )
+    monkeypatch.setattr(psutil, 'virtual_memory', lambda: memory)
 
 
 def _large_report_worker(
@@ -78,6 +91,7 @@ def _alternative_full_range_case(tmp_path: Path) -> ValidationCase:
     return next(case for case in cases if case.mode == 'multi_parity')
 
 
+@pytest.mark.usefixtures('stable_memory_snapshot')
 def test_generic_full_range_accepts_alternative_corpus_and_symlink_workspace(
     tmp_path: Path,
 ) -> None:
@@ -90,7 +104,7 @@ def test_generic_full_range_accepts_alternative_corpus_and_symlink_workspace(
 
     result = execute_cotahist_case(case, alias / 'case')
 
-    assert result['status'] == 'passed'
+    assert result['status'] == 'passed', result['message']
     assert result['recordCount'] == 27
     assert result['rawReconciliation']['rawQuotes'] == 27
     assert result['rawReconciliation']['verifiedRows'] == 27
@@ -101,6 +115,7 @@ def test_generic_full_range_accepts_alternative_corpus_and_symlink_workspace(
     )
 
 
+@pytest.mark.usefixtures('stable_memory_snapshot')
 def test_explicit_historical_acceptance_rejects_alternative_source_bytes(
     tmp_path: Path,
 ) -> None:
