@@ -12,7 +12,7 @@ from globaldatafinance import HistoricalQuotesB3
 # SETTINGS: change the values here. The README explains each option.
 INITIAL_YEAR = 2023
 LAST_YEAR = 2023
-PATH_OF_DOCS = './cotahist_b3'  # Folder with COTAHIST_AYYYY.ZIP or .TXT files.
+PATH_OF_DOCS = './cotahist_b3'  # Fictional samples; see README for real data.
 DESTINATION_PATH = './dados_b3'
 ASSETS = ['ações']  # Market groups; use ['todos'] for every market.
 OUTPUT_NAME = 'cotacoes_acoes'  # The selected years are added automatically.
@@ -36,6 +36,7 @@ def main() -> None:
         verbose=False,
     )
     support.print_b3_summary(result, verbose=VERBOSE)
+    support.print_b3_preview(result['output_file'])
 
 
 if __name__ == '__main__':

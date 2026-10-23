@@ -79,6 +79,38 @@ def print_b3_summary(result: ExtractionResultB3, *, verbose: bool) -> None:
     sys.stdout.write('\n'.join(lines) + '\n')
 
 
+def print_b3_preview(output_file: str, *, limit: int = 6) -> None:
+    """Show a bounded quote preview with source identity and market context."""
+    import pyarrow.parquet as pq
+
+    if limit <= 0:
+        raise ValueError('Preview limit must be positive')
+    columns = [
+        'data_pregao',
+        'ticker',
+        'tipo_mercado',
+        'nome_resumido',
+        'preco_fechamento',
+        'codigo_isin',
+    ]
+    with pq.ParquetFile(output_file) as parquet:
+        batches = parquet.iter_batches(batch_size=limit, columns=columns)
+        batch = next(batches, None)
+    if batch is None:
+        return
+    lines = [
+        f'  Quote preview (first {batch.num_rows} rows):',
+        '  Date       | Ticker       | Market | Name         | Close | ISIN',
+    ]
+    for row in batch.to_pylist():
+        lines.append(
+            f'  {row["data_pregao"]} | {row["ticker"]:<12} | '
+            f'{row["tipo_mercado"]:>6} | {row["nome_resumido"]:<12} | '
+            f'{row["preco_fechamento"]:.2f} | {row["codigo_isin"]}'
+        )
+    sys.stdout.write('\n'.join(lines) + '\n')
+
+
 def run_example(main: Callable[[], None]) -> None:
     """Report expected input failures with a diagnostic and nonzero exit."""
     if len(sys.argv) > 1:

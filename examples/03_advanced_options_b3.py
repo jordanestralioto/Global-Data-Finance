@@ -12,9 +12,9 @@ from globaldatafinance import HistoricalQuotesB3
 # SETTINGS: change the values here. The README explains each option.
 INITIAL_YEAR = 2022
 LAST_YEAR = 2023
-PATH_OF_DOCS = './cotahist_b3'
+PATH_OF_DOCS = './cotahist_b3'  # Fictional samples; see README for real data.
 DESTINATION_PATH = './dados_b3'
-ASSETS = ['ações', 'etf', 'opções']  # Use ['todos'] for every market.
+ASSETS = ['ações', 'opções']  # Includes ETFs; use ['todos'] for every market.
 OUTPUT_NAME = 'carteira_completa'  # Years are added automatically.
 PROCESSING_MODE = 'fast'  # Use 'slow' to reduce memory usage.
 VERBOSE = True  # Extra summary details; file progress is always shown.
@@ -36,6 +36,7 @@ def main() -> None:
         verbose=False,
     )
     support.print_b3_summary(result, verbose=VERBOSE)
+    support.print_b3_preview(result['output_file'])
 
 
 if __name__ == '__main__':

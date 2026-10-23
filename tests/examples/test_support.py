@@ -5,6 +5,7 @@ import sys
 import pytest
 
 from examples.support import (
+    print_b3_preview,
     print_b3_summary,
     print_cvm_summary,
     run_example,
@@ -27,6 +28,12 @@ pytestmark = pytest.mark.unit
 def example_invocation(monkeypatch):
     """Use the same argument list as a normal example invocation."""
     monkeypatch.setattr(sys, 'argv', ['example.py'])
+
+
+@pytest.mark.parametrize('limit', [0, -1])
+def test_b3_preview_rejects_invalid_limits_before_reading(limit):
+    with pytest.raises(ValueError, match='Preview limit must be positive'):
+        print_b3_preview('missing.parquet', limit=limit)
 
 
 @pytest.mark.parametrize(

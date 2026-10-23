@@ -52,7 +52,7 @@ para saber qual valor mudar:
 | `DOCUMENTS`           | Tipos de documentos CVM, no exemplo 01                      | `['DFP']` para demonstrações anuais; `['DFP', 'ITR']` para incluir trimestrais; `[]` para todos os tipos disponíveis |
 | `AUTOMATIC_EXTRACTOR` | Converter documentos CVM em Parquet                         | `True` converte; `False` apenas baixa os ZIPs                                                                        |
 | `PATH_OF_DOCS`        | Pasta que contém os arquivos B3                             | Caminho da pasta entre aspas, sem o nome do ZIP ou TXT                                                               |
-| `ASSETS`              | Grupos de mercados B3                                       | `['ações']`, `['ações', 'etf', 'opções']` ou `['todos']`                                                             |
+| `ASSETS`              | Grupos de mercados B3                                       | `['ações']`, `['ações', 'opções']` ou `['todos']`                                                                    |
 | `OUTPUT_NAME`         | Nome inicial do arquivo B3                                  | Texto sem pasta, extensão ou ano, como `'minhas_cotacoes'`                                                           |
 | `PROCESSING_MODE`     | Modo de processamento B3                                    | `'fast'` para maior velocidade; `'slow'` para usar menos memória                                                     |
 | `VERBOSE`             | Mostrar também os mercados, o modo e o tempo da extração B3 | `True` mostra; `False` mantém o resumo básico                                                                        |
@@ -104,8 +104,28 @@ cotahist_b3/
 └── COTAHIST_A2023.ZIP
 ```
 
-Cada amostra contém seis cotações fictícias, com os controles e campos
-obrigatórios do layout COTAHIST. Os preços servem apenas para demonstração.
+Cada amostra contém **21 cotações fictícias**: sete combinações de instrumento
+e mercado em três datas. São usados 17, 18 e 19 de janeiro em 2022 e 16, 17 e
+18 de janeiro em 2023. Todos os tickers, nomes, ISINs e preços das amostras são
+demonstrativos; não representam negociações oficiais.
+
+| Ticker    | Nome        | Instrumento / mercado                  |
+| --------- | ----------- | -------------------------------------- |
+| `ALFA4`   | ALFA        | Ação preferencial à vista (010)        |
+| `BETA3`   | BETA        | Ação ordinária à vista (010)           |
+| `INDX11`  | INDICE DEMO | ETF à vista (010)                      |
+| `ALFA4F`  | ALFA        | Ação preferencial no fracionário (020) |
+| `ALFAA30` | ALFA        | Opção de compra (070)                  |
+| `ALFAM30` | ALFA        | Opção de venda (080)                   |
+| `ALFA4`   | ALFA        | Ação no mercado a termo (030)          |
+
+Os preços variam entre instrumentos, datas e anos. Cada cotação representa
+quatro negócios com quantidades iguais; o volume corresponde ao preço médio
+vezes a quantidade total. As opções têm preço de exercício e vencimento;
+as ações e o ETF à vista não têm vencimento. Os ISINs distinguem os
+instrumentos, enquanto `ALFA4`, `ALFA4F` e o termo de `ALFA4` compartilham o
+identificador da mesma ação. As opções de anos diferentes têm ISINs diferentes.
+
 Esses arquivos são gerados por
 [`scripts/generate_example_cotahist.py`](../scripts/generate_example_cotahist.py);
 edite o gerador e regenere os ZIPs para mudar as amostras.
@@ -131,7 +151,8 @@ uv run --locked --no-sync python examples/02_quickstart_b3.py
 O resultado padrão é `dados_b3/cotacoes_acoes_2023.parquet`. Para processar
 2022 e 2023, mude `INITIAL_YEAR` para `2022` e `LAST_YEAR` para `2023`. O nome
 passa automaticamente a ser `cotacoes_acoes_2022_2023.parquet`.
-Com a amostra incluída e os valores padrão, são geradas **3 cotações**.
+Com a amostra incluída e os valores padrão, são geradas **12 cotações**:
+quatro instrumentos em três datas.
 
 `ASSETS = ['ações']` seleciona os mercados à vista (010) e fracionário (020).
 ETFs desses mercados também podem aparecer. Essa opção escolhe **mercados**;
@@ -140,7 +161,9 @@ ela não escolhe empresas por códigos como PETR4.
 ### Exemplo 03: mais mercados da B3
 
 Use este arquivo para incluir opções. Ele funciona da mesma forma que o exemplo
-02; a seleção inicial é `ASSETS = ['ações', 'etf', 'opções']`.
+02; a seleção inicial é `ASSETS = ['ações', 'opções']`. O alias `ações` inclui
+os mercados 010 e 020, que também incluem ETFs. Adicionar o alias `etf`
+selecionaria esses mesmos mercados.
 
 O arquivo está configurado para **2022 a 2023**, com entradas locais em
 `./cotahist_b3`. A pasta precisa conter os arquivos dos dois anos. Para
@@ -157,15 +180,25 @@ Com a configuração atual, o resultado é
 `dados_b3/carteira_completa_2022_2023.parquet`. Com os dois anos em 2023, será
 `dados_b3/carteira_completa_2023.parquet`. Para incluir todos os mercados em
 qualquer exemplo B3, mude `ASSETS` para `['todos']`.
-As amostras incluídas produzem **10 cotações** com a configuração padrão do
-exemplo 03. O mercado a termo (030) das amostras é excluído por essa seleção.
+As amostras incluídas produzem **36 cotações** com a configuração padrão do
+exemplo 03: seis instrumentos em três datas de cada ano. O mercado a termo
+(030) das amostras é excluído por essa seleção. Com `ASSETS = ['todos']`, são
+geradas **42 cotações**, incluindo o termo.
 
 ## 3. Conferir o resultado
 
 Ao terminar, cada exemplo mostra a pasta ou o arquivo gerado e a quantidade de
-arquivos processados. Os exemplos B3 também mostram o número de cotações.
+arquivos processados. Os exemplos B3 também mostram o número de cotações e
+uma prévia das seis primeiras linhas, com data, ticker, mercado, nome, preço
+de fechamento e ISIN. A prévia lê somente um pequeno lote do Parquet.
 Se houver falha ou nenhum dado for produzido, o script exibe um diagnóstico
 e encerra com erro.
+
+O mesmo ticker pode aparecer em datas ou mercados diferentes. Compare
+`data_pregao`, `ticker` e `tipo_mercado` em conjunto para entender essas linhas.
+Nas amostras, essa combinação não se repete. O nome ALFA também aparece nas
+opções porque elas se referem à mesma emissora; seus ISINs são diferentes dos
+da ação.
 
 Para ver cinco cotações do exemplo 02, abra o Python pelo terminal:
 
