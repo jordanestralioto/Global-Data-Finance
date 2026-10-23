@@ -69,7 +69,7 @@ já aceitos, sem um novo lifecycle de especificação compartilhada.
 
 ## Nota de migração/rollback
 
-A migração é uma troca única para a próxima versão major: substituir o timeout,
+A migração é uma troca única para a versão `0.2.0`: substituir o timeout,
 remover imports dos adapters e declarar Pandas no projeto consumidor quando
 necessário. Não existe compatibilidade incremental por design. Desfazer a
 decisão exige restaurar os módulos, testes, dependência e lockfile em conjunto;

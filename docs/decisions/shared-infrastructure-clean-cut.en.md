@@ -67,7 +67,7 @@ not a new shared specification lifecycle.
 
 ## Migration/rollback note
 
-Migration is a single next-major-release cut: replace the timeout import, remove
+Migration is a single `v0.2.0` cut: replace the timeout import, remove
 generic adapter imports, and declare Pandas in the consumer project when needed.
 Incremental compatibility is intentionally absent. Reverting requires restoring
 the modules, tests, dependency, and lockfile together; restoring only an alias

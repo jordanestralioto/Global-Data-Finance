@@ -112,7 +112,7 @@ review:
 
 ## Consequences
 
-- This is a major release: strict B3 parsing, Polars removal, and removal of
+- This is release `0.2.0`: strict B3 parsing, Polars removal, and removal of
   the internal legacy CSV path can require consumer migration.
 - CVM can reopen a source for multiple passes and create a transactional UTF-8
   spool for CP1252 or Latin-1.

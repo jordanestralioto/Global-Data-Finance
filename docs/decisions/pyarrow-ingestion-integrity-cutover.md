@@ -113,7 +113,7 @@ implementação:
 
 ## Consequências
 
-- A release é major: parser B3 estrito, remoção de Polars e remoção do caminho
+- A release é `0.2.0`: parser B3 estrito, remoção de Polars e remoção do caminho
   CSV interno legado podem exigir migração de consumidores.
 - CVM pode reabrir uma fonte em múltiplas passagens e criar spool UTF-8
   transacional para CP1252 ou Latin-1.

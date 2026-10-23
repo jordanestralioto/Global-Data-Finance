@@ -1,5 +1,6 @@
 """Pure path-policy regressions shared by B3 and CVM entrypoints."""
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -23,6 +24,10 @@ def _path_policy_allows(resolved: Path, raw: str) -> bool:
     ('resolved', 'raw'),
     [
         (Path('/'), '/'),
+        (Path('/private/etc/output'), '/private/etc/output'),
+        (Path('/bin/output'), '/bin/output'),
+        (Path('/sbin/output'), '/sbin/output'),
+        (Path('/lib64/output'), '/lib64/output'),
         (Path('safe-output/windows'), 'D:\\'),
         (Path('safe-output/windows'), r'D:\Windows\System32'),
         (Path('safe-output/windows'), r'c:/WINDOWS/System32'),
@@ -61,6 +66,9 @@ def test_path_policy_rejects_privileged_roots_and_untrusted_windows_paths(
     ('resolved', 'raw'),
     [
         (Path('/etc_backup'), '/etc_backup'),
+        (Path('/private/etc_backup'), '/private/etc_backup'),
+        (Path('/private/tmp/output'), '/private/tmp/output'),
+        (Path('/private/var/folders/output'), '/private/var/folders/output'),
         (Path('safe-output/data'), r'D:\Data\output'),
         (Path('safe-output/data'), r'E:\Windows_backup\output'),
     ],
@@ -76,6 +84,17 @@ def test_path_policy_rejects_forward_slash_windows_system_root() -> None:
         assert_path_not_sensitive(
             Path('/Windows/System32'), '/Windows/System32'
         )
+
+
+def test_path_policy_rejects_macos_configuration_alias() -> None:
+    """The native macOS /etc alias remains protected after resolution."""
+    root = (
+        Path('/etc').resolve()
+        if sys.platform == 'darwin'
+        else Path('/private/etc')
+    )
+    with pytest.raises(SecurityError):
+        assert_path_not_sensitive(root / 'output', '/etc/output')
 
 
 def test_path_policy_allows_only_descendants_of_configured_unc_roots() -> None:

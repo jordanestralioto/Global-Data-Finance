@@ -10,6 +10,10 @@ from pathlib import Path
 from typing import Any
 
 NATIVE_REQUIRED_CASES = (
+    'test_path_policy_rejects_macos_configuration_alias',
+    'test_hostile_log_text_finishes_without_losing_redaction',
+    'test_manifest_write_failure_preserves_a_reused_descriptor',
+    'test_fdopen_failure_closes_the_untransferred_descriptor',
     'test_live_process_query_never_sends_a_signal',
     'test_restart_recovers_setup_crashes_without_residue',
     'test_commit_crash_recovers_one_complete_batch',

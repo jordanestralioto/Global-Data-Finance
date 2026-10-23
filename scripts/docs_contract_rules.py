@@ -168,9 +168,18 @@ _ZIP_PRECEDENCE_CONTEXT = re.compile(
 )
 
 
+def documentation_pages(docs_dir: Path) -> list[Path]:
+    """Return Markdown pages excluding local internal documents."""
+    return sorted(
+        path
+        for path in docs_dir.rglob('*.md')
+        if not path.is_relative_to(docs_dir / 'internal')
+    )
+
+
 def documentation_files(repo_root: Path) -> list[Path]:
     """Return the explicit documentation corpus, including unpaired READMEs."""
-    files = set((repo_root / 'docs').rglob('*.md'))
+    files = set(documentation_pages(repo_root / 'docs'))
     for relative_path in (
         'README.md',
         'examples/README.md',

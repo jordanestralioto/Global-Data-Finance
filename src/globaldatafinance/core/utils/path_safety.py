@@ -16,14 +16,18 @@ from ..config import PathSafetySettings
 
 _SENSITIVE_SYSTEM_DIRS: tuple[Path, ...] = (
     Path('/etc'),
+    Path('/private/etc'),
     Path('/root'),
     Path('/sys'),
     Path('/proc'),
     Path('/dev'),
     Path('/boot'),
+    Path('/bin'),
+    Path('/sbin'),
     Path('/usr'),
     Path('/var'),
     Path('/lib'),
+    Path('/lib64'),
 )
 
 _USER_SECRET_DIRNAMES: tuple[str, ...] = ('.ssh', '.aws', '.gnupg')

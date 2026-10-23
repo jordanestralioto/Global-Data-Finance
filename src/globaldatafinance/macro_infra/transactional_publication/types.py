@@ -77,12 +77,13 @@ class FileOperations:
             flags |= no_follow
         descriptor = os.open(path, flags, 0o600)
         try:
-            with os.fdopen(descriptor, 'wb') as handle:
-                handle.write(payload)
+            handle = os.fdopen(descriptor, 'wb')
         except BaseException:
             with contextlib.suppress(OSError):
                 os.close(descriptor)
             raise
+        with handle as owned_handle:
+            owned_handle.write(payload)
 
     def fsync_file(self, path: Path) -> None:
         """Flush file bytes and metadata."""

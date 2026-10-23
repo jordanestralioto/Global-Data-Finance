@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import errno
 import os
+from collections.abc import Iterator
+from contextlib import contextmanager, suppress
 from pathlib import Path
 from types import SimpleNamespace
+from typing import IO
 from unittest.mock import Mock
 
 import psutil
@@ -148,3 +151,69 @@ def test_supported_platform_directory_sync_preserves_real_failures(
         durability.sync_directory(FileOperations(), tmp_path)
 
     assert raised.value is failure
+
+
+@pytest.mark.integration
+def test_manifest_write_failure_preserves_a_reused_descriptor(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An error after file closure cannot close another writer's descriptor."""
+    target = tmp_path / 'manifest.json'
+    other = tmp_path / 'other-writer'
+    failure = OSError(errno.ENOSPC, 'injected flush failure')
+    real_fdopen = os.fdopen
+    replacement: list[int] = []
+
+    @contextmanager
+    def failing_fdopen(descriptor: int, mode: str) -> Iterator[IO[bytes]]:
+        with real_fdopen(descriptor, mode) as handle:
+            yield handle
+        replacement.append(os.open(other, os.O_CREAT | os.O_WRONLY, 0o600))
+        assert replacement[0] == descriptor
+        raise failure
+
+    monkeypatch.setattr(
+        publication_types,
+        'os',
+        SimpleNamespace(**(vars(os) | {'fdopen': failing_fdopen})),
+    )
+
+    try:
+        with pytest.raises(OSError) as raised:
+            FileOperations().write_bytes(target, b'manifest')
+
+        assert raised.value is failure
+        assert os.write(replacement[0], b'still open') == len(b'still open')
+        assert other.read_bytes() == b'still open'
+    finally:
+        for descriptor in replacement:
+            with suppress(OSError):
+                os.close(descriptor)
+
+
+@pytest.mark.integration
+def test_fdopen_failure_closes_the_untransferred_descriptor(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A failed ownership transfer releases the raw descriptor once."""
+    descriptors: list[int] = []
+    failure = OSError(errno.ENOMEM, 'injected fdopen failure')
+
+    def failing_fdopen(descriptor: int, _mode: str) -> IO[bytes]:
+        descriptors.append(descriptor)
+        raise failure
+
+    monkeypatch.setattr(
+        publication_types,
+        'os',
+        SimpleNamespace(**(vars(os) | {'fdopen': failing_fdopen})),
+    )
+
+    with pytest.raises(OSError) as raised:
+        FileOperations().write_bytes(tmp_path / 'manifest.json', b'manifest')
+
+    assert raised.value is failure
+    assert len(descriptors) == 1
+    with pytest.raises(OSError) as closed:
+        os.fstat(descriptors[0])
+    assert closed.value.errno == errno.EBADF

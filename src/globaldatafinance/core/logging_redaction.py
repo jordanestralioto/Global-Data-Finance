@@ -15,22 +15,21 @@ _SENSITIVE_FIELD = (
     r'client[_-]?secret|cookie|credential|password|passwd|private[_-]?key|'
     r'refresh[_-]?token|secret|signature|token)'
 )
-_SENSITIVE_NAME = rf'(?:[a-z0-9]*[_-])*{_SENSITIVE_FIELD}(?:[_-][a-z0-9]*)*'
 _SENSITIVE_KEY_RE = re.compile(
     rf'(?:^|[_-]){_SENSITIVE_FIELD}(?:$|[_-])',
     re.IGNORECASE,
 )
 _URL_USERINFO_RE = re.compile(
-    r"""((?:\b[a-z][a-z0-9+.-]*:|(?<![\w/.:]))//)[^/\s?#"'<>]*@""",
-    re.IGNORECASE,
+    r"""((?::|(?<![\w/.:]))//)[^/\s?#"'<>]*@""",
 )
 _URL_QUERY_RE = re.compile(
-    r"""(?P<prefix>[?&](?P<key>[^=&#\s|"'<>]+)=)[^&#\s|"'<>]+""",
+    r"""(?P<prefix>[?&](?P<key>[^=?&#\s|"'<>]+)=)[^&#\s|"'<>]+""",
 )
-_KEY_VALUE_SECRET_RE = re.compile(
-    rf"""(?P<prefix>\b{_SENSITIVE_NAME}\b["']?\s*[:=]\s*)"""
+_FIELD_PREFIX_RE = re.compile(
+    r"""(?<![\w-])(?P<key>[\w-]++)["']?\s*[:=]\s*""",
+)
+_SECRET_VALUE_RE = re.compile(
     r"""(?P<value>"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\r\n,;|}&]+)""",
-    re.IGNORECASE,
 )
 _STANDARD_RECORD_ATTRS: frozenset[str] = frozenset(
     (
@@ -66,7 +65,27 @@ def redact_log_text(text: str) -> str:
     """Redact URL credentials and common query and key/value secrets."""
     text = _URL_USERINFO_RE.sub(rf'\1{REDACTED}@', text)
     text = _URL_QUERY_RE.sub(_redact_query_value, text)
-    return _KEY_VALUE_SECRET_RE.sub(_redact_field, text)
+    return _redact_secret_fields(text)
+
+
+def _redact_secret_fields(text: str) -> str:
+    """Scan each field name once and consume values only for secret keys."""
+    pieces: list[str] = []
+    copied_until = 0
+    search_from = 0
+    while prefix := _FIELD_PREFIX_RE.search(text, search_from):
+        search_from = prefix.end()
+        if not _SENSITIVE_KEY_RE.search(prefix['key']):
+            continue
+        value = _SECRET_VALUE_RE.match(text, search_from)
+        if value is None:
+            continue
+        pieces.extend(
+            (text[copied_until : value.start()], _redact_field(value))
+        )
+        copied_until = search_from = value.end()
+    pieces.append(text[copied_until:])
+    return ''.join(pieces)
 
 
 def _redact_query_value(match: re.Match[str]) -> str:
@@ -81,7 +100,7 @@ def _redact_query_value(match: re.Match[str]) -> str:
 def _redact_field(match: re.Match[str]) -> str:
     value = match['value']
     quote = value[0] if value.startswith(('"', "'")) else ''
-    return f'{match["prefix"]}{quote}{REDACTED}{quote}'
+    return f'{quote}{REDACTED}{quote}'
 
 
 def redact_log_value(key: str, value: Any) -> str:

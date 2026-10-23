@@ -34,6 +34,7 @@ from scripts.docs_contract_rules import (
     check_public_b3_contract,
     check_test_module_commands,
     documentation_files,
+    documentation_pages,
 )
 from scripts.docs_contract_rules import KNOWN_IMPORTS as KNOWN_IMPORTS
 
@@ -45,7 +46,9 @@ def check_bilingual_parity(docs_dir: Path) -> list[str]:
     """Check PT-BR files for English counterparts and structural alignment."""
     errors: list[str] = []
     pt_files = {
-        p for p in docs_dir.rglob('*.md') if not p.name.endswith('.en.md')
+        p
+        for p in documentation_pages(docs_dir)
+        if not p.name.endswith('.en.md')
     }
 
     for pt_file in sorted(pt_files):

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
+import multiprocessing
+from multiprocessing.connection import Connection
 
 import httpx
 import pytest
@@ -175,3 +177,82 @@ def test_ordinary_field_names_keep_their_values(key: str) -> None:
     formatted = StructuredFormatter('%(message)s').format(_record(message))
 
     assert formatted == message
+
+
+def _format_in_worker(message: str, connection: Connection) -> None:
+    """Isolate hostile regex input so a regression cannot hang pytest."""
+    try:
+        formatted = StructuredFormatter('%(message)s').format(_record(message))
+        connection.send(formatted)
+    finally:
+        connection.close()
+
+
+@pytest.mark.parametrize(
+    ('message', 'expected'),
+    [
+        ('../' + 'a-' * 32_766, '../' + 'a-' * 32_766),
+        ('?a' * 32_766, '?a' * 32_766),
+        (
+            'a-' * 32_766 + 'password=synthetic-value, rows=2',
+            'a-' * 32_766 + 'password=[REDACTED], rows=2',
+        ),
+        (
+            'a-' * 32_766 + '://synthetic-user@example.test/file?year=2024',
+            'a-' * 32_766 + '://[REDACTED]@example.test/file?year=2024',
+        ),
+    ],
+    ids=[
+        'zip-member',
+        'incomplete-query',
+        'long-secret-key',
+        'long-url-scheme',
+    ],
+)
+def test_hostile_log_text_finishes_without_losing_redaction(
+    message: str, expected: str
+) -> None:
+    """ZIP-sized names finish within a generous process deadline."""
+    context = multiprocessing.get_context('spawn')
+    reader, writer = context.Pipe(duplex=False)
+    process = context.Process(target=_format_in_worker, args=(message, writer))
+    process.start()
+    writer.close()
+    try:
+        assert reader.poll(10), 'redaction exceeded its process deadline'
+        formatted = reader.recv()
+        process.join(10)
+        assert process.exitcode == 0
+        assert formatted == expected
+    finally:
+        if process.is_alive():
+            process.kill()
+            process.join(10)
+        reader.close()
+        process.close()
+
+
+@pytest.mark.parametrize(
+    ('message', 'expected'),
+    [
+        (
+            'rows=2 password=synthetic-value',  # pragma: allowlist secret
+            'rows=2 password=[REDACTED]',
+        ),
+        (
+            'data={"password":"synthetic"}',  # pragma: allowlist secret
+            'data={"password":"[REDACTED]"}',
+        ),
+        (
+            'phase=download; -auth_token="synthetic-value"; rows=2',
+            'phase=download; -auth_token="[REDACTED]"; rows=2',
+        ),
+    ],
+)
+def test_public_field_values_do_not_hide_following_secret_fields(
+    message: str, expected: str
+) -> None:
+    """Scanning ordinary fields still reaches nested or adjacent secrets."""
+    formatted = StructuredFormatter('%(message)s').format(_record(message))
+
+    assert formatted == expected

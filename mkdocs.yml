@@ -11,6 +11,9 @@ repo_name: jordanestralioto/Global-Data-Finance
 repo_url: https://github.com/jordanestralioto/Global-Data-Finance
 edit_uri: edit/main/docs/
 
+exclude_docs: |
+  /internal/
+
 # Copyright
 copyright: Copyright &copy; 2026 Jordan Estralioto
 
@@ -111,7 +114,7 @@ plugins:
             Cotações Históricas B3: B3 Historical Quotes
             Exemplos Práticos: Practical Examples
             Boas práticas B3: B3 Operational Practices
-            Migração major: Major Migration
+            Migração 0.2.0: Migration 0.2.0
             Migração de infraestrutura: Infrastructure Clean Cut Migration
             Migração CVM exata: CVM Exact Text Migration
             Arquitetura: Architecture
@@ -212,6 +215,6 @@ nav:
           - Monitoramento de Recursos: dev-guide/resource-monitoring.md
           - Estratégia de Retry: dev-guide/retry-strategy.md
       - Migrações:
-          - Migração major: user-guide/migration-pyarrow-integrity.md
+          - Migração 0.2.0: user-guide/migration-pyarrow-integrity.md
           - Migração de infraestrutura: user-guide/migration-infrastructure-clean-cut.md
           - Migração CVM exata: user-guide/migration-cvm-exact-text.md

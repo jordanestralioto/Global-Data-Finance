@@ -1,6 +1,6 @@
-# Migração major: PyArrow e integridade de ingestão
+# Migração 0.2.0: PyArrow e integridade de ingestão
 
-Esta versão major substitui os caminhos produtivos de ingestão por PyArrow,
+A versão `0.2.0` substitui os caminhos produtivos de ingestão por PyArrow,
 remove Polars das dependências da biblioteca e fortalece as garantias de
 integridade de CVM e B3. As três fachadas públicas raiz e suas assinaturas
 permanecem estáveis:
@@ -46,9 +46,9 @@ preserva a configuração anterior.
 
 ## B3
 
-### Notas para a próxima release major
+### Notas para a release 0.2.0
 
-O texto abaixo é o corpo preparado para a próxima release major no GitHub.
+O texto abaixo é o corpo preparado para a release 0.2.0 no GitHub.
 O workflow existente `.github/workflows/publish.yml` executa os gates e a
 publicação a partir do evento de release publicada. A versão, tag e publicação
 devem aguardar a aprovação das evidências de aceitação; este texto não afirma

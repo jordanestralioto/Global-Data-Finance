@@ -36,6 +36,7 @@ def test_native_matrix_requires_real_tests_and_retained_artifacts() -> None:
     assert '-p tests.support.release_evidence --release-native' in native
     assert '--release-evidence=' in native and '--junitxml=' in native
     assert 'test_transaction_recovery.py' in native
+    assert 'tests/core/utils/test_path_safety.py' in native
     assert 'tests/application/b3_docs/test_release_regressions.py' in native
     assert 'retention-days: 30' in native
     assert 'continue-on-error' not in native

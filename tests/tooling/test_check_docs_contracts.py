@@ -343,6 +343,65 @@ def test_check_bilingual_parity_and_alignment(
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(
+    'relative_path',
+    [
+        'internal/draft.md',
+        'internal/sabatina/draft.md',
+        'internal/sabatina/draft.en.md',
+    ],
+)
+def test_local_internal_documents_are_excluded_from_all_contract_checks(
+    checker: Any,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    relative_path: str,
+) -> None:
+    """Local drafts need neither translations nor valid published examples."""
+    docs = tmp_path / 'docs'
+    draft = docs / relative_path
+    draft.parent.mkdir(parents=True)
+    draft.write_text(
+        '# Draft\n\n````text\nDraft\n````\n\n```python\ndef broken(\n```\n',
+        encoding='utf-8',
+    )
+    (docs / 'guide.md').write_text('# Guia\n', encoding='utf-8')
+    (docs / 'guide.en.md').write_text('# Guide\n', encoding='utf-8')
+    monkeypatch.setattr(checker, 'DOCS_DIR', docs)
+
+    assert checker.main() == 0
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    'relative_path',
+    [
+        'internal-guide/guide.md',
+        'user-guide/internal.md',
+        'user-guide/internal/guide.md',
+    ],
+)
+def test_internal_exclusion_preserves_checks_on_other_documentation_paths(
+    checker: Any,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    relative_path: str,
+) -> None:
+    """Similar names outside docs/internal must retain all contract checks."""
+    docs = tmp_path / 'docs'
+    page = docs / relative_path
+    page.parent.mkdir(parents=True)
+    page.write_text('```python\ndef broken(\n```\n', encoding='utf-8')
+    monkeypatch.setattr(checker, 'DOCS_DIR', docs)
+
+    assert checker.main() == 1
+    output = capsys.readouterr().out
+    assert 'missing English counterpart' in output
+    assert 'SyntaxError in python code block' in output
+
+
+@pytest.mark.unit
 def test_root_readme_is_in_corpus_without_bilingual_parity_requirement(
     checker: Any, tmp_path: Path
 ) -> None:

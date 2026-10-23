@@ -31,6 +31,10 @@ git switch -c fix/cotahist-validation develop
 - Atualize testes que comprovem o comportamento e a regressão, e mantenha as
   páginas de produto em português e inglês.
 
+Rascunhos e registros de trabalho locais ficam em `docs/internal/`. Esse
+diretório é ignorado pelo Git e excluído do `check-docs-contracts`, incluindo
+a exigência de tradução para inglês, e do build do MkDocs.
+
 ## Validar antes do PR
 
 ```bash

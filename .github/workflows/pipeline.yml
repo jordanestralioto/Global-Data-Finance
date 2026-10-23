@@ -324,6 +324,7 @@ jobs:
             --junitxml=.cache/release-native/junit.xml --no-cov \
             tests/core/test_archive_safety.py \
             tests/core/test_logging_redaction.py \
+            tests/core/utils/test_path_safety.py \
             tests/macro_infra/test_publication_platforms.py \
             tests/macro_infra/test_publication_crashes.py \
             tests/macro_infra/test_requests_adapter.py \

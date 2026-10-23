@@ -1,6 +1,6 @@
-# Major migration: PyArrow and ingestion integrity
+# Migration 0.2.0: PyArrow and ingestion integrity
 
-This major version moves production ingestion paths to PyArrow, removes Polars
+Version `0.2.0` moves production ingestion paths to PyArrow, removes Polars
 from library dependencies, and strengthens CVM and B3 integrity guarantees. The
 three root public facades and their signatures remain stable:
 
@@ -44,9 +44,9 @@ configuration.
 
 ## B3
 
-### Notes for the next major release
+### Notes for release 0.2.0
 
-The text below is the prepared body for the next major GitHub release. The
+The text below is the prepared body for the 0.2.0 GitHub release. The
 existing `.github/workflows/publish.yml` runs gates and publication from the
 published-release event. Version, tag, and publication must await approval of
 the acceptance evidence; this draft does not claim a release was published.

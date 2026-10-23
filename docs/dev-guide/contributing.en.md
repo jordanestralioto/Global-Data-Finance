@@ -31,6 +31,10 @@ git switch -c fix/cotahist-validation develop
 - Update tests that prove the behavior and regression, and maintain product
   documentation in Portuguese and English.
 
+Keep local drafts and working notes in `docs/internal/`. Git ignores this
+directory, and `check-docs-contracts` excludes it, including the English
+translation requirement. The MkDocs build also excludes it.
+
 ## Validate before the PR
 
 ```bash
