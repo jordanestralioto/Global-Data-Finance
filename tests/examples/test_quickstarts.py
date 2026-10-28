@@ -299,6 +299,7 @@ def _run_cvm_script(monkeypatch, **settings):
     configured = {
         'INITIAL_YEAR': 2023,
         'LAST_YEAR': 2023,
+        'DESTINATION_PATH': './dados_cvm',
         'DOCUMENTS': ['DFP'],
         'AUTOMATIC_EXTRACTOR': True,
     }

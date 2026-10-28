@@ -213,7 +213,6 @@ def test_zip_sync_failure_preserves_existing_download(
         str(tmp_path),
         'DFP',
         '2024',
-        None,
         automatic_extractor=False,
         file_extractor_repository=None,
         validate_file=download_validation.validate_downloaded_file,

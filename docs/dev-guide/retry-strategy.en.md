@@ -68,6 +68,13 @@ extraction limits. The byte counter also limits intermediate redirect bodies
 without `Content-Length`. Calls to the shared adapter without a byte limit
 retain existing HTTP content decoding.
 
+Downloads with HTTP `identity` encoding compare received bytes with the valid
+`Content-Length` from that same GET response. A mismatch rejects and removes
+only the attempt's staging file; CVM applies its transport-failure retry policy.
+Missing or invalid metadata does not bypass byte limits or complete ZIP
+validation. CVM does not issue HEAD after downloading, avoiding comparisons
+between different representations when the source republishes a file.
+
 HEAD also requests `identity` and closes bodies without reading or decoding,
 including redirect bodies. The `Content-Length` header is preserved as
 resource metadata; its value is not treated as a HEAD body size.

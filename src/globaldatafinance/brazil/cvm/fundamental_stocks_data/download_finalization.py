@@ -30,7 +30,7 @@ _FINALIZER_POLL_INTERVAL = 0.005
 class _DownloadedFileValidator(Protocol):
     """Validate a staged archive without changing its contents."""
 
-    def __call__(self, filepath: str, expected_size: int | None) -> bool:
+    def __call__(self, filepath: str) -> bool:
         """Return whether the staged archive is complete and safe."""
 
 
@@ -76,7 +76,6 @@ def finalize_downloaded_file(
     dest_path: str,
     doc_name: str,
     year: str,
-    expected_size: int | None,
     *,
     automatic_extractor: bool,
     file_extractor_repository: ParquetExtractor | None,
@@ -98,7 +97,6 @@ def finalize_downloaded_file(
                 final_path,
                 doc_name,
                 year,
-                expected_size,
                 automatic_extractor=automatic_extractor,
                 file_extractor_repository=file_extractor_repository,
                 validate_file=validate_file,
@@ -127,7 +125,6 @@ def _finalize_owned_download(
     final_path: Path,
     doc_name: str,
     year: str,
-    expected_size: int | None,
     *,
     automatic_extractor: bool,
     file_extractor_repository: ParquetExtractor | None,
@@ -157,7 +154,7 @@ def _finalize_owned_download(
     owns_staging = staging_path != final_path
 
     try:
-        if not validate_file(str(staging_path), expected_size):
+        if not validate_file(str(staging_path)):
             logger.error(
                 'Downloaded file validation failed for %s: %s',
                 document_key,

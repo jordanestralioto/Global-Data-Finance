@@ -59,6 +59,11 @@ O dialeto permanece `QUOTE_NONE`, com aspas literais. Linhas curtas recebem
 campos vazios finais; campos excedentes, cabeçalhos vazios ou duplicados,
 mais de 4.096 colunas e registros físicos acima de 8 MiB UTF-8 falham.
 
+A extração automática resolve seu extrator por operação, sem alterar a
+configuração do adaptador. A normalização de linhas curtas usa um spool
+exclusivo por membro; ele é removido ao terminar a conversão, inclusive em
+caso de falha. O staging transacional mantém sua limpeza normal.
+
 Todos os registros decodificados são comparados por SHA-256 com o Parquet
 reaberto antes da publicação. Os arquivos incluem checksums de página,
 identidade do ZIP e do membro CSV nos metadados e sincronização com `fsync`.

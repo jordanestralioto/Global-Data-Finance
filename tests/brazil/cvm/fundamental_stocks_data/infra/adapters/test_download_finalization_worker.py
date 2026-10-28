@@ -2,7 +2,7 @@ import asyncio
 import zipfile
 from pathlib import Path
 from threading import Event
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pyarrow.parquet as pq
 import pytest
@@ -34,11 +34,6 @@ async def test_invalid_staged_zip_is_removed_without_publishing(
         return True, str(staging_path)
 
     monkeypatch.setattr(adapter, '_download_with_retry', staged_download)
-    monkeypatch.setattr(
-        adapter,
-        '_get_content_length',
-        AsyncMock(return_value=None),
-    )
     result = DownloadResultCVM()
 
     await adapter._download_and_extract(
@@ -79,11 +74,6 @@ async def test_failed_zip_promotion_removes_staging_file(
         raise OSError('promotion failed')
 
     monkeypatch.setattr(adapter, '_download_with_retry', staged_download)
-    monkeypatch.setattr(
-        adapter,
-        '_get_content_length',
-        AsyncMock(return_value=None),
-    )
     monkeypatch.setattr(
         destination_io.DestinationFileOperationsCVM, 'replace', fail_replace
     )
@@ -138,11 +128,6 @@ async def test_worker_keeps_loop_live_and_drains_on_cancel(
         return True, str(staging_path)
 
     monkeypatch.setattr(adapter, '_download_with_retry', staged_download)
-    monkeypatch.setattr(
-        adapter,
-        '_get_content_length',
-        AsyncMock(return_value=None),
-    )
     result = DownloadResultCVM()
     task = asyncio.create_task(
         adapter._download_and_extract(

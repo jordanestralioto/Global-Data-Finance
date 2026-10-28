@@ -40,17 +40,14 @@ def merge_temp_files_streaming(
                 None if expected_rows is None else expected_rows[index],
             )
             try:
-                written_before = session.rows_written
-                session.write_batches(_cancellable_batches(source))
+                _copy_source_batches(session, source, temp_file)
             finally:
                 source.close()
-            if session.rows_written < written_before:
-                raise ExtractionError(
-                    str(temp_file), 'B3 merge row count regressed unexpectedly'
-                )
         session.close()
         return session.rows_written
     except Exception as error:
+        with contextlib.suppress(Exception):
+            session.close()
         with contextlib.suppress(OSError):
             final_output.unlink(missing_ok=True)
         if isinstance(error, ExtractionError):
@@ -82,6 +79,23 @@ def _cancellable_batches(source: Any) -> Iterator[Any]:
     for batch in source.iter_batches(batch_size=ROW_GROUP_LIMIT):
         check_phase_cancellation()
         yield batch
+
+
+def _copy_source_batches(
+    session: B3ParquetWriterSession, source: Any, path: Path
+) -> None:
+    """Check consumed source rows independently of the writer's flushes."""
+    consumed = 0
+    for batch in _cancellable_batches(source):
+        consumed += batch.num_rows
+        session.write_batches((batch,))
+    expected = source.metadata.num_rows
+    if consumed != expected:
+        raise ExtractionError(
+            str(path),
+            'B3 merge consumed row count is incompatible: '
+            f'expected {expected}, observed {consumed}',
+        )
 
 
 def _validate_merge_inputs(

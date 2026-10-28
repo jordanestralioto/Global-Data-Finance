@@ -77,7 +77,10 @@ only tags and lengths, without retaining financial values or source content.
 
 Before merging, each temporary Parquet is checked for schema, complete
 footer, manifest, and row count. The merge repeats schema and metadata
-validation when opening each temporary. The final artifact undergoes one
+validation when opening each temporary and compares consumed batches with
+the footer row count independently of row-group flushes. CSV-to-Arrow
+conversion also requires one row per original record before building the
+provenance buffer. The final artifact undergoes one
 complete readback in bounded batches to verify values, provenance, order,
 and per-source digests before transactional publication. Replay and source
 identity checks remain mandatory.

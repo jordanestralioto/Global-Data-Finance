@@ -27,6 +27,36 @@ com o mesmo ano do arquivo externo. Membros ausentes, aninhados, ambíguos ou
 com ano diferente são rejeitados. A fonte deve conter ao menos um registro
 `01` válido, além dos controles.
 
+### Diagnosticar texto UTF-8 em registros com largura inválida
+
+O layout COTAHIST exige registros de **245 bytes**, sem o terminador de linha.
+Um registro com 245 caracteres pode ultrapassar essa largura quando um acento
+está codificado em UTF-8. Por exemplo, `Â` ocupa dois bytes em UTF-8 e um byte
+em Latin-1. O erro `field=record_length` informa a linha física e o tamanho
+observado. Quando a conversão estrita para Latin-1 produz 245 bytes, o
+diagnóstico também identifica esse possível problema de codificação.
+
+Todos os mercados são validados antes do filtro; um registro de leilão inválido
+também impede uma extração de `ações`. `fast` e `slow` aplicam a mesma regra.
+
+Depois de confirmar que a fonte é UTF-8, preserve o original e crie uma cópia
+Latin-1 em outra pasta. No Linux, para um ZIP com o membro moderno:
+
+```bash
+set -o pipefail
+mkdir ./cotahist_latin1
+unzip -p ./cotahist/COTAHIST_A2026.ZIP COTAHIST_A2026.TXT \
+  | iconv -f UTF-8 -t ISO-8859-1 \
+  > ./cotahist_latin1/COTAHIST_A2026.TXT
+```
+
+Prossiga apenas se a conversão terminar com sucesso; em caso de falha, remova
+a cópia parcial antes de tentar novamente. Use `path_of_docs="./cotahist_latin1"`
+para que a cópia passe pela validação completa. A conversão deve preservar
+texto, linhas, ordem e valores, com erros estritos de codificação. No Parquet,
+`id_fonte` e `registro_original` descrevem a cópia normalizada. Guarde também
+os hashes do original e da cópia para rastrear essa preparação.
+
 ## Extrair cotações
 
 ```python

@@ -130,3 +130,39 @@ def test_merge_rejects_footer_mutation_after_private_validation(
 
     assert source.exists()
     assert not output.exists()
+
+
+@pytest.mark.parametrize('row_delta', [-1, 1])
+@pytest.mark.parametrize('provided_counts', [False, True])
+def test_merge_rejects_consumed_rows_that_disagree_with_the_footer(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    row_delta: int,
+    provided_counts: bool,
+) -> None:
+    """A source supplies every declared row even below the flush limit."""
+    source = tmp_path / 'source.parquet'
+    output = tmp_path / 'merged.parquet'
+    _write(source, 'PETR4')
+    merge = extraction_service.temp_parquet_merge
+    read_batches = merge._cancellable_batches
+
+    def change_count(parquet):
+        for batch in read_batches(parquet):
+            if row_delta < 0:
+                yield batch.slice(0, 0)
+            else:
+                yield batch
+                yield batch
+
+    monkeypatch.setattr(merge, '_cancellable_batches', change_count)
+    with pytest.raises(ExtractionError, match='consumed row count'):
+        merge.merge_temp_files_streaming(
+            [source],
+            output,
+            parquet_writer.build_b3_schema(),
+            expected_rows=[1] if provided_counts else None,
+        )
+
+    assert source.is_file()
+    assert not output.exists()

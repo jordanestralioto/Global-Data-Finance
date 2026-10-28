@@ -1,15 +1,16 @@
-"""CVM metadata failure logs redact caller-supplied URL credentials."""
+"""CVM transfer failure logs redact caller-supplied URL credentials."""
 
 from __future__ import annotations
+
+from pathlib import Path
 
 import httpx
 import pytest
 
 from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    download_validation,
+    AsyncDownloadAdapterCVM,
 )
 from globaldatafinance.core.logging_config import StructuredFormatter
-from globaldatafinance.macro_infra import RequestsAdapter
 from tests.support.fake_http import install_mock_http_transport
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
@@ -25,7 +26,8 @@ pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
         'https://example.test/file?%73tate=synthetic-state&year=2024',
     ],
 )
-async def test_cvm_metadata_failure_logs_redact_url_credentials(
+async def test_cvm_transfer_failure_logs_redact_url_credentials(
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
     url: str,
@@ -33,21 +35,26 @@ async def test_cvm_metadata_failure_logs_redact_url_credentials(
     """A real HTTPX failure passes through the library's warning formatter."""
 
     def fail(request: httpx.Request) -> httpx.Response:
-        raise httpx.ConnectError('synthetic transport outage', request=request)
+        raise httpx.ConnectError(
+            f'synthetic transport outage: {url}', request=request
+        )
 
     install_mock_http_transport(monkeypatch, fail)
 
-    with caplog.at_level('WARNING'):
-        result = await download_validation.get_content_length(
-            RequestsAdapter(), url
+    with caplog.at_level('ERROR'):
+        success, error = await AsyncDownloadAdapterCVM(
+            None, max_retries=0
+        )._download_with_retry(
+            url, str(tmp_path / 'source.zip'), 'DFP', '2024'
         )
 
     records = [
         record
         for record in caplog.records
-        if 'Failed to get Content-Length' in record.getMessage()
+        if 'Download failed' in record.getMessage()
     ]
-    assert result is None
+    assert success is False
+    assert error is not None
     assert len(records) == 1
     formatted = StructuredFormatter('%(message)s').format(records[0])
     assert 'synthetic-password' not in formatted

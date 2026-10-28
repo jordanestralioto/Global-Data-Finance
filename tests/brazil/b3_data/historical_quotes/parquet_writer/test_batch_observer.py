@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pyarrow as pa
+import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 import pytest
 
@@ -14,6 +15,7 @@ from globaldatafinance.brazil.b3_data.historical_quotes import (
 from globaldatafinance.brazil.b3_data.historical_quotes.parquet_writer import (
     session as writer_session,
 )
+from globaldatafinance.macro_exceptions import ExtractionError
 from tests.support.builders import build_cotahist_record, write_cotahist_txt
 
 pytestmark = pytest.mark.integration
@@ -117,3 +119,26 @@ def test_converted_value_mutation_cannot_publish(
     assert result['output_file'] == ''
     assert not list(tmp_path.glob('*.parquet'))
     assert not list(tmp_path.glob('.globaldatafinance-transaction-*'))
+
+
+@pytest.mark.parametrize('row_delta', [-1, 1])
+def test_converted_row_count_mismatch_is_rejected_before_provenance(
+    monkeypatch: pytest.MonkeyPatch, row_delta: int
+) -> None:
+    """Conversion cannot attach original bytes to a different set of rows."""
+    read_csv = pacsv.read_csv
+
+    def change_count(*args, **kwargs):
+        table = read_csv(*args, **kwargs)
+        if row_delta < 0:
+            return table.slice(1)
+        return pa.concat_tables([table, table.slice(0, 1)])
+
+    monkeypatch.setattr(pacsv, 'read_csv', change_count)
+    with pytest.raises(
+        ExtractionError,
+        match=f'row count.*expected=3; observed={3 + row_delta}',
+    ):
+        writer_session.B3ParquetWriterSession._csv_rows_to_batches(
+            _rows(), parquet_writer.build_b3_schema()
+        )

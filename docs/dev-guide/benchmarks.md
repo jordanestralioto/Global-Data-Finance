@@ -370,13 +370,19 @@ uv run --locked --no-sync python scripts/benchmark_ingestion.py \
 
 ### 6.2. Medição por fase de downloads CVM
 
-`scripts/benchmark_cvm_http.py` mede separadamente tempo e bytes de GET, HEAD,
+`scripts/benchmark_cvm_http.py` mede separadamente tempo e bytes de GET,
 validação do ZIP e extração Parquet. O modo local serve o mesmo ZIP determinístico
 em HTTP/1.1, executa lotes de três downloads por padrão e compara chunks de 8,
-64 e 256 KiB. Os bytes de GET são os transferidos; HEAD transfere zero bytes e
-registra o `Content-Length`; validação registra o tamanho do ZIP lido; extração
-registra os bytes CSV descompactados. O relatório também conta as construções
-de `httpx.AsyncClient` e mede o custo síncrono dessas construções.
+64 e 256 KiB. Os bytes de GET são os transferidos; validação registra o tamanho
+do ZIP lido; extração registra os bytes CSV descompactados. O relatório também
+conta as construções de `httpx.AsyncClient` e mede o custo síncrono dessas
+construções.
+
+O download atual valida o tamanho com o `Content-Length` do próprio GET,
+quando disponível e válido, e não faz HEAD. Para preservar o schema JSON 1,
+os campos da fase `head` e os contadores `announced_bytes` permanecem no
+relatório com valor zero. A fração de inicialização de clientes usa somente
+o tempo acumulado de GET como tempo HTTP.
 
 ```bash
 mkdir -p .benchmarks
@@ -400,6 +406,8 @@ uv run --locked --no-sync python scripts/benchmark_cvm_http.py \
 Em **2026-09-23**, a execução local terminou com `passed`: nove lotes, três
 repetições por chunk e três downloads por lote. As medianas abaixo usam o tempo
 total do lote; os tempos de fase somam as operações concorrentes do lote.
+Essa medição histórica usava o HEAD após cada GET; a coluna HEAD e a contagem
+de clientes abaixo descrevem aquela implementação.
 
 | Chunk | Lote total | HEAD | GET | Validação | Extração | Inicialização de clientes HTTPX |
 | ----: | ---------: | ---: | --: | --------: | -------: | ------------------------------: |
@@ -413,9 +421,10 @@ As nove execuções produziram três Parquets e 768 linhas, com fingerprints de
 schema e SHA-256 dos artefatos idênticos. O melhor tempo mediano total ficou
 4,2% abaixo do chunk de 8 KiB, com variação entre repetições e diferença pequena
 entre chunks de 64 e 256 KiB. Os seis construtores `httpx.AsyncClient` somaram
-cerca de 37 ms por lote, 18% do tempo acumulado de GET e HEAD. Como o benchmark
-local sintético não compara clientes compartilhados e a diferença de tempo total
-é pequena, mantenho o chunk atual de 8 KiB e o ciclo atual dos clientes HTTPX.
+cerca de 37 ms por lote, 18% do tempo acumulado de GET e HEAD. O benchmark
+local sintético não comparou clientes compartilhados e encontrou uma diferença
+pequena de tempo total entre chunks. Naquela medição, esses resultados
+mantiveram o chunk de 8 KiB e o ciclo de construção dos clientes HTTPX.
 
 O relatório completo, com cada repetição, checksum da fixture e proveniência
 `git_sha` / `worktree_sha256`, está em

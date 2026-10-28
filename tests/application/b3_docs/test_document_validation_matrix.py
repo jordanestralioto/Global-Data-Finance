@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import pyarrow.parquet as pq
 import pytest
 
 from globaldatafinance import HistoricalQuotesB3
@@ -135,4 +136,120 @@ def test_invalid_document_fails_before_destination_creation(
     assert diagnostic in result['errors'][source.name]
     assert result['integrity']['written_rows'] == 0
     assert result['integrity']['verified_rows'] == 0
+    assert not destination.exists()
+
+
+@pytest.mark.parametrize('extension', ['TXT', 'ZIP'])
+@pytest.mark.parametrize('mode', ['fast', 'slow'])
+@pytest.mark.parametrize('market', ['010', '017'])
+def test_utf8_source_requires_an_explicit_latin1_copy(
+    tmp_path: Path, extension: str, mode: str, market: str
+) -> None:
+    """Encoding recovery preserves text, bytes, and the original source."""
+    quote = _replace(
+        build_cotahist_record(market=market), 27, 39, 'FROTA OCEÂNI'
+    )
+    text = (
+        '\r\n'.join(
+            [
+                build_cotahist_header(2024),
+                quote,
+                build_cotahist_record(),
+                build_cotahist_trailer(2024, 2),
+            ]
+        )
+        + '\r\n'
+    )
+    original_payload = text.encode('utf-8')
+    sources = tmp_path / 'original'
+    sources.mkdir()
+    original = sources / f'COTAHIST_A2024.{extension}'
+    if extension == 'ZIP':
+        write_zip(original, {'COTAHIST_A2024.TXT': original_payload})
+    else:
+        original.write_bytes(original_payload)
+    original_bytes = original.read_bytes()
+    destination = tmp_path / 'output'
+
+    failed = HistoricalQuotesB3().extract(
+        path_of_docs=str(sources),
+        assets_list=['ações'],
+        initial_year=2024,
+        last_year=2024,
+        destination_path=str(destination),
+        processing_mode=mode,
+        verbose=False,
+    )
+
+    assert failed['success'] is False
+    error = failed['errors'][original.name]
+    assert 'line=2' in error
+    assert 'field=record_length' in error
+    assert "value='246'" in error
+    assert 'UTF-8' in error
+    assert 'separate Latin-1 copy' in error
+    assert not destination.exists()
+    assert original.read_bytes() == original_bytes
+
+    normalized_sources = tmp_path / 'normalized'
+    normalized_sources.mkdir()
+    normalized = normalized_sources / original.name
+    normalized_payload = text.encode('latin-1')
+    if extension == 'ZIP':
+        write_zip(normalized, {'COTAHIST_A2024.TXT': normalized_payload})
+    else:
+        normalized.write_bytes(normalized_payload)
+
+    recovered = HistoricalQuotesB3().extract(
+        path_of_docs=str(normalized_sources),
+        assets_list=['ações'],
+        initial_year=2024,
+        last_year=2024,
+        destination_path=str(destination),
+        processing_mode=mode,
+        verbose=False,
+    )
+
+    assert recovered['success'] is True
+    assert recovered['total_records'] == (2 if market == '010' else 1)
+    rows = pq.read_table(recovered['output_file']).to_pylist()
+    expected = quote if market == '010' else build_cotahist_record()
+    assert rows[0]['nome_resumido'] == expected[27:39].strip()
+    assert rows[0]['registro_original'] == expected.encode('latin-1')
+    assert original.read_bytes() == original_bytes
+
+
+@pytest.mark.parametrize(
+    'payload',
+    [
+        build_cotahist_record().encode('latin-1') + b'\xff',
+        _replace(build_cotahist_record(), 27, 39, 'FROTA NAV€GA').encode(
+            'utf-8'
+        ),
+    ],
+    ids=['invalid-utf8', 'not-latin1'],
+)
+def test_encoding_hint_requires_lossless_latin1_conversion(
+    tmp_path: Path, payload: bytes
+) -> None:
+    """Other width errors must not suggest an invalid encoding conversion."""
+    source = tmp_path / 'COTAHIST_A2024.TXT'
+    source.write_bytes(
+        build_cotahist_header(2024).encode('ascii') + b'\n' + payload + b'\n'
+    )
+    destination = tmp_path / 'output'
+
+    result = HistoricalQuotesB3().extract(
+        path_of_docs=str(tmp_path),
+        initial_year=2024,
+        last_year=2024,
+        destination_path=str(destination),
+        verbose=False,
+    )
+
+    assert result['success'] is False
+    error = result['errors'][source.name]
+    assert 'field=record_length' in error
+    assert 'Expected exactly 245 bytes' in error
+    assert 'separate Latin-1 copy' not in error
     assert not destination.exists()

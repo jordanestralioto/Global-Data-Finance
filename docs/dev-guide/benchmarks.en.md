@@ -366,14 +366,19 @@ uv run --locked --no-sync python scripts/benchmark_ingestion.py \
 
 ### 6.2. CVM Download Phase Measurements
 
-`scripts/benchmark_cvm_http.py` separately measures time and bytes for GET, HEAD,
+`scripts/benchmark_cvm_http.py` separately measures time and bytes for GET,
 ZIP validation, and Parquet extraction. Local mode serves the same deterministic
 ZIP over HTTP/1.1, runs batches of three downloads by default, and compares 8,
-64, and 256 KiB chunks. GET bytes are transferred bytes; HEAD transfers zero
-body bytes and records `Content-Length`; validation records the ZIP size read;
-extraction records the uncompressed CSV bytes. The report also counts
-`httpx.AsyncClient` constructions and measures their synchronous constructor
-cost.
+64, and 256 KiB chunks. GET bytes are transferred bytes; validation records
+the ZIP size read; extraction records the uncompressed CSV bytes. The report
+also counts `httpx.AsyncClient` constructions and measures their synchronous
+constructor cost.
+
+The current download validates its size against the GET response's own
+`Content-Length`, when available and valid, and makes no HEAD request. To
+preserve JSON schema 1, the `head` phase fields and `announced_bytes` counters
+remain in the report with zero values. The client-initialization fraction uses
+only cumulative GET time as HTTP time.
 
 ```bash
 mkdir -p .benchmarks
@@ -397,6 +402,8 @@ uv run --locked --no-sync python scripts/benchmark_cvm_http.py \
 On **2026-09-23**, the local run completed with `passed`: nine batches, three
 repeats per chunk size, and three downloads per batch. The medians below show
 total batch time; phase times sum the concurrent operations in each batch.
+This historical measurement used a HEAD request after each GET; the HEAD column
+and client counts below describe that implementation.
 
 | Chunk | Total batch | HEAD | GET | Validation | Extraction | HTTPX client initialization |
 | ----: | ----------: | ---: | --: | ----------: | ---------: | ---------------------------: |
@@ -410,10 +417,10 @@ CSV bytes. All nine runs produced three Parquet files and 768 rows, with
 identical schema fingerprints and artifact SHA-256 values. The best median total
 time was 4.2% below the 8 KiB chunk, with variation between repeats and a small
 difference between 64 and 256 KiB. The six `httpx.AsyncClient` constructors
-totaled about 37 ms per batch, 18% of cumulative GET and HEAD time. Since the
-synthetic local benchmark does not compare shared clients and the total-time
-difference is small, the current 8 KiB chunk and HTTPX client lifecycle remain
-unchanged.
+totaled about 37 ms per batch, 18% of cumulative GET and HEAD time. The synthetic
+local benchmark did not compare shared clients and found a small total-time
+difference between chunks. At the time, these results supported keeping the
+8 KiB chunk and HTTPX client-construction lifecycle.
 
 The full report, including each repeat, fixture checksum, and `git_sha` /
 `worktree_sha256` provenance, is available as

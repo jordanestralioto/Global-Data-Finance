@@ -15,12 +15,21 @@ from globaldatafinance.application.b3_docs.historical_quotes import (
 from globaldatafinance.brazil.b3_data.historical_quotes import (
     extraction_service,
 )
+from globaldatafinance.core import ResourceMonitor, ResourceState
 from globaldatafinance.macro_infra.transactional_publication.types import (
     FileOperations,
 )
 from tests.support.builders import build_cotahist_record, write_cotahist_txt
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
+
+
+@pytest.fixture(autouse=True)
+def healthy_resource_monitor(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep phase-cancellation checks independent of host memory pressure."""
+    monkeypatch.setattr(
+        ResourceMonitor, 'check_resources', lambda _self: ResourceState.HEALTHY
+    )
 
 
 def _phase_boundary(phase):

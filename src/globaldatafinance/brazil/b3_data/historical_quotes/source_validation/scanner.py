@@ -66,13 +66,25 @@ def scan_document(
 
 
 def _validate_record_width(raw_line: B3RawLine) -> None:
-    if len(raw_line.content) != HEADER_SIZE:
-        raise line_error(
-            raw_line.context,
-            'record_length',
-            str(len(raw_line.content)),
-            f'Expected exactly {HEADER_SIZE} bytes',
+    if len(raw_line.content) == HEADER_SIZE:
+        return
+    cause = f'Expected exactly {HEADER_SIZE} bytes'
+    try:
+        latin1_content = raw_line.content.decode('utf-8').encode('latin-1')
+    except (UnicodeDecodeError, UnicodeEncodeError):
+        latin1_content = b''
+    if len(latin1_content) == HEADER_SIZE:
+        cause += (
+            '; detected UTF-8 text that has the expected width in Latin-1. '
+            'Keep the original source and create a separate Latin-1 copy '
+            'before extraction'
         )
+    raise line_error(
+        raw_line.context,
+        'record_length',
+        str(len(raw_line.content)),
+        cause,
+    )
 
 
 def _scan_record(

@@ -84,7 +84,7 @@ def test_real_facade_initializes_lazy_extractor_and_validates_all_artifacts(
     assert result['recordCount'] == (2 if contents.endswith(b'2\n') else 0)
     assert result['artifactCount'] == 1
     assert result['publicResult']['successful_downloads'] == ['DFP_2024']
-    assert requests == ['GET', 'HEAD']
+    assert requests == ['GET']
     output = tmp_path / 'workspace' / 'output'
     path = output / 'DFP' / '2024' / 'dfp_cia_aberta_2024.parquet'
     assert pq.ParquetFile(path).metadata.num_rows == result['recordCount']

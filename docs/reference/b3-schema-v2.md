@@ -78,7 +78,10 @@ armazenar valores financeiros ou conteúdo das fontes.
 
 Antes do merge, cada Parquet temporário tem seu schema, footer completo,
 manifesto e contagem conferidos. O merge reaplica a validação de schema e
-metadados ao abrir cada temporário. O arquivo final recebe uma leitura
+metadados ao abrir cada temporário e compara os batches consumidos com a
+contagem do footer, independentemente dos flushes de row groups. A conversão
+CSV para Arrow também exige uma linha por registro original antes de montar
+o buffer de proveniência. O arquivo final recebe uma leitura
 completa, em lotes limitados, para conferir valores, proveniência, ordem e
 digests por fonte antes da publicação transacional. As verificações de
 replay e identidade das fontes continuam obrigatórias.

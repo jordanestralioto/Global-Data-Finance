@@ -22,7 +22,6 @@ from .download_finalization import (
 )
 from .download_paths import build_download_target_path
 from .download_validation import (
-    get_content_length,
     validate_download_options,
     validate_downloaded_file,
 )
@@ -257,7 +256,6 @@ class AsyncDownloadAdapterCVM:
         owns_executor = worker_executor is None
 
         try:
-            expected_size = await self._get_content_length(url)
             if worker_executor is None:
                 worker_executor = ThreadPoolExecutor(
                     max_workers=1,
@@ -265,14 +263,14 @@ class AsyncDownloadAdapterCVM:
                 )
             if finalization_lock is None:
                 finalization_lock = asyncio.Lock()
-            if automatic_extractor:
-                self.file_extractor_repository = resolve_parquet_extractor(
+            file_extractor_repository = (
+                resolve_parquet_extractor(
                     self.file_extractor_repository,
                     archive_limits=self.archive_limits,
                     allowed_unc_roots=self.allowed_unc_roots,
                 )
-            file_extractor_repository = (
-                self.file_extractor_repository if automatic_extractor else None
+                if automatic_extractor
+                else None
             )
             finalization_result = await run_download_finalizer(
                 worker_executor,
@@ -284,7 +282,6 @@ class AsyncDownloadAdapterCVM:
                     dest_path,
                     doc_name,
                     year,
-                    expected_size,
                     automatic_extractor=automatic_extractor,
                     file_extractor_repository=file_extractor_repository,
                     validate_file=self._validate_downloaded_file,
@@ -378,12 +375,5 @@ class AsyncDownloadAdapterCVM:
             max_bytes=self.archive_limits.max_archive_bytes,
         )
 
-    async def _get_content_length(self, url: str) -> int | None:
-        return await get_content_length(self.requests_adapter, url)
-
-    def _validate_downloaded_file(
-        self, filepath: str, expected_size: int | None = None
-    ) -> bool:
-        return validate_downloaded_file(
-            filepath, expected_size, limits=self.archive_limits
-        )
+    def _validate_downloaded_file(self, filepath: str) -> bool:
+        return validate_downloaded_file(filepath, limits=self.archive_limits)

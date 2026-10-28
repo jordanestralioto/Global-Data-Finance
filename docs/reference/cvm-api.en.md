@@ -59,6 +59,11 @@ columns. `QUOTE_NONE` retains literal quotes. Short rows receive trailing
 empty fields; excess fields, empty or duplicate headers, more than 4,096
 columns, and physical records exceeding 8 MiB UTF-8 fail explicitly.
 
+Automatic extraction resolves its extractor per operation without changing
+the adapter's configuration. Short-row normalization uses a separate spool
+for each member; it is removed when conversion finishes, including failures.
+Transaction staging retains its normal cleanup.
+
 The SHA-256 of all decoded records is compared with reopened Parquet content
 before publication. Files include page checksums, ZIP and CSV member identity
 in metadata, and `fsync` synchronization. Confirmation requires all expected

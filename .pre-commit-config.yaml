@@ -123,6 +123,8 @@ repos:
           - examples/02_quickstart_b3.py
           - --allow-print-file
           - examples/03_advanced_options_b3.py
+          - --allow-print-file
+          - examples/04_yearly_b3.py
           # These benchmark CLIs intentionally emit their result reports.
           - --allow-print-file
           - scripts/benchmark_cvm_http.py

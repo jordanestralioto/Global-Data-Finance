@@ -209,7 +209,6 @@ def test_missing_extractor_fails_before_promoting_the_source(
             str(tmp_path),
             'DFP',
             '2024',
-            None,
             automatic_extractor=True,
             file_extractor_repository=None,
             validate_file=download_validation.validate_downloaded_file,

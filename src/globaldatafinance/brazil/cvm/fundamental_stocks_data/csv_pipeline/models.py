@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -39,6 +38,5 @@ class CsvAnalysis:
     rows: int
     content_sha256: str
     max_record_bytes: int
-    normalized_path: Path | None = None
     short_rows_seen: bool = False
     physical_lines: int = 0

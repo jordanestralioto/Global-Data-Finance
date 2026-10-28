@@ -121,17 +121,22 @@ async def test_stream_budget_covers_final_and_unannounced_redirect_bodies(
     assert list(tmp_path.iterdir()) == [target]
 
 
+@pytest.mark.parametrize('announced_length', [False, True])
 async def test_unbounded_download_keeps_http_content_decoding(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    announced_length: bool,
 ) -> None:
     """Existing callers without a byte budget retain decoded download bytes."""
     payload = b'ordinary response'
-    stream = ObservedStream(gzip.compress(payload))
+    compressed = gzip.compress(payload)
+    stream = ObservedStream(compressed)
+    headers = {'content-encoding': 'gzip'}
+    if announced_length:
+        headers['content-length'] = str(len(compressed))
     install_mock_http_transport(
         monkeypatch,
-        lambda _request: httpx.Response(
-            200, headers={'content-encoding': 'gzip'}, stream=stream
-        ),
+        lambda _request: httpx.Response(200, headers=headers, stream=stream),
     )
     target = tmp_path / 'response'
 

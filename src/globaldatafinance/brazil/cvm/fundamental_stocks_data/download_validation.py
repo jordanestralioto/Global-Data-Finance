@@ -10,7 +10,6 @@ from ....core.archive_safety import (
     validate_zip_crc_with_limits,
 )
 from ....macro_exceptions import CorruptedZipError
-from ....macro_infra import RequestsAdapter
 from .parquet_validation import validate_parquet_data
 
 logger = get_logger(__name__)
@@ -18,7 +17,6 @@ logger = get_logger(__name__)
 
 def validate_downloaded_file(
     filepath: str,
-    expected_size: int | None = None,
     *,
     limits: ArchiveSafetyLimits | None = None,
 ) -> bool:
@@ -28,11 +26,6 @@ def validate_downloaded_file(
 
         if not path.exists():
             logger.error('Downloaded file does not exist: %s', filepath)
-            return False
-
-        if expected_size is not None and not _has_valid_size(
-            path, expected_size
-        ):
             return False
 
         return has_valid_zip_contents(filepath, limits=limits)
@@ -150,25 +143,6 @@ def validate_parquet_files(
     return True
 
 
-def _has_valid_size(path: Path, expected_size: int) -> bool:
-    actual_size = path.stat().st_size
-    if expected_size <= 0 or actual_size != expected_size:
-        logger.error(
-            'File size mismatch for %s: expected %d bytes, got %d bytes',
-            path,
-            expected_size,
-            actual_size,
-        )
-        return False
-
-    logger.debug(
-        'File size validation passed: %d bytes (expected %d)',
-        actual_size,
-        expected_size,
-    )
-    return True
-
-
 def has_valid_zip_contents(
     filepath: str, *, limits: ArchiveSafetyLimits | None = None
 ) -> bool:
@@ -221,27 +195,3 @@ def validate_download_options(
             or value < minimum
         ):
             raise ValueError(f'{name} must be an integer >= {minimum}')
-
-
-async def get_content_length(
-    requests_adapter: RequestsAdapter, url: str
-) -> int | None:
-    """Read optional ZIP size metadata without hiding integrity failures."""
-    try:
-        response = await requests_adapter.async_head(url)
-        content_length = response.headers.get('content-length')
-        if content_length:
-            size_bytes = int(content_length)
-            logger.debug(
-                'Content-Length for %s: %.2f MB',
-                url,
-                size_bytes / 1024 / 1024,
-            )
-            return size_bytes
-        logger.debug('No Content-Length header for %s', url)
-        return None
-    except Exception:
-        logger.warning(
-            'Failed to get Content-Length for %s', url, exc_info=True
-        )
-        return None

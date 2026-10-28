@@ -20,6 +20,7 @@ from .http_safety import (
     identity_headers,
     redirect_header_hook,
     validate_download_response_headers,
+    validate_download_response_length,
 )
 from .temporary_files import reserve_temporary_path
 
@@ -243,6 +244,10 @@ class RequestsAdapter:
                                 raise FileWriteError(
                                     output_path, str(write_err)
                                 ) from write_err
+
+                validate_download_response_length(
+                    response.headers, written_bytes, output_path
+                )
 
             return staging_path
 

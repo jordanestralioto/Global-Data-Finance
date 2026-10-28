@@ -4,11 +4,12 @@ To use an example, **open the file, change the values in its `SETTINGS` block,
 save it, and run the command shown below**. You can use your usual text editor.
 The options you need to change are grouped near the start of each file.
 
-| File                                                   | What it does                      | What you need                    |
-| ------------------------------------------------------ | --------------------------------- | -------------------------------- |
-| [01_quickstart_cvm.py](01_quickstart_cvm.py)           | Downloads CVM financial documents | Internet access                  |
-| [02_quickstart_b3.py](02_quickstart_b3.py)             | Reads quotes from stock markets   | Samples bundled with the project |
-| [03_advanced_options_b3.py](03_advanced_options_b3.py) | Also reads options markets        | Samples bundled with the project |
+| File                                                   | What it does                               | What you need                    |
+| ------------------------------------------------------ | ------------------------------------------ | -------------------------------- |
+| [01_quickstart_cvm.py](01_quickstart_cvm.py)           | Downloads CVM financial documents          | Internet access                  |
+| [02_quickstart_b3.py](02_quickstart_b3.py)             | Reads quotes from stock markets            | Samples bundled with the project |
+| [03_advanced_options_b3.py](03_advanced_options_b3.py) | Also reads options markets                 | Samples bundled with the project |
+| [04_yearly_b3.py](04_yearly_b3.py)                     | Saves quotes in a separate folder per year | Samples bundled with the project |
 
 ## 1. Prepare the environment once
 
@@ -32,6 +33,7 @@ You can also run an example as a module, using `-m` and dots between names:
 uv run --locked --no-sync python -m examples.01_quickstart_cvm
 uv run --locked --no-sync python -m examples.02_quickstart_b3
 uv run --locked --no-sync python -m examples.03_advanced_options_b3
+uv run --locked --no-sync python -m examples.04_yearly_b3
 ```
 
 Run only the example you need. With `-m`, use `examples.example_name`,
@@ -184,6 +186,52 @@ six instruments across three dates in each year. The samples' forward market
 (030) is excluded by that selection. With `ASSETS = ['todos']`, the output has
 **42 quotes**, including the forward market.
 
+### Example 04: save B3 quotes year by year
+
+This example reads local COTAHIST files and runs an independent extraction for
+each year, saving all selected quotes for that year in one Parquet inside its
+own folder. The default settings use the 2022 and 2023 samples:
+
+```bash
+uv run --locked --no-sync python examples/04_yearly_b3.py
+```
+
+```text
+dados_b3/cotacoes_acoes_por_ano/
+├── 2022/
+│   └── cotacoes_acoes_2022.parquet
+└── 2023/
+    └── cotacoes_acoes_2023.parquet
+```
+
+Each sample produces **12 quotes** with `ASSETS = ['ações']`, which selects
+markets 010 and 020, including ETFs in those markets. The example uses the
+public API to preserve the schema and generate each year's integrity metadata.
+
+To generate your **2000 through 2026** dataset, set `INITIAL_YEAR = 2000`,
+`LAST_YEAR = 2026`, `PATH_OF_DOCS` to the folder containing the original
+COTAHIST files, and `DESTINATION_PATH` to the folder that will contain the
+annual subfolders. Inputs are `COTAHIST_AYYYY.ZIP` or `.TXT` files; the
+consolidated Parquet is not required.
+
+To update only **2026**, place the updated `COTAHIST_A2026.ZIP` or `.TXT` in
+the input folder and use:
+
+```python
+INITIAL_YEAR = 2026
+LAST_YEAR = 2026
+```
+
+Keep the same destination folder, filename prefix, and market selection.
+The run regenerates and replaces `2026/cotacoes_acoes_2026.parquet`; files for
+other years are unchanged. Existing years are processed whenever included in
+the range; the example does not skip a year just because its folder exists.
+The input folder only needs to contain the requested years.
+
+If a year fails, the example stops with a diagnostic. Earlier annual extractions
+that already completed remain available; adjust the range to resume from the
+failed year.
+
 ## 3. Check the result
 
 When finished, each example shows the output directory or file and the number
@@ -239,7 +287,7 @@ memory.
   change the values in the file, save it, and run it again.
 
 The file `support.py` handles result checks and messages for the examples.
-To use or customize the examples, edit the three numbered files.
+To use or customize the examples, edit the four numbered files.
 
 ## Validate the examples
 

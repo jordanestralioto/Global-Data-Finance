@@ -10,6 +10,7 @@ início de cada arquivo.
 | [01_quickstart_cvm.py](01_quickstart_cvm.py)           | Baixa documentos financeiros da CVM | Internet                      |
 | [02_quickstart_b3.py](02_quickstart_b3.py)             | Lê cotações dos mercados de ações   | Amostras incluídas no projeto |
 | [03_advanced_options_b3.py](03_advanced_options_b3.py) | Lê também os mercados de opções     | Amostras incluídas no projeto |
+| [04_yearly_b3.py](04_yearly_b3.py)                     | Salva cotações em uma pasta por ano | Amostras incluídas no projeto |
 
 ## 1. Preparar o ambiente uma vez
 
@@ -33,6 +34,7 @@ Você também pode executar como módulo, usando `-m` e pontos entre os nomes:
 uv run --locked --no-sync python -m examples.01_quickstart_cvm
 uv run --locked --no-sync python -m examples.02_quickstart_b3
 uv run --locked --no-sync python -m examples.03_advanced_options_b3
+uv run --locked --no-sync python -m examples.04_yearly_b3
 ```
 
 Execute apenas o exemplo desejado. Com `-m`, use `examples.nome_do_exemplo`,
@@ -185,6 +187,51 @@ exemplo 03: seis instrumentos em três datas de cada ano. O mercado a termo
 (030) das amostras é excluído por essa seleção. Com `ASSETS = ['todos']`, são
 geradas **42 cotações**, incluindo o termo.
 
+### Exemplo 04: salvar a B3 ano a ano
+
+Este exemplo lê os COTAHIST locais e executa uma extração independente por ano,
+salvando todas as cotações selecionadas daquele ano em um único Parquet dentro
+da pasta correspondente. A configuração padrão usa as amostras de 2022 e 2023:
+
+```bash
+uv run --locked --no-sync python examples/04_yearly_b3.py
+```
+
+```text
+dados_b3/cotacoes_acoes_por_ano/
+├── 2022/
+│   └── cotacoes_acoes_2022.parquet
+└── 2023/
+    └── cotacoes_acoes_2023.parquet
+```
+
+Cada amostra produz **12 cotações** com `ASSETS = ['ações']`, que seleciona os
+mercados 010 e 020, incluindo ETFs desses mercados. O exemplo usa a API pública
+para preservar o schema e gerar os metadados de integridade de cada ano.
+
+Para gerar sua base de **2000 a 2026**, ajuste `INITIAL_YEAR = 2000`,
+`LAST_YEAR = 2026`, `PATH_OF_DOCS` para a pasta dos COTAHIST originais e
+`DESTINATION_PATH` para a pasta que conterá as subpastas anuais. A entrada são
+os arquivos `COTAHIST_AYYYY.ZIP` ou `.TXT`; o Parquet consolidado não é necessário.
+
+Para atualizar apenas **2026**, coloque a versão atualizada de
+`COTAHIST_A2026.ZIP` ou `.TXT` na pasta de entrada e use:
+
+```python
+INITIAL_YEAR = 2026
+LAST_YEAR = 2026
+```
+
+Mantenha a mesma pasta de destino, o nome inicial e a seleção de mercados.
+A execução refaz e substitui `2026/cotacoes_acoes_2026.parquet`; os arquivos
+dos outros anos não são alterados. Anos já existentes também são processados
+quando incluídos no intervalo; o exemplo não ignora um ano apenas porque sua
+pasta existe. A pasta de entrada precisa conter somente os anos solicitados.
+
+Se um ano falhar, o exemplo para com um diagnóstico. As extrações anuais
+anteriores que já terminaram permanecem disponíveis; ajuste o intervalo para
+retomar a partir do ano que falhou.
+
 ## 3. Conferir o resultado
 
 Ao terminar, cada exemplo mostra a pasta ou o arquivo gerado e a quantidade de
@@ -241,7 +288,7 @@ carregar todas as cotações na memória.
   comando, altere os valores no arquivo, salve e execute novamente.
 
 O arquivo `support.py` reúne a conferência dos resultados e as mensagens dos
-exemplos. Para usar ou personalizar os exemplos, edite os três arquivos
+exemplos. Para usar ou personalizar os exemplos, edite os quatro arquivos
 numerados.
 
 ## Validação dos exemplos

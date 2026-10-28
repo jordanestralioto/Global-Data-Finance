@@ -233,18 +233,3 @@ def test_validate_downloaded_file_propagates_unexpected_validation_error(
 
     with pytest.raises(RuntimeError, match='unexpected validator failure'):
         download_validation.validate_downloaded_file(str(archive))
-
-
-def test_validate_downloaded_file_size_check_fail(tmp_path: Path) -> None:
-    zip_path = tmp_path / 'test.zip'
-    with zipfile.ZipFile(zip_path, 'w') as zf:
-        zf.writestr('file.csv', 'a;b\n1;2\n')
-
-    actual_size = zip_path.stat().st_size
-    # Size difference > 5%
-    assert (
-        download_validation.validate_downloaded_file(
-            str(zip_path), expected_size=int(actual_size * 1.5)
-        )
-        is False
-    )

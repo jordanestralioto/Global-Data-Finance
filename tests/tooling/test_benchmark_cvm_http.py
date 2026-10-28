@@ -34,13 +34,15 @@ def test_stage_metrics_keep_transferred_and_processed_bytes_separate() -> None:
     measurements = benchmark_cvm_http_support.PhaseMeasurements()
 
     measurements.add_phase('get', 0.25, transferred_bytes=120)
-    measurements.add_phase('head', 0.05, announced_bytes=120)
     measurements.add_phase('validation', 0.1, processed_bytes=120)
     measurements.add_phase('extraction', 0.2, processed_bytes=40)
 
     phases = measurements.snapshot()['phases']
     assert phases['get']['transferred_bytes'] == 120
+    assert phases['get']['operations'] == 1
     assert phases['head']['transferred_bytes'] == 0
-    assert phases['head']['announced_bytes'] == 120
+    assert phases['head']['announced_bytes'] == 0
+    assert phases['head']['operations'] == 0
+    assert phases['head']['seconds'] == 0.0
     assert phases['validation']['processed_bytes'] == 120
     assert phases['extraction']['processed_bytes'] == 40

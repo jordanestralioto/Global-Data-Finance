@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import zipfile
+from contextlib import nullcontext
 from pathlib import Path
 
 from .....core.archive_safety import ArchiveSafetyLimits
@@ -65,30 +66,35 @@ class CvmCsvParquetPipeline:
         plan = detect_encoding(source)
         utf8_source = prepare_utf8_source(source, plan, staging_dir)
         analysis = analyse_csv(source, utf8_source, plan)
-        if analysis.short_rows_seen:
-            normalized = normalize_short_rows(
+        normalization = (
+            normalize_short_rows(
                 source,
                 utf8_source,
                 plan,
                 staging_dir,
                 analysis.header,
             )
-            analysis.normalized_path = normalized
-        schema = build_schema(analysis)
-        schema = schema.with_metadata(
-            {
-                **(schema.metadata or {}),
-                b'cvm.source-archive': source.source_path.name.encode('utf-8'),
-                b'cvm.source-archive-sha256': fingerprint.encode('ascii'),
-                b'cvm.source-member': source.member_name.encode('utf-8'),
-                b'cvm.source-encoding': plan.encoding.encode('ascii'),
-            }
+            if analysis.short_rows_seen
+            else nullcontext(utf8_source)
         )
-        return write_parquet(
-            source,
-            analysis.normalized_path or utf8_source,
-            plan,
-            staged_path,
-            analysis,
-            schema,
-        )
+        with normalization as csv_path:
+            schema = build_schema(analysis)
+            schema = schema.with_metadata(
+                {
+                    **(schema.metadata or {}),
+                    b'cvm.source-archive': source.source_path.name.encode(
+                        'utf-8'
+                    ),
+                    b'cvm.source-archive-sha256': fingerprint.encode('ascii'),
+                    b'cvm.source-member': source.member_name.encode('utf-8'),
+                    b'cvm.source-encoding': plan.encoding.encode('ascii'),
+                }
+            )
+            return write_parquet(
+                source,
+                csv_path,
+                plan,
+                staged_path,
+                analysis,
+                schema,
+            )

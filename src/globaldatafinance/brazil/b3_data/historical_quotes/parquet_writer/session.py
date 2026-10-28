@@ -235,6 +235,12 @@ class B3ParquetWriterSession:
             ),
         )
         record_count = table.num_rows
+        if record_count != len(original_records):
+            raise ExtractionError(
+                'B3 Parquet',
+                'Canonical B3 row count differs after CSV conversion: '
+                f'expected={len(original_records)}; observed={record_count}',
+            )
         binary_values = b''.join(original_records)
         binary_array = pa.Array.from_buffers(
             binary_field.type,

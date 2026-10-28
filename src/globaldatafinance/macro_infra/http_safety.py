@@ -71,17 +71,39 @@ def validate_download_response_headers(
         raise SecurityError(
             'bounded download requires identity Content-Encoding', output_path
         )
-    raw_length = headers.get('content-length')
-    try:
-        length = int(raw_length) if raw_length is not None else None
-    except (TypeError, ValueError):
-        return
+    length = _content_length(headers)
     if length is not None and length > max_bytes:
         raise SecurityError(
             'download Content-Length exceeds configured byte limit '
             f'({length} > {max_bytes})',
             output_path,
         )
+
+
+def validate_download_response_length(
+    headers: Mapping[str, str], written_bytes: int, output_path: str
+) -> None:
+    """Compare persisted identity bytes with their own GET declaration."""
+    if headers.get('content-encoding', '').strip().casefold() not in {
+        '',
+        'identity',
+    }:
+        return
+    expected = _content_length(headers)
+    if expected is not None and written_bytes != expected:
+        raise httpx.RemoteProtocolError(
+            f'Download Content-Length mismatch for {output_path}: '
+            f'expected {expected} bytes, received {written_bytes}'
+        )
+
+
+def _content_length(headers: Mapping[str, str]) -> int | None:
+    raw_length = headers.get('content-length')
+    try:
+        length = int(raw_length) if raw_length is not None else None
+    except (TypeError, ValueError):
+        return None
+    return length if length is not None and length >= 0 else None
 
 
 def download_response_hook(

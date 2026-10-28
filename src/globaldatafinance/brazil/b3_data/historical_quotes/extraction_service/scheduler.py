@@ -25,6 +25,14 @@ from .zip_processor import ProcessingCancelled, ZipProcessorB3
 logger = get_logger(__name__)
 
 
+def _observe_source_result(
+    future: asyncio.Future[SourceExtractionResult],
+) -> None:
+    """Retrieve failures even when cancellation leaves them for shutdown."""
+    if not future.cancelled():
+        future.exception()
+
+
 class _ShutdownExecutor(Protocol):
     """Describe the executor surface needed during asynchronous shutdown."""
 
@@ -116,7 +124,7 @@ class ExtractionSchedulerB3:
 
     def _drain_completed_tasks(
         self,
-        active: dict[Future[SourceExtractionResult], tuple[int, str]],
+        active: dict[asyncio.Future[SourceExtractionResult], tuple[int, str]],
         state: ExtractionState,
         progress_bar: SimpleProgressBar,
     ) -> bool:
@@ -202,7 +210,9 @@ class ExtractionSchedulerB3:
         """Schedule at most the current worker limit without eager tasks."""
         state = ExtractionState()
         worker_limit = self.resource_policy.worker_limit(len(sources))
-        active: dict[Future[SourceExtractionResult], tuple[int, str]] = {}
+        active: dict[
+            asyncio.Future[SourceExtractionResult], tuple[int, str]
+        ] = {}
         next_index = 0
         admission_stopped = False
         shutdown_complete = False
@@ -238,7 +248,7 @@ class ExtractionSchedulerB3:
                             / 'sources'
                             / f'{next_index:05d}.parquet'
                         )
-                        future = self._submit_source(
+                        submitted = self._submit_source(
                             executor,
                             source,
                             target_tpmerc_codes,
@@ -253,15 +263,17 @@ class ExtractionSchedulerB3:
                             all_markets=all_markets,
                             schema_metadata=schema_metadata,
                         )
+                        future = asyncio.wrap_future(submitted)
+                        future.add_done_callback(_observe_source_result)
                         active[future] = (next_index, source)
                         next_index += 1
 
                     if not active:
                         break
 
-                    if not any(task.done() for task in active):
-                        await asyncio.sleep(0.01)
-                        continue
+                    await asyncio.wait(
+                        active, return_when=asyncio.FIRST_COMPLETED
+                    )
 
                     if self._drain_completed_tasks(
                         active, state, progress_bar

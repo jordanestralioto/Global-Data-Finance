@@ -56,7 +56,6 @@ class PhaseMeasurements:
         *,
         transferred_bytes: int = 0,
         processed_bytes: int = 0,
-        announced_bytes: int = 0,
     ) -> None:
         """Accumulate one completed phase measurement."""
         with self._lock:
@@ -68,9 +67,6 @@ class PhaseMeasurements:
             )
             record['processed_bytes'] = (
                 int(record['processed_bytes']) + processed_bytes
-            )
-            record['announced_bytes'] = (
-                int(record['announced_bytes']) + announced_bytes
             )
 
     def add_client_initialization(self, seconds: float) -> None:
@@ -168,34 +164,13 @@ class MeasuredDownloadAdapter(AsyncDownloadAdapterCVM):
                 transferred_bytes=transferred_bytes,
             )
 
-    async def _get_content_length(self, url: str) -> int | None:
-        started = time.perf_counter()
-        announced_bytes = 0
-        try:
-            content_length = await super()._get_content_length(url)
-            announced_bytes = content_length or 0
-            return content_length
-        finally:
-            self._measurements.add_phase(
-                'head',
-                time.perf_counter() - started,
-                announced_bytes=announced_bytes,
-            )
-
-    def _validate_downloaded_file(
-        self,
-        filepath: str,
-        expected_size: int | None = None,
-    ) -> bool:
+    def _validate_downloaded_file(self, filepath: str) -> bool:
         started = time.perf_counter()
         archive_bytes = (
             Path(filepath).stat().st_size if Path(filepath).is_file() else 0
         )
         try:
-            return super()._validate_downloaded_file(
-                filepath,
-                expected_size,
-            )
+            return super()._validate_downloaded_file(filepath)
         finally:
             self._measurements.add_phase(
                 'validation',
@@ -214,14 +189,6 @@ class _PayloadHttpServer(ThreadingHTTPServer):
 
 class _PayloadRequestHandler(BaseHTTPRequestHandler):
     protocol_version = 'HTTP/1.1'
-
-    def do_HEAD(self) -> None:
-        """Return the size of the deterministic local archive."""
-        server = cast(_PayloadHttpServer, self.server)
-        self.send_response(200)
-        self.send_header('Content-Length', str(len(server.payload)))
-        self.send_header('Content-Type', 'application/zip')
-        self.end_headers()
 
     def do_GET(self) -> None:
         """Stream the deterministic local archive in fixed server chunks."""

@@ -163,25 +163,27 @@ class TestHttpxAsyncDownloadAdapterHelpers:
 @pytest.mark.unit
 @pytest.mark.asyncio
 class TestHttpxAsyncDownloadAdapterAsyncMethods:
-    async def test_get_content_length_logs_head_failure_with_traceback(
+    async def test_get_size_failure_logs_diagnostic_with_traceback(
         self, caplog
     ):
         adapter = AsyncDownloadAdapterCVM(
-            file_extractor_repository=MagicMock()
+            file_extractor_repository=MagicMock(), max_retries=0
         )
-        adapter.requests_adapter.async_head = AsyncMock(
-            side_effect=OSError('HEAD unavailable')
+        adapter._stream_download = AsyncMock(
+            side_effect=httpx.RemoteProtocolError(
+                'GET Content-Length mismatch'
+            )
         )
 
-        with caplog.at_level(logging.WARNING):
-            result = await adapter._get_content_length(
-                'https://example.com/file.zip'
+        with caplog.at_level(logging.ERROR):
+            success, error = await adapter._download_with_retry(
+                'https://example.com/file.zip', 'file.zip', 'DFP', '2024'
             )
 
-        assert result is None
+        assert success is False
+        assert error is not None and 'Content-Length mismatch' in error
         assert any(
-            record.exc_info is not None
-            and 'Failed to get Content-Length' in record.message
+            record.exc_info is not None and 'Download failed' in record.message
             for record in caplog.records
         )
 
@@ -491,11 +493,7 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
         async def mock_download_with_retry(_url, _filepath, _doc_name, _year):
             return True, None
 
-        async def mock_get_content_length(_url):
-            return None  # No Content-Length available
-
         adapter._download_with_retry = mock_download_with_retry
-        adapter._get_content_length = mock_get_content_length
 
         mock_progress = MagicMock()
         result = DownloadResultCVM()
@@ -555,11 +553,7 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
         async def mock_download_with_retry(_url, _filepath, _doc_name, _year):
             return True, None
 
-        async def mock_get_content_length(_url):
-            return None
-
         adapter._download_with_retry = mock_download_with_retry
-        adapter._get_content_length = mock_get_content_length
 
         mock_progress = MagicMock()
         result = DownloadResultCVM()
@@ -605,11 +599,7 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
         async def mock_download_with_retry(_url, _filepath, _doc_name, _year):
             return True, None
 
-        async def mock_get_content_length(_url):
-            return None
-
         adapter._download_with_retry = mock_download_with_retry
-        adapter._get_content_length = mock_get_content_length
 
         result = DownloadResultCVM()
         await adapter._download_and_extract(
@@ -655,11 +645,7 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
         async def mock_download_with_retry(_url, _filepath, _doc_name, _year):
             return True, None
 
-        async def mock_get_content_length(_url):
-            return None
-
         adapter._download_with_retry = mock_download_with_retry
-        adapter._get_content_length = mock_get_content_length
 
         mock_progress = MagicMock()
         result = DownloadResultCVM()
@@ -713,11 +699,7 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
         async def mock_download_with_retry(_url, _filepath, _doc_name, _year):
             return True, None
 
-        async def mock_get_content_length(_url):
-            return None
-
         adapter._download_with_retry = mock_download_with_retry
-        adapter._get_content_length = mock_get_content_length
 
         mock_progress = MagicMock()
         result = DownloadResultCVM()
@@ -764,11 +746,7 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
         async def mock_download_with_retry(_url, _filepath, _doc_name, _year):
             return True, None
 
-        async def mock_get_content_length(_url):
-            return None
-
         adapter._download_with_retry = mock_download_with_retry
-        adapter._get_content_length = mock_get_content_length
 
         mock_progress = MagicMock()
         result = DownloadResultCVM()
@@ -816,11 +794,7 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
         async def mock_download_with_retry(_url, _filepath, _doc_name, _year):
             return True, None
 
-        async def mock_get_content_length(_url):
-            return None
-
         adapter._download_with_retry = mock_download_with_retry
-        adapter._get_content_length = mock_get_content_length
 
         mock_progress = MagicMock()
         result = DownloadResultCVM()
@@ -876,7 +850,6 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
             return True, None
 
         adapter._download_with_retry = mock_download_with_retry
-        adapter._get_content_length = AsyncMock(return_value=None)
         adapter._validate_downloaded_file = MagicMock(return_value=True)
 
         mock_progress = MagicMock()

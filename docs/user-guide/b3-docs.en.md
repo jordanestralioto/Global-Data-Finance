@@ -27,6 +27,36 @@ same year as the outer file. Missing, nested, ambiguous, or wrong-year members
 are rejected. Sources must contain at least one valid `01` record in addition
 to their controls.
 
+### Diagnose UTF-8 text in records with an invalid width
+
+The COTAHIST layout requires **245-byte** records, excluding the line ending.
+A record with 245 characters can exceed this width when an accent is encoded
+in UTF-8. For example, `Â` occupies two bytes in UTF-8 and one byte in Latin-1.
+The `field=record_length` error reports the physical line and observed size.
+When strict conversion to Latin-1 produces 245 bytes, the diagnostic also
+identifies this possible encoding problem.
+
+Every market is validated before filtering; an invalid auction record also
+prevents an `ações` extraction. `fast` and `slow` apply the same rule.
+
+After confirming that the source is UTF-8, preserve the original and create a
+Latin-1 copy in another directory. On Linux, for a ZIP with the modern member:
+
+```bash
+set -o pipefail
+mkdir ./cotahist_latin1
+unzip -p ./cotahist/COTAHIST_A2026.ZIP COTAHIST_A2026.TXT \
+  | iconv -f UTF-8 -t ISO-8859-1 \
+  > ./cotahist_latin1/COTAHIST_A2026.TXT
+```
+
+Proceed only if conversion succeeds; on failure, remove the partial copy before
+trying again. Use `path_of_docs="./cotahist_latin1"` so the copy goes through
+full validation. Conversion must preserve text, lines, order, and values, with
+strict encoding errors. In Parquet, `id_fonte` and `registro_original` describe
+the normalized copy. Also retain hashes of the original and copy to track this
+preparation.
+
 ## Extract quotes
 
 ```python

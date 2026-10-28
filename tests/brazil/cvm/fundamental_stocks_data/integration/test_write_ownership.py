@@ -20,6 +20,9 @@ from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
     transaction,
     write_ownership,
 )
+from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
+    http as cvm_http,
+)
 from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
     ParquetExtractorAdapterCVM,
 )
@@ -43,7 +46,6 @@ def _finalize(stage: Path, final: Path, extractor):
         str(final.parent),
         'DFP',
         '2024',
-        None,
         automatic_extractor=True,
         file_extractor_repository=extractor,
         validate_file=download_validation.validate_downloaded_file,
@@ -179,18 +181,16 @@ async def test_changed_destination_does_not_abort_other_downloads(
         max_concurrent=1,
     )
 
-    async def stream_archive(_url: str, filepath: str) -> Path:
-        return _archive(Path(filepath + '.part'), '00123')
-
-    async def content_length(url: str) -> None:
+    async def stream_archive(url: str, filepath: str) -> Path:
+        staging = _archive(Path(filepath + '.part'), '00123')
         if url.endswith('2024.zip'):
             (invalid_destination / 'dfp_cia_aberta_2024.zip.part').unlink()
             invalid_destination.rmdir()
             if destination_state == 'file':
                 invalid_destination.write_bytes(b'replaced destination')
+        return staging
 
     monkeypatch.setattr(adapter, '_stream_download', stream_archive)
-    monkeypatch.setattr(adapter, '_get_content_length', content_length)
     result = await adapter.async_download_docs(
         [
             (
@@ -237,7 +237,6 @@ def test_invalid_destination_never_cleans_a_caller_owned_archive(
         str(invalid_destination),
         'DFP',
         '2024',
-        None,
         automatic_extractor=False,
         file_extractor_repository=None,
         validate_file=download_validation.validate_downloaded_file,
@@ -275,16 +274,21 @@ async def test_redirected_destination_preserves_unowned_files(
     async def stream_archive(_url: str, filepath: str) -> Path:
         return _archive(Path(filepath + '.part'), '00123')
 
-    async def redirect_destination(_url: str) -> None:
+    resolve_extractor = cvm_http.resolve_parquet_extractor
+
+    def redirect_destination(repository, **options):
         destination.rename(original_destination)
         destination.symlink_to(outside_destination, target_is_directory=True)
         if provider_failure:
-            raise RuntimeError('HTTP provider closed')
+            raise RuntimeError('extractor provider closed')
+        return resolve_extractor(repository, **options)
 
     monkeypatch.setattr(adapter, '_stream_download', stream_archive)
-    monkeypatch.setattr(adapter, '_get_content_length', redirect_destination)
+    monkeypatch.setattr(
+        cvm_http, 'resolve_parquet_extractor', redirect_destination
+    )
     error_type = RuntimeError if provider_failure else SecurityError
-    message = 'HTTP provider closed' if provider_failure else 'changed'
+    message = 'extractor provider closed' if provider_failure else 'changed'
     with pytest.raises(error_type, match=message):
         await adapter.async_download_docs(
             [
@@ -327,10 +331,8 @@ def test_parent_swap_during_finalization_preserves_foreign_files(
         destination.rename(original_destination)
         destination.symlink_to(outside, target_is_directory=True)
 
-    def validate_then_swap(filepath: str, expected_size: int | None) -> bool:
-        valid = download_validation.validate_downloaded_file(
-            filepath, expected_size
-        )
+    def validate_then_swap(filepath: str) -> bool:
+        valid = download_validation.validate_downloaded_file(filepath)
         if swap_phase == 'validation':
             swap_parent()
         return valid
@@ -356,7 +358,6 @@ def test_parent_swap_during_finalization_preserves_foreign_files(
             str(destination),
             'DFP',
             '2024',
-            None,
             automatic_extractor=False,
             file_extractor_repository=None,
             validate_file=validate_then_swap,
@@ -436,9 +437,6 @@ async def test_lease_io_failure_preserves_existing_zip_and_other_downloads(
     async def stream_archive(_url: str, filepath: str) -> Path:
         return _archive(Path(filepath + '.part'), '00123')
 
-    async def content_length(_url: str) -> None:
-        return None
-
     monkeypatch.setattr(
         destination_io.DestinationFileOperationsCVM, 'mkdir', fail_lease
     )
@@ -447,7 +445,6 @@ async def test_lease_io_failure_preserves_existing_zip_and_other_downloads(
         max_concurrent=1,
     )
     monkeypatch.setattr(adapter, '_stream_download', stream_archive)
-    monkeypatch.setattr(adapter, '_get_content_length', content_length)
     result = await adapter.async_download_docs(
         [
             (
@@ -524,7 +521,6 @@ def test_automatic_extraction_rejects_redirected_parent(
             str(destination),
             'DFP',
             '2024',
-            None,
             automatic_extractor=True,
             file_extractor_repository=InterleavedExtractor(),
             validate_file=download_validation.validate_downloaded_file,

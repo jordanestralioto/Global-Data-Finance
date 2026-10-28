@@ -20,7 +20,7 @@ EXAMPLE_MODULES = [
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
 
-@pytest.mark.parametrize('module', EXAMPLE_MODULES)
+@pytest.mark.parametrize('module', [*EXAMPLE_MODULES, 'examples.04_yearly_b3'])
 def test_module_entrypoint_reaches_option_validation(module):
     result = run_process(
         ['python', '-m', module, '--help'],

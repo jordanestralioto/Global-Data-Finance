@@ -118,3 +118,41 @@ async def test_cancellation_closes_progress_without_counting_running_work(
     assert output.endswith('\n')
     cancellation.set.assert_called_once()
     executor.shutdown.assert_called_once_with(wait=True, cancel_futures=True)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('worker_fails', [False, True])
+async def test_worker_completion_wakes_scheduler_without_polling(
+    scheduler_with_executor,
+    monkeypatch: pytest.MonkeyPatch,
+    worker_fails: bool,
+) -> None:
+    """Both worker outcomes trigger admission/draining without timed sleeps."""
+    scheduler, executor, _cancellation = scheduler_with_executor
+    pending: Future[extraction_service.types.SourceExtractionResult] = Future()
+    result = Mock(spec=extraction_service.types.SourceExtractionResult)
+
+    def submit_worker(*_args, **_kwargs):
+        loop = asyncio.get_running_loop()
+        if worker_fails:
+            loop.call_soon(pending.set_exception, OSError('worker failed'))
+        else:
+            loop.call_soon(pending.set_result, result)
+        return pending
+
+    monkeypatch.setattr(scheduler, '_submit_source', submit_worker)
+    sleep = AsyncMock(side_effect=AssertionError('polling is forbidden'))
+    monkeypatch.setattr(extraction_service.scheduler.asyncio, 'sleep', sleep)
+
+    state = await scheduler.run_sources(
+        ['first.txt'], {'010'}, Path('/unused-staging')
+    )
+
+    sleep.assert_not_awaited()
+    if worker_fails:
+        assert state.results == {}
+        assert state.errors == {'first.txt': 'OSError: worker failed'}
+    else:
+        assert state.results == {0: result}
+        assert state.errors == {}
+    executor.shutdown.assert_called_once_with(wait=True, cancel_futures=False)

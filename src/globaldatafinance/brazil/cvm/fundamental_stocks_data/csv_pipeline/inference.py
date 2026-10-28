@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 import pyarrow as pa
 
 from .....macro_exceptions import DiskFullError, ExtractionError
+from .....macro_infra.temporary_files import reserve_temporary_path
 from ..content_fingerprint import CONTRACT_VERSION, RecordDigest
 from .constants import MAX_COLUMNS
 from .models import CsvAnalysis, EncodingPlan
@@ -52,38 +55,46 @@ def analyse_csv(
     )
 
 
+@contextmanager
 def normalize_short_rows(
     source: ReopenableCsvSource,
     utf8_source: Path | None,
     plan: EncodingPlan,
     staging_dir: Path,
     header: tuple[str, ...],
-) -> Path:
-    """Pad absent trailing fields in a private UTF-8 CSV spool."""
-    normalized = staging_dir / '.cvm-normalized.csv'
+) -> Iterator[Path]:
+    """Own one unique UTF-8 normalization spool through its conversion."""
+    normalized: Path | None = None
     try:
-        with (
-            text_source(source, utf8_source, plan) as text,
-            normalized.open('w', encoding='utf-8', newline='') as target,
-        ):
-            reader = read_records(text, str(source.source_path))
-            if tuple(next(reader)) != header:
-                raise ExtractionError(
-                    str(source.source_path),
-                    'CSV header changed while normalizing short rows',
-                )
-            target.write(';'.join(header) + '\n')
-            for record, row in enumerate(reader, start=1):
-                padded, _ = pad_record(source, header, record, row)
-                target.write(';'.join(padded) + '\n')
-    except OSError as error:
-        if getattr(error, 'errno', None) == 28:
-            raise DiskFullError(str(normalized)) from error
-        raise ExtractionError(
-            str(source.source_path),
-            f'Could not normalize short CSV rows: {error}',
-        ) from error
-    return normalized
+        try:
+            normalized = reserve_temporary_path(
+                staging_dir / 'cvm-normalized', suffix='.csv'
+            )
+            with (
+                text_source(source, utf8_source, plan) as text,
+                normalized.open('w', encoding='utf-8', newline='') as target,
+            ):
+                reader = read_records(text, str(source.source_path))
+                if tuple(next(reader)) != header:
+                    raise ExtractionError(
+                        str(source.source_path),
+                        'CSV header changed while normalizing short rows',
+                    )
+                target.write(';'.join(header) + '\n')
+                for record, row in enumerate(reader, start=1):
+                    padded, _ = pad_record(source, header, record, row)
+                    target.write(';'.join(padded) + '\n')
+        except OSError as error:
+            if getattr(error, 'errno', None) == 28:
+                raise DiskFullError(str(staging_dir)) from error
+            raise ExtractionError(
+                str(source.source_path),
+                f'Could not normalize short CSV rows: {error}',
+            ) from error
+        yield normalized
+    finally:
+        if normalized is not None:
+            normalized.unlink(missing_ok=True)
 
 
 def build_schema(analysis: CsvAnalysis) -> pa.Schema:

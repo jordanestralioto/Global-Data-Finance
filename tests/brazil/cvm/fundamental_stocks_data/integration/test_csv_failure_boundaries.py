@@ -124,11 +124,15 @@ def test_changed_header_is_rejected_during_short_row_normalization(
     """A normalization pass cannot reuse a different source's column plan."""
     csv_source = _csv_source(tmp_path, b'changed;header\n1\n')
     plan = source.detect_encoding(csv_source)
-    with pytest.raises(ExtractionError, match='header changed'):
+    with (
+        pytest.raises(ExtractionError, match='header changed'),
         inference.normalize_short_rows(
             csv_source, None, plan, tmp_path, ('original', 'header')
-        )
+        ),
+    ):
+        pytest.fail('A changed header must fail before exposing the spool')
     assert csv_source.source_path.exists()
+    assert not list(tmp_path.glob('.cvm-normalized*.csv'))
 
 
 def test_missing_bom_invalidates_a_previously_observed_encoding_plan(

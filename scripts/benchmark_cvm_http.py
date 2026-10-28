@@ -123,7 +123,7 @@ def _run_configuration(
         name: float(values['seconds'])
         for name, values in phase_snapshot['phases'].items()
     }
-    http_seconds = phase_seconds['get'] + phase_seconds['head']
+    http_seconds = phase_seconds['get']
     client_initialization_seconds = phase_snapshot[
         'client_initialization_seconds'
     ]

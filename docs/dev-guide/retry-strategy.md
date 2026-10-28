@@ -68,6 +68,14 @@ limites próprios de extração. O contador limita também corpos intermediário
 de redirects sem `Content-Length`. Chamadas ao adaptador compartilhado sem
 limite de bytes mantêm a decodificação HTTP existente.
 
+Downloads com codificação HTTP `identity` conferem o tamanho recebido contra
+o `Content-Length` válido da própria resposta GET. Uma divergência rejeita
+e remove apenas o staging da tentativa; na CVM, ela entra na política de
+retry de falhas de transporte. Metadados ausentes ou inválidos não dispensam
+os limites de bytes nem a validação completa do ZIP. A CVM não consulta HEAD
+depois do download, evitando comparar representações de versões diferentes
+quando a origem republica o arquivo.
+
 HEAD também solicita `identity` e fecha corpos sem ler ou decodificar,
 inclusive em redirects. O header `Content-Length` é preservado como metadado
 do recurso; seu valor não é tratado como tamanho de um corpo HEAD.
