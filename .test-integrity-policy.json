@@ -16,23 +16,14 @@
   "allowed_assertion_reductions": [
     {
       "path": "tests/application/cvm_docs/test_file_validation.py",
-      "diff_sha256": "49a11a9cf1d9dc67f9b3884d26a274cfebb438305f992ed033e7c1fabccf44b1",
+      "diff_sha256": "c25c380a7e4feeb01fe845d06986671dd077f0510652f1aa6153181ba245c905",
       "replacement_test_ids": [
         "tests/application/cvm_docs/test_file_validation.py::TestAsyncDownloadAdapterCVMFileValidation::test_scenario_success_valid_zip",
         "tests/brazil/cvm/fundamental_stocks_data/infra/adapters/test_download_metadata.py::test_completed_get_uses_only_its_own_optional_size",
         "tests/brazil/cvm/fundamental_stocks_data/infra/adapters/test_download_metadata.py::test_get_size_mismatch_preserves_existing_zip_and_cleans_staging",
         "tests/brazil/cvm/fundamental_stocks_data/infra/adapters/test_download_metadata.py::test_get_size_mismatch_retries_with_metadata_from_the_new_attempt"
       ],
-      "reason": "The independent review requires removing the obsolete expected_size path after transfer-length validation moved into the streamed GET. Remove its three size-only tests and consolidate the duplicate no-size success case into the retained valid-ZIP test. GET-boundary regressions cover matching, missing and invalid lengths, both mismatch directions, retry, and preservation of existing output."
-    },
-    {
-      "path": "tests/brazil/cvm/fundamental_stocks_data/test_download_validation.py",
-      "diff_sha256": "9177619be11745a9ddc73a730e5c2e29d1cb7be18057e8753e9a52b7e41f29b8",
-      "replacement_test_ids": [
-        "tests/brazil/cvm/fundamental_stocks_data/infra/adapters/test_download_metadata.py::test_get_size_mismatch_preserves_existing_zip_and_cleans_staging",
-        "tests/brazil/cvm/fundamental_stocks_data/infra/adapters/test_download_metadata.py::test_get_size_mismatch_retries_with_metadata_from_the_new_attempt"
-      ],
-      "reason": "Remove the test of the retired post-download expected_size argument as requested by the independent review. Complete GET transfer validation now rejects length mismatches and retries before ZIP finalization. Replacement regressions cover both mismatch directions, staging cleanup, prior-output preservation, and retry using the next GET's own metadata; ZIP safety and CRC tests remain."
+      "reason": "The independent review requires removing the obsolete expected_size path after transfer-length validation moved into the streamed GET. Remove its three size-only tests and consolidate the duplicate no-size success case into the retained valid-ZIP test. GET-boundary regressions cover matching, missing and invalid lengths, both mismatch directions, retry, and preservation of existing output. Authorization is bound to the cumulative diff against v0.1.4."
     },
     {
       "path": "tests/brazil/b3_data/historical_quotes/test_cotahist_parser.py",

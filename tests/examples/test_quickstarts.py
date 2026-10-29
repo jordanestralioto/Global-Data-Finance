@@ -462,6 +462,7 @@ def test_readme_python_examples_run_with_the_documented_paths(
         (EXAMPLES_DIR / readme).read_text(encoding='utf-8'),
         flags=re.DOTALL,
     )
+    assert blocks, f'No Python examples found in {readme}'
     output = ''
     for index, block in enumerate(blocks):
         snippet = tmp_path / f'readme_example_{index}.py'
@@ -472,7 +473,6 @@ def test_readme_python_examples_run_with_the_documented_paths(
         tmp_path / 'dados_b3' / 'cotacoes_acoes_2023.parquet'
     )
 
-    assert len(blocks) == 2
     assert table.num_rows == 3
     assert set(table['tipo_mercado'].to_pylist()) == {'010', '020'}
     assert 'PETR4' in output

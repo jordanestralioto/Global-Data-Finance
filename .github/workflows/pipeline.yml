@@ -179,7 +179,8 @@ jobs:
             "$app_dir/cvm_docs/download_result_formatter.py" \
             --allow-print-file examples/01_quickstart_cvm.py \
             --allow-print-file examples/02_quickstart_b3.py \
-            --allow-print-file examples/03_advanced_options_b3.py
+            --allow-print-file examples/03_advanced_options_b3.py \
+            --allow-print-file examples/04_yearly_b3.py
           uv run --locked --no-sync python scripts/check_test_integrity.py \
             --range "$QUALITY_GATE_RANGE"
           uv run --locked --no-sync python scripts/check-shell-syntax.py \
