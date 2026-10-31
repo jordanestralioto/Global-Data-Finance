@@ -14,7 +14,7 @@ from ....macro_exceptions import (
     SecurityError,
 )
 from .download_validation import validate_parquet_files
-from .extract import ParquetExtractorAdapterCVM
+from .extract import CvmParquetExtractor
 from .source_inventory import inspect_source, validate_output_inventory
 from .write_ownership import exclusive_destination
 
@@ -38,7 +38,7 @@ def resolve_parquet_extractor(
     if repository is not None:
         return repository
 
-    return ParquetExtractorAdapterCVM(
+    return CvmParquetExtractor(
         archive_limits=archive_limits,
         allowed_unc_roots=allowed_unc_roots,
     )
@@ -66,6 +66,7 @@ def extract_downloaded_file(
             inventory = inspect_source(
                 source, destination, limits=archive_limits
             )
+            validate_output_inventory(source, destination, inventory)
             file_extractor_repository.extract(filepath, dest_path)
             validate_output_inventory(source, destination, inventory)
 

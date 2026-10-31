@@ -204,3 +204,9 @@ layers = [
 # NOTE: cycle detection is NOT expressible as an import-linter contract -- a
 # layers contract cannot see a submodule importing its own package root. That
 # check lives in scripts/check-import-cycles.py.
+
+[[tool.importlinter.contracts]]
+name = "CVM ingestion is independent of company document policy"
+type = "forbidden"
+source_modules = ["globaldatafinance.brazil.cvm.ingestion"]
+forbidden_modules = ["globaldatafinance.brazil.cvm.fundamental_stocks_data"]

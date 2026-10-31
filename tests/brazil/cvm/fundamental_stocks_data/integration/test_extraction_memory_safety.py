@@ -4,9 +4,7 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
-    ParquetExtractorAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
 
 pytestmark = pytest.mark.integration
 
@@ -31,7 +29,7 @@ class TestMemorySafety:
                 ),
             )
 
-        ParquetExtractorAdapterCVM().extract(
+        CvmParquetExtractor().extract(
             source_path=str(archive_path), destination_path=str(tmp_path)
         )
 

@@ -7,6 +7,8 @@ import re
 from pathlib import Path
 
 DISALLOWED_SYMBOLS = {
+    'AsyncDownloadAdapterCVM',
+    'ParquetExtractorAdapterCVM',
     'GlobalDataFinanceError',
     'download_single',
     'download_files',
@@ -49,15 +51,20 @@ KNOWN_IMPORTS: dict[str, set[str]] = {
         'DownloadDocumentsUseCaseCVM',
     },
     'globaldatafinance.brazil.cvm.fundamental_stocks_data.core': {
-        'DownloadResultCVM',
         'AvailableYearsInfoCVM',
         'AvailableYearsCVM',
         'get_url_docs',
         'validate_docs_name',
     },
-    'globaldatafinance.brazil.cvm.fundamental_stocks_data.http': {
-        'AsyncDownloadAdapterCVM',
+    'globaldatafinance.brazil.cvm.ingestion.http': {
+        'CvmDownloadAdapter',
         'DownloadTaskCVM',
+    },
+    'globaldatafinance.brazil.cvm.ingestion.extract': {
+        'CvmParquetExtractor',
+    },
+    'globaldatafinance.brazil.cvm.ingestion.models': {
+        'DownloadResultCVM',
     },
     'globaldatafinance.brazil.cvm.fundamental_stocks_data.errors': {
         'CvmError',

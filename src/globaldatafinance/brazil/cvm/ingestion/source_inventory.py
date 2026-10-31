@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import re
 import zipfile
 from contextlib import nullcontext
 from dataclasses import dataclass
@@ -96,28 +95,13 @@ def validate_source_unchanged(
 def validate_output_inventory(
     source: Path, destination: Path, inventory: SourceInventory
 ) -> None:
-    """Reject obsolete outputs from this archive without deleting user data."""
+    """Reject metadata-owned obsolete outputs without deleting caller data."""
     import pyarrow as pa
     import pyarrow.parquet as pq
 
-    official = re.fullmatch(
-        r'(cgvn|dfp|fca|fre|ipe|itr|vlmo)_cia_aberta_(\d{4})\.zip',
-        source.name,
-        flags=re.IGNORECASE,
-    )
     obsolete: list[str] = []
     for candidate in destination.glob('*.parquet'):
         if candidate in inventory.artifacts or not candidate.is_file():
-            continue
-        if official is not None and (
-            candidate.name.casefold().startswith(
-                f'{official.group(1).casefold()}_cia_aberta_'
-            )
-            and candidate.name.casefold().endswith(
-                f'_{official.group(2)}.parquet'
-            )
-        ):
-            obsolete.append(candidate.name)
             continue
         if candidate.is_symlink():
             continue

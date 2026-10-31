@@ -1,8 +1,6 @@
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    DownloadResultCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion.models import DownloadResultCVM
 
 
 @pytest.mark.unit

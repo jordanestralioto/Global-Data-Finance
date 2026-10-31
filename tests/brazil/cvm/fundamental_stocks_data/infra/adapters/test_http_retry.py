@@ -8,12 +8,8 @@ from unittest.mock import AsyncMock
 import httpx
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    AsyncDownloadAdapterCVM,
-)
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    http as cvm_http,
-)
+from globaldatafinance.brazil.cvm.ingestion import http as cvm_http
+from globaldatafinance.brazil.cvm.ingestion.http import CvmDownloadAdapter
 from tests.support.fake_http import install_mock_http_transport
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
@@ -36,7 +32,7 @@ async def test_permanent_http_status_never_waits_or_retries(
     monkeypatch.setattr(cvm_http.asyncio, 'sleep', sleep)
     target = tmp_path / 'source.zip'
     target.write_bytes(b'previous archive')
-    adapter = AsyncDownloadAdapterCVM(None)
+    adapter = CvmDownloadAdapter(None)
 
     success, error = await adapter._download_with_retry(
         'https://example.test/unavailable.zip', str(target), 'DFP', '2024'
@@ -66,7 +62,7 @@ async def test_transient_http_status_uses_the_configured_retry_budget(
     install_mock_http_transport(monkeypatch, respond)
     sleep = AsyncMock()
     monkeypatch.setattr(cvm_http.asyncio, 'sleep', sleep)
-    adapter = AsyncDownloadAdapterCVM(None, max_retries=2)
+    adapter = CvmDownloadAdapter(None, max_retries=2)
     target = tmp_path / 'source.zip'
 
     success, error = await adapter._download_with_retry(

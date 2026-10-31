@@ -10,9 +10,7 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    ParquetExtractorAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
 from globaldatafinance.macro_exceptions import (
     CorruptedZipError,
     ExtractionError,
@@ -44,7 +42,7 @@ def test_public_extractor_publishes_one_or_more_arrow_outputs(
         },
     )
 
-    ParquetExtractorAdapterCVM().extract(str(archive), str(tmp_path))
+    CvmParquetExtractor().extract(str(archive), str(tmp_path))
 
     first = tmp_path / 'first.parquet'
     second = tmp_path / 'second.parquet'
@@ -59,7 +57,7 @@ def test_public_extractor_accepts_a_header_only_csv(tmp_path: Path) -> None:
     archive = tmp_path / 'documents.zip'
     _archive(archive, {'empty.csv': b'code;value\n'})
 
-    ParquetExtractorAdapterCVM().extract(str(archive), str(tmp_path))
+    CvmParquetExtractor().extract(str(archive), str(tmp_path))
 
     parquet = pq.ParquetFile(tmp_path / 'empty.parquet')
     assert parquet.metadata.num_rows == 0
@@ -84,7 +82,7 @@ def test_source_failure_leaves_old_outputs_and_zip_byte_for_byte_unchanged(
     source_hash = hashlib.sha256(archive.read_bytes()).hexdigest()
 
     with pytest.raises(ExtractionError, match='observed_fields=3'):
-        ParquetExtractorAdapterCVM().extract(str(archive), str(tmp_path))
+        CvmParquetExtractor().extract(str(archive), str(tmp_path))
 
     assert hashlib.sha256(old_output.read_bytes()).hexdigest() == old_hash
     assert hashlib.sha256(archive.read_bytes()).hexdigest() == source_hash
@@ -102,9 +100,9 @@ def test_corrupted_or_empty_archives_never_create_outputs(
     _archive(empty, {})
 
     with pytest.raises(CorruptedZipError):
-        ParquetExtractorAdapterCVM().extract(str(corrupted), str(tmp_path))
+        CvmParquetExtractor().extract(str(corrupted), str(tmp_path))
     with pytest.raises(ExtractionError, match='does not contain any CSV'):
-        ParquetExtractorAdapterCVM().extract(str(empty), str(tmp_path))
+        CvmParquetExtractor().extract(str(empty), str(tmp_path))
 
     assert not list(tmp_path.glob('*.parquet'))
 
@@ -117,7 +115,7 @@ def test_unsafe_destination_is_rejected_before_creating_transaction_state(
     _archive(archive, {'source.csv': b'code;value\n1;10\n'})
 
     with pytest.raises(SecurityError):
-        ParquetExtractorAdapterCVM().extract(str(archive), '/')
+        CvmParquetExtractor().extract(str(archive), '/')
 
     assert not list(tmp_path.glob('.globaldatafinance-transaction-*'))
 
@@ -139,7 +137,7 @@ def test_public_extractor_preserves_destination_kind_error(
         destination.write_text('not a directory', encoding='utf-8')
 
     with pytest.raises(PathIsNotDirectoryError, match=message):
-        ParquetExtractorAdapterCVM().extract(str(archive), str(destination))
+        CvmParquetExtractor().extract(str(archive), str(destination))
 
     assert not list(tmp_path.glob('.globaldatafinance-transaction-*'))
 
@@ -156,7 +154,7 @@ def test_public_extractor_preserves_destination_permission_error(
     monkeypatch.setattr(os, 'access', lambda *_args: False)
 
     with pytest.raises(PathPermissionError, match='Permission denied'):
-        ParquetExtractorAdapterCVM().extract(str(archive), str(destination))
+        CvmParquetExtractor().extract(str(archive), str(destination))
 
     assert not list(destination.glob('.globaldatafinance-transaction-*'))
 
@@ -175,6 +173,6 @@ def test_basename_collisions_are_rejected_before_writing_a_parquet(
     )
 
     with pytest.raises(ExtractionError, match='collide'):
-        ParquetExtractorAdapterCVM().extract(str(archive), str(tmp_path))
+        CvmParquetExtractor().extract(str(archive), str(tmp_path))
 
     assert not list(tmp_path.glob('*.parquet'))

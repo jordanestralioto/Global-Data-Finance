@@ -3,12 +3,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    download_extraction,
-)
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
-    ParquetExtractorAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion import download_extraction
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
 from globaldatafinance.macro_exceptions import (
     CorruptedZipError,
     DiskFullError,
@@ -46,7 +42,7 @@ class TestOriginalArchiveRetention:
         for unprocessed_archive in unprocessed_archives:
             unprocessed_archive.write_bytes(b'unprocessed')
         error_message = extract_downloaded_file(
-            file_extractor_repository=ParquetExtractorAdapterCVM(),
+            file_extractor_repository=CvmParquetExtractor(),
             filepath=str(archive_path),
             dest_path=str(tmp_path),
             doc_name='DFP',

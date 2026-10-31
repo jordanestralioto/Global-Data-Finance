@@ -11,13 +11,11 @@ from typing import Any
 import pyarrow.parquet as pq
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
+from globaldatafinance.brazil.cvm.ingestion import (
     destination_io,
     write_ownership,
 )
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
-    ParquetExtractorAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
 from globaldatafinance.macro_exceptions import SecurityError
 
 pytestmark = [
@@ -95,7 +93,7 @@ def test_extraction_preserves_data_without_descriptor_child_paths(
     if existing:
         (tmp_path / 'data.parquet').write_bytes(b'previous output')
 
-    ParquetExtractorAdapterCVM().extract(str(source), str(tmp_path))
+    CvmParquetExtractor().extract(str(source), str(tmp_path))
 
     assert pq.read_table(tmp_path / 'data.parquet').to_pylist() == [
         {'id': '00123', 'name': 'ação\u2013'}

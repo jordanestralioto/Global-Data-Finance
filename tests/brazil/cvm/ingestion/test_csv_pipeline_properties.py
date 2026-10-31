@@ -11,7 +11,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.csv_pipeline import (
+from globaldatafinance.brazil.cvm.ingestion.csv_pipeline import (
     CvmCsvParquetPipeline,
 )
 

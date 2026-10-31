@@ -7,12 +7,10 @@ from typing import Never
 
 from globaldatafinance import ExtractionResultB3
 from globaldatafinance.brazil.b3_data.historical_quotes.errors import B3Error
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.core import (
-    DownloadResultCVM,
-)
 from globaldatafinance.brazil.cvm.fundamental_stocks_data.errors import (
     CvmError,
 )
+from globaldatafinance.brazil.cvm.ingestion.models import DownloadResultCVM
 
 
 def _fail_result(message: str, errors: dict[str, str]) -> Never:

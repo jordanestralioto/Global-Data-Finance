@@ -29,14 +29,14 @@ Example:
     ... )
 """
 
-from ...brazil.cvm.fundamental_stocks_data import (
-    AsyncDownloadAdapterCVM,
-    AvailableYearsInfoCVM,
+from ...brazil.cvm.fundamental_stocks_data.client import (
     DownloadDocumentsUseCaseCVM,
-    DownloadResultCVM,
     get_available_docs,
     get_available_years,
 )
+from ...brazil.cvm.fundamental_stocks_data.core import AvailableYearsInfoCVM
+from ...brazil.cvm.ingestion.http import CvmDownloadAdapter
+from ...brazil.cvm.ingestion.models import DownloadResultCVM
 from ...core.archive_safety import ArchiveSafetyLimits
 from ...core.config import Settings
 from ...core.logging_config import get_logger
@@ -49,18 +49,18 @@ class FundamentalStocksDataCVM:
     """High-level interface for CVM fundamental stocks data operations.
 
     This class provides a simple API for downloading CVM financial documents
-    and discovering available data. It uses AsyncDownloadAdapterCVM by default
+    and discovering available data. It uses CvmDownloadAdapter by default
     for concurrent downloads with automatic retry logic. The elapsed time
     depends on network conditions and the requested data volume.
 
     You can also customize the adapter:
-    - AsyncDownloadAdapterCVM (default): Fast, no external dependencies
+    - CvmDownloadAdapter (default): Concurrent downloads and bounded extraction
 
     Attributes:
         None - all dependencies are managed internally
 
     Example:
-        >>> # Basic usage (uses AsyncDownloadAdapterCVM by default)
+        >>> # Basic usage
         >>> cvm = FundamentalStocksDataCVM()
         >>>
         >>> # Download all document types for recent years
@@ -99,7 +99,7 @@ class FundamentalStocksDataCVM:
         )
         allowed_unc_roots = self._settings.path_safety.allowed_unc_roots
 
-        self.download_adapter = AsyncDownloadAdapterCVM(
+        self.download_adapter = CvmDownloadAdapter(
             file_extractor_repository=None,
             timeout=network_settings.timeout,
             max_retries=network_settings.max_retries,
@@ -116,7 +116,7 @@ class FundamentalStocksDataCVM:
 
         logger.info(
             'FundamentalStocksDataCVM client initialized with '
-            'AsyncDownloadAdapterCVM '
+            'CvmDownloadAdapter '
             '(automatic_extractor can be set per download call)'
         )
 
@@ -358,7 +358,7 @@ class FundamentalStocksDataCVM:
             >>> print(f"ITR documents available from: {years.itr_min_year}")
             >>> print(f"Current year: {years.current_year}")
             >>>
-            >>> # Dict escape hatch for backward compat
+            >>> # Inspect the named tuple as a dictionary
             >>> years_dict = years._asdict()
             >>>
             >>> # Use this info to make informed download requests

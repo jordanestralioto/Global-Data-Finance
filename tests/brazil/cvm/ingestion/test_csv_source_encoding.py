@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.csv_pipeline import (
+from globaldatafinance.brazil.cvm.ingestion.csv_pipeline import (
     source,
 )
 from globaldatafinance.macro_exceptions import ExtractionError

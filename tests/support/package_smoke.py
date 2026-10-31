@@ -42,8 +42,8 @@ def check_installation(root: Path, environment: Path, version: str) -> None:
     import pyarrow.parquet as pq
 
     import globaldatafinance
-    from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
-        ParquetExtractorAdapterCVM,
+    from globaldatafinance.brazil.cvm.ingestion.extract import (
+        CvmParquetExtractor,
     )
 
     assert Path(sys.prefix).resolve() == environment.resolve()
@@ -64,7 +64,7 @@ def check_installation(root: Path, environment: Path, version: str) -> None:
     )
     source = root / 'cvm' / 'source.zip'
     before = source.read_bytes()
-    ParquetExtractorAdapterCVM().extract(str(source), str(source.parent))
+    CvmParquetExtractor().extract(str(source), str(source.parent))
     assert pq.read_table(source.parent / 'data.parquet').to_pylist() == [
         {'id': '1', 'name': 'first'},
         {'id': '2', 'name': 'second'},

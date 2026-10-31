@@ -17,18 +17,22 @@ flowchart TD
 
 Os caminhos abaixo são relativos a `src/globaldatafinance/`.
 
-| Responsabilidade | Local |
-| --- | --- |
-| Exports públicos | `__init__.py`: `FundamentalStocksDataCVM`, `HistoricalQuotesB3`, `ExtractionResultB3` |
-| Validação e orquestração das facades | `application/cvm_docs/` e `application/b3_docs/` |
-| Comportamento CVM | `brazil/cvm/fundamental_stocks_data/` |
-| Comportamento B3 | `brazil/b3_data/historical_quotes/` |
-| Configuração, logging, retry e segurança | `core/` |
-| I/O genérico e publicação recuperável | `macro_infra/` |
-| Exceções-base compartilhadas | `macro_exceptions/` |
+| Responsabilidade                              | Local                                                                                 |
+| --------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Exports públicos                              | `__init__.py`: `FundamentalStocksDataCVM`, `HistoricalQuotesB3`, `ExtractionResultB3` |
+| Validação e orquestração das facades          | `application/cvm_docs/` e `application/b3_docs/`                                      |
+| Seleção e políticas de companhias abertas CVM | `brazil/cvm/fundamental_stocks_data/`                                                 |
+| Download e preservação de arquivos CVM        | `brazil/cvm/ingestion/`                                                               |
+| Comportamento B3                              | `brazil/b3_data/historical_quotes/`                                                   |
+| Configuração, logging, retry e segurança      | `core/`                                                                               |
+| I/O genérico e publicação recuperável         | `macro_infra/`                                                                        |
+| Exceções-base compartilhadas                  | `macro_exceptions/`                                                                   |
 
-Na CVM, comece por `client.py` e `http.py`; a conversão fica em `csv_pipeline/`
-e a publicação em `transaction.py`. Na B3, `catalog.py` resolve as entradas,
+Na CVM, `fundamental_stocks_data/client.py` planeja os documentos e anos de
+empresas. A facade compõe diretamente `ingestion/http.py` para downloads;
+`ingestion/csv_pipeline/` preserva o CSV e `ingestion/transaction.py` coordena
+a publicação. A infraestrutura comum da CVM não depende do catálogo de empresas.
+Na B3, `catalog.py` resolve as entradas,
 `source_validation/` e `cotahist_parser/` validam e interpretam os registros,
 e `extraction_service/` e `parquet_writer/` coordenam a saída.
 
@@ -46,6 +50,13 @@ a saída antes da publicação.
 A apresentação pertence aos módulos `*_formatter.py` em `application/`.
 Orquestradores coordenam colaboradores; validação e transformação não devem
 incorporar I/O que pertença aos adapters.
+
+Famílias adicionais da CVM podem consumir `ingestion/` quando compartilham o
+contrato `exact-text-v1`. Elas mantêm seleção de documentos e períodos em seus
+próprios módulos e usam os tipos canônicos de ingestão. A identidade nos metadados
+determina o inventário na extração direta e automática, inclusive com extrator
+fornecido pelo chamador. Não há adaptadores de compatibilidade ou inferência
+de ownership por nomes antigos. Outro dialeto CSV exige uma decisão própria.
 
 ## Contratos que uma mudança deve preservar
 
@@ -85,10 +96,11 @@ subdiretórios organizam assuntos; não criam camadas de runtime. Consulte
 
 ## Aprofundar quando necessário
 
-| Assunto | Referência |
-| --- | --- |
-| Campos, resultados e exceções | [API CVM](../reference/cvm-api.md) · [API B3](../reference/b3-api.md) |
-| Persistência B3 | [Schema v2](../reference/b3-schema-v2.md) |
-| Segurança de ZIP e caminhos | [Decisão sobre limites e UNC](../decisions/archive-safety-and-unc.md) |
-| Evolução da ingestão | [Decisão PyArrow e integridade](../decisions/pyarrow-ingestion-integrity-cutover.md) |
-| Infraestrutura compartilhada | [Decisão de consolidação](../decisions/shared-infrastructure-clean-cut.md) |
+| Assunto                       | Referência                                                                           |
+| ----------------------------- | ------------------------------------------------------------------------------------ |
+| Campos, resultados e exceções | [API CVM](../reference/cvm-api.md) · [API B3](../reference/b3-api.md)                |
+| Persistência B3               | [Schema v2](../reference/b3-schema-v2.md)                                            |
+| Segurança de ZIP e caminhos   | [Decisão sobre limites e UNC](../decisions/archive-safety-and-unc.md)                |
+| Evolução da ingestão          | [Decisão PyArrow e integridade](../decisions/pyarrow-ingestion-integrity-cutover.md) |
+| Infraestrutura compartilhada  | [Decisão de consolidação](../decisions/shared-infrastructure-clean-cut.md)           |
+| Reúso entre famílias CVM      | [Ownership da ingestão CVM](../decisions/cvm-ingestion-ownership.md)                 |

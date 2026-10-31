@@ -101,7 +101,9 @@ class CvmFailureAtomicBatchCommit:
             archive=zip_file,
         )
         validate_output_inventory(
-            Path(self.source_path), Path(self.destination_path), inventory
+            Path(self.source_path),
+            Path(self.destination_path),
+            inventory,
         )
         outputs = self._build_outputs(zip_file)
         source_size = sum(output.source_bytes for output in outputs)

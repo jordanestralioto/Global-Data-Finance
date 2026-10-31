@@ -3,9 +3,7 @@ from __future__ import annotations
 import pyarrow.parquet as pq
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
-    ParquetExtractorAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
 from globaldatafinance.macro_exceptions import ExtractionError
 from tests.support.builders import csv_bytes, write_zip
 
@@ -41,7 +39,7 @@ class TestDataIntegrity:
         tmp_path,
         sample_rows: list[dict[str, object]],
     ) -> None:
-        ParquetExtractorAdapterCVM().extract(
+        CvmParquetExtractor().extract(
             source_path=str(csv_zip), destination_path=str(tmp_path)
         )
 
@@ -67,7 +65,7 @@ class TestDataIntegrity:
             {'special.csv': csv_bytes(rows, encoding='latin-1')},
         )
 
-        ParquetExtractorAdapterCVM().extract(
+        CvmParquetExtractor().extract(
             source_path=str(zip_path), destination_path=str(tmp_path)
         )
 
@@ -106,7 +104,7 @@ class TestDataIntegrity:
             {'numeric.csv': csv_bytes(rows, encoding='latin-1')},
         )
 
-        ParquetExtractorAdapterCVM().extract(
+        CvmParquetExtractor().extract(
             source_path=str(zip_path), destination_path=str(tmp_path)
         )
 
@@ -142,7 +140,7 @@ class TestDataIntegrity:
         )
 
         with pytest.raises(ExtractionError, match='CSV member has no header'):
-            ParquetExtractorAdapterCVM().extract(
+            CvmParquetExtractor().extract(
                 source_path=str(zip_path), destination_path=str(tmp_path)
             )
 
@@ -162,7 +160,7 @@ class TestDataIntegrity:
             },
         )
 
-        ParquetExtractorAdapterCVM().extract(
+        CvmParquetExtractor().extract(
             source_path=str(zip_path), destination_path=str(tmp_path)
         )
 
@@ -203,7 +201,7 @@ class TestDataIntegrity:
             {'data.csv': csv_bytes(rows, encoding='latin-1')},
         )
 
-        ParquetExtractorAdapterCVM().extract(
+        CvmParquetExtractor().extract(
             source_path=str(csv_zip), destination_path=str(tmp_path)
         )
 
@@ -217,7 +215,7 @@ class TestDataIntegrity:
             {'data.csv': csv_bytes(['a;b', '1;', ';2'])},
         )
 
-        ParquetExtractorAdapterCVM().extract(
+        CvmParquetExtractor().extract(
             source_path=str(zip_path), destination_path=str(tmp_path)
         )
 
@@ -235,7 +233,7 @@ class TestDataIntegrity:
             {'data.csv': csv_bytes(['val', str(large_num)])},
         )
 
-        ParquetExtractorAdapterCVM().extract(
+        CvmParquetExtractor().extract(
             source_path=str(zip_path), destination_path=str(tmp_path)
         )
 
@@ -253,7 +251,7 @@ class TestDataIntegrity:
             },
         )
 
-        ParquetExtractorAdapterCVM().extract(
+        CvmParquetExtractor().extract(
             source_path=str(zip_path), destination_path=str(tmp_path)
         )
 
@@ -292,7 +290,7 @@ class TestDataIntegrity:
             },
         )
 
-        ParquetExtractorAdapterCVM().extract(
+        CvmParquetExtractor().extract(
             source_path=str(archive_path), destination_path=str(tmp_path)
         )
 
@@ -320,7 +318,7 @@ class TestDataIntegrity:
         )
 
         with pytest.raises(ExtractionError):
-            ParquetExtractorAdapterCVM().extract(
+            CvmParquetExtractor().extract(
                 source_path=str(archive_path), destination_path=str(tmp_path)
             )
 

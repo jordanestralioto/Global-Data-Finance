@@ -17,12 +17,10 @@ import pyarrow.parquet as pq
 import pytest
 
 import scripts.real_validation_cvm as cvm
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.core import (
-    DownloadResultCVM,
-)
 from globaldatafinance.brazil.cvm.fundamental_stocks_data.errors import (
     CvmError,
 )
+from globaldatafinance.brazil.cvm.ingestion.models import DownloadResultCVM
 from scripts.real_validation_types import (
     ExternalFailure,
     NotPublished,

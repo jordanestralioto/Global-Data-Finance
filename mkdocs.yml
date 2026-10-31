@@ -132,6 +132,7 @@ plugins:
             Campanha Real Auditável: Auditable Real-Data Campaign
             Limites ZIP e Destinos UNC: ZIP Limits and UNC Destinations
             Commit CVM Tolerante a Falhas: Failure-Atomic CVM Batch Commit
+            Ingestão compartilhada CVM: Shared CVM Ingestion
             Cutover PyArrow e Integridade: PyArrow and Integrity Cutover
             ? >-
               Corte limpo da infraestrutura compartilhada
@@ -199,6 +200,7 @@ nav:
           - Campanha Real Auditável: decisions/real-validation-campaign.md
           - Limites ZIP e Destinos UNC: decisions/archive-safety-and-unc.md
           - Commit CVM Tolerante a Falhas: decisions/cvm-failure-atomic-batch-commit.md
+          - Ingestão compartilhada CVM: decisions/cvm-ingestion-ownership.md
           - Cutover PyArrow e Integridade: decisions/pyarrow-ingestion-integrity-cutover.md
           - Corte limpo da infraestrutura compartilhada: decisions/shared-infrastructure-clean-cut.md
   - Referência Técnica:

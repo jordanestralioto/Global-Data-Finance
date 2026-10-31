@@ -15,10 +15,8 @@ from unittest.mock import patch
 
 import httpx
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    AsyncDownloadAdapterCVM,
-    ParquetExtractorAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
+from globaldatafinance.brazil.cvm.ingestion.http import CvmDownloadAdapter
 
 MEBIBYTE = 1024**2
 DEFAULT_CHUNKS = (8 * 1024, 64 * 1024, 256 * 1024)
@@ -95,7 +93,7 @@ class TimedParquetExtractor:
 
     def __init__(
         self,
-        delegate: ParquetExtractorAdapterCVM,
+        delegate: CvmParquetExtractor,
         measurements: PhaseMeasurements,
     ) -> None:
         """Store the production extractor and its phase measurements."""
@@ -123,7 +121,7 @@ class TimedParquetExtractor:
             )
 
 
-class MeasuredDownloadAdapter(AsyncDownloadAdapterCVM):
+class MeasuredDownloadAdapter(CvmDownloadAdapter):
     """Measure HTTP and archive-validation phases around production methods."""
 
     def __init__(

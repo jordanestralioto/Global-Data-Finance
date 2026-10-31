@@ -45,7 +45,7 @@ diagnóstica observável.
 - Leitores concorrentes e escritas simultâneas no mesmo destino continuam fora
   de suporte; o diretório pertence ao chamador e pode conter arquivos não
   relacionados, portanto não é substituído como um todo.
-- A assinatura pública de `ParquetExtractorAdapterCVM.extract(...)->None`, os
+- A assinatura pública de `CvmParquetExtractor.extract(...)->None`, os
   nomes de saída e os schemas persistidos não mudam.
 - Falhas de CSV, disco, validação staged, replace e ZIP corrompido preservam
   os Parquets preexistentes sempre que o rollback normal completa.

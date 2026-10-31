@@ -10,9 +10,10 @@ from ....core.utils.destination_paths import (
     normalize_destination_path,
     prepare_writable_destination,
 )
+from ..ingestion.http import CvmDownloadAdapter
+from ..ingestion.models import DownloadResultCVM
 from . import core
 from .errors import EmptyDocumentListError, MissingDownloadUrlError
-from .http import AsyncDownloadAdapterCVM
 
 logger = get_logger(__name__)
 
@@ -172,12 +173,12 @@ class DownloadDocumentsUseCaseCVM:
 
     def __init__(
         self,
-        repository: AsyncDownloadAdapterCVM,
+        repository: CvmDownloadAdapter,
         *,
         allowed_unc_roots: Sequence[str] | None = None,
     ) -> None:
         """Initialize the orchestrator with its repository collaborator."""
-        self.__repository: AsyncDownloadAdapterCVM = repository
+        self.__repository: CvmDownloadAdapter = repository
         self.__allowed_unc_roots = (
             PathSafetySettings.resolve_allowed_unc_roots(allowed_unc_roots)
         )
@@ -195,7 +196,7 @@ class DownloadDocumentsUseCaseCVM:
         last_year: int | None = None,
         *,
         automatic_extractor: bool = False,
-    ) -> core.DownloadResultCVM:
+    ) -> DownloadResultCVM:
         """Execute the download operation (synchronous)."""
         dict_urls_zips, docs_paths = self.__prepare_inputs(
             destination_path, list_docs, initial_year, last_year
@@ -222,7 +223,7 @@ class DownloadDocumentsUseCaseCVM:
         last_year: int | None = None,
         *,
         automatic_extractor: bool = False,
-    ) -> core.DownloadResultCVM:
+    ) -> DownloadResultCVM:
         """Execute the download operation inside an existing event loop.
 
         Mirrors :meth:`execute` but awaits the adapter's async entrypoint
@@ -291,8 +292,8 @@ class DownloadDocumentsUseCaseCVM:
         return dict_urls_zips, docs_paths
 
     def __finalize(
-        self, result: core.DownloadResultCVM, start_time: float
-    ) -> core.DownloadResultCVM:
+        self, result: DownloadResultCVM, start_time: float
+    ) -> DownloadResultCVM:
         """Stamp elapsed time on the result and emit completion logs."""
         result.elapsed_time = time.time() - start_time
 

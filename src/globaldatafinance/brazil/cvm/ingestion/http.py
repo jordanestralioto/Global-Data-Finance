@@ -10,7 +10,6 @@ from ....core import RetryStrategy, SimpleProgressBar, get_logger
 from ....core.archive_safety import ArchiveSafetyLimits
 from ....core.config import PathSafetySettings
 from ....macro_infra import RequestsAdapter
-from .core import DownloadResultCVM
 from .destination_io import (
     capture_download_destination,
     remove_owned_staging_file,
@@ -26,13 +25,14 @@ from .download_validation import (
     validate_downloaded_file,
 )
 from .http_retry import classify_download_error
+from .models import DownloadResultCVM
 
 logger = get_logger(__name__)
 
 DownloadTaskCVM = tuple[str, str, str, str]
 
 
-class AsyncDownloadAdapterCVM:
+class CvmDownloadAdapter:
     """Download CVM ZIP files with retry, integrity checks, and extraction."""
 
     def __init__(

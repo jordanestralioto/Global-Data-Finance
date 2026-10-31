@@ -220,7 +220,7 @@ ______________________________________________________________________
 ### Como acelerar downloads?
 
 O Global-Data-Finance usa downloads assíncronos concorrentes por padrão
-(`AsyncDownloadAdapterCVM`, até 10 downloads simultâneos). O tempo depende da
+(`CvmDownloadAdapter`, até 10 downloads simultâneos). O tempo depende da
 rede, dos servidores da CVM e do volume solicitado; veja a [linha de base do
 fluxo CVM completo](../dev-guide/benchmarks.md).
 

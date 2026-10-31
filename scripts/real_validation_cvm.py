@@ -11,12 +11,10 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from globaldatafinance import FundamentalStocksDataCVM
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    download_extraction,
-)
 from globaldatafinance.brazil.cvm.fundamental_stocks_data.errors import (
     CvmError,
 )
+from globaldatafinance.brazil.cvm.ingestion import download_extraction
 from globaldatafinance.macro_exceptions import SecurityError
 
 from .cvm_archive_oracle import reconcile_archive

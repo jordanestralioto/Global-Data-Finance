@@ -7,9 +7,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    AsyncDownloadAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion.http import CvmDownloadAdapter
 from globaldatafinance.core.logging_config import StructuredFormatter
 from tests.support.fake_http import install_mock_http_transport
 
@@ -42,7 +40,7 @@ async def test_cvm_transfer_failure_logs_redact_url_credentials(
     install_mock_http_transport(monkeypatch, fail)
 
     with caplog.at_level('ERROR'):
-        success, error = await AsyncDownloadAdapterCVM(
+        success, error = await CvmDownloadAdapter(
             None, max_retries=0
         )._download_with_retry(
             url, str(tmp_path / 'source.zip'), 'DFP', '2024'

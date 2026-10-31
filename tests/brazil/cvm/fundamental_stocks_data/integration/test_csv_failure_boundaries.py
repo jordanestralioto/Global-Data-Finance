@@ -12,14 +12,12 @@ import pyarrow.csv as pacsv
 import pyarrow.parquet as pq
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.csv_pipeline import (
+from globaldatafinance.brazil.cvm.ingestion.csv_pipeline import (
     inference,
     source,
     writer,
 )
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
-    ParquetExtractorAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
 from globaldatafinance.macro_exceptions import (
     DiskFullError,
     ExtractionError,
@@ -49,7 +47,7 @@ def test_invalid_headers_never_replace_existing_output(
     previous = tmp_path / 'data.parquet'
     previous.write_bytes(b'previous output')
     with pytest.raises(ExtractionError, match=message):
-        ParquetExtractorAdapterCVM().extract(
+        CvmParquetExtractor().extract(
             str(csv_source.source_path), str(tmp_path)
         )
     assert previous.read_bytes() == b'previous output'
@@ -62,7 +60,7 @@ def test_column_count_is_bounded_before_output(tmp_path: Path) -> None:
         (';'.join(f'c{index}' for index in range(4097)) + '\n').encode(),
     )
     with pytest.raises(ExtractionError, match='4096 columns'):
-        ParquetExtractorAdapterCVM().extract(
+        CvmParquetExtractor().extract(
             str(csv_source.source_path), str(tmp_path)
         )
     assert not (tmp_path / 'data.parquet').exists()
@@ -76,7 +74,7 @@ def test_excessive_data_width_is_rejected_with_a_global_column_bound(
     previous = tmp_path / 'data.parquet'
     previous.write_bytes(b'previous output')
     with pytest.raises(ExtractionError, match='4096 columns'):
-        ParquetExtractorAdapterCVM().extract(
+        CvmParquetExtractor().extract(
             str(csv_source.source_path), str(tmp_path)
         )
     assert previous.read_bytes() == b'previous output'
@@ -109,7 +107,7 @@ def test_spool_write_failures_keep_input_and_previous_output(
         DiskFullError if error_number == errno.ENOSPC else ExtractionError
     )
     with pytest.raises(expected) as captured:
-        ParquetExtractorAdapterCVM().extract(
+        CvmParquetExtractor().extract(
             str(csv_source.source_path), str(tmp_path)
         )
     assert captured.value.__cause__ is failure
@@ -251,7 +249,7 @@ def test_csv_engine_failures_preserve_the_previous_publication(
 
     monkeypatch.setattr(pacsv, 'open_csv', failing_reader)
     with pytest.raises(ExtractionError) as captured:
-        ParquetExtractorAdapterCVM().extract(
+        CvmParquetExtractor().extract(
             str(csv_source.source_path), str(tmp_path)
         )
     if failure_kind == 'truncated':
@@ -291,7 +289,7 @@ def test_parquet_engine_write_failure_retains_its_storage_cause(
         DiskFullError if error_number == errno.ENOSPC else ParquetWriteError
     )
     with pytest.raises(expected) as captured:
-        ParquetExtractorAdapterCVM().extract(
+        CvmParquetExtractor().extract(
             str(csv_source.source_path), str(tmp_path)
         )
     assert captured.value.__cause__ is failure

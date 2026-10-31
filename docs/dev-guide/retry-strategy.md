@@ -184,7 +184,7 @@ Os adapters de download usam `RetryStrategy` automaticamente:
 ```python
 from globaldatafinance import FundamentalStocksDataCVM
 
-# AsyncDownloadAdapterCVM já implementa retry com backoff
+# CvmDownloadAdapter já implementa retry com backoff
 cvm = FundamentalStocksDataCVM()
 result = cvm.download(
     destination_path="/data/cvm",

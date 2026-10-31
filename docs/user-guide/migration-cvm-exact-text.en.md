@@ -60,10 +60,21 @@ and its association with the consumed ZIP. Page checksums, complete reads,
 and `fsync` protect persisted publication.
 
 Every pass reads the same opened ZIP; source changes abort extraction before
-publication. If a ZIP revision removes or renames a CSV, obsolete Parquets
-owned by that archive block reprocessing into the same destination. Keep
-previous outputs and regenerate the revision into a clean directory;
-the library does not automatically delete old files.
+publication.
+
+### Output inventory
+
+Parquets expected by the ZIP are published under their corresponding names,
+replacing previous outputs within the transaction. Files outside this inventory
+block reprocessing when `cvm.source-archive` associates them with the same ZIP.
+Without this identity, they remain caller data without filename recognition and
+can coexist with new outputs even after success.
+
+The result confirms expected outputs without certifying every Parquet in the
+directory. To replace a dataset, retain previous files, regenerate into a new
+destination, and verify the data before switching consumers.
+
+### Text contract limits
 
 Quotes remain literal under the `QUOTE_NONE` dialect. Short rows receive
 trailing empty fields; the retained ZIP preserves the distinction between
@@ -85,7 +96,7 @@ recover derived transaction state. The library never automatically takes
 an unverifiable lock. Failures remain in the result; a Parquet's existence
 alone does not establish success.
 
-IPE now includes 2003 onward. `get_available_years().ipe_min_year` exposes that
+IPE includes 2003 onward. `get_available_years().ipe_min_year` exposes that
 minimum as a property; the four tuple fields continue to describe general
 documents, ITR, CGVN/VLMO, and the current year.
 

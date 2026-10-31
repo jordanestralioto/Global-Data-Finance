@@ -9,9 +9,7 @@ from typing import Protocol, cast
 import pyarrow.parquet as pq
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
-    ParquetExtractorAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
 from tests.support.builders import csv_bytes
 
 
@@ -51,7 +49,7 @@ def test_large_cvm_csv_keeps_bounded_process_growth(tmp_path) -> None:
 
     process = psutil.Process()
     memory_before = process.memory_info().rss
-    ParquetExtractorAdapterCVM().extract(
+    CvmParquetExtractor().extract(
         source_path=str(archive_path), destination_path=str(tmp_path)
     )
     memory_after = process.memory_info().rss

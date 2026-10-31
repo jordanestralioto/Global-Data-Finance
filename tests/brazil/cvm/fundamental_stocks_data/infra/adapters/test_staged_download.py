@@ -9,9 +9,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    AsyncDownloadAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion.http import CvmDownloadAdapter
 from globaldatafinance.core.config import ArchiveSafetySettings
 from tests.support.fake_http import FakeResponse, install_fake_http_client
 
@@ -49,7 +47,7 @@ class TestCvmStagedDownloadFlow:
             )
 
         install_fake_http_client(monkeypatch, response_factory)
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=MagicMock(), max_retries=0
         )
 
@@ -91,7 +89,7 @@ class TestCvmStagedDownloadFlow:
 
         install_fake_http_client(monkeypatch, response_factory)
         extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=extractor, max_retries=0
         )
 
@@ -126,7 +124,7 @@ class TestCvmStagedDownloadFlow:
             headers={'content-length': str(limit + 1)},
         )
         install_fake_http_client(monkeypatch, lambda _url: response)
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=MagicMock(), max_retries=5
         )
 
@@ -161,7 +159,7 @@ class TestCvmStagedDownloadFlow:
             return FakeResponse(url, [], status_code=503)
 
         install_fake_http_client(monkeypatch, response_factory)
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=MagicMock(),
             max_retries=2,
             initial_backoff=0.0,

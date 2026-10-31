@@ -4,10 +4,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    AsyncDownloadAdapterCVM,
-    DownloadResultCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion.http import CvmDownloadAdapter
+from globaldatafinance.brazil.cvm.ingestion.models import DownloadResultCVM
 from globaldatafinance.macro_exceptions import SecurityError
 
 pytestmark = pytest.mark.unit
@@ -40,7 +38,7 @@ async def test_invalid_url_basename_fails_before_download_or_promotion(
 ):
     """Win32-invalid URL names fail before any staging or promotion."""
     output_dir = tmp_path / 'output'
-    adapter = AsyncDownloadAdapterCVM(file_extractor_repository=MagicMock())
+    adapter = CvmDownloadAdapter(file_extractor_repository=MagicMock())
     adapter._download_with_retry = AsyncMock()
 
     with pytest.raises(SecurityError):

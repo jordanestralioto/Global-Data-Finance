@@ -61,7 +61,7 @@ def test_cvm_csv_pipeline_instantiation_is_engine_free() -> None:
     """Importing and constructing the CVM pipeline remains engine-free."""
     state = _run_probe(
         _program(
-            'from globaldatafinance.brazil.cvm.fundamental_stocks_data.'
+            'from globaldatafinance.brazil.cvm.ingestion.'
             'csv_pipeline import CvmCsvParquetPipeline',
             "pipeline = CvmCsvParquetPipeline('dummy.zip', 'dummy.csv')",
         )
@@ -81,6 +81,8 @@ def test_lookup_and_non_extracting_download_are_engine_free() -> None:
             ')',
             'from unittest.mock import patch',
             'from globaldatafinance.brazil.cvm import fundamental_stocks_data',
+            'from globaldatafinance.brazil.cvm.ingestion.models '
+            'import DownloadResultCVM',
             'b3 = HistoricalQuotesB3()',
             'b3.get_available_assets()',
             'b3.get_available_years()',
@@ -88,7 +90,7 @@ def test_lookup_and_non_extracting_download_are_engine_free() -> None:
             'with patch.object(',
             '    fundamental_stocks_data.DownloadDocumentsUseCaseCVM,',
             "    'execute',",
-            '    return_value=fundamental_stocks_data.DownloadResultCVM(),',
+            '    return_value=DownloadResultCVM(),',
             '):',
             "    cvm.download('/tmp', list_docs=['DFP'],",
             '        initial_year=2024,',
@@ -144,15 +146,13 @@ def test_cvm_and_b3_extractions_load_arrow_but_not_pandas_or_polars() -> None:
         _program(
             'import tempfile, zipfile',
             'from pathlib import Path',
-            'from globaldatafinance.brazil.cvm import fundamental_stocks_data',
+            'from globaldatafinance.brazil.cvm.ingestion.extract '
+            'import CvmParquetExtractor',
             'with tempfile.TemporaryDirectory() as directory:',
             '    root = Path(directory)',
             "    with zipfile.ZipFile(root / 'source.zip', 'w') as archive:",
             "        archive.writestr('source.csv', b'value\\n1\\n')",
-            '    extractor_type = (',
-            '        fundamental_stocks_data.ParquetExtractorAdapterCVM',
-            '    )',
-            '    extractor = extractor_type()',
+            '    extractor = CvmParquetExtractor()',
             "    extractor.extract(str(root / 'source.zip'), str(root))",
         )
         + _engine_state()

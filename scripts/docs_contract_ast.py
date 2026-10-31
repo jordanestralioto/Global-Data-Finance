@@ -297,7 +297,10 @@ def load_source_contracts(repo_root: Path) -> SourceContracts:
         package_root / 'brazil' / 'cvm' / 'fundamental_stocks_data' / 'core.py'
     )
     cvm_http = _parse_source(
-        package_root / 'brazil' / 'cvm' / 'fundamental_stocks_data' / 'http.py'
+        package_root / 'brazil' / 'cvm' / 'ingestion' / 'http.py'
+    )
+    cvm_models = _parse_source(
+        package_root / 'brazil' / 'cvm' / 'ingestion' / 'models.py'
     )
 
     b3_extract = _find_method(
@@ -305,9 +308,9 @@ def load_source_contracts(repo_root: Path) -> SourceContracts:
     )
     b3_asset_service = _find_class(b3_assets, 'AvailableAssetsServiceB3')
     extraction_result = _find_class(b3_types, 'ExtractionResultB3')
-    download_result = _find_class(cvm_core, 'DownloadResultCVM')
+    download_result = _find_class(cvm_models, 'DownloadResultCVM')
     available_years = _find_class(cvm_core, 'AvailableYearsInfoCVM')
-    cvm_adapter = _find_class(cvm_http, 'AsyncDownloadAdapterCVM')
+    cvm_adapter = _find_class(cvm_http, 'CvmDownloadAdapter')
 
     return SourceContracts(
         b3_extract_parameters=extract_parameters(b3_extract),

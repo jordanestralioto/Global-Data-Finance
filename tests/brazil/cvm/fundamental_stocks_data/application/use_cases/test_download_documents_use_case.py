@@ -6,11 +6,11 @@ import pytest
 
 from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
     DownloadDocumentsUseCaseCVM,
-    DownloadResultCVM,
     InvalidDocumentName,
     InvalidFirstYear,
     client,
 )
+from globaldatafinance.brazil.cvm.ingestion.models import DownloadResultCVM
 
 
 class MockRepository:

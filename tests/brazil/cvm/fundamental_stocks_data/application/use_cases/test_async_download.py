@@ -1,7 +1,7 @@
 """Tests for the async download surface added in Phase 5.
 
 Covers the three layers of the async path:
-- adapter ``AsyncDownloadAdapterCVM.async_download_docs`` (+ the sync
+- adapter ``CvmDownloadAdapter.async_download_docs`` (+ the sync
   ``download_docs`` wrapper),
 - orchestrator ``DownloadDocumentsUseCaseCVM.execute_async``,
 - facade ``FundamentalStocksDataCVM.async_download``.
@@ -13,17 +13,17 @@ import pytest
 
 from globaldatafinance import FundamentalStocksDataCVM
 from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    AsyncDownloadAdapterCVM,
     DownloadDocumentsUseCaseCVM,
-    DownloadResultCVM,
     InvalidDocumentName,
 )
+from globaldatafinance.brazil.cvm.ingestion.http import CvmDownloadAdapter
+from globaldatafinance.brazil.cvm.ingestion.models import DownloadResultCVM
 
 pytestmark = pytest.mark.unit
 
 
-def _make_adapter() -> AsyncDownloadAdapterCVM:
-    return AsyncDownloadAdapterCVM(file_extractor_repository=MagicMock())
+def _make_adapter() -> CvmDownloadAdapter:
+    return CvmDownloadAdapter(file_extractor_repository=MagicMock())
 
 
 @pytest.mark.asyncio
@@ -84,7 +84,7 @@ class TestAsyncDownloadDocsAdapter:
         )
 
     async def test_automatic_extractor_defaults_to_attribute(self):
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=MagicMock(),
             automatic_extractor=True,
         )

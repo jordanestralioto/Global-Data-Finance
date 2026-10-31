@@ -10,21 +10,19 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
+from globaldatafinance.brazil.cvm.ingestion import (
     download_extraction,
     download_finalization,
     download_validation,
     transaction_io,
 )
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.csv_pipeline import (
+from globaldatafinance.brazil.cvm.ingestion.csv_pipeline import (
     source as csv_sources,
 )
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.csv_pipeline import (
+from globaldatafinance.brazil.cvm.ingestion.csv_pipeline import (
     writer as csv_writer,
 )
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
-    ParquetExtractorAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
 from globaldatafinance.macro_exceptions import DiskFullError, ParquetWriteError
 from globaldatafinance.macro_infra.transactional_publication import (
     FileOperations,
@@ -98,7 +96,7 @@ def test_staged_page_corruption_preserves_zip_and_previous_output(
     monkeypatch.setattr(csv_writer, 'validate_parquet', corrupt_then_validate)
 
     error = download_extraction.extract_downloaded_file(
-        ParquetExtractorAdapterCVM(),
+        CvmParquetExtractor(),
         str(source),
         str(tmp_path),
         'DFP',
@@ -140,7 +138,7 @@ def test_parquet_bytes_are_synced_before_publication(
         transaction_io.CvmTransactionFileOperations, 'replace', record_replace
     )
 
-    ParquetExtractorAdapterCVM().extract(str(source), str(tmp_path))
+    CvmParquetExtractor().extract(str(source), str(tmp_path))
 
     assert events == [('sync', 'data.parquet'), ('publish', 'data.parquet')]
     assert pq.read_table(tmp_path / 'data.parquet').to_pylist() == [
@@ -175,7 +173,7 @@ def test_parquet_sync_failure_preserves_source_and_previous_output(
     monkeypatch.setattr(FileOperations, 'fsync_file', fail_parquet_sync)
 
     with pytest.raises(expected_error) as error:
-        ParquetExtractorAdapterCVM().extract(str(source), str(tmp_path))
+        CvmParquetExtractor().extract(str(source), str(tmp_path))
 
     assert error.value.__cause__ is failure
     assert source.read_bytes() == original_bytes

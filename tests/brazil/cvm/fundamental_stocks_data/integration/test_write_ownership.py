@@ -12,20 +12,16 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    AsyncDownloadAdapterCVM,
+from globaldatafinance.brazil.cvm.ingestion import (
     destination_io,
     download_finalization,
     download_validation,
     transaction,
     write_ownership,
 )
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    http as cvm_http,
-)
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
-    ParquetExtractorAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion import http as cvm_http
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
+from globaldatafinance.brazil.cvm.ingestion.http import CvmDownloadAdapter
 from globaldatafinance.macro_exceptions import ExtractionError, SecurityError
 
 pytestmark = pytest.mark.integration
@@ -68,13 +64,13 @@ def test_competing_finalizer_cannot_replace_the_archive_being_extracted(
         def extract(self, source_path: str, destination_path: str) -> None:
             started.set()
             assert continue_extraction.wait(timeout=5)
-            ParquetExtractorAdapterCVM().extract(source_path, destination_path)
+            CvmParquetExtractor().extract(source_path, destination_path)
 
     with ThreadPoolExecutor(max_workers=1) as executor:
         active = executor.submit(_finalize, first, final, PausedExtractor())
         try:
             assert started.wait(timeout=5)
-            rejected = _finalize(second, final, ParquetExtractorAdapterCVM())
+            rejected = _finalize(second, final, CvmParquetExtractor())
             assert rejected.succeeded is False
             assert 'active or unrecovered writer' in rejected.error_message
             assert final.read_bytes() == first_bytes
@@ -96,7 +92,7 @@ def _competing_process(
 ) -> None:
     """Run the normal public source adapter in a separate interpreter."""
     try:
-        ParquetExtractorAdapterCVM().extract(source, destination)
+        CvmParquetExtractor().extract(source, destination)
     except ExtractionError as error:
         Path(result_path).write_text(str(error), encoding='utf-8')
     else:
@@ -127,7 +123,7 @@ def test_destination_ownership_is_shared_across_processes(
                 process.terminate()
                 process.join(timeout=10)
 
-    ParquetExtractorAdapterCVM().extract(str(source), str(tmp_path))
+    CvmParquetExtractor().extract(str(source), str(tmp_path))
     assert pq.read_table(tmp_path / 'data.parquet').to_pylist() == [
         {'id': '0001'}
     ]
@@ -144,7 +140,7 @@ def test_unrecovered_lease_requires_explicit_inspection(
     original = source.read_bytes()
 
     with pytest.raises(ExtractionError, match='unrecovered writer'):
-        ParquetExtractorAdapterCVM().extract(str(source), str(tmp_path))
+        CvmParquetExtractor().extract(str(source), str(tmp_path))
 
     assert source.read_bytes() == original
     assert (lock / 'owner.json').read_text() == '{"pid": 0}'
@@ -158,7 +154,7 @@ def test_conflicting_finalizer_never_cleans_a_caller_owned_archive(
     source = _archive(tmp_path / 'source.zip', '0001')
     original = source.read_bytes()
     (tmp_path / write_ownership.LOCK_NAME).mkdir()
-    rejected = _finalize(source, source, ParquetExtractorAdapterCVM())
+    rejected = _finalize(source, source, CvmParquetExtractor())
     assert rejected.succeeded is False
     assert 'active or unrecovered writer' in rejected.error_message
     assert source.read_bytes() == original
@@ -176,8 +172,8 @@ async def test_changed_destination_does_not_abort_other_downloads(
     valid_destination = tmp_path / 'valid'
     invalid_destination.mkdir()
     valid_destination.mkdir()
-    adapter = AsyncDownloadAdapterCVM(
-        file_extractor_repository=ParquetExtractorAdapterCVM(),
+    adapter = CvmDownloadAdapter(
+        file_extractor_repository=CvmParquetExtractor(),
         max_concurrent=1,
     )
 
@@ -267,8 +263,8 @@ async def test_redirected_destination_preserves_unowned_files(
     staging_name = filename + '.part'
     foreign_staging = outside_destination / staging_name
     foreign_staging.write_bytes(b'caller-owned foreign file')
-    adapter = AsyncDownloadAdapterCVM(
-        file_extractor_repository=ParquetExtractorAdapterCVM()
+    adapter = CvmDownloadAdapter(
+        file_extractor_repository=CvmParquetExtractor()
     )
 
     async def stream_archive(_url: str, filepath: str) -> Path:
@@ -440,8 +436,8 @@ async def test_lease_io_failure_preserves_existing_zip_and_other_downloads(
     monkeypatch.setattr(
         destination_io.DestinationFileOperationsCVM, 'mkdir', fail_lease
     )
-    adapter = AsyncDownloadAdapterCVM(
-        file_extractor_repository=ParquetExtractorAdapterCVM(),
+    adapter = CvmDownloadAdapter(
+        file_extractor_repository=CvmParquetExtractor(),
         max_concurrent=1,
     )
     monkeypatch.setattr(adapter, '_stream_download', stream_archive)
@@ -501,7 +497,7 @@ def test_automatic_extraction_rejects_redirected_parent(
         def extract(self, source_path: str, destination_path: str) -> None:
             if swap_phase == 'extractor':
                 swap_parent()
-            ParquetExtractorAdapterCVM().extract(source_path, destination_path)
+            CvmParquetExtractor().extract(source_path, destination_path)
 
     original_convert = transaction.CvmCsvParquetPipeline.convert
 
@@ -546,7 +542,7 @@ def test_no_descriptor_support_preserves_normal_extraction_contract(
     source = _archive(tmp_path / 'source.zip', '00123')
     source_bytes = source.read_bytes()
 
-    ParquetExtractorAdapterCVM().extract(str(source), str(tmp_path))
+    CvmParquetExtractor().extract(str(source), str(tmp_path))
 
     assert source.read_bytes() == source_bytes
     assert pq.read_table(tmp_path / 'data.parquet').to_pylist() == [
@@ -594,7 +590,7 @@ def test_missing_descriptor_paths_rejects_extraction_before_publication(
     )
 
     with pytest.raises(SecurityError, match='descriptor-backed'):
-        ParquetExtractorAdapterCVM().extract(str(source), str(destination))
+        CvmParquetExtractor().extract(str(source), str(destination))
 
     assert source.read_bytes() == source_bytes
     assert foreign_source.read_bytes() == foreign_bytes

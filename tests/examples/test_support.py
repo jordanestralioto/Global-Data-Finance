@@ -14,12 +14,10 @@ from examples.support import (
 from globaldatafinance.brazil.b3_data.historical_quotes.errors import (
     InvalidFirstYear as B3InvalidFirstYear,
 )
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.core import (
-    DownloadResultCVM,
-)
 from globaldatafinance.brazil.cvm.fundamental_stocks_data.errors import (
     InvalidFirstYear as CvmInvalidFirstYear,
 )
+from globaldatafinance.brazil.cvm.ingestion.models import DownloadResultCVM
 
 pytestmark = pytest.mark.unit
 
