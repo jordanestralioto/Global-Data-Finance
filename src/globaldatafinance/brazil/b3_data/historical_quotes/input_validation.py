@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 import zipfile
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -17,11 +16,9 @@ from ....core.archive_safety import (
 from ....macro_exceptions import CorruptedZipError, ExtractionError
 from .async_execution import check_phase_cancellation
 from .errors import CotahistCatalogError
-from .member_resolver import resolve_cotahist_member
-
-COTAHIST_FILENAME_PATTERN = re.compile(
-    r'^COTAHIST_A(?P<year>\d{4})\.(?P<extension>ZIP|TXT)$',
-    re.IGNORECASE,
+from .member_resolver import (
+    COTAHIST_FILENAME_PATTERN,
+    resolve_cotahist_member,
 )
 
 

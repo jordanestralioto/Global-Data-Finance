@@ -6,7 +6,12 @@ import hashlib
 import json
 from typing import TYPE_CHECKING
 
-from ..layout import B3_FIELD_NAMES, B3_LAYOUT_VERSION, B3_QUOTATION_LAYOUT
+from ..layout import (
+    B3_FIELD_NAMES,
+    B3_LAYOUT_VERSION,
+    B3_QUOTATION_LAYOUT,
+    B3_QUOTATION_WIDTH,
+)
 
 if TYPE_CHECKING:
     from pyarrow import Schema
@@ -27,19 +32,6 @@ B3_STRING_COLUMNS = tuple(
         'source_filename',
         'source_member',
     }
-)
-B3_DECIMAL_COLUMNS = tuple(
-    field.name for field in B3_QUOTATION_LAYOUT if field.kind == 'decimal'
-)
-B3_INT_COLUMNS = tuple(
-    field.name
-    for field in B3_QUOTATION_LAYOUT
-    if field.kind in {'integer', 'source_year', 'source_line'}
-)
-B3_DATE_COLUMNS = tuple(
-    field.name
-    for field in B3_QUOTATION_LAYOUT
-    if field.kind in {'date', 'optional_date'}
 )
 
 
@@ -73,7 +65,7 @@ def build_b3_schema(
         elif definition.kind in {'integer', 'source_year', 'source_line'}:
             data_type = pa.int64()
         elif definition.kind == 'original_record':
-            data_type = pa.binary(245)
+            data_type = pa.binary(B3_QUOTATION_WIDTH)
         else:
             raise RuntimeError(
                 f'Unsupported canonical B3 field kind: {definition.kind}'

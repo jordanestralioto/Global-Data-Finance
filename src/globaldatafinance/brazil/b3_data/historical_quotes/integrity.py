@@ -1,4 +1,4 @@
-"""Contextual integrity diagnostics for B2 COTAHIST records."""
+"""Contextual integrity diagnostics for B3 COTAHIST records."""
 
 from __future__ import annotations
 
@@ -10,8 +10,9 @@ from typing import Protocol
 
 from ....macro_exceptions import ExtractionError
 from .async_execution import check_phase_cancellation
+from .layout import B3_QUOTATION_WIDTH
 
-COTAHIST_RECORD_WIDTH = 245
+COTAHIST_RECORD_WIDTH = B3_QUOTATION_WIDTH
 _COTAHIST_MAX_PHYSICAL_LINE_CONTENT_BYTES = COTAHIST_RECORD_WIDTH + 2
 _COTAHIST_MAX_LINE_ENDING_BYTES = 2
 _COTAHIST_MAX_PHYSICAL_LINE_BYTES = (

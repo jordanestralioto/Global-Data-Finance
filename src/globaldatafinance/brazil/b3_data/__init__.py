@@ -1,1 +1,1 @@
-"""B3 source namespace — flat per-source layout (design D6)."""
+"""B3 historical market data source namespace."""

@@ -62,7 +62,9 @@ B3_QUOTATION_LAYOUT = (
     ),
     B3FieldDefinition('fator_cotacao', 'integer', 210, 217),
     B3FieldDefinition('codigo_isin', 'string', 230, 242),
-    B3FieldDefinition('numero_distribuicao', 'integer', 242, 245),
+    B3FieldDefinition(
+        'numero_distribuicao', 'integer', 242, B3_QUOTATION_WIDTH
+    ),
     B3FieldDefinition('prazo_termo', 'string', 49, 52),
     B3FieldDefinition('moeda_referencia', 'string', 52, 56),
     B3FieldDefinition('preco_exercicio', 'decimal', 188, 201, scale=2),
@@ -74,11 +76,12 @@ B3_QUOTATION_LAYOUT = (
     B3FieldDefinition('membro_origem', 'source_member'),
     B3FieldDefinition('ano_origem', 'source_year'),
     B3FieldDefinition('linha_origem', 'source_line'),
-    B3FieldDefinition('registro_original', 'original_record', 0, 245),
+    B3FieldDefinition(
+        'registro_original', 'original_record', 0, B3_QUOTATION_WIDTH
+    ),
 )
 
 B3_FIELD_NAMES = tuple(field.name for field in B3_QUOTATION_LAYOUT)
-B3_FIELDS_BY_NAME = {field.name: field for field in B3_QUOTATION_LAYOUT}
 
 if len(B3_FIELD_NAMES) != 32 or len(set(B3_FIELD_NAMES)) != 32:
     raise RuntimeError('The canonical B3 schema must contain 32 unique fields')

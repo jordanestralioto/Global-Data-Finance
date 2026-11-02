@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
@@ -11,14 +10,11 @@ from ......macro_exceptions import ExtractionError
 from ...catalog import resolve_cotahist_sources
 from ...errors import CotahistCatalogError
 from ...integrity_report import build_integrity_report
+from ...member_resolver import COTAHIST_FILENAME_PATTERN
 from ...models import CotahistCatalogResolution, ValidatedCotahistSource
 from ...zip_reader import ZipFileReaderB3
 from ..types import ResolvedSources
 from .result_assembly import summary
-
-_SOURCE_YEAR_PATTERN = re.compile(
-    r'^COTAHIST_A(?P<year>\d{4})\.(?:ZIP|TXT)$', re.IGNORECASE
-)
 
 
 def catalog_error_key(error: CotahistCatalogError | ExtractionError) -> str:
@@ -31,7 +27,7 @@ def catalog_error_key(error: CotahistCatalogError | ExtractionError) -> str:
 def source_sort_key(source: str) -> tuple[int, str, str]:
     """Order source files by annual year and deterministic basename."""
     path = Path(source)
-    match = _SOURCE_YEAR_PATTERN.fullmatch(path.name)
+    match = COTAHIST_FILENAME_PATTERN.fullmatch(path.name)
     year = int(match.group('year')) if match is not None else 9999
     return year, path.name.casefold(), path.name
 
@@ -191,7 +187,7 @@ def preflight_input_paths(
 
 def year_from_path(path: Path) -> int:
     """Resolve the annual year from the external filename contract."""
-    match = _SOURCE_YEAR_PATTERN.fullmatch(path.name)
+    match = COTAHIST_FILENAME_PATTERN.fullmatch(path.name)
     if match is None:
         raise CotahistCatalogError(
             f'Invalid COTAHIST annual filename: {path.name}'

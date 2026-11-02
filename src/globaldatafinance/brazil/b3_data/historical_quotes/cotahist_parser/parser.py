@@ -15,7 +15,6 @@ from .field_conversion import (
     typed_record,
 )
 
-_EXPECTED_LENGTH = COTAHIST_RECORD_WIDTH
 _MARKET_INDEX = B3_FIELD_NAMES.index('tipo_mercado')
 _TRADING_DATE_INDEX = B3_FIELD_NAMES.index('data_pregao')
 
@@ -54,7 +53,7 @@ class B3ParserMetrics:
 class CotahistParserB3:
     """Validate complete quotation records before applying market selection."""
 
-    EXPECTED_LINE_LENGTH = _EXPECTED_LENGTH
+    EXPECTED_LINE_LENGTH = COTAHIST_RECORD_WIDTH
 
     def __init__(self) -> None:
         """Initialize source-local classification metrics."""
@@ -197,14 +196,14 @@ class CotahistParserB3:
         """Validate one quotation and apply market selection."""
         record_type = normalized[:2]
         self.metrics.raw_quotes += 1
-        if len(normalized) != _EXPECTED_LENGTH:
+        if len(normalized) != COTAHIST_RECORD_WIDTH:
             raise self._record_error(
                 context,
                 normalized,
                 record_type,
                 'record_length',
                 str(len(normalized)),
-                f'Expected exactly {_EXPECTED_LENGTH} characters',
+                f'Expected exactly {COTAHIST_RECORD_WIDTH} characters',
             )
         if original_record is None:
             try:

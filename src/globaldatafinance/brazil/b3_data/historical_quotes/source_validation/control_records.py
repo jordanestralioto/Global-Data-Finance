@@ -6,8 +6,9 @@ from datetime import date
 
 from .....macro_exceptions import ExtractionError
 from ..integrity import B3RecordContext
+from ..layout import B3_QUOTATION_WIDTH
 
-HEADER_SIZE = 245
+HEADER_SIZE = B3_QUOTATION_WIDTH
 
 
 def validate_header(
@@ -18,7 +19,7 @@ def validate_header(
     """Validate the official fixed header identity and reserved area."""
     expected_name = f'COTAHIST.{year:04d}'.encode('ascii')
     _validate_control_identity(record, b'00', expected_name, context)
-    if record[31:245] != b' ' * 214:
+    if record[31:] != b' ' * (B3_QUOTATION_WIDTH - 31):
         raise line_error(
             context,
             'header_reserved',
@@ -46,7 +47,7 @@ def validate_trailer(
             record[2:31].decode('latin-1'),
             'Header and trailer identity and generation date must agree',
         )
-    if record[42:245] != b' ' * 203:
+    if record[42:] != b' ' * (B3_QUOTATION_WIDTH - 42):
         raise line_error(
             context,
             'trailer_reserved',

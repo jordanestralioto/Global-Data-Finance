@@ -38,9 +38,8 @@ metadata, contagens, proveniência, bytes originais e digests antes da publicaç
 Falhas retornam contadores de saída zerados e preservam o resultado anterior.
 
 Todo worker usa a conversão canônica e confere a releitura da fonte e o digest
-ordenado, inclusive quando a fábrica retorna uma subclasse do parser. O caminho
-alternativo que aceitava apenas `parse_line()` foi removido. Extensões internas
-devem implementar o contrato completo de `CotahistParserB3`.
+ordenado, inclusive quando a fábrica retorna uma subclasse do parser. Extensões
+internas devem implementar o contrato completo de `CotahistParserB3`.
 
 `iter_lines()`, `read_lines_from_zip()` e `ParquetWriterB3` continuam disponíveis
 para seus consumidores existentes. A leitura textual deriva dos bytes originais;
@@ -51,6 +50,10 @@ O writer avulso fecha a sessão e os leitores Parquet antes de publicar ou
 remover o temporário. Falhas de conversão, append ou publicação preservam o
 arquivo anterior e a exceção original; falhas adicionais de limpeza são
 registradas pelo logger.
+
+Chamadas diretas ao serviço de extração ou ao worker executam preflight
+automaticamente quando não recebem descritores validados. A facade fornece
+esses descritores para reutilizar a validação já concluída.
 
 Os arquivos de entrada devem permanecer inalterados durante a execução. A
 reconferência final e a publicação executam no mesmo trabalhador, com um ponto

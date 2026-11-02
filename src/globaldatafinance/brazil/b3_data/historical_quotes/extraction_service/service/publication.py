@@ -260,21 +260,16 @@ def prepare_staged_output(
 ) -> tuple[Path, int, bool]:
     """Reuse one verified source artifact or merge ordered artifacts."""
     temporary_results = [
-        result for result in results if result.temp_path is not None
+        (result.temp_path, result.written_records)
+        for result in results
+        if result.temp_path is not None
     ]
     if len(temporary_results) == 1 and len(results) == 1:
-        source = temporary_results[0]
-        temp_path = source.temp_path
-        if temp_path is None:
-            raise RuntimeError('B3 source temporary artifact is missing')
-        return temp_path, source.written_records, True
+        temp_path, written_records = temporary_results[0]
+        return temp_path, written_records, True
 
-    temp_files: list[Path] = []
-    for result in temporary_results:
-        if result.temp_path is None:
-            raise RuntimeError('B3 source temporary artifact is missing')
-        temp_files.append(result.temp_path)
-    expected_rows = [result.written_records for result in temporary_results]
+    temp_files = [path for path, _rows in temporary_results]
+    expected_rows = [rows for _path, rows in temporary_results]
     rows = retry_unpublished_io(
         lambda: merge_temp_files_streaming(
             temp_files,
