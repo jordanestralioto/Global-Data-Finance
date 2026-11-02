@@ -47,6 +47,11 @@ to their existing callers. Text reading derives from the original bytes;
 writing uses the same Arrow sessions and current schema. These interfaces do
 not retain an alternative production parser or engine.
 
+The standalone writer closes its session and Parquet readers before publishing
+or removing its temporary file. Conversion, append and publication failures
+preserve the previous file and the original exception; additional cleanup
+failures are recorded by the logger.
+
 Inputs must remain unchanged during execution. Final checksum verification and
 publication run in the same worker, with a cancellation checkpoint before the
 publication decision. Verification does not lock changes by external processes.

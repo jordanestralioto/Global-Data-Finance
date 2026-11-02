@@ -319,6 +319,7 @@ jobs:
       - name: Run required native behaviors
         run: |
           cvm_tests=tests/brazil/cvm/fundamental_stocks_data
+          b3_tests=tests/brazil/b3_data/historical_quotes
           uv run --locked --no-sync pytest \
             -p tests.support.release_evidence --release-native \
             --release-evidence=.cache/release-native/results.json \
@@ -334,6 +335,7 @@ jobs:
             "$cvm_tests/integration/test_destination_io_platforms.py" \
             "$cvm_tests/integration/test_transaction_recovery.py" \
             "$cvm_tests/integration/test_cvm_log_redaction.py" \
+            "$b3_tests/parquet_writer/test_writer_lifecycle.py" \
             tests/application/b3_docs/test_release_regressions.py
           git diff --exit-code
       - name: Upload native evidence

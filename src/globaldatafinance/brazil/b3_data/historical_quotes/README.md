@@ -47,6 +47,11 @@ para seus consumidores existentes. A leitura textual deriva dos bytes originais;
 a escrita usa as mesmas sessões Arrow e o schema atual. Essas interfaces não
 mantêm um parser ou um engine produtivo alternativo.
 
+O writer avulso fecha a sessão e os leitores Parquet antes de publicar ou
+remover o temporário. Falhas de conversão, append ou publicação preservam o
+arquivo anterior e a exceção original; falhas adicionais de limpeza são
+registradas pelo logger.
+
 Os arquivos de entrada devem permanecer inalterados durante a execução. A
 reconferência final e a publicação executam no mesmo trabalhador, com um ponto
 de cancelamento antes da decisão de publicar. A reconferência não bloqueia
