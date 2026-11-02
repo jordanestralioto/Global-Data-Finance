@@ -152,6 +152,21 @@ Text-reading interfaces and `ParquetWriterB3` with existing callers remain
 available over the current implementation. Module documentation lives in
 `README.md` and `README.en.md`; the stale `README.pt.md` copy was removed.
 
+In this migration to `0.2.0`, the following five historical names are retained
+to preserve existing integrations in their current internal namespaces:
+
+| Name | Status in this migration |
+| --- | --- |
+| `CotahistParserB3.EXPECTED_LINE_LENGTH` | Historical record-width attribute derived from the canonical 245-byte layout. |
+| `extraction_service.types.ParsedRecord` | Typing alias retained for existing imports. |
+| `extraction_service.types.ExtractionSummary` | Historical type retained for existing imports; it does not define the complete public result. |
+| `ExtractHistoricalQuotesUseCaseB3.execute_sync` | Synchronous entrypoint retained over the current asynchronous implementation. |
+| `CreateSetToDownloadUseCaseB3` | File discovery retained over current path and source validation. |
+
+New integrations should use `HistoricalQuotesB3` and the public
+`ExtractionResultB3` contract. Retaining these names in this migration does not
+expand root exports.
+
 ## Dependencies and measurement
 
 `ReadFilesAdapter` was removed together with the automatic Pandas dependency;

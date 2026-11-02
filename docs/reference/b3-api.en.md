@@ -298,6 +298,17 @@ against an external trading calendar or instrument registry.
 | `ignored_duplicate_sources` | `list[str]` | Equivalent TXT inputs skipped in favor of ZIP |
 | `output_sha256` | `str \| None` | SHA-256 of published output; `None` without confirmed output |
 
+`output_sha256` identifies the bytes of the published Parquet file. The `fast`
+and `slow` modes can produce different hashes with the same values, types and
+row order: their different batch limits can change the physical Parquet layout,
+and an extraction with one source reuses its private artifact without rewriting
+it. The hash can
+also change with the PyArrow version or the physical Parquet layout. Use it
+to check the identity of a specific file. To compare content across modes,
+check each source's `expected_rows_sha256` and `verified_rows_sha256` in the
+same order, together with the schema and selection; these digests preserve
+values and ordered occurrences.
+
 Each item in `sources` contains these required keys:
 
 | Key | Type | Meaning |

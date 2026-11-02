@@ -298,6 +298,17 @@ reconciliação com um calendário ou cadastro externo de instrumentos.
 | `ignored_duplicate_sources` | `list[str]` | TXTs equivalentes preteridos em favor do ZIP |
 | `output_sha256` | `str \| None` | SHA-256 da saída publicada; `None` sem saída confirmada |
 
+`output_sha256` identifica os bytes do arquivo Parquet publicado. Os modos
+`fast` e `slow` podem produzir hashes diferentes com os mesmos valores, tipos
+e ordem de linhas: seus limites de lote distintos podem alterar a organização
+física do Parquet, e uma extração com uma única fonte reutiliza o artefato
+privado sem reescrevê-lo.
+O hash também pode mudar com a versão do PyArrow ou a organização física do
+Parquet. Use-o para conferir a identidade de um arquivo específico. Para
+comparar conteúdo entre modos, confira `expected_rows_sha256` e
+`verified_rows_sha256` de cada fonte, na mesma ordem, junto ao schema e à
+seleção; esses digests preservam valores e ocorrências ordenadas.
+
 Cada item de `sources` contém estas chaves obrigatórias:
 
 | Chave | Tipo | Significado |
