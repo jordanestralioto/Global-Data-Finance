@@ -336,6 +336,7 @@ jobs:
             "$cvm_tests/integration/test_transaction_recovery.py" \
             "$cvm_tests/integration/test_cvm_log_redaction.py" \
             "$b3_tests/parquet_writer/test_writer_lifecycle.py" \
+            "$b3_tests/extraction_service/test_source_result_validation.py" \
             tests/application/b3_docs/test_release_regressions.py
           git diff --exit-code
       - name: Upload native evidence

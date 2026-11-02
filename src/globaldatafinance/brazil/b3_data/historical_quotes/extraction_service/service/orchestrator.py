@@ -219,21 +219,18 @@ class ExtractionServiceB3:
                     state,
                 )
 
-            ordered_results = [
-                state.results[index] for index in range(len(source_paths))
-            ]
             validate_source_results(
-                ordered_results, expected_fingerprint, sources
+                source_results, expected_fingerprint, sources
             )
             await run_blocking_phase(
                 verify_private_sources,
-                ordered_results,
+                source_results,
                 expected_schema,
                 sources,
             )
             merged_result = await run_blocking_phase(
                 merge_and_verify_output,
-                ordered_results,
+                source_results,
                 publication,
                 output_path,
                 expected_schema,
