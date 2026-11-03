@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import replace
 from pathlib import Path
 
@@ -25,6 +26,9 @@ from globaldatafinance.brazil.b3_data.historical_quotes.zip_reader import (
     ZipFileReaderB3,
 )
 from globaldatafinance.macro_exceptions import ExtractionError
+from globaldatafinance.macro_infra.transactional_publication.locking import (
+    WINDOWS_GUARD_NAME,
+)
 from tests.support.builders import build_cotahist_record, write_cotahist_txt
 
 pytestmark = pytest.mark.integration
@@ -197,4 +201,9 @@ async def test_rejected_worker_results_preserve_output_and_clean_staging(
     assert any(message in error for error in result['errors'].values())
     assert output.read_bytes() == b'previous output'
     assert path.read_bytes() == source_before
-    assert set(tmp_path.iterdir()) == {path, output}
+    expected = {path, output}
+    if os.name == 'nt':
+        guard = tmp_path / WINDOWS_GUARD_NAME
+        assert guard.is_file() and guard.read_bytes() == b''
+        expected.add(guard)
+    assert set(tmp_path.iterdir()) == expected
