@@ -244,17 +244,11 @@ class CreateDocsToExtractUseCaseB3:
                 str(validated_destination),
                 allowed_unc_roots=self.allowed_unc_roots,
             )
-        destination_path = (
-            str(normalized_destination)
-            if normalized_destination is not None
-            else self.destination_path
-        )
-
         return DocsToExtractorB3(
             path_of_docs=self.path_of_docs,
             set_assets=set_assets,
             range_years=range_years,
-            destination_path=destination_path,
+            destination_path=str(normalized_destination),
             documents_to_download=documents_to_download,
             all_markets=all_markets,
             target_tpmerc_codes=target_tpmerc_codes,

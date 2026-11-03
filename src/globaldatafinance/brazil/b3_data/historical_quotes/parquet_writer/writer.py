@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import contextlib
 from pathlib import Path
 from typing import Any
 
+from .....core import get_logger
 from .....macro_exceptions import DiskFullError, ParquetWriteError
 from .....macro_infra.temporary_files import reserve_temporary_path
 from .disk import check_disk_space
@@ -15,6 +15,8 @@ from .session import (
     ROW_GROUP_LIMIT,
     B3ParquetWriterSession,
 )
+
+logger = get_logger(__name__)
 
 
 class ParquetWriterB3:
@@ -45,12 +47,14 @@ class ParquetWriterB3:
             output_path, estimated_size_mb=max(len(data) * 0.001, 0.01)
         )
         temporary: Path | None = None
+        session: B3ParquetWriterSession | None = None
         try:
             temporary = reserve_temporary_path(
                 output_path, suffix='.parquet.tmp'
             )
             schema = build_b3_schema()
-            session = B3ParquetWriterSession().open(temporary, schema)
+            session = B3ParquetWriterSession()
+            session.open(temporary, schema)
             if mode == 'append' and output_path.exists():
                 self._copy_existing(output_path, session, schema)
             self._write_public_records(session, data)
@@ -63,9 +67,16 @@ class ParquetWriterB3:
                 raise DiskFullError(str(output_path)) from error
             raise ParquetWriteError(str(output_path), str(error)) from error
         finally:
+            if session is not None and session.state == 'OPEN':
+                try:
+                    session.close()
+                except Exception:
+                    logger.exception('B3 Parquet session cleanup failed')
             if temporary is not None:
-                with contextlib.suppress(OSError):
+                try:
                     temporary.unlink(missing_ok=True)
+                except OSError:
+                    logger.exception('B3 Parquet temporary cleanup failed')
 
     @staticmethod
     def _write_public_records(
@@ -84,11 +95,11 @@ class ParquetWriterB3:
         """Copy old batches once after validating the canonical B3 schema."""
         import pyarrow.parquet as pq
 
-        existing = pq.ParquetFile(output_path)
-        if existing.schema_arrow != expected_schema:
-            raise ParquetWriteError(
-                str(output_path), 'Existing Parquet schema is incompatible'
+        with pq.ParquetFile(output_path) as existing:
+            if existing.schema_arrow != expected_schema:
+                raise ParquetWriteError(
+                    str(output_path), 'Existing Parquet schema is incompatible'
+                )
+            session.write_batches(
+                existing.iter_batches(batch_size=ROW_GROUP_LIMIT)
             )
-        session.write_batches(
-            existing.iter_batches(batch_size=ROW_GROUP_LIMIT)
-        )

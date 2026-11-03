@@ -15,6 +15,14 @@ uv run --locked --no-sync python scripts/real_validation.py \
   --timeout 3600
 ```
 
+`--timeout` limits each case, including extraction and independent
+reconciliation. The default is 60 seconds, which can be insufficient even
+for a single year's `fast`/`slow` parity checks. For annual validation, use
+an explicit limit such as `--timeout 1200` and adjust it to the corpus and
+environment; that value does not guarantee a completion time. The executor
+classifies an exceeded limit as `external_failure` and terminates the case
+process. The manifest records the limit in `campaign.timeoutSeconds`.
+
 ## Scope and validation
 
 `all` creates COTAHIST cases for every local catalog year in the requested

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Protocol
@@ -13,11 +12,8 @@ from ...catalog import resolve_cotahist_sources
 from ...cotahist_parser import CotahistParserB3
 from ...errors import CotahistCatalogError
 from ...integrity import B3RawLine, sha256_file
+from ...member_resolver import COTAHIST_FILENAME_PATTERN
 from ...models import ValidatedCotahistSource
-
-_SOURCE_YEAR_PATTERN = re.compile(
-    r'^COTAHIST_A(?P<year>\d{4})\.(ZIP|TXT)$', re.IGNORECASE
-)
 
 
 class LineReader(Protocol):
@@ -86,7 +82,7 @@ def preflight_source(
     all_markets: bool,
 ) -> ValidatedCotahistSource:
     """Retain direct worker use by resolving one source through catalog."""
-    match = _SOURCE_YEAR_PATTERN.fullmatch(source.name)
+    match = COTAHIST_FILENAME_PATTERN.fullmatch(source.name)
     if match is None:
         raise ExtractionError(
             str(source), 'B3 worker requires a COTAHIST annual filename'

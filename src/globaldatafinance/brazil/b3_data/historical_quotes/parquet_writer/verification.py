@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from .....macro_exceptions import ExtractionError
 from ..async_execution import check_phase_cancellation
+from ..layout import B3_QUOTATION_WIDTH
 from ..models import ValidatedCotahistSource
 from ..row_digest import B3OrderedRowDigest
 from .metadata_verification import open_verified_parquet, verify_row_count
@@ -284,7 +285,10 @@ def _verify_source_coordinates(
             f'Invalid one-based COTAHIST line coordinate: {physical_line!r}',
         )
     original_record = columns['registro_original'][row_index]
-    if not isinstance(original_record, bytes) or len(original_record) != 245:
+    if (
+        not isinstance(original_record, bytes)
+        or len(original_record) != B3_QUOTATION_WIDTH
+    ):
         raise ExtractionError(
             str(path), 'B3 Parquet original quotation bytes are invalid'
         )

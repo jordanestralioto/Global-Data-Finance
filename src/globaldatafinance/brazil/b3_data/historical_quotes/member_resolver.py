@@ -8,11 +8,9 @@ from pathlib import Path, PurePosixPath
 
 from ....macro_exceptions import ExtractionError
 
-_EXTERNAL_COTAHIST_PATTERN = re.compile(
-    r'^COTAHIST_A(?P<year>\d{4})\.ZIP$', re.IGNORECASE
-)
-_MODERN_MEMBER_PATTERN = re.compile(
-    r'^COTAHIST_A(?P<year>\d{4})\.TXT$', re.IGNORECASE
+COTAHIST_FILENAME_PATTERN = re.compile(
+    r'^COTAHIST_A(?P<year>\d{4})\.(?P<extension>ZIP|TXT)$',
+    re.IGNORECASE,
 )
 _HISTORICAL_UNDERSCORE_MEMBER_PATTERN = re.compile(
     r'^COTAHIST_A(?P<year>\d{4})$', re.IGNORECASE
@@ -58,8 +56,8 @@ def resolve_cotahist_member(
 
 
 def _external_cotahist_year(zip_path: Path) -> str:
-    match = _EXTERNAL_COTAHIST_PATTERN.fullmatch(zip_path.name)
-    if match is None:
+    match = COTAHIST_FILENAME_PATTERN.fullmatch(zip_path.name)
+    if match is None or match.group('extension').casefold() != 'zip':
         raise ExtractionError(
             str(zip_path),
             'ZIP input must use the COTAHIST_AYYYY.ZIP filename contract',
@@ -69,8 +67,10 @@ def _external_cotahist_year(zip_path: Path) -> str:
 
 def _member_year(member_name: str) -> str | None:
     """Return the year from one supported root-level member name."""
+    modern = COTAHIST_FILENAME_PATTERN.fullmatch(member_name)
+    if modern is not None and modern.group('extension').casefold() == 'txt':
+        return modern.group('year')
     for pattern in (
-        _MODERN_MEMBER_PATTERN,
         _HISTORICAL_UNDERSCORE_MEMBER_PATTERN,
         _HISTORICAL_MEMBER_PATTERN,
     ):

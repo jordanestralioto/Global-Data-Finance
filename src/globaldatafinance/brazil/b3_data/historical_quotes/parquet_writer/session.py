@@ -328,21 +328,21 @@ class B3ParquetWriterSession:
         if self.path is None or self.schema is None:
             raise RuntimeError('B3 Parquet writer session has no artifact')
         _, _, pq = _get_arrow()
-        parquet = pq.ParquetFile(self.path)
-        metadata = parquet.metadata
-        if metadata is None or metadata.num_rows != self.rows_written:
-            raise ExtractionError(
-                str(self.path), 'B3 Parquet row count validation failed'
-            )
-        if parquet.schema_arrow != self.schema:
-            raise ExtractionError(
-                str(self.path), 'B3 Parquet schema validation failed'
-            )
-        if b'pandas' in (parquet.schema_arrow.metadata or {}):
-            raise ExtractionError(
-                str(self.path),
-                'B3 Parquet unexpectedly contains pandas metadata',
-            )
+        with pq.ParquetFile(self.path) as parquet:
+            metadata = parquet.metadata
+            if metadata is None or metadata.num_rows != self.rows_written:
+                raise ExtractionError(
+                    str(self.path), 'B3 Parquet row count validation failed'
+                )
+            if parquet.schema_arrow != self.schema:
+                raise ExtractionError(
+                    str(self.path), 'B3 Parquet schema validation failed'
+                )
+            if b'pandas' in (parquet.schema_arrow.metadata or {}):
+                raise ExtractionError(
+                    str(self.path),
+                    'B3 Parquet unexpectedly contains pandas metadata',
+                )
 
 
 def _serialize_record(

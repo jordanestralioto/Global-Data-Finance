@@ -72,12 +72,6 @@ class ExtractionConfigServiceB3:
                 f'segments, got {filename!r}'
             )
 
-        if posix_view.is_absolute():
-            raise InvalidOutputFilename(
-                f'output_filename must not be an absolute path, '
-                f'got {filename!r}'
-            )
-
         if PureWindowsPath(filename).drive:
             raise InvalidOutputFilename(
                 f'output_filename must not contain a Windows drive '

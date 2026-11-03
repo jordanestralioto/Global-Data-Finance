@@ -105,12 +105,8 @@ class TestCreateDocsToExtractUseCaseExecute:
     @patch(
         'globaldatafinance.brazil.b3_data.historical_quotes.client.VerifyDestinationPathsUseCaseB3'
     )
-    @patch(
-        'globaldatafinance.brazil.b3_data.historical_quotes.client.CreateSetToDownloadUseCaseB3'
-    )
     def test_execute_returns_docs_to_extractor(
         self,
-        mock_set_download,
         mock_verify_path,
         mock_range_years,
         mock_set_assets,
@@ -118,8 +114,7 @@ class TestCreateDocsToExtractUseCaseExecute:
     ):
         mock_set_assets.execute.return_value = {'ações', 'etf'}
         mock_range_years.execute.return_value = range(2020, 2025)
-        mock_verify_path.return_value.execute.return_value = None
-        mock_set_download.execute.return_value = {'COTAHIST_A2020.ZIP'}
+        mock_verify_path.return_value.execute.return_value = Path('/output')
 
         use_case = CreateDocsToExtractUseCaseB3(
             path_of_docs='/path/to/docs',
@@ -141,20 +136,15 @@ class TestCreateDocsToExtractUseCaseExecute:
     @patch(
         'globaldatafinance.brazil.b3_data.historical_quotes.client.VerifyDestinationPathsUseCaseB3'
     )
-    @patch(
-        'globaldatafinance.brazil.b3_data.historical_quotes.client.CreateSetToDownloadUseCaseB3'
-    )
     def test_execute_calls_set_assets_use_case(
         self,
-        mock_set_download,
         mock_verify_path,
         mock_range_years,
         mock_set_assets,
     ):
         mock_set_assets.execute.return_value = {'ações'}
         mock_range_years.execute.return_value = range(2020, 2025)
-        mock_verify_path.return_value.execute.return_value = None
-        mock_set_download.execute.return_value = set()
+        mock_verify_path.return_value.execute.return_value = Path('/output')
 
         use_case = CreateDocsToExtractUseCaseB3(
             path_of_docs='/path/to/docs',
@@ -174,20 +164,15 @@ class TestCreateDocsToExtractUseCaseExecute:
     @patch(
         'globaldatafinance.brazil.b3_data.historical_quotes.client.VerifyDestinationPathsUseCaseB3'
     )
-    @patch(
-        'globaldatafinance.brazil.b3_data.historical_quotes.client.CreateSetToDownloadUseCaseB3'
-    )
     def test_execute_calls_range_years_use_case(
         self,
-        mock_set_download,
         mock_verify_path,
         mock_range_years,
         mock_set_assets,
     ):
         mock_set_assets.execute.return_value = {'ações'}
         mock_range_years.execute.return_value = range(2020, 2025)
-        mock_verify_path.return_value.execute.return_value = None
-        mock_set_download.execute.return_value = set()
+        mock_verify_path.return_value.execute.return_value = Path('/output')
 
         use_case = CreateDocsToExtractUseCaseB3(
             path_of_docs='/path/to/docs',
@@ -207,12 +192,8 @@ class TestCreateDocsToExtractUseCaseExecute:
     @patch(
         'globaldatafinance.brazil.b3_data.historical_quotes.client.VerifyDestinationPathsUseCaseB3'
     )
-    @patch(
-        'globaldatafinance.brazil.b3_data.historical_quotes.client.CreateSetToDownloadUseCaseB3'
-    )
     def test_execute_calls_verify_destination_path_use_case(
         self,
-        mock_set_download,
         mock_verify_path,
         mock_range_years,
         mock_set_assets,
@@ -220,9 +201,8 @@ class TestCreateDocsToExtractUseCaseExecute:
         mock_set_assets.execute.return_value = {'ações'}
         mock_range_years.execute.return_value = range(2020, 2025)
         mock_verify_instance = MagicMock()
-        mock_verify_instance.validate.return_value = '/output'
+        mock_verify_instance.validate.return_value = Path('/output')
         mock_verify_path.return_value = mock_verify_instance
-        mock_set_download.execute.return_value = set()
 
         use_case = CreateDocsToExtractUseCaseB3(
             path_of_docs='/path/to/docs',
@@ -248,12 +228,8 @@ class TestCreateDocsToExtractUseCaseExecute:
     @patch(
         'globaldatafinance.brazil.b3_data.historical_quotes.client.VerifyDestinationPathsUseCaseB3'
     )
-    @patch(
-        'globaldatafinance.brazil.b3_data.historical_quotes.client.CreateSetToDownloadUseCaseB3'
-    )
-    def test_execute_calls_set_to_download_use_case(
+    def test_execute_resolves_catalog_for_requested_years(
         self,
-        mock_set_download,
         mock_verify_path,
         mock_range_years,
         mock_set_assets,
@@ -261,8 +237,7 @@ class TestCreateDocsToExtractUseCaseExecute:
         mock_set_assets.execute.return_value = {'ações'}
         year_range = range(2020, 2025)
         mock_range_years.execute.return_value = year_range
-        mock_verify_path.return_value.execute.return_value = None
-        mock_set_download.execute.return_value = set()
+        mock_verify_path.return_value.execute.return_value = Path('/output')
 
         use_case = CreateDocsToExtractUseCaseB3(
             path_of_docs='/path/to/docs',
@@ -289,12 +264,8 @@ class TestCreateDocsToExtractUseCaseExecute:
     @patch(
         'globaldatafinance.brazil.b3_data.historical_quotes.client.VerifyDestinationPathsUseCaseB3'
     )
-    @patch(
-        'globaldatafinance.brazil.b3_data.historical_quotes.client.CreateSetToDownloadUseCaseB3'
-    )
     def test_execute_builds_entity_with_correct_data(
         self,
-        mock_set_download,
         mock_verify_path,
         mock_range_years,
         mock_set_assets,
@@ -302,11 +273,7 @@ class TestCreateDocsToExtractUseCaseExecute:
     ):
         mock_set_assets.execute.return_value = {'ações', 'etf'}
         mock_range_years.execute.return_value = range(2020, 2025)
-        mock_verify_path.return_value.execute.return_value = None
-        mock_set_download.execute.return_value = {
-            'COTAHIST_A2020.ZIP',
-            'COTAHIST_A2021.ZIP',
-        }
+        mock_verify_path.return_value.execute.return_value = Path('/output')
 
         use_case = CreateDocsToExtractUseCaseB3(
             path_of_docs='/path/to/docs',
@@ -319,7 +286,7 @@ class TestCreateDocsToExtractUseCaseExecute:
         assert result.path_of_docs == '/path/to/docs'
         assert result.set_assets == {'ações', 'etf'}
         assert result.range_years == range(2020, 2025)
-        assert result.destination_path == '/output'
+        assert result.destination_path == str(Path('/output'))
         assert result.documents_to_download == set()
         self.catalog_resolver.assert_called_once()
 
@@ -409,12 +376,8 @@ class TestCreateDocsToExtractUseCaseExecute:
     @patch(
         'globaldatafinance.brazil.b3_data.historical_quotes.client.VerifyDestinationPathsUseCaseB3'
     )
-    @patch(
-        'globaldatafinance.brazil.b3_data.historical_quotes.client.CreateSetToDownloadUseCaseB3'
-    )
     def test_execute_with_single_asset(
         self,
-        mock_set_download,
         mock_verify_path,
         mock_range_years,
         mock_set_assets,
@@ -422,8 +385,7 @@ class TestCreateDocsToExtractUseCaseExecute:
     ):
         mock_set_assets.execute.return_value = {'ações'}
         mock_range_years.execute.return_value = range(2020, 2021)
-        mock_verify_path.return_value.execute.return_value = None
-        mock_set_download.execute.return_value = {'COTAHIST_A2020.ZIP'}
+        mock_verify_path.return_value.execute.return_value = Path('/output')
 
         use_case = CreateDocsToExtractUseCaseB3(
             path_of_docs='/path/to/docs',
@@ -448,12 +410,8 @@ class TestCreateDocsToExtractUseCaseExecute:
     @patch(
         'globaldatafinance.brazil.b3_data.historical_quotes.client.VerifyDestinationPathsUseCaseB3'
     )
-    @patch(
-        'globaldatafinance.brazil.b3_data.historical_quotes.client.CreateSetToDownloadUseCaseB3'
-    )
     def test_execute_validates_inputs_before_destination_creation(
         self,
-        mock_set_download,
         mock_verify_path,
         mock_range_years,
         mock_set_assets,
@@ -465,10 +423,9 @@ class TestCreateDocsToExtractUseCaseExecute:
         mock_verify_instance = MagicMock()
         mock_verify_instance.validate.return_value = Path('/output')
         mock_verify_instance.execute.side_effect = lambda *_, **__: (
-            call_order.append('destination_created')
+            call_order.append('destination_created') or Path('/output')
         )
         mock_verify_path.return_value = mock_verify_instance
-        mock_set_download.execute.return_value = {'/docs/COTAHIST_A2020.ZIP'}
         self.catalog_resolver.side_effect = lambda *_, **__: (
             call_order.append('input_validated')
             or CotahistCatalogResolution((), ())
@@ -484,7 +441,7 @@ class TestCreateDocsToExtractUseCaseExecute:
         result = use_case.execute()
         assert call_order == ['input_validated', 'destination_created']
         self.catalog_resolver.assert_called_once()
-        assert result is not None
+        assert result.destination_path == str(Path('/output'))
 
     @patch(
         'globaldatafinance.brazil.b3_data.historical_quotes.client.CreateSetAssetsUseCaseB3'
@@ -495,12 +452,8 @@ class TestCreateDocsToExtractUseCaseExecute:
     @patch(
         'globaldatafinance.brazil.b3_data.historical_quotes.client.VerifyDestinationPathsUseCaseB3'
     )
-    @patch(
-        'globaldatafinance.brazil.b3_data.historical_quotes.client.CreateSetToDownloadUseCaseB3'
-    )
     def test_execute_with_all_assets(
         self,
-        mock_set_download,
         mock_verify_path,
         mock_range_years,
         mock_set_assets,
@@ -516,8 +469,7 @@ class TestCreateDocsToExtractUseCaseExecute:
         }
         mock_set_assets.execute.return_value = all_assets
         mock_range_years.execute.return_value = range(2020, 2025)
-        mock_verify_path.return_value.execute.return_value = None
-        mock_set_download.execute.return_value = set()
+        mock_verify_path.return_value.execute.return_value = Path('/output')
 
         use_case = CreateDocsToExtractUseCaseB3(
             path_of_docs='/path/to/docs',
