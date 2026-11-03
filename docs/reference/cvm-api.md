@@ -71,7 +71,7 @@ A confirmação exige todos os Parquets esperados e sua associação ao ZIP.
 Row groups respeitam um orçamento estimado de 16 MiB, até 50.000 linhas.
 As leituras permanecem no mesmo ZIP aberto e a origem é conferida novamente
 antes da publicação. CSVs removidos ou renomeados exigem regeneração em um
-destino limpo quando restarem Parquets obsoletos associados ao mesmo arquivo
+destino limpo quando restarem Parquets obsoletos associados a um ZIP de mesmo nome
 pelo metadado `cvm.source-archive`.
 
 O resultado confirma os arquivos esperados do ZIP. A substituição de saídas e

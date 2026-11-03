@@ -20,8 +20,8 @@ CSV, ZIP, Parquet e metadados da CVM; as fundações globais atendem várias fon
   `ingestion.models.DownloadResultCVM`.
 - Configuração, segurança e publicação transacional usam os proprietários
   existentes em `core/` e `macro_infra/`.
-- O inventário associa saídas à origem por `cvm.source-archive`, sem inferência
-  pelo nome. O [guia de inventário](../user-guide/migration-cvm-exact-text.md#inventario-das-saidas)
+- O inventário associa saídas à origem por `cvm.source-archive`, sem inferir a
+  propriedade pelo nome do Parquet. O [guia de inventário](../user-guide/migration-cvm-exact-text.md#inventario-das-saidas)
   define substituição, preservação e bloqueio dos arquivos existentes.
 
 ## Alternativas consideradas
@@ -38,7 +38,7 @@ CSV, ZIP, Parquet e metadados da CVM; as fundações globais atendem várias fon
 Novas famílias compatíveis usam os mecanismos sem consultar o catálogo de
 empresas. O contrato `exact-text-v1`, os nomes de saída e as assinaturas públicas
 permanecem. A integração com arquivos oficiais de outra família exige validar
-seu formato e suas regras.
+seu formato e suas regras. Esta mudança não adiciona suporte público a FIIs.
 
 A extração automática verifica o inventário antes e depois do colaborador; a
 transação verifica a extração direta antes da publicação. São três varreduras

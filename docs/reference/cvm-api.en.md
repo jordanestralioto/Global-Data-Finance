@@ -71,8 +71,8 @@ Parquets and their association with the ZIP. Row groups use an estimated
 16 MiB budget, up to 50,000 rows.
 Reads stay on the same opened ZIP and the source is checked again before
 publication. Removed or renamed CSVs require regeneration into a clean
-destination when obsolete Parquets are associated with that archive through
-`cvm.source-archive` metadata.
+destination when obsolete Parquets are associated with a ZIP of the same filename
+through `cvm.source-archive` metadata.
 
 The result confirms the expected ZIP outputs. Output replacement and preservation
 of unidentified files follow the

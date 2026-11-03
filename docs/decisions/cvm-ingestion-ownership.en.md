@@ -21,7 +21,7 @@ contracts; global foundations serve multiple sources.
 - Configuration, safety, and transactional publication use their existing
   owners in `core/` and `macro_infra/`.
 - Inventory associates outputs with their source through `cvm.source-archive`,
-  without filename inference. The [inventory guide](../user-guide/migration-cvm-exact-text.en.md#output-inventory)
+  without inferring ownership from Parquet filenames. The [inventory guide](../user-guide/migration-cvm-exact-text.en.md#output-inventory)
   defines replacement, preservation, and rejection of existing files.
 
 ## Alternatives considered
@@ -38,7 +38,7 @@ contracts; global foundations serve multiple sources.
 Compatible new families use the mechanics without consulting the company catalog.
 The `exact-text-v1` contract, output names, and public signatures remain.
 Integrating another family's official archives requires validating its format
-and rules.
+and rules. This change does not add public support for FIIs.
 
 Automatic extraction checks inventory before and after the collaborator; the
 transaction checks direct extraction before publication. The default path scans
