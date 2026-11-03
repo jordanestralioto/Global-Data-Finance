@@ -65,11 +65,14 @@ a extração antes da publicação.
 ### Inventário das saídas
 
 Os Parquets esperados pelo ZIP são publicados nos nomes correspondentes,
-substituindo na transação qualquer arquivo com um desses nomes. Arquivos fora
-desse inventário bloqueiam o reprocessamento quando `cvm.source-archive` os
-associa a um ZIP de mesmo nome.
+substituindo na transação o arquivo comum que ocupar um desses nomes. Um link
+simbólico em um nome esperado é rejeitado como `ExtractionError`: a extração
+desse ZIP falha, a facade registra a falha em `failed_downloads` e nem o link
+nem o alvo são alterados. Arquivos comuns fora desse inventário bloqueiam o
+reprocessamento quando `cvm.source-archive` os associa a um ZIP de mesmo nome.
 Sem essa identidade, são preservados como dados do chamador, sem reconhecimento
-pelo nome, e podem coexistir com as saídas novas mesmo após sucesso.
+pelo nome, e podem coexistir com as saídas novas mesmo após sucesso. Links
+simbólicos fora do inventário não são inspecionados e também são preservados.
 
 O resultado confirma as saídas esperadas, sem certificar todos os Parquets do
 diretório. Para substituir um dataset, preserve os arquivos anteriores, regenere
