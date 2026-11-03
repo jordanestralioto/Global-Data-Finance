@@ -65,11 +65,15 @@ publication.
 ### Output inventory
 
 Parquets expected by the ZIP are published under their corresponding names,
-replacing any file with one of those names within the transaction. Files outside
-this inventory block reprocessing when `cvm.source-archive` associates them with
-a ZIP of the same filename.
+replacing within the transaction the regular file that occupies one of those
+names. A symbolic link at an expected name is rejected as `ExtractionError`:
+extraction of that ZIP fails, the facade records the failure in
+`failed_downloads`, and neither the link nor its target changes. Regular files
+outside this inventory block reprocessing when `cvm.source-archive` associates
+them with a ZIP of the same filename.
 Without this identity, they remain caller data without filename recognition and
-can coexist with new outputs even after success.
+can coexist with new outputs even after success. Symbolic links outside the
+inventory are not inspected and are also preserved.
 
 The result confirms expected outputs without certifying every Parquet in the
 directory. To replace a dataset, retain previous files, regenerate into a new
