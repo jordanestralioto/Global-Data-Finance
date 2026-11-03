@@ -307,9 +307,8 @@ class B3ParquetWriterSession:
         try:
             self.flush_row_group()
             if self._writer is not None:
-                writer = self._writer
+                self._writer.close()
                 self._writer = None
-                writer.close()
             self._pending_batches.clear()
             self._pending_rows = 0
             self.validate()

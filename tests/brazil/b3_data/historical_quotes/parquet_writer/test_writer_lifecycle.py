@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import errno
+import io
+import os
+from collections.abc import Buffer
 from pathlib import Path
 
 import pyarrow as pa
+import pyarrow.fs as pafs
 import pyarrow.parquet as pq
 import pytest
 
+from globaldatafinance import HistoricalQuotesB3
 from globaldatafinance.brazil.b3_data.historical_quotes.parquet_writer import (
     B3ParquetWriterSession,
     ParquetWriterB3,
@@ -19,9 +24,86 @@ from globaldatafinance.macro_exceptions import (
     ExtractionError,
     ParquetWriteError,
 )
-from tests.support.builders import build_b3_typed_record
+from globaldatafinance.macro_infra.transactional_publication.locking import (
+    WINDOWS_GUARD_NAME,
+)
+from tests.support.builders import (
+    build_b3_typed_record,
+    build_cotahist_record,
+    write_cotahist_txt,
+)
 
 pytestmark = pytest.mark.integration
+
+
+class _ArmedFile(io.FileIO):
+    """A real local file whose writes fail as if the disk became full."""
+
+    def __init__(self, path: str) -> None:
+        super().__init__(path, 'wb')
+        self.armed = False
+
+    def write(self, data: Buffer, /) -> int:
+        if self.armed:
+            raise OSError(errno.ENOSPC, 'No space left on device')
+        return super().write(data)
+
+
+class _ArmedFileSystem(pafs.FileSystemHandler):
+    """Open Arrow output streams over real files that tests can fill."""
+
+    def __init__(self) -> None:
+        self.files: list[_ArmedFile] = []
+
+    def get_type_name(self) -> str:
+        return 'armed-local'
+
+    def normalize_path(self, path: str) -> str:
+        return path
+
+    def open_output_stream(self, path: str, _metadata: object) -> object:
+        self.files.append(_ArmedFile(path))
+        return pa.PythonFile(self.files[-1], mode='w')
+
+    def _unsupported(self, *_args: object) -> None:
+        raise NotImplementedError
+
+    copy_file = create_dir = delete_dir = delete_dir_contents = _unsupported
+    delete_file = delete_root_dir_contents = move = _unsupported
+    get_file_info = get_file_info_selector = open_append_stream = _unsupported
+    open_input_file = open_input_stream = _unsupported
+
+
+@pytest.fixture
+def armed_streams(monkeypatch: pytest.MonkeyPatch) -> _ArmedFileSystem:
+    """Route every B3 Arrow writer through real files that can fill up."""
+    handler = _ArmedFileSystem()
+    filesystem = pafs.PyFileSystem(handler)
+    original_writer = pq.ParquetWriter
+
+    def armed_writer(where, schema, **kwargs):
+        return original_writer(
+            str(where), schema, filesystem=filesystem, **kwargs
+        )
+
+    monkeypatch.setattr(pq, 'ParquetWriter', armed_writer)
+    return handler
+
+
+def _fill_disk_after_row_groups(
+    monkeypatch: pytest.MonkeyPatch, streams: _ArmedFileSystem
+) -> None:
+    """Let row groups reach the file, then fail the Parquet footer write."""
+    original_flush = B3ParquetWriterSession.flush_row_group
+
+    def flush_then_fill(self):
+        original_flush(self)
+        for stream in streams.files:
+            stream.armed = True
+
+    monkeypatch.setattr(
+        B3ParquetWriterSession, 'flush_row_group', flush_then_fill
+    )
 
 
 @pytest.fixture
@@ -297,3 +379,107 @@ def test_session_validation_always_closes_its_parquet_reader(
     _writers, readers = arrow_handles
     assert len(readers) == 2
     assert all(reader.closed for reader in readers)
+
+
+@pytest.mark.parametrize('failure', ['footer', 'row-group'])
+def test_session_full_disk_on_close_keeps_cause_and_releases_stream(
+    tmp_path: Path, armed_streams: _ArmedFileSystem, failure: str
+) -> None:
+    """A failed footer or final row group still frees the output file."""
+    session = B3ParquetWriterSession().open(
+        tmp_path / 'quotes.parquet', build_b3_schema()
+    )
+    session.write_records([build_b3_typed_record()])
+    if failure == 'footer':
+        session.flush_row_group()
+    armed_streams.files[0].armed = True
+
+    with pytest.raises(OSError) as raised:
+        session.close()
+
+    assert raised.value.errno == errno.ENOSPC
+    assert session.state == 'CLOSED'
+    assert [stream.closed for stream in armed_streams.files] == [True]
+    session.close()
+    assert session.state == 'CLOSED'
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('valid', [True, False], ids=['valid', 'invalid'])
+async def test_writer_footer_failure_releases_stream_and_keeps_output(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    armed_streams: _ArmedFileSystem,
+    caplog: pytest.LogCaptureFixture,
+    valid: bool,
+) -> None:
+    """The public error survives while the temporary file can be removed."""
+    output = tmp_path / 'quotes.parquet'
+    output.write_bytes(b'previous output')
+    _fill_disk_after_row_groups(monkeypatch, armed_streams)
+    record = build_b3_typed_record()
+    if not valid:
+        del record['ticker']
+
+    with pytest.raises(DiskFullError if valid else KeyError) as raised:
+        await ParquetWriterB3().write_to_parquet([record], output)
+
+    if valid:
+        cause = raised.value.__cause__
+        assert isinstance(cause, OSError)
+        assert cause.errno == errno.ENOSPC
+    else:
+        assert raised.value.args == ('ticker',)
+        cleanup_errors = [
+            entry.exc_info[1]
+            for entry in caplog.records
+            if entry.getMessage() == 'B3 Parquet session cleanup failed'
+            and entry.exc_info
+        ]
+        assert [
+            isinstance(error, OSError) and error.errno == errno.ENOSPC
+            for error in cleanup_errors
+        ] == [True]
+    assert [stream.closed for stream in armed_streams.files] == [True]
+    assert output.read_bytes() == b'previous output'
+    assert list(tmp_path.iterdir()) == [output]
+
+
+@pytest.mark.parametrize('processing_mode', ['fast', 'slow'])
+def test_facade_footer_failure_reports_error_and_releases_streams(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    armed_streams: _ArmedFileSystem,
+    processing_mode: str,
+) -> None:
+    """Extraction fails publicly without leaving a writer stream open."""
+    output = tmp_path / 'quotes.parquet'
+    output.write_bytes(b'previous output')
+    source = write_cotahist_txt(
+        tmp_path, year=2024, records=[build_cotahist_record()]
+    )
+    source_before = source.read_bytes()
+    _fill_disk_after_row_groups(monkeypatch, armed_streams)
+
+    result = HistoricalQuotesB3().extract(
+        path_of_docs=str(tmp_path),
+        initial_year=2024,
+        last_year=2024,
+        output_filename=output.name,
+        processing_mode=processing_mode,
+        verbose=False,
+    )
+
+    assert result['success'] is False
+    assert any(
+        'No space left on device' in error
+        for error in result['errors'].values()
+    )
+    assert armed_streams.files
+    assert all(stream.closed for stream in armed_streams.files)
+    assert output.read_bytes() == b'previous output'
+    assert source.read_bytes() == source_before
+    expected = {source, output}
+    if os.name == 'nt':
+        expected.add(tmp_path / WINDOWS_GUARD_NAME)
+    assert set(tmp_path.iterdir()) == expected
