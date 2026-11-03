@@ -1,8 +1,4 @@
-"""CVM fundamental_stocks_data source implementation.
-
-Provides direct access to CVM regulatory document downloading, validation,
-and extraction features using a straightforward, role-oriented structure.
-"""
+"""Company document catalog, period validation, and download orchestration."""
 
 from .client import (
     DownloadDocumentsUseCaseCVM,
@@ -16,7 +12,6 @@ from .core import (
     AvailableYearsCVM,
     AvailableYearsInfoCVM,
     DictZipsToDownloadCVM,
-    DownloadResultCVM,
 )
 from .errors import (
     EmptyDocumentListError,
@@ -26,19 +21,14 @@ from .errors import (
     InvalidLastYear,
     MissingDownloadUrlError,
 )
-from .extract import ParquetExtractorAdapterCVM
-from .http import AsyncDownloadAdapterCVM
 
 __all__ = [
-    # IO adapters
-    'AsyncDownloadAdapterCVM',
     # core (domain)
     'AvailableYearsCVM',
     'AvailableYearsInfoCVM',
     'DictZipsToDownloadCVM',
     # client (use cases)
     'DownloadDocumentsUseCaseCVM',
-    'DownloadResultCVM',
     'EmptyDocumentListError',
     'InvalidDocumentName',
     'InvalidDocumentType',
@@ -46,7 +36,6 @@ __all__ = [
     'InvalidFirstYear',
     'InvalidLastYear',
     'MissingDownloadUrlError',
-    'ParquetExtractorAdapterCVM',
     'VerifyPathsUseCasesCVM',
     'generate_range_years',
     'generate_urls',

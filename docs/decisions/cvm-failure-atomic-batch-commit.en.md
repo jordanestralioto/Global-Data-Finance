@@ -44,7 +44,7 @@ diagnostic cause.
 - Concurrent readers and simultaneous writes to the same destination remain
   unsupported; the directory is caller-owned and may contain unrelated files,
   so it is never swapped as a whole.
-- The public `ParquetExtractorAdapterCVM.extract(...)->None` signature, output
+- The public `CvmParquetExtractor.extract(...)->None` signature, output
   names, and persisted schemas remain unchanged.
 - CSV, disk, staged-validation, replace, and corrupted-ZIP failures preserve
   pre-existing Parquets whenever normal rollback completes.

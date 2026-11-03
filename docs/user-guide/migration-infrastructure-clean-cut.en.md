@@ -58,11 +58,11 @@ from globaldatafinance.macro_infra import ExtractorAdapter, ReadFilesAdapter
 After, use the source boundary that owns the data contract:
 
 ```python
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    ParquetExtractorAdapterCVM,
+from globaldatafinance.brazil.cvm.ingestion.extract import (
+    CvmParquetExtractor,
 )
 
-cvm_extractor = ParquetExtractorAdapterCVM()
+cvm_extractor = CvmParquetExtractor()
 convert_zip = cvm_extractor.extract
 convert_zip('download.zip', 'cvm-output')
 ```

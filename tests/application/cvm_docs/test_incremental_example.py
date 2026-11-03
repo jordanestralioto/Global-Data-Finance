@@ -12,9 +12,7 @@ import pytest
 
 import globaldatafinance
 from globaldatafinance import FundamentalStocksDataCVM
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.core import (
-    DownloadResultCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion.models import DownloadResultCVM
 
 pytestmark = pytest.mark.integration
 

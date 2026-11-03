@@ -2,20 +2,16 @@ import zipfile
 
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    ParquetExtractorAdapterCVM,
-)
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.http import (
-    AsyncDownloadAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
+from globaldatafinance.brazil.cvm.ingestion.http import CvmDownloadAdapter
 
 
 @pytest.mark.unit
-class TestAsyncDownloadAdapterCVMFileValidation:
+class TestCvmDownloadAdapterFileValidation:
     @pytest.fixture
     def adapter(self):
-        return AsyncDownloadAdapterCVM(
-            file_extractor_repository=ParquetExtractorAdapterCVM(),
+        return CvmDownloadAdapter(
+            file_extractor_repository=CvmParquetExtractor(),
             max_concurrent=1,
         )
 

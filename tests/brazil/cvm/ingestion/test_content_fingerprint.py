@@ -7,9 +7,7 @@ import hashlib
 import pyarrow as pa
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    content_fingerprint,
-)
+from globaldatafinance.brazil.cvm.ingestion import content_fingerprint
 
 pytestmark = pytest.mark.unit
 

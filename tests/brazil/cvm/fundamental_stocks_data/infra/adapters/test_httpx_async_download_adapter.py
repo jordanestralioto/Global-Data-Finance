@@ -9,12 +9,10 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    AsyncDownloadAdapterCVM,
-    DownloadResultCVM,
-    ParquetExtractorAdapterCVM,
-    download_paths,
-)
+from globaldatafinance.brazil.cvm.ingestion import download_paths
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
+from globaldatafinance.brazil.cvm.ingestion.http import CvmDownloadAdapter
+from globaldatafinance.brazil.cvm.ingestion.models import DownloadResultCVM
 from globaldatafinance.core.config import ArchiveSafetySettings
 from globaldatafinance.macro_exceptions import (
     DiskFullError,
@@ -49,9 +47,7 @@ def _csv_test_data(rows: int = 200) -> str:
 class TestHttpxAsyncDownloadAdapterInitialization:
     def test_init_with_default_values(self):
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
-            file_extractor_repository=mock_extractor
-        )
+        adapter = CvmDownloadAdapter(file_extractor_repository=mock_extractor)
 
         assert adapter.max_concurrent == 10
         assert adapter.chunk_size == 8192
@@ -62,7 +58,7 @@ class TestHttpxAsyncDownloadAdapterInitialization:
 
     def test_init_with_custom_values(self):
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=mock_extractor,
             max_concurrent=20,
             chunk_size=16384,
@@ -86,15 +82,13 @@ class TestHttpxAsyncDownloadAdapterInitialization:
 
     def test_init_creates_requests_adapter(self):
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
-            file_extractor_repository=mock_extractor
-        )
+        adapter = CvmDownloadAdapter(file_extractor_repository=mock_extractor)
 
         assert adapter.requests_adapter is not None
         assert hasattr(adapter.requests_adapter, 'async_download_file')
 
     def test_init_can_disable_redirect_following(self):
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=MagicMock(), follow_redirects=False
         )
 
@@ -102,9 +96,7 @@ class TestHttpxAsyncDownloadAdapterInitialization:
 
     def test_init_creates_retry_strategy(self):
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
-            file_extractor_repository=mock_extractor
-        )
+        adapter = CvmDownloadAdapter(file_extractor_repository=mock_extractor)
 
         assert adapter.retry_strategy is not None
         assert hasattr(adapter.retry_strategy, 'is_retryable')
@@ -112,11 +104,11 @@ class TestHttpxAsyncDownloadAdapterInitialization:
 
     def test_init_with_zero_max_concurrent(self):
         with pytest.raises(ValueError, match='max_concurrent'):
-            AsyncDownloadAdapterCVM(None, max_concurrent=0)
+            CvmDownloadAdapter(None, max_concurrent=0)
 
     def test_init_with_very_high_concurrency(self):
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=mock_extractor, max_concurrent=1000
         )
 
@@ -166,7 +158,7 @@ class TestHttpxAsyncDownloadAdapterAsyncMethods:
     async def test_get_size_failure_logs_diagnostic_with_traceback(
         self, caplog
     ):
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=MagicMock(), max_retries=0
         )
         adapter._stream_download = AsyncMock(
@@ -189,9 +181,7 @@ class TestHttpxAsyncDownloadAdapterAsyncMethods:
 
     async def test_download_with_retry_success_first_attempt(self):
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
-            file_extractor_repository=mock_extractor
-        )
+        adapter = CvmDownloadAdapter(file_extractor_repository=mock_extractor)
 
         async def mock_stream_download(_url, _filepath):
             pass
@@ -210,7 +200,7 @@ class TestHttpxAsyncDownloadAdapterAsyncMethods:
 
     async def test_download_with_retry_failure_after_retries(self):
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=mock_extractor, max_retries=2
         )
 
@@ -232,7 +222,7 @@ class TestHttpxAsyncDownloadAdapterAsyncMethods:
 
     async def test_download_with_retry_success_on_second_attempt(self):
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=mock_extractor, max_retries=3
         )
 
@@ -259,7 +249,7 @@ class TestHttpxAsyncDownloadAdapterAsyncMethods:
 
     async def test_download_with_retry_non_retryable_error(self):
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=mock_extractor, max_retries=5
         )
 
@@ -285,7 +275,7 @@ class TestHttpxAsyncDownloadAdapterAsyncMethods:
 
     async def test_download_with_retry_timeout_error(self):
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=mock_extractor, max_retries=2
         )
 
@@ -305,14 +295,13 @@ class TestHttpxAsyncDownloadAdapterAsyncMethods:
         assert 'DownloadTimeoutError' in error_msg
 
     @patch(
-        'globaldatafinance.brazil.cvm.fundamental_stocks_data.http.'
-        'remove_owned_staging_file'
+        'globaldatafinance.brazil.cvm.ingestion.http.remove_owned_staging_file'
     )
     async def test_download_with_retry_does_not_clean_final_path_on_failure(
         self, mock_remove
     ):
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=mock_extractor, max_retries=1
         )
 
@@ -330,12 +319,10 @@ class TestHttpxAsyncDownloadAdapterAsyncMethods:
 
         mock_remove.assert_not_called()
 
-    @patch(
-        'globaldatafinance.brazil.cvm.fundamental_stocks_data.http.asyncio.sleep'
-    )
+    @patch('globaldatafinance.brazil.cvm.ingestion.http.asyncio.sleep')
     async def test_download_with_retry_backoff(self, mock_sleep):
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=mock_extractor,
             max_retries=3,
             initial_backoff=1.0,
@@ -360,14 +347,12 @@ class TestHttpxAsyncDownloadAdapterAsyncMethods:
 
         assert mock_sleep.call_count >= 1
 
-    @patch(
-        'globaldatafinance.brazil.cvm.fundamental_stocks_data.http.asyncio.sleep'
-    )
+    @patch('globaldatafinance.brazil.cvm.ingestion.http.asyncio.sleep')
     async def test_download_with_retry_translates_httpx_timeout_and_retries(
         self, mock_sleep
     ):
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=mock_extractor,
             max_retries=2,
         )
@@ -399,16 +384,13 @@ class TestHttpxAsyncDownloadAdapterAsyncMethods:
 @pytest.mark.asyncio
 class TestHttpxAsyncDownloadAdapterStreamDownload:
     @patch(
-        'globaldatafinance.brazil.cvm.fundamental_stocks_data.http.'
-        'remove_owned_staging_file'
+        'globaldatafinance.brazil.cvm.ingestion.http.remove_owned_staging_file'
     )
     async def test_stream_download_does_not_clean_final_path_on_error(
         self, mock_remove
     ):
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
-            file_extractor_repository=mock_extractor
-        )
+        adapter = CvmDownloadAdapter(file_extractor_repository=mock_extractor)
 
         adapter.requests_adapter = MagicMock()
         adapter.requests_adapter.async_download_to_staging_file = AsyncMock(
@@ -424,9 +406,7 @@ class TestHttpxAsyncDownloadAdapterStreamDownload:
 
     async def test_stream_download_calls_requests_adapter(self):
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
-            file_extractor_repository=mock_extractor
-        )
+        adapter = CvmDownloadAdapter(file_extractor_repository=mock_extractor)
 
         adapter.requests_adapter = MagicMock()
         adapter.requests_adapter.async_download_to_staging_file = AsyncMock()
@@ -444,7 +424,7 @@ class TestHttpxAsyncDownloadAdapterStreamDownload:
 
     async def test_stream_download_uses_custom_chunk_size(self):
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=mock_extractor, chunk_size=16384
         )
 
@@ -467,8 +447,7 @@ class TestHttpxAsyncDownloadAdapterStreamDownload:
 @pytest.mark.asyncio
 class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
     @patch(
-        'globaldatafinance.brazil.cvm.fundamental_stocks_data.http.'
-        'remove_owned_staging_file'
+        'globaldatafinance.brazil.cvm.ingestion.http.remove_owned_staging_file'
     )
     async def test_download_and_extract_without_automatic_extractor(
         self, _mock_remove, tmp_path
@@ -486,7 +465,7 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
             zf.writestr('data.csv', csv_data)
 
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=mock_extractor, automatic_extractor=False
         )
 
@@ -513,8 +492,7 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
         mock_extractor.extract.assert_not_called()
 
     @patch(
-        'globaldatafinance.brazil.cvm.fundamental_stocks_data.http.'
-        'remove_owned_staging_file'
+        'globaldatafinance.brazil.cvm.ingestion.http.remove_owned_staging_file'
     )
     async def test_download_and_extract_with_automatic_extractor(
         self, mock_remove, tmp_path
@@ -541,12 +519,10 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
         mock_extractor = MagicMock()
 
         def create_current_parquet(_source_path, _destination_path):
-            ParquetExtractorAdapterCVM().extract(
-                _source_path, _destination_path
-            )
+            CvmParquetExtractor().extract(_source_path, _destination_path)
 
         mock_extractor.extract.side_effect = create_current_parquet
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=mock_extractor, automatic_extractor=True
         )
 
@@ -574,8 +550,7 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
         assert result.success_count_downloads == 1
 
     @patch(
-        'globaldatafinance.brazil.cvm.fundamental_stocks_data.http.'
-        'remove_owned_staging_file'
+        'globaldatafinance.brazil.cvm.ingestion.http.remove_owned_staging_file'
     )
     async def test_download_and_extract_ignores_old_parquets_when_empty(
         self, mock_remove, tmp_path
@@ -592,7 +567,7 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
         pq.write_table(pa.table({'old': [1]}), output_dir / 'old.parquet')
 
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=mock_extractor, automatic_extractor=True
         )
 
@@ -620,8 +595,7 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
         assert not mock_remove.called
 
     @patch(
-        'globaldatafinance.brazil.cvm.fundamental_stocks_data.http.'
-        'remove_owned_staging_file'
+        'globaldatafinance.brazil.cvm.ingestion.http.remove_owned_staging_file'
     )
     async def test_download_and_extract_no_parquet_files_keeps_zip(
         self, mock_remove, tmp_path
@@ -638,7 +612,7 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
             zf.writestr('data.csv', 'col1,col2\n1,2\n')
 
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=mock_extractor, automatic_extractor=True
         )
 
@@ -670,8 +644,7 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
         )
 
     @patch(
-        'globaldatafinance.brazil.cvm.fundamental_stocks_data.http.'
-        'remove_owned_staging_file'
+        'globaldatafinance.brazil.cvm.ingestion.http.remove_owned_staging_file'
     )
     async def test_download_and_extract_extraction_error(
         self, _mock_remove, tmp_path
@@ -692,7 +665,7 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
             'test-data/file.zip', 'Bad CSV'
         )
 
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=mock_extractor, automatic_extractor=True
         )
 
@@ -719,8 +692,7 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
         assert 'ExtractionFailed' in result.failed_downloads['DRE_2023']
 
     @patch(
-        'globaldatafinance.brazil.cvm.fundamental_stocks_data.http.'
-        'remove_owned_staging_file'
+        'globaldatafinance.brazil.cvm.ingestion.http.remove_owned_staging_file'
     )
     async def test_download_and_extract_disk_full_error(
         self, mock_remove, tmp_path
@@ -739,7 +711,7 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
         mock_extractor = MagicMock()
         mock_extractor.extract.side_effect = DiskFullError('test-data/output')
 
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=mock_extractor, automatic_extractor=True
         )
 
@@ -767,8 +739,7 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
         assert zip_path.exists()
 
     @patch(
-        'globaldatafinance.brazil.cvm.fundamental_stocks_data.http.'
-        'remove_owned_staging_file'
+        'globaldatafinance.brazil.cvm.ingestion.http.remove_owned_staging_file'
     )
     async def test_download_and_extract_unexpected_extraction_error(
         self, _mock_remove, tmp_path
@@ -787,7 +758,7 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
         mock_extractor = MagicMock()
         mock_extractor.extract.side_effect = RuntimeError('Unexpected error')
 
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=mock_extractor, automatic_extractor=True
         )
 
@@ -814,7 +785,7 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
 
     async def test_download_and_extract_download_failure(self, tmp_path):
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=mock_extractor, automatic_extractor=True
         )
 
@@ -842,7 +813,7 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
 
     async def test_download_and_extract_updates_progress(self, tmp_path):
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=mock_extractor, automatic_extractor=False
         )
 
@@ -872,7 +843,7 @@ class TestHttpxAsyncDownloadAdapterDownloadAndExtract:
 class TestHttpxAsyncDownloadAdapterConcurrency:
     async def test_run_downloads_respects_semaphore(self, tmp_path):
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=mock_extractor, max_concurrent=2
         )
 
@@ -912,9 +883,7 @@ class TestHttpxAsyncDownloadAdapterConcurrency:
 
     async def test_run_downloads_with_empty_tasks(self):
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
-            file_extractor_repository=mock_extractor
-        )
+        adapter = CvmDownloadAdapter(file_extractor_repository=mock_extractor)
 
         result = DownloadResultCVM()
 
@@ -927,19 +896,15 @@ class TestHttpxAsyncDownloadAdapterConcurrency:
 @pytest.mark.unit
 class TestHttpxAsyncDownloadAdapterEdgeCases:
     def test_adapter_with_none_extractor(self):
-        adapter = AsyncDownloadAdapterCVM(file_extractor_repository=None)
+        adapter = CvmDownloadAdapter(file_extractor_repository=None)
         assert adapter.file_extractor_repository is None
 
-    @patch(
-        'globaldatafinance.brazil.cvm.fundamental_stocks_data.http.asyncio.run'
-    )
+    @patch('globaldatafinance.brazil.cvm.ingestion.http.asyncio.run')
     def test_download_docs_delegates_to_asyncio_run(
         self, mock_asyncio_run, tmp_path
     ):
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
-            file_extractor_repository=mock_extractor
-        )
+        adapter = CvmDownloadAdapter(file_extractor_repository=mock_extractor)
         expected = DownloadResultCVM()
         mock_asyncio_run.return_value = expected
 
@@ -965,9 +930,7 @@ class TestHttpxAsyncDownloadAdapterEdgeCases:
 class TestHttpxAsyncDownloadAdapterDownloadDocsRepository:
     def test_implements_download_docs_method(self):
         mock_extractor = MagicMock()
-        adapter = AsyncDownloadAdapterCVM(
-            file_extractor_repository=mock_extractor
-        )
+        adapter = CvmDownloadAdapter(file_extractor_repository=mock_extractor)
 
         assert hasattr(adapter, 'download_docs')
         assert callable(adapter.download_docs)

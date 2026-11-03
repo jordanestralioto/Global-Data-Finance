@@ -14,23 +14,19 @@ import pyarrow.parquet as pq
 import pytest
 
 from globaldatafinance import FundamentalStocksDataCVM
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
+from globaldatafinance.brazil.cvm.fundamental_stocks_data.core import (
+    AvailableYearsCVM,
+)
+from globaldatafinance.brazil.cvm.ingestion import (
     download_finalization,
     download_paths,
     download_validation,
     parquet_validation,
     transaction,
 )
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.core import (
-    AvailableYearsCVM,
-    DownloadResultCVM,
-)
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
-    ParquetExtractorAdapterCVM,
-)
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.http import (
-    AsyncDownloadAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
+from globaldatafinance.brazil.cvm.ingestion.http import CvmDownloadAdapter
+from globaldatafinance.brazil.cvm.ingestion.models import DownloadResultCVM
 from globaldatafinance.core.archive_safety import ArchiveSafetyLimits
 from globaldatafinance.macro_exceptions import (
     CorruptedZipError,
@@ -143,17 +139,15 @@ def test_readable_parquet_from_another_source_cannot_confirm_extraction(
     tmp_path: Path,
 ) -> None:
     """A readable stale output cannot certify a newly downloaded ZIP."""
-    from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-        download_extraction,
-    )
-    from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
-        ParquetExtractorAdapterCVM,
+    from globaldatafinance.brazil.cvm.ingestion import download_extraction
+    from globaldatafinance.brazil.cvm.ingestion.extract import (
+        CvmParquetExtractor,
     )
 
     path = tmp_path / 'source.zip'
     with zipfile.ZipFile(path, 'w') as archive:
         archive.writestr('data.csv', b'value\noriginal\n')
-    ParquetExtractorAdapterCVM().extract(str(path), str(tmp_path))
+    CvmParquetExtractor().extract(str(path), str(tmp_path))
     previous = (tmp_path / 'data.parquet').read_bytes()
     with zipfile.ZipFile(path, 'w') as archive:
         archive.writestr('data.csv', b'value\nreplacement\n')
@@ -185,7 +179,7 @@ def test_missing_source_preserves_outputs_and_its_filesystem_cause(
         max_compression_ratio=100,
     )
     with pytest.raises(ExtractionError) as captured:
-        ParquetExtractorAdapterCVM(archive_limits=limits).extract(
+        CvmParquetExtractor(archive_limits=limits).extract(
             str(tmp_path / 'missing.zip'), str(tmp_path)
         )
     assert isinstance(captured.value.__cause__, FileNotFoundError)
@@ -224,7 +218,7 @@ async def test_adapter_rejects_non_boolean_extraction_before_download(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Direct async adapter calls cannot turn truthy values into extraction."""
-    adapter = AsyncDownloadAdapterCVM(None)
+    adapter = CvmDownloadAdapter(None)
     stream = AsyncMock()
     monkeypatch.setattr(adapter, '_stream_download', stream)
     invalid_flag: Any = 'yes'
@@ -249,7 +243,7 @@ async def test_cancellation_waits_for_all_scheduled_downloads_to_stop(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Cancelling a campaign cannot leave downloads running after return."""
-    adapter = AsyncDownloadAdapterCVM(None, max_concurrent=2)
+    adapter = CvmDownloadAdapter(None, max_concurrent=2)
     active = 0
     started = asyncio.Event()
     stopped = asyncio.Event()

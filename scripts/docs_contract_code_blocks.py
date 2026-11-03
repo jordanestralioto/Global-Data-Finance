@@ -27,8 +27,7 @@ def _check_class_node(
 ) -> None:
     """Record the documented CVM adapter and its download method."""
     if not (
-        isinstance(node, ast.ClassDef)
-        and node.name == 'AsyncDownloadAdapterCVM'
+        isinstance(node, ast.ClassDef) and node.name == 'CvmDownloadAdapter'
     ):
         return
     state.has_cvm_adapter = True

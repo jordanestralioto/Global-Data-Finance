@@ -131,7 +131,7 @@ ______________________________________________________________________
 ## Source-Specific Policy
 
 The CVM flow uses a static concurrency semaphore in
-`AsyncDownloadAdapterCVM`; it does not query `ResourceMonitor` to resize
+`CvmDownloadAdapter`; it does not query `ResourceMonitor` to resize
 workers during downloads. The limit is set by `max_concurrent` when the
 adapter is constructed.
 

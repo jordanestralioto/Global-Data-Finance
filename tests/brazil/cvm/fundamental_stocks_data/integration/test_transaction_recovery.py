@@ -10,12 +10,8 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    write_ownership,
-)
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
-    ParquetExtractorAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion import write_ownership
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
 from globaldatafinance.macro_infra.transactional_publication import (
     TransactionalPublisher,
 )
@@ -61,7 +57,7 @@ def test_first_extraction_recovers_removed_transaction_directories(
     owner.unlink()
     outer_lock.rmdir()
 
-    ParquetExtractorAdapterCVM().extract(str(source), str(tmp_path))
+    CvmParquetExtractor().extract(str(source), str(tmp_path))
 
     assert pq.read_table(tmp_path / 'data.parquet').to_pylist() == [
         {'id': '1', 'name': 'first'},

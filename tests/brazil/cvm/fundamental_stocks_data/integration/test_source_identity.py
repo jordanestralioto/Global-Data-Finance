@@ -5,13 +5,12 @@ from __future__ import annotations
 import zipfile
 from pathlib import Path
 
+import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import transaction
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
-    ParquetExtractorAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion import transaction
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
 from globaldatafinance.macro_exceptions import ExtractionError
 
 pytestmark = pytest.mark.integration
@@ -44,7 +43,7 @@ def test_replaced_source_cannot_publish_mislabeled_archive_content(
         transaction.CvmCsvParquetPipeline, 'convert', replace_then_convert
     )
     with pytest.raises(ExtractionError, match='source changed'):
-        ParquetExtractorAdapterCVM().extract(str(source), str(tmp_path))
+        CvmParquetExtractor().extract(str(source), str(tmp_path))
     assert output.read_bytes() == b'previous output'
     assert not list(tmp_path.glob('.globaldatafinance-transaction-*'))
 
@@ -59,7 +58,7 @@ def test_source_revision_cannot_leave_obsolete_parquets_as_success(
         source,
         {'kept.csv': b'value\noriginal\n', 'removed.csv': b'value\nold\n'},
     )
-    extractor = ParquetExtractorAdapterCVM()
+    extractor = CvmParquetExtractor()
     extractor.extract(str(source), str(tmp_path))
     previous = {path: path.read_bytes() for path in tmp_path.glob('*.parquet')}
     revised = {'kept.csv': b'value\nupdated\n'}
@@ -77,7 +76,7 @@ def test_independent_archive_artifacts_remain_valid_in_shared_directory(
     tmp_path: Path,
 ) -> None:
     """Inventory ownership distinguishes unrelated archives and years."""
-    extractor = ParquetExtractorAdapterCVM()
+    extractor = CvmParquetExtractor()
     first = tmp_path / 'first.zip'
     second = tmp_path / 'second.zip'
     _archive(first, {'first.csv': b'value\nfirst\n'})
@@ -92,15 +91,19 @@ def test_independent_archive_artifacts_remain_valid_in_shared_directory(
     ]
 
 
-def test_official_source_rejects_obsolete_legacy_artifacts(
+def test_source_metadata_identifies_obsolete_artifacts_without_filename_rules(
     tmp_path: Path,
 ) -> None:
-    """Official document/year names identify old files without new metadata."""
+    """Current source identity identifies artifacts independently of names."""
     source = tmp_path / 'dfp_cia_aberta_2024.zip'
     _archive(source, {'dfp_cia_aberta_2024.csv': b'value\nnew\n'})
-    previous = tmp_path / 'dfp_cia_aberta_removed_2024.parquet'
-    previous.write_bytes(b'legacy output')
+    previous = tmp_path / 'removed-table.parquet'
+    table = pa.table({'value': ['previous']}).replace_schema_metadata(
+        {b'cvm.source-archive': source.name.encode('utf-8')}
+    )
+    pq.write_table(table, previous)
+    previous_bytes = previous.read_bytes()
     with pytest.raises(ExtractionError, match='Obsolete CVM artifacts'):
-        ParquetExtractorAdapterCVM().extract(str(source), str(tmp_path))
-    assert previous.read_bytes() == b'legacy output'
+        CvmParquetExtractor().extract(str(source), str(tmp_path))
+    assert previous.read_bytes() == previous_bytes
     assert not (tmp_path / 'dfp_cia_aberta_2024.parquet').exists()

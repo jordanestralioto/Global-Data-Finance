@@ -39,16 +39,18 @@ def get_last_b3_phase_timings() -> dict[str, Any]:
 
 def run_cvm(source: ScenarioInput, output_dir: Path) -> OperationResult:
     """Run the production CVM transaction over one generated ZIP."""
-    import globaldatafinance.brazil.cvm.fundamental_stocks_data as cvm_data
+    from globaldatafinance.brazil.cvm.ingestion.transaction import (
+        CvmFailureAtomicBatchCommit,
+    )
 
     if source.path is None:
         raise ValueError('CVM benchmark requires a source ZIP')
     output_dir.mkdir()
     started = time.perf_counter()
     with zipfile.ZipFile(source.path, 'r') as archive:
-        cvm_data.transaction.CvmFailureAtomicBatchCommit(
-            str(source.path), str(output_dir)
-        ).execute(archive)
+        CvmFailureAtomicBatchCommit(str(source.path), str(output_dir)).execute(
+            archive
+        )
     op_sec = time.perf_counter() - started
     rows, fp, eq, out_bytes, digest = output_validation.validate_cvm_output(
         output_dir, source

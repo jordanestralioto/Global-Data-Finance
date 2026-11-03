@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import destination_io
+from globaldatafinance.brazil.cvm.ingestion import destination_io
 from globaldatafinance.macro_exceptions import SecurityError
 
 pytestmark = pytest.mark.unit

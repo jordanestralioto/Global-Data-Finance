@@ -8,9 +8,7 @@ from unittest.mock import AsyncMock
 import httpx
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.http import (
-    AsyncDownloadAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion.http import CvmDownloadAdapter
 from tests.support.fake_http import install_mock_http_transport
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
@@ -49,7 +47,7 @@ async def test_completed_get_uses_only_its_own_optional_size(
         return response
 
     install_mock_http_transport(monkeypatch, respond)
-    adapter = AsyncDownloadAdapterCVM(None)
+    adapter = CvmDownloadAdapter(None)
     result = await adapter.async_download_docs(
         [('https://example.test/source.zip', 'DFP', '2024', str(tmp_path))]
     )
@@ -79,9 +77,7 @@ async def test_get_size_mismatch_preserves_existing_zip_and_cleans_staging(
         )
 
     install_mock_http_transport(monkeypatch, respond)
-    result = await AsyncDownloadAdapterCVM(
-        None, max_retries=0
-    ).async_download_docs(
+    result = await CvmDownloadAdapter(None, max_retries=0).async_download_docs(
         [('https://example.test/source.zip', 'DFP', '2024', str(tmp_path))]
     )
 
@@ -108,7 +104,7 @@ async def test_get_size_mismatch_retries_with_metadata_from_the_new_attempt(
         )
 
     install_mock_http_transport(monkeypatch, respond)
-    adapter = AsyncDownloadAdapterCVM(None, max_retries=1, initial_backoff=0)
+    adapter = CvmDownloadAdapter(None, max_retries=1, initial_backoff=0)
     result = await adapter.async_download_docs(
         [('https://example.test/source.zip', 'DFP', '2024', str(tmp_path))]
     )
@@ -128,7 +124,7 @@ async def test_automatic_extraction_keeps_adapter_configuration_unchanged(
     install_mock_http_transport(
         monkeypatch, lambda _request: httpx.Response(200, content=payload)
     )
-    adapter = AsyncDownloadAdapterCVM(None)
+    adapter = CvmDownloadAdapter(None)
     head = AsyncMock(side_effect=AssertionError('unexpected HEAD'))
     monkeypatch.setattr(adapter.requests_adapter, 'async_head', head)
     automatic = tmp_path / 'automatic'

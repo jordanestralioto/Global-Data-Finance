@@ -6,30 +6,10 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    download_validation,
-)
+from globaldatafinance.brazil.cvm.ingestion import download_validation
 from tests.support.builders import write_zip
 
 pytestmark = pytest.mark.integration
-
-
-def test_find_parquet_files(tmp_path: Path) -> None:
-    sub_dir = tmp_path / 'nested' / 'dir'
-    sub_dir.mkdir(parents=True)
-
-    file1 = tmp_path / 'top.parquet'
-    file2 = sub_dir / 'nested.parquet'
-    file3 = tmp_path / 'other.txt'
-
-    file1.touch()
-    file2.touch()
-    file3.touch()
-
-    found = download_validation.find_parquet_files(str(tmp_path))
-    assert len(found) == 2
-    assert file1 in found
-    assert file2 in found
 
 
 def test_validate_parquet_files_valid_files(tmp_path: Path) -> None:

@@ -7,9 +7,7 @@ from pathlib import Path
 import pytest
 
 from globaldatafinance import FundamentalStocksDataCVM, HistoricalQuotesB3
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    download_extraction,
-)
+from globaldatafinance.brazil.cvm.ingestion import download_extraction
 from globaldatafinance.core.config import (
     ArchiveSafetySettings,
     NetworkSettings,

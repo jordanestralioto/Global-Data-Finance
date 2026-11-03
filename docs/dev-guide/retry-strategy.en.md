@@ -182,7 +182,7 @@ Concrete download adapters invoke `RetryStrategy` automatically during network o
 ```python
 from globaldatafinance import FundamentalStocksDataCVM
 
-# AsyncDownloadAdapterCVM natively integrates automated exponential backoff loops
+# CvmDownloadAdapter natively integrates automated exponential backoff loops
 cvm = FundamentalStocksDataCVM()
 result = cvm.download(
     destination_path="/data/cvm",

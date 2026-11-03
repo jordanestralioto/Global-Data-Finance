@@ -22,9 +22,7 @@ if __name__ == '__main__' and not __package__:
 
 import pyarrow.parquet as pq
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    ParquetExtractorAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
 from scripts.benchmark_cvm_http_support import (
     DEFAULT_BATCH_SIZE,
     DEFAULT_CHUNKS,
@@ -64,7 +62,7 @@ def _run_configuration(
         tasks.append((url, 'DFP', str(2020 + index), str(destination)))
 
     extractor = TimedParquetExtractor(
-        ParquetExtractorAdapterCVM(),
+        CvmParquetExtractor(),
         measurements,
     )
     adapter = MeasuredDownloadAdapter(

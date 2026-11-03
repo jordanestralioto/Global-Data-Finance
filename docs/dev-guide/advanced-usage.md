@@ -205,10 +205,10 @@ registre os resultados reais antes de usar um adaptador próprio.
 from globaldatafinance.brazil.cvm.fundamental_stocks_data.client import (
     DownloadDocumentsUseCaseCVM,
 )
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.core import (
+from globaldatafinance.brazil.cvm.ingestion.models import (
     DownloadResultCVM,
 )
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.http import (
+from globaldatafinance.brazil.cvm.ingestion.http import (
     DownloadTaskCVM,
 )
 

@@ -10,13 +10,11 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.csv_pipeline import (
+from globaldatafinance.brazil.cvm.ingestion.csv_pipeline import (
     records,
     writer,
 )
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
-    ParquetExtractorAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
 from globaldatafinance.macro_exceptions import ExtractionError
 
 pytestmark = pytest.mark.integration
@@ -49,7 +47,7 @@ def test_readable_wrong_values_cannot_be_published(
 
     monkeypatch.setattr(writer, '_write_row_group', corrupt_field)
     with pytest.raises(ExtractionError, match='differs from the complete CSV'):
-        ParquetExtractorAdapterCVM().extract(str(source), str(tmp_path))
+        CvmParquetExtractor().extract(str(source), str(tmp_path))
 
     assert source.read_bytes() == source_bytes
     assert previous.read_bytes() == b'previous output'
@@ -65,7 +63,7 @@ def test_large_fields_preserve_text_without_global_csv_parser_mutation(
     field_limit_before = csv.field_size_limit()
     source = _source(tmp_path, f'value\n{value}\n'.encode())
 
-    ParquetExtractorAdapterCVM().extract(str(source), str(tmp_path))
+    CvmParquetExtractor().extract(str(source), str(tmp_path))
 
     assert pq.read_table(tmp_path / 'data.parquet').to_pylist() == [
         {'value': value}
@@ -83,7 +81,7 @@ def test_oversized_record_is_rejected_without_replacing_existing_output(
     monkeypatch.setattr(records, 'MAX_RECORD_BYTES', 32)
 
     with pytest.raises(ExtractionError, match='record exceeds 32'):
-        ParquetExtractorAdapterCVM().extract(str(source), str(tmp_path))
+        CvmParquetExtractor().extract(str(source), str(tmp_path))
 
     assert previous.read_bytes() == b'previous output'
     assert source.exists()
@@ -97,7 +95,7 @@ def test_wide_rows_use_a_byte_budget_for_row_groups(
     source = _source(tmp_path, ('value\n' + '\n'.join(values) + '\n').encode())
     monkeypatch.setattr(writer, 'ROW_GROUP_BYTES', 8192)
 
-    ParquetExtractorAdapterCVM().extract(str(source), str(tmp_path))
+    CvmParquetExtractor().extract(str(source), str(tmp_path))
 
     with pq.ParquetFile(tmp_path / 'data.parquet') as parquet:
         groups = [
@@ -119,7 +117,7 @@ def test_every_supported_line_ending_preserves_fields_and_empty_records(
         tmp_path, ending.join(['id;value', '0001;N/A', '', '']).encode()
     )
 
-    ParquetExtractorAdapterCVM().extract(str(source), str(tmp_path))
+    CvmParquetExtractor().extract(str(source), str(tmp_path))
 
     assert pq.read_table(tmp_path / 'data.parquet').to_pylist() == [
         {'id': '0001', 'value': 'N/A'},
@@ -132,7 +130,7 @@ def test_final_record_without_line_ending_preserves_its_fields(
 ) -> None:
     """EOF terminates a complete final record without requiring a newline."""
     source = _source(tmp_path, b'id;value\n0007;N/A')
-    ParquetExtractorAdapterCVM().extract(str(source), str(tmp_path))
+    CvmParquetExtractor().extract(str(source), str(tmp_path))
     assert pq.read_table(tmp_path / 'data.parquet').to_pylist() == [
         {'id': '0007', 'value': 'N/A'}
     ]
@@ -144,7 +142,7 @@ def test_exactly_full_row_group_never_creates_an_empty_trailing_group(
     """The row-group boundary preserves every source row and its order."""
     values = [str(index) for index in range(50_000)]
     source = _source(tmp_path, ('value\n' + '\n'.join(values) + '\n').encode())
-    ParquetExtractorAdapterCVM().extract(str(source), str(tmp_path))
+    CvmParquetExtractor().extract(str(source), str(tmp_path))
     with pq.ParquetFile(tmp_path / 'data.parquet') as parquet:
         assert parquet.metadata.num_row_groups == 1
         assert parquet.metadata.row_group(0).num_rows == 50_000

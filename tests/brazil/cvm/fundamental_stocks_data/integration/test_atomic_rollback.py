@@ -10,13 +10,11 @@ from pathlib import Path
 import pyarrow.parquet as pq
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
+from globaldatafinance.brazil.cvm.ingestion import (
     source_inventory,
     transaction,
 )
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
-    ParquetExtractorAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
 from globaldatafinance.macro_exceptions import (
     CorruptedZipError,
     DiskFullError,
@@ -54,7 +52,7 @@ def test_corrupted_input_preserves_existing_output_and_never_stages(
     source.write_bytes(b'not a ZIP archive')
 
     with pytest.raises(CorruptedZipError):
-        ParquetExtractorAdapterCVM().extract(str(source), str(destination))
+        CvmParquetExtractor().extract(str(source), str(destination))
 
     assert sentinel.read_bytes() == expected
     assert _transaction_state(destination) == []
@@ -79,7 +77,7 @@ def test_malformed_later_member_preserves_old_output_and_source_bytes(
     source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
 
     with pytest.raises(ExtractionError, match='observed_fields=2'):
-        ParquetExtractorAdapterCVM().extract(str(source), str(destination))
+        CvmParquetExtractor().extract(str(source), str(destination))
 
     assert hashlib.sha256(existing.read_bytes()).hexdigest() == expected
     assert hashlib.sha256(source.read_bytes()).hexdigest() == source_hash
@@ -109,7 +107,7 @@ def test_disk_full_during_conversion_preserves_input_and_existing_output(
     )
 
     with pytest.raises(DiskFullError):
-        ParquetExtractorAdapterCVM().extract(str(source), str(destination))
+        CvmParquetExtractor().extract(str(source), str(destination))
 
     assert existing.read_bytes() == b'old version'
     assert source.exists()
@@ -136,7 +134,7 @@ def test_staged_filesystem_write_error_preserves_old_output_and_cause(
     monkeypatch.setattr(pq, 'ParquetWriter', fail_writer)
 
     with pytest.raises(ParquetWriteError) as exc_info:
-        ParquetExtractorAdapterCVM().extract(str(source), str(destination))
+        CvmParquetExtractor().extract(str(source), str(destination))
 
     assert exc_info.value.__cause__ is original
     assert existing.read_bytes() == b'old version'
@@ -164,7 +162,7 @@ def test_staged_enospc_remains_disk_full_and_preserves_old_output(
     monkeypatch.setattr(pq, 'ParquetWriter', fail_writer)
 
     with pytest.raises(DiskFullError) as exc_info:
-        ParquetExtractorAdapterCVM().extract(str(source), str(destination))
+        CvmParquetExtractor().extract(str(source), str(destination))
 
     assert exc_info.value.__cause__ is original
     assert existing.read_bytes() == b'old version'
@@ -192,7 +190,7 @@ def test_staged_reopen_error_uses_parquet_write_boundary(
     monkeypatch.setattr(pq, 'ParquetFile', fail_reopen)
 
     with pytest.raises(ParquetWriteError) as exc_info:
-        ParquetExtractorAdapterCVM().extract(str(source), str(destination))
+        CvmParquetExtractor().extract(str(source), str(destination))
 
     assert exc_info.value.__cause__ is original
     assert existing.read_bytes() == b'old version'
@@ -215,7 +213,7 @@ def test_successful_batch_replaces_conflicts_and_creates_new_outputs(
         },
     )
 
-    ParquetExtractorAdapterCVM().extract(str(source), str(destination))
+    CvmParquetExtractor().extract(str(source), str(destination))
 
     assert pq.read_table(destination / 'first.parquet').to_pylist() == [
         {'version': 'new'}
@@ -239,7 +237,7 @@ def test_basename_collision_is_rejected_before_staging(
     )
 
     with pytest.raises(ExtractionError, match='collide'):
-        ParquetExtractorAdapterCVM().extract(str(source), str(tmp_path))
+        CvmParquetExtractor().extract(str(source), str(tmp_path))
 
     assert not (tmp_path / 'data.parquet').exists()
     assert _transaction_state(tmp_path) == []
@@ -295,7 +293,7 @@ def test_reserved_unicode_member_is_rejected_before_crc_or_publication(
     )
 
     with pytest.raises(CorruptedZipError, match=r'COM¹\.csv'):
-        ParquetExtractorAdapterCVM().extract(str(source), str(destination))
+        CvmParquetExtractor().extract(str(source), str(destination))
 
     assert crc_called is False
     assert derive_called is False

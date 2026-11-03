@@ -6,9 +6,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
-    ParquetExtractorAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
 from tests.support.builders import csv_bytes, write_zip
 
 pytestmark = pytest.mark.integration
@@ -49,7 +47,7 @@ class TestEstablishedOverwriteSemantics:
             },
         )
 
-        ParquetExtractorAdapterCVM().extract(
+        CvmParquetExtractor().extract(
             source_path=str(archive_path), destination_path=str(tmp_path)
         )
 
@@ -78,7 +76,7 @@ class TestEstablishedOverwriteSemantics:
         for archive_name, rows in archives:
             archive_path = tmp_path / archive_name
             _write_archive(archive_path, {'data.csv': rows})
-            ParquetExtractorAdapterCVM().extract(
+            CvmParquetExtractor().extract(
                 source_path=str(archive_path), destination_path=str(tmp_path)
             )
 
@@ -99,7 +97,7 @@ class TestEstablishedOverwriteSemantics:
             },
         )
 
-        ParquetExtractorAdapterCVM().extract(
+        CvmParquetExtractor().extract(
             source_path=str(archive_path), destination_path=str(tmp_path)
         )
 

@@ -18,7 +18,7 @@ from scripts.file_digests import sha256_file
 
 REQUIRED_MODULES = (
     'globaldatafinance/macro_infra/http_safety.py',
-    'globaldatafinance/brazil/cvm/fundamental_stocks_data/http_retry.py',
+    'globaldatafinance/brazil/cvm/ingestion/http_retry.py',
 )
 
 

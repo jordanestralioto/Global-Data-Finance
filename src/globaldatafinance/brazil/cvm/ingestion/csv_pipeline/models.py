@@ -39,4 +39,3 @@ class CsvAnalysis:
     content_sha256: str
     max_record_bytes: int
     short_rows_seen: bool = False
-    physical_lines: int = 0

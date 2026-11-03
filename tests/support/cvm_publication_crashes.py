@@ -7,13 +7,8 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    transaction,
-    transaction_io,
-)
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
-    ParquetExtractorAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion import transaction, transaction_io
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
 from globaldatafinance.macro_infra.transactional_publication.types import (
     JOURNAL_NAME,
 )
@@ -34,4 +29,4 @@ if __name__ == '__main__':
     with patch.object(
         transaction, 'CvmTransactionFileOperations', CrashAtJournal
     ):
-        ParquetExtractorAdapterCVM().extract(sys.argv[1], sys.argv[2])
+        CvmParquetExtractor().extract(sys.argv[1], sys.argv[2])

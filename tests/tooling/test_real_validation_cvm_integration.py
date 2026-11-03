@@ -14,12 +14,10 @@ import pyarrow.parquet as pq
 import pytest
 
 import scripts.real_validation_cvm as cvm
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.core import (
-    DownloadResultCVM,
-)
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
-    ParquetExtractorAdapterCVM,
-)
+from globaldatafinance import FundamentalStocksDataCVM
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
+from globaldatafinance.brazil.cvm.ingestion.models import DownloadResultCVM
+from globaldatafinance.macro_exceptions import ExtractionError
 from globaldatafinance.macro_infra.transactional_publication import (
     TransactionalPublisher,
 )
@@ -27,6 +25,30 @@ from scripts.real_validation_types import ValidationCase
 from scripts.real_validation_utils import temporary_paths
 
 pytestmark = pytest.mark.integration
+
+
+def test_campaign_default_extractor_checks_source_identity_before_publication(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / 'dfp_cia_aberta_2024.zip'
+    with zipfile.ZipFile(source, 'w') as archive:
+        archive.writestr('dfp_cia_aberta_2024.csv', b'id\n1\n')
+    original = source.read_bytes()
+    obsolete = tmp_path / 'dfp_cia_aberta_removed_2024.parquet'
+    table = pa.table({'id': ['obsolete']}).replace_schema_metadata(
+        {b'cvm.source-archive': source.name.encode('utf-8')}
+    )
+    pq.write_table(table, obsolete)
+    obsolete_bytes = obsolete.read_bytes()
+    facade = FundamentalStocksDataCVM()
+
+    extractor = cvm._configure_campaign_facade(facade)
+    with pytest.raises(ExtractionError, match='Obsolete CVM artifacts'):
+        extractor.extract(str(source), str(tmp_path))
+
+    assert source.read_bytes() == original
+    assert obsolete.read_bytes() == obsolete_bytes
+    assert not (tmp_path / 'dfp_cia_aberta_2024.parquet').exists()
 
 
 def _case(root: Path) -> ValidationCase:
@@ -153,7 +175,7 @@ def test_campaign_archive_receipt_must_match_consumed_parquet_origin(
         def extract(self, source_path: str, destination_path: str) -> None:
             if change != 'metadata':
                 replacement.replace(source)
-            ParquetExtractorAdapterCVM().extract(source_path, destination_path)
+            CvmParquetExtractor().extract(source_path, destination_path)
             if change == 'metadata':
                 path = Path(destination_path) / 'data.parquet'
                 table = pq.read_table(path)

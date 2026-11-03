@@ -7,14 +7,10 @@ from unittest.mock import MagicMock
 import pyarrow.parquet as pq
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    AsyncDownloadAdapterCVM,
-    DownloadResultCVM,
-    destination_io,
-)
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
-    ParquetExtractorAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion import destination_io
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
+from globaldatafinance.brazil.cvm.ingestion.http import CvmDownloadAdapter
+from globaldatafinance.brazil.cvm.ingestion.models import DownloadResultCVM
 
 pytestmark = pytest.mark.integration
 
@@ -28,7 +24,7 @@ async def test_invalid_staged_zip_is_removed_without_publishing(
     output_dir.mkdir()
     staging_path = output_dir / 'DFP_2023.zip.part'
     staging_path.write_bytes(b'invalid zip')
-    adapter = AsyncDownloadAdapterCVM(file_extractor_repository=MagicMock())
+    adapter = CvmDownloadAdapter(file_extractor_repository=MagicMock())
 
     async def staged_download(_url, _filepath, _doc_name, _year):
         return True, str(staging_path)
@@ -60,7 +56,7 @@ async def test_failed_zip_promotion_removes_staging_file(
     output_dir.mkdir()
     staging_path = output_dir / 'DFP_2023.zip.part'
     staging_path.write_bytes(b'validated archive')
-    adapter = AsyncDownloadAdapterCVM(file_extractor_repository=MagicMock())
+    adapter = CvmDownloadAdapter(file_extractor_repository=MagicMock())
     monkeypatch.setattr(
         adapter,
         '_validate_downloaded_file',
@@ -116,10 +112,10 @@ async def test_worker_keeps_loop_live_and_drains_on_cancel(
             extraction_started.set()
             if not release_extraction.wait(timeout=5):
                 raise TimeoutError('test barrier was not released')
-            ParquetExtractorAdapterCVM().extract(source_path, destination_path)
+            CvmParquetExtractor().extract(source_path, destination_path)
             extraction_finished.set()
 
-    adapter = AsyncDownloadAdapterCVM(
+    adapter = CvmDownloadAdapter(
         file_extractor_repository=BarrierExtractor(),
         automatic_extractor=True,
     )

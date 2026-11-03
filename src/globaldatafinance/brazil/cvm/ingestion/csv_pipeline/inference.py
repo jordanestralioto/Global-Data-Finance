@@ -51,7 +51,6 @@ def analyse_csv(
         content_sha256=digest.hexdigest(),
         max_record_bytes=max_record_bytes,
         short_rows_seen=short_rows_seen,
-        physical_lines=rows + 1,
     )
 
 

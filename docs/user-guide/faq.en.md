@@ -222,7 +222,7 @@ ______________________________________________________________________
 ### How are CVM file downloads accelerated?
 
 Global-Data-Finance uses asynchronous concurrent downloads by default
-(`AsyncDownloadAdapterCVM`, up to 10 simultaneous downloads). Elapsed time
+(`CvmDownloadAdapter`, up to 10 simultaneous downloads). Elapsed time
 depends on the network, CVM servers, and requested volume; see the [full CVM
 pipeline baseline](../dev-guide/benchmarks.en.md).
 

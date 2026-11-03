@@ -37,11 +37,6 @@ def validate_downloaded_file(
         return False
 
 
-def find_parquet_files(dest_path: str) -> list[Path]:
-    """Return all Parquet files below a destination directory."""
-    return list(Path(dest_path).glob('**/*.parquet'))
-
-
 def validate_parquet_files(
     parquet_files: list[Path],
     doc_name: str,

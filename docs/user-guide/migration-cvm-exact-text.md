@@ -60,10 +60,22 @@ todos os Parquet esperados e sua associação ao ZIP consumido. Checksums de
 página, leitura completa e `fsync` protegem a publicação persistida.
 
 Todas as passagens leem o mesmo ZIP aberto; alterações na origem interrompem
-a extração antes da publicação. Se uma revisão do ZIP remover ou renomear um
-CSV, os Parquets obsoletos desse arquivo impedem o reprocessamento no mesmo
-destino. Preserve a saída anterior e regenere a revisão em um diretório limpo;
-a biblioteca não apaga arquivos antigos automaticamente.
+a extração antes da publicação.
+
+### Inventário das saídas
+
+Os Parquets esperados pelo ZIP são publicados nos nomes correspondentes,
+substituindo na transação qualquer arquivo com um desses nomes. Arquivos fora
+desse inventário bloqueiam o reprocessamento quando `cvm.source-archive` os
+associa a um ZIP de mesmo nome.
+Sem essa identidade, são preservados como dados do chamador, sem reconhecimento
+pelo nome, e podem coexistir com as saídas novas mesmo após sucesso.
+
+O resultado confirma as saídas esperadas, sem certificar todos os Parquets do
+diretório. Para substituir um dataset, preserve os arquivos anteriores, regenere
+em um destino novo e confira os dados antes de trocar o consumidor.
+
+### Limites do contrato textual
 
 Aspas continuam literais no dialeto `QUOTE_NONE`. Linhas curtas recebem campos
 vazios ao final; o ZIP retido preserva a diferença entre campos ausentes e
@@ -86,7 +98,7 @@ evidência e recupere o estado derivado da transação. A biblioteca nunca toma
 automaticamente um lock sem verificar sua autoridade. Falhas permanecem no
 resultado; não interprete apenas a existência de um Parquet como sucesso.
 
-IPE passa a incluir 2003 em diante. `get_available_years().ipe_min_year`
+IPE inclui 2003 em diante. `get_available_years().ipe_min_year`
 informa esse limite como propriedade; os quatro campos da tupla continuam
 representando documentos gerais, ITR, CGVN/VLMO e ano corrente.
 

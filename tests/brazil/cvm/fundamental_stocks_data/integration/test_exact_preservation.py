@@ -10,12 +10,8 @@ import pyarrow.parquet as pq
 import pytest
 
 from globaldatafinance import FundamentalStocksDataCVM
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    download_extraction,
-)
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
-    ParquetExtractorAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion import download_extraction
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
 
 pytestmark = pytest.mark.integration
 
@@ -50,7 +46,7 @@ def test_every_source_token_survives_exactly(
     with zipfile.ZipFile(source, 'w') as archive:
         archive.writestr('source.csv', f'value\n{value}\n'.encode())
 
-    ParquetExtractorAdapterCVM().extract(str(source), str(tmp_path))
+    CvmParquetExtractor().extract(str(source), str(tmp_path))
 
     table = pq.read_table(tmp_path / 'source.parquet')
     assert table.column('value').to_pylist() == [value]
@@ -74,7 +70,7 @@ def test_success_preserves_all_original_archive_members(
     original_bytes = source.read_bytes()
 
     result = download_extraction.extract_downloaded_file(
-        ParquetExtractorAdapterCVM(),
+        CvmParquetExtractor(),
         str(source),
         str(tmp_path),
         'DFP',
@@ -100,7 +96,7 @@ def test_ipe_download_includes_all_historical_years(
     captured: list[tuple[str, str, str, str]] = []
 
     def capture_downloads(tasks, *, automatic_extractor):
-        from globaldatafinance.brazil.cvm.fundamental_stocks_data.core import (
+        from globaldatafinance.brazil.cvm.ingestion.models import (
             DownloadResultCVM,
         )
 

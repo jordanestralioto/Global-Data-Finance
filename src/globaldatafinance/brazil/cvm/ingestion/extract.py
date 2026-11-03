@@ -26,7 +26,7 @@ from .write_ownership import exclusive_destination
 logger = get_logger(__name__)
 
 
-class ParquetExtractorAdapterCVM:
+class CvmParquetExtractor:
     """Extracts ZIP files containing CSVs and converts to Parquet format."""
 
     def __init__(

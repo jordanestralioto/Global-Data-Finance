@@ -131,7 +131,7 @@ ______________________________________________________________________
 ## Política por Fonte
 
 O fluxo CVM usa um semáforo estático de concorrência no
-`AsyncDownloadAdapterCVM`; ele não consulta o `ResourceMonitor` para redimensionar
+`CvmDownloadAdapter`; ele não consulta o `ResourceMonitor` para redimensionar
 workers durante downloads. O limite é definido por `max_concurrent` na
 construção do adapter.
 

@@ -9,10 +9,10 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.csv_pipeline import (
+from globaldatafinance.brazil.cvm.ingestion.csv_pipeline import (
     CvmCsvParquetPipeline,
 )
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.csv_pipeline import (
+from globaldatafinance.brazil.cvm.ingestion.csv_pipeline import (
     models as csv_models,
 )
 from globaldatafinance.macro_exceptions import ExtractionError

@@ -6,7 +6,7 @@ displaying successful and failed downloads in an organized manner.
 Example:
     >>> from globaldatafinance.application.cvm_docs import \
     ...     DownloadResultFormatter
-    >>> from globaldatafinance.brazil.cvm.fundamental_stocks_data import \
+    >>> from globaldatafinance.brazil.cvm.ingestion.models import \
     ...     DownloadResultCVM
     >>>
     >>> result = DownloadResultCVM()
@@ -17,7 +17,7 @@ Example:
     >>> formatter.print_result(result)
 """
 
-from ...brazil.cvm.fundamental_stocks_data import DownloadResultCVM
+from ...brazil.cvm.ingestion.models import DownloadResultCVM
 
 
 class DownloadResultFormatter:
