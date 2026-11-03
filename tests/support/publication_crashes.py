@@ -39,7 +39,9 @@ class CrashOperations(FileOperations):
     def _pause(self, checkpoint: str) -> None:
         if checkpoint != self.checkpoint:
             return
-        (self.control / 'ready').write_text(str(os.getpid()))
+        pending = self.control / 'ready.pending'
+        pending.write_text(str(os.getpid()))
+        pending.replace(self.control / 'ready')
         deadline = time.monotonic() + 20
         while not (self.control / 'release').exists():
             if time.monotonic() > deadline:
