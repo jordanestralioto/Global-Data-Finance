@@ -65,8 +65,9 @@ publication.
 ### Output inventory
 
 Parquets expected by the ZIP are published under their corresponding names,
-replacing previous outputs within the transaction. Files outside this inventory
-block reprocessing when `cvm.source-archive` associates them with the same ZIP.
+replacing any file with one of those names within the transaction. Files outside
+this inventory block reprocessing when `cvm.source-archive` associates them with
+a ZIP of the same filename.
 Without this identity, they remain caller data without filename recognition and
 can coexist with new outputs even after success.
 

@@ -65,8 +65,9 @@ a extração antes da publicação.
 ### Inventário das saídas
 
 Os Parquets esperados pelo ZIP são publicados nos nomes correspondentes,
-substituindo as saídas anteriores na transação. Arquivos fora desse inventário
-bloqueiam o reprocessamento quando `cvm.source-archive` os associa ao mesmo ZIP.
+substituindo na transação qualquer arquivo com um desses nomes. Arquivos fora
+desse inventário bloqueiam o reprocessamento quando `cvm.source-archive` os
+associa a um ZIP de mesmo nome.
 Sem essa identidade, são preservados como dados do chamador, sem reconhecimento
 pelo nome, e podem coexistir com as saídas novas mesmo após sucesso.
 

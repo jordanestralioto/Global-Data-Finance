@@ -26,7 +26,7 @@ NATIVE_REQUIRED_CASES = (
     'test_redirect_credentials_are_confined_to_the_initial_origin',
     'test_json_secret_fields_remain_valid_json',
     'test_http_status_error_redacts_url_user_info',
-    'test_cvm_metadata_failure_logs_redact_url_credentials',
+    'test_cvm_transfer_failure_logs_redact_url_credentials',
 )
 NATIVE_OPTIONAL_SKIP = (
     'test_initial_ownership_temporary_cannot_alias_caller_data[symlink]'
