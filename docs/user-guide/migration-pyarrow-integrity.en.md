@@ -51,6 +51,16 @@ existing `.github/workflows/publish.yml` runs gates and publication from the
 published-release event. Version, tag, and publication must await approval of
 the acceptance evidence; this draft does not claim a release was published.
 
+**Dependency requirements for the next release:**
+
+- PyArrow: `>=26.0.0,<27.0.0`.
+- psutil: `>=7.2.2,<8.0.0`.
+- pydantic-settings: `>=2.16.1,<3.0.0`.
+
+The development lock also updates `virtualenv` to `21.14.13`, fixing
+[GHSA-cx6f-vjhg-g3cc](https://github.com/advisories/GHSA-cx6f-vjhg-g3cc)
+in Bash environment activation. This dependency is used by `pre-commit`.
+
 **Breaking COTAHIST contract changes:**
 
 - The default selection now preserves every type-`01` quotation, including
