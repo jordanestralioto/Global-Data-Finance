@@ -1,0 +1,641 @@
+{
+  "batch_size": 3,
+  "chunk_sizes_bytes": [
+    8192,
+    65536,
+    262144
+  ],
+  "cpu_count": 8,
+  "git_sha": "5ea904205ea82d993d306509cd168e3e9fe15d50-dirty",
+  "medians": [
+    {
+      "chunk_size_bytes": 8192,
+      "elapsed_seconds_median": 0.2462471139997433,
+      "httpx_client_initialization_seconds_median": 0.03693457999906968,
+      "httpx_client_initializations_median": 6,
+      "parquet_bytes_median": 6939,
+      "parquet_rows_median": 768,
+      "phase_bytes_median": {
+        "extraction": {
+          "announced_bytes": 0,
+          "processed_bytes": 6612,
+          "transferred_bytes": 0
+        },
+        "get": {
+          "announced_bytes": 0,
+          "processed_bytes": 0,
+          "transferred_bytes": 12590178
+        },
+        "head": {
+          "announced_bytes": 12590178,
+          "processed_bytes": 0,
+          "transferred_bytes": 0
+        },
+        "validation": {
+          "announced_bytes": 0,
+          "processed_bytes": 12590178,
+          "transferred_bytes": 0
+        }
+      },
+      "phase_seconds_median": {
+        "extraction": 0.1356649870012916,
+        "get": 0.2009316409994426,
+        "head": 0.04893388700020296,
+        "validation": 0.01263256299898785
+      },
+      "status": "passed",
+      "successful_repeats": 3
+    },
+    {
+      "chunk_size_bytes": 65536,
+      "elapsed_seconds_median": 0.24122242000066763,
+      "httpx_client_initialization_seconds_median": 0.03706441300255392,
+      "httpx_client_initializations_median": 6,
+      "parquet_bytes_median": 6939,
+      "parquet_rows_median": 768,
+      "phase_bytes_median": {
+        "extraction": {
+          "announced_bytes": 0,
+          "processed_bytes": 6612,
+          "transferred_bytes": 0
+        },
+        "get": {
+          "announced_bytes": 0,
+          "processed_bytes": 0,
+          "transferred_bytes": 12590178
+        },
+        "head": {
+          "announced_bytes": 12590178,
+          "processed_bytes": 0,
+          "transferred_bytes": 0
+        },
+        "validation": {
+          "announced_bytes": 0,
+          "processed_bytes": 12590178,
+          "transferred_bytes": 0
+        }
+      },
+      "phase_seconds_median": {
+        "extraction": 0.13339629900110594,
+        "get": 0.1511583370011067,
+        "head": 0.04555185200024425,
+        "validation": 0.014209925000614021
+      },
+      "status": "passed",
+      "successful_repeats": 3
+    },
+    {
+      "chunk_size_bytes": 262144,
+      "elapsed_seconds_median": 0.23590965299990785,
+      "httpx_client_initialization_seconds_median": 0.037091237001732225,
+      "httpx_client_initializations_median": 6,
+      "parquet_bytes_median": 6939,
+      "parquet_rows_median": 768,
+      "phase_bytes_median": {
+        "extraction": {
+          "announced_bytes": 0,
+          "processed_bytes": 6612,
+          "transferred_bytes": 0
+        },
+        "get": {
+          "announced_bytes": 0,
+          "processed_bytes": 0,
+          "transferred_bytes": 12590178
+        },
+        "head": {
+          "announced_bytes": 12590178,
+          "processed_bytes": 0,
+          "transferred_bytes": 0
+        },
+        "validation": {
+          "announced_bytes": 0,
+          "processed_bytes": 12590178,
+          "transferred_bytes": 0
+        }
+      },
+      "phase_seconds_median": {
+        "extraction": 0.12796745099967666,
+        "get": 0.15712266500031546,
+        "head": 0.04723433599974669,
+        "validation": 0.012619693999113224
+      },
+      "status": "passed",
+      "successful_repeats": 3
+    }
+  ],
+  "platform": "Linux-6.8.0-139-generic-x86_64-with-glibc2.39",
+  "python_version": "3.13.9",
+  "records": [
+    {
+      "batch_size": 3,
+      "chunk_size_bytes": 8192,
+      "elapsed_seconds": 0.3039254149998669,
+      "failed_downloads": {},
+      "httpx_client_initialization_fraction_of_http_seconds": 0.29919706354430425,
+      "httpx_client_initialization_seconds": 0.08580603799964592,
+      "httpx_client_initializations": 6,
+      "parquet_artifact_sha256": "db732ffc9cfd2b3f8a182bdd1fb8ba40214ff3f19af18c416c5a8302afab116e",
+      "parquet_bytes": 6939,
+      "parquet_count": 3,
+      "parquet_rows": 768,
+      "parquet_schema_fingerprints": [
+        "f261bd18ae4e89f723df7496e97e763a7903fb64023c3945a1f6f4912fc77dbb"
+      ],
+      "phase_bytes": {
+        "extraction": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 6612,
+          "seconds": 0.13637556699995912,
+          "transferred_bytes": 0
+        },
+        "get": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 0,
+          "seconds": 0.2355257460003486,
+          "transferred_bytes": 12590178
+        },
+        "head": {
+          "announced_bytes": 12590178,
+          "operations": 3,
+          "processed_bytes": 0,
+          "seconds": 0.051261954999063164,
+          "transferred_bytes": 0
+        },
+        "validation": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 12590178,
+          "seconds": 0.01263256299898785,
+          "transferred_bytes": 0
+        }
+      },
+      "phase_seconds": {
+        "extraction": 0.13637556699995912,
+        "get": 0.2355257460003486,
+        "head": 0.051261954999063164,
+        "validation": 0.01263256299898785
+      },
+      "repeat_index": 0,
+      "source": "local",
+      "status": "passed",
+      "successful_downloads": 3
+    },
+    {
+      "batch_size": 3,
+      "chunk_size_bytes": 8192,
+      "elapsed_seconds": 0.2315619129994957,
+      "failed_downloads": {},
+      "httpx_client_initialization_fraction_of_http_seconds": 0.13153041576236027,
+      "httpx_client_initialization_seconds": 0.03251150100004452,
+      "httpx_client_initializations": 6,
+      "parquet_artifact_sha256": "db732ffc9cfd2b3f8a182bdd1fb8ba40214ff3f19af18c416c5a8302afab116e",
+      "parquet_bytes": 6939,
+      "parquet_count": 3,
+      "parquet_rows": 768,
+      "parquet_schema_fingerprints": [
+        "f261bd18ae4e89f723df7496e97e763a7903fb64023c3945a1f6f4912fc77dbb"
+      ],
+      "phase_bytes": {
+        "extraction": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 6612,
+          "seconds": 0.12206717600111006,
+          "transferred_bytes": 0
+        },
+        "get": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 0,
+          "seconds": 0.2009316409994426,
+          "transferred_bytes": 12590178
+        },
+        "head": {
+          "announced_bytes": 12590178,
+          "operations": 3,
+          "processed_bytes": 0,
+          "seconds": 0.04624693599816965,
+          "transferred_bytes": 0
+        },
+        "validation": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 12590178,
+          "seconds": 0.010639219000040612,
+          "transferred_bytes": 0
+        }
+      },
+      "phase_seconds": {
+        "extraction": 0.12206717600111006,
+        "get": 0.2009316409994426,
+        "head": 0.04624693599816965,
+        "validation": 0.010639219000040612
+      },
+      "repeat_index": 1,
+      "source": "local",
+      "status": "passed",
+      "successful_downloads": 3
+    },
+    {
+      "batch_size": 3,
+      "chunk_size_bytes": 8192,
+      "elapsed_seconds": 0.2462471139997433,
+      "failed_downloads": {},
+      "httpx_client_initialization_fraction_of_http_seconds": 0.1814073981205915,
+      "httpx_client_initialization_seconds": 0.03693457999906968,
+      "httpx_client_initializations": 6,
+      "parquet_artifact_sha256": "db732ffc9cfd2b3f8a182bdd1fb8ba40214ff3f19af18c416c5a8302afab116e",
+      "parquet_bytes": 6939,
+      "parquet_count": 3,
+      "parquet_rows": 768,
+      "parquet_schema_fingerprints": [
+        "f261bd18ae4e89f723df7496e97e763a7903fb64023c3945a1f6f4912fc77dbb"
+      ],
+      "phase_bytes": {
+        "extraction": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 6612,
+          "seconds": 0.1356649870012916,
+          "transferred_bytes": 0
+        },
+        "get": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 0,
+          "seconds": 0.15466629899947293,
+          "transferred_bytes": 12590178
+        },
+        "head": {
+          "announced_bytes": 12590178,
+          "operations": 3,
+          "processed_bytes": 0,
+          "seconds": 0.04893388700020296,
+          "transferred_bytes": 0
+        },
+        "validation": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 12590178,
+          "seconds": 0.015394622999338026,
+          "transferred_bytes": 0
+        }
+      },
+      "phase_seconds": {
+        "extraction": 0.1356649870012916,
+        "get": 0.15466629899947293,
+        "head": 0.04893388700020296,
+        "validation": 0.015394622999338026
+      },
+      "repeat_index": 2,
+      "source": "local",
+      "status": "passed",
+      "successful_downloads": 3
+    },
+    {
+      "batch_size": 3,
+      "chunk_size_bytes": 65536,
+      "elapsed_seconds": 0.23533458600013546,
+      "failed_downloads": {},
+      "httpx_client_initialization_fraction_of_http_seconds": 0.188421419300753,
+      "httpx_client_initialization_seconds": 0.03706441300255392,
+      "httpx_client_initializations": 6,
+      "parquet_artifact_sha256": "db732ffc9cfd2b3f8a182bdd1fb8ba40214ff3f19af18c416c5a8302afab116e",
+      "parquet_bytes": 6939,
+      "parquet_count": 3,
+      "parquet_rows": 768,
+      "parquet_schema_fingerprints": [
+        "f261bd18ae4e89f723df7496e97e763a7903fb64023c3945a1f6f4912fc77dbb"
+      ],
+      "phase_bytes": {
+        "extraction": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 6612,
+          "seconds": 0.13339629900110594,
+          "transferred_bytes": 0
+        },
+        "get": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 0,
+          "seconds": 0.1511583370011067,
+          "transferred_bytes": 12590178
+        },
+        "head": {
+          "announced_bytes": 12590178,
+          "operations": 3,
+          "processed_bytes": 0,
+          "seconds": 0.04555185200024425,
+          "transferred_bytes": 0
+        },
+        "validation": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 12590178,
+          "seconds": 0.014209925000614021,
+          "transferred_bytes": 0
+        }
+      },
+      "phase_seconds": {
+        "extraction": 0.13339629900110594,
+        "get": 0.1511583370011067,
+        "head": 0.04555185200024425,
+        "validation": 0.014209925000614021
+      },
+      "repeat_index": 0,
+      "source": "local",
+      "status": "passed",
+      "successful_downloads": 3
+    },
+    {
+      "batch_size": 3,
+      "chunk_size_bytes": 65536,
+      "elapsed_seconds": 0.24162747699938336,
+      "failed_downloads": {},
+      "httpx_client_initialization_fraction_of_http_seconds": 0.1575241957032157,
+      "httpx_client_initialization_seconds": 0.038845277001200884,
+      "httpx_client_initializations": 6,
+      "parquet_artifact_sha256": "db732ffc9cfd2b3f8a182bdd1fb8ba40214ff3f19af18c416c5a8302afab116e",
+      "parquet_bytes": 6939,
+      "parquet_count": 3,
+      "parquet_rows": 768,
+      "parquet_schema_fingerprints": [
+        "f261bd18ae4e89f723df7496e97e763a7903fb64023c3945a1f6f4912fc77dbb"
+      ],
+      "phase_bytes": {
+        "extraction": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 6612,
+          "seconds": 0.12150653099979536,
+          "transferred_bytes": 0
+        },
+        "get": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 0,
+          "seconds": 0.20109920499999134,
+          "transferred_bytes": 12590178
+        },
+        "head": {
+          "announced_bytes": 12590178,
+          "operations": 3,
+          "processed_bytes": 0,
+          "seconds": 0.04549959099949774,
+          "transferred_bytes": 0
+        },
+        "validation": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 12590178,
+          "seconds": 0.010474294999767153,
+          "transferred_bytes": 0
+        }
+      },
+      "phase_seconds": {
+        "extraction": 0.12150653099979536,
+        "get": 0.20109920499999134,
+        "head": 0.04549959099949774,
+        "validation": 0.010474294999767153
+      },
+      "repeat_index": 1,
+      "source": "local",
+      "status": "passed",
+      "successful_downloads": 3
+    },
+    {
+      "batch_size": 3,
+      "chunk_size_bytes": 65536,
+      "elapsed_seconds": 0.24122242000066763,
+      "failed_downloads": {},
+      "httpx_client_initialization_fraction_of_http_seconds": 0.18298521351360678,
+      "httpx_client_initialization_seconds": 0.03641641799822537,
+      "httpx_client_initializations": 6,
+      "parquet_artifact_sha256": "db732ffc9cfd2b3f8a182bdd1fb8ba40214ff3f19af18c416c5a8302afab116e",
+      "parquet_bytes": 6939,
+      "parquet_count": 3,
+      "parquet_rows": 768,
+      "parquet_schema_fingerprints": [
+        "f261bd18ae4e89f723df7496e97e763a7903fb64023c3945a1f6f4912fc77dbb"
+      ],
+      "phase_bytes": {
+        "extraction": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 6612,
+          "seconds": 0.1338532909994683,
+          "transferred_bytes": 0
+        },
+        "get": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 0,
+          "seconds": 0.15092034399913246,
+          "transferred_bytes": 12590178
+        },
+        "head": {
+          "announced_bytes": 12590178,
+          "operations": 3,
+          "processed_bytes": 0,
+          "seconds": 0.04809255599957396,
+          "transferred_bytes": 0
+        },
+        "validation": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 12590178,
+          "seconds": 0.016612506999081234,
+          "transferred_bytes": 0
+        }
+      },
+      "phase_seconds": {
+        "extraction": 0.1338532909994683,
+        "get": 0.15092034399913246,
+        "head": 0.04809255599957396,
+        "validation": 0.016612506999081234
+      },
+      "repeat_index": 2,
+      "source": "local",
+      "status": "passed",
+      "successful_downloads": 3
+    },
+    {
+      "batch_size": 3,
+      "chunk_size_bytes": 262144,
+      "elapsed_seconds": 0.24781761600024765,
+      "failed_downloads": {},
+      "httpx_client_initialization_fraction_of_http_seconds": 0.18246593017436125,
+      "httpx_client_initialization_seconds": 0.03688209099891537,
+      "httpx_client_initializations": 6,
+      "parquet_artifact_sha256": "db732ffc9cfd2b3f8a182bdd1fb8ba40214ff3f19af18c416c5a8302afab116e",
+      "parquet_bytes": 6939,
+      "parquet_count": 3,
+      "parquet_rows": 768,
+      "parquet_schema_fingerprints": [
+        "f261bd18ae4e89f723df7496e97e763a7903fb64023c3945a1f6f4912fc77dbb"
+      ],
+      "phase_bytes": {
+        "extraction": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 6612,
+          "seconds": 0.14018491099977837,
+          "transferred_bytes": 0
+        },
+        "get": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 0,
+          "seconds": 0.15712266500031546,
+          "transferred_bytes": 12590178
+        },
+        "head": {
+          "announced_bytes": 12590178,
+          "operations": 3,
+          "processed_bytes": 0,
+          "seconds": 0.04500871899927006,
+          "transferred_bytes": 0
+        },
+        "validation": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 12590178,
+          "seconds": 0.013746159999755037,
+          "transferred_bytes": 0
+        }
+      },
+      "phase_seconds": {
+        "extraction": 0.14018491099977837,
+        "get": 0.15712266500031546,
+        "head": 0.04500871899927006,
+        "validation": 0.013746159999755037
+      },
+      "repeat_index": 0,
+      "source": "local",
+      "status": "passed",
+      "successful_downloads": 3
+    },
+    {
+      "batch_size": 3,
+      "chunk_size_bytes": 262144,
+      "elapsed_seconds": 0.2303100330000234,
+      "failed_downloads": {},
+      "httpx_client_initialization_fraction_of_http_seconds": 0.18550863320294975,
+      "httpx_client_initialization_seconds": 0.03736463299992465,
+      "httpx_client_initializations": 6,
+      "parquet_artifact_sha256": "db732ffc9cfd2b3f8a182bdd1fb8ba40214ff3f19af18c416c5a8302afab116e",
+      "parquet_bytes": 6939,
+      "parquet_count": 3,
+      "parquet_rows": 768,
+      "parquet_schema_fingerprints": [
+        "f261bd18ae4e89f723df7496e97e763a7903fb64023c3945a1f6f4912fc77dbb"
+      ],
+      "phase_bytes": {
+        "extraction": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 6612,
+          "seconds": 0.12796745099967666,
+          "transferred_bytes": 0
+        },
+        "get": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 0,
+          "seconds": 0.15258757499941566,
+          "transferred_bytes": 12590178
+        },
+        "head": {
+          "announced_bytes": 12590178,
+          "operations": 3,
+          "processed_bytes": 0,
+          "seconds": 0.04882964399894263,
+          "transferred_bytes": 0
+        },
+        "validation": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 12590178,
+          "seconds": 0.012619693999113224,
+          "transferred_bytes": 0
+        }
+      },
+      "phase_seconds": {
+        "extraction": 0.12796745099967666,
+        "get": 0.15258757499941566,
+        "head": 0.04882964399894263,
+        "validation": 0.012619693999113224
+      },
+      "repeat_index": 1,
+      "source": "local",
+      "status": "passed",
+      "successful_downloads": 3
+    },
+    {
+      "batch_size": 3,
+      "chunk_size_bytes": 262144,
+      "elapsed_seconds": 0.23590965299990785,
+      "failed_downloads": {},
+      "httpx_client_initialization_fraction_of_http_seconds": 0.14989970573746744,
+      "httpx_client_initialization_seconds": 0.037091237001732225,
+      "httpx_client_initializations": 6,
+      "parquet_artifact_sha256": "db732ffc9cfd2b3f8a182bdd1fb8ba40214ff3f19af18c416c5a8302afab116e",
+      "parquet_bytes": 6939,
+      "parquet_count": 3,
+      "parquet_rows": 768,
+      "parquet_schema_fingerprints": [
+        "f261bd18ae4e89f723df7496e97e763a7903fb64023c3945a1f6f4912fc77dbb"
+      ],
+      "phase_bytes": {
+        "extraction": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 6612,
+          "seconds": 0.11771860000135348,
+          "transferred_bytes": 0
+        },
+        "get": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 0,
+          "seconds": 0.20020602300064638,
+          "transferred_bytes": 12590178
+        },
+        "head": {
+          "announced_bytes": 12590178,
+          "operations": 3,
+          "processed_bytes": 0,
+          "seconds": 0.04723433599974669,
+          "transferred_bytes": 0
+        },
+        "validation": {
+          "announced_bytes": 0,
+          "operations": 3,
+          "processed_bytes": 12590178,
+          "seconds": 0.011981992999608337,
+          "transferred_bytes": 0
+        }
+      },
+      "phase_seconds": {
+        "extraction": 0.11771860000135348,
+        "get": 0.20020602300064638,
+        "head": 0.04723433599974669,
+        "validation": 0.011981992999608337
+      },
+      "repeat_index": 2,
+      "source": "local",
+      "status": "passed",
+      "successful_downloads": 3
+    }
+  ],
+  "repeats": 3,
+  "schema_version": 1,
+  "source": "local",
+  "source_identity_sha256": "fc262d3269ab3863d182667de22954c0c9a020aafe316e87bdcf5e14defb7d52",
+  "status": "passed",
+  "timestamp": "2026-09-23T13:56:38.188178+00:00",
+  "worktree_sha256": "892497f3fd33dcf9af888d500ab2938ca5f264467b73d350f378df5420e3a19b"
+}

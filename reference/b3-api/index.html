@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Biblioteca Python para extração e processamento de dados financeiros globais">
+        <meta name="description" content="Biblioteca Python para baixar documentos da CVM e processar cotações históricas da B3 em Parquet">
       
       
         <meta name="author" content="Jordan Estralioto">
@@ -18,7 +18,7 @@
         <link rel="prev" href="../cvm-api/">
       
       
-        <link rel="next" href="../exceptions/">
+        <link rel="next" href="../b3-schema-v2/">
       
       
         
@@ -307,7 +307,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../dev-guide/architecture/" class="md-tabs__link">
+        <a href="../../dev-guide/contributing/" class="md-tabs__link">
           
   
   
@@ -329,7 +329,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../cvm-api/" class="md-tabs__link">
+        <a href="../../dev-guide/api-reference/" class="md-tabs__link">
           
   
   
@@ -701,62 +701,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev-guide/architecture/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Arquitetura
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../dev-guide/api-reference/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Referência da API
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../dev-guide/contributing/" class="md-nav__link">
         
   
@@ -785,6 +729,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../dev-guide/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Arquitetura
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../dev-guide/testing/" class="md-nav__link">
         
   
@@ -793,6 +765,86 @@
     
   
     Testes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manutenção e evidências
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Manutenção e evidências
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/release-readiness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Aceite de release
   
 
     
@@ -841,14 +893,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev-guide/advanced-usage/" class="md-nav__link">
+      <a href="../../dev-guide/cotahist-performance/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Uso Avançado
+    Performance COTAHIST
   
 
     
@@ -869,14 +921,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev-guide/logging-system/" class="md-nav__link">
+      <a href="../../dev-guide/real-data-validation/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Sistema de Logging
+    Validação com dados externos
   
 
     
@@ -897,14 +949,102 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev-guide/resource-monitoring/" class="md-nav__link">
+      <a href="../cotahist-v2-supplied-corpus/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Monitoramento de Recursos
+    Auditoria do corpus COTAHIST
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisões Técnicas
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Decisões Técnicas
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/test-execution-tiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Níveis de Execução de Testes
   
 
     
@@ -925,14 +1065,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev-guide/retry-strategy/" class="md-nav__link">
+      <a href="../../decisions/real-validation-campaign/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Estratégia de Retry
+    Campanha Real Auditável
   
 
     
@@ -941,6 +1081,154 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/archive-safety-and-unc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Limites ZIP e Destinos UNC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/cvm-failure-atomic-batch-commit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Commit CVM Tolerante a Falhas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/cvm-ingestion-ownership/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ingestão compartilhada CVM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/pyarrow-ingestion-integrity-cutover/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cutover PyArrow e Integridade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/shared-infrastructure-clean-cut/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Corte limpo da infraestrutura compartilhada
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1009,6 +1297,34 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Referência da API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -1117,10 +1433,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#classe-principal" class="md-nav__link">
+  <a href="#importacao" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Classe Principal
+        Importação
       
     </span>
   </a>
@@ -1128,10 +1444,76 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#metodos" class="md-nav__link">
+  <a href="#telemetria-de-execucao" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Métodos
+        Telemetria de execução
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#construcao-e-configuracao" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Construção e configuração
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#extract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        extract()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#extract_async" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        extract_async()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_available_assets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_available_assets()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#get_available_years" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        get_available_years()
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#propriedades-da-instancia" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Propriedades da instância
       
     </span>
   </a>
@@ -1140,6 +1522,28 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#relatorio-de-integridade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Relatório de integridade
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuracao-de-execucao-e-variaveis-de-ambiente" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuração de Execução e Variáveis de Ambiente
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1165,10 +1569,49 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#documentacao-relacionada" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentação Relacionada
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../b3-schema-v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schema Parquet B3 v2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1202,6 +1645,384 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../transactional-publication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Publicação transacional
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_7" id="__nav_4_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuração e operação
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configuração e operação
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/advanced-usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Uso Avançado
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/b3-operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Boas práticas B3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/logging-system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sistema de Logging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/resource-monitoring/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monitoramento de Recursos
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/retry-strategy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Estratégia de Retry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migrações
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Migrações
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/migration-pyarrow-integrity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migração 0.2.0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/migration-infrastructure-clean-cut/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migração de infraestrutura
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/migration-cvm-exact-text/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migração CVM exata
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1230,27 +2051,52 @@
 
 
 <h1 id="api-b3-referencia-tecnica">API B3 - Referência Técnica<a class="headerlink" href="#api-b3-referencia-tecnica" title="Link para esta seção">&para;</a></h1>
-<p>Documentação técnica detalhada da API B3.</p>
+<p>Contratos de entrada, resultados e execução de <code>HistoricalQuotesB3</code>.<br />
+Para preparar os arquivos locais, consulte o <a href="../../user-guide/b3-docs/">guia B3</a>.</p>
 <hr />
 <h2 id="historicalquotesb3">HistoricalQuotesB3<a class="headerlink" href="#historicalquotesb3" title="Link para esta seção">&para;</a></h2>
-<h3 id="classe-principal">Classe Principal<a class="headerlink" href="#classe-principal" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">HistoricalQuotesB3</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Interface de alto nível para cotações B3.&quot;&quot;&quot;</span>
+<h3 id="importacao">Importação<a class="headerlink" href="#importacao" title="Link para esta seção">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">HistoricalQuotesB3</span>
 </code></pre></div>
-<h3 id="metodos">Métodos<a class="headerlink" href="#metodos" title="Link para esta seção">&para;</a></h3>
-<h4 id="extract"><code>extract()</code><a class="headerlink" href="#extract" title="Link para esta seção">&para;</a></h4>
+<h3 id="telemetria-de-execucao">Telemetria de execução<a class="headerlink" href="#telemetria-de-execucao" title="Link para esta seção">&para;</a></h3>
+<p>A propriedade <code>last_phase_timings: dict[str, Any]</code> disponibiliza a telemetria<br />
+da última extração para instrumentação e benchmarks. Ela começa vazia e é<br />
+reiniciada quando uma nova extração começa. As observações incluem o backend<br />
+efetivo, o limite de workers e os tempos das fases executadas. Esse diagnóstico<br />
+é separado do resultado <code>ExtractionResultB3</code> e dos metadados Parquet.</p>
+<h3 id="construcao-e-configuracao">Construção e configuração<a class="headerlink" href="#construcao-e-configuracao" title="Link para esta seção">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">settings</span><span class="p">:</span> <span class="n">Settings</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="o">...</span>
+</code></pre></div>
+<p>Importe <code>Settings</code> de <code>globaldatafinance.core.config</code>. O argumento opcional<br />
+injeta um snapshot imutável; com <code>None</code>, o cliente cria um snapshot do ambiente<br />
+atual. A propriedade <code>settings</code> retorna a configuração usada. Consulte<br />
+<a href="../../dev-guide/advanced-usage/#configuracao-global">configuração</a>.</p>
+<h3 id="extract"><code>extract()</code><a class="headerlink" href="#extract" title="Link para esta seção">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">extract</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">path_of_docs</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-    <span class="n">assets_list</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
-    <span class="n">initial_year</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">last_year</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">destination_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">output_filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cotahist_extracted&quot;</span><span class="p">,</span>
-    <span class="n">processing_mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;fast&quot;</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+    <span class="n">assets_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">initial_year</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">last_year</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">destination_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">output_filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"cotahist_extracted"</span><span class="p">,</span>
+    <span class="n">processing_mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"fast"</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ExtractionResultB3</span><span class="p">:</span>
+    <span class="o">...</span>
 </code></pre></div>
-<p><strong>Descrição</strong>: Extrai cotações históricas de arquivos COTAHIST.</p>
+<p><strong>Descrição</strong>: Extrai cotações históricas de arquivos COTAHIST (<code>COTAHIST_A{YYYY}.ZIP</code> ou <code>.TXT</code>), filtra os ativos e consolida o resultado em formato Parquet. A API aceita os dois formatos locais; o download oficial da B3 continua sendo distribuído em ZIP.</p>
+<p>O parser é estrito: controles <code>00</code>/<code>99</code> e linhas vazias não são persistidos,<br />
+e TPMERC fora do filtro é contabilizado como filtrado. Todos os registros <code>01</code><br />
+são validados antes do filtro. Se uma fonte contém registros inválidos, a<br />
+fachada retorna <code>success=False</code>, <code>output_file=""</code> e detalhes contextuais em<br />
+<code>errors</code>; o consumidor deve conferir o resultado. Chamadas diretas ao parser<br />
+podem levantar <code>ExtractionError</code>. Valores financeiros inválidos não recebem<br />
+fallback para zero ou nulo.</p>
+<p>Dentro do destino validado, um link simbólico no arquivo de saída é rejeitado<br />
+com um resultado de falha, sem alterar o arquivo apontado. A publicação também<br />
+impede que o caminho de saída substitua uma fonte COTAHIST.</p>
 <p><strong>Parâmetros</strong>:</p>
 <table>
 <thead>
@@ -1268,105 +2114,536 @@
 <td><code>str</code></td>
 <td>Sim</td>
 <td>-</td>
-<td>Diretório com ZIPs COTAHIST</td>
+<td>Diretório contendo arquivos COTAHIST ZIP ou TXT</td>
 </tr>
 <tr>
 <td><code>assets_list</code></td>
-<td><code>List[str]</code></td>
-<td>Sim</td>
-<td>-</td>
-<td>Classes de ativos</td>
+<td><code>list[str] \| None</code></td>
+<td>Não</td>
+<td><code>None</code> (<code>["todos"]</code>)</td>
+<td>Classes; <code>todos</code> seleciona todo TPMERC numérico válido</td>
 </tr>
 <tr>
 <td><code>initial_year</code></td>
-<td><code>Optional[int]</code></td>
+<td><code>int \| None</code></td>
 <td>Não</td>
-<td><code>1986</code></td>
-<td>Ano inicial</td>
+<td><code>None</code> (1986)</td>
+<td>Ano inicial da extração (inclusivo, &gt;= 1986)</td>
 </tr>
 <tr>
 <td><code>last_year</code></td>
-<td><code>Optional[int]</code></td>
+<td><code>int \| None</code></td>
 <td>Não</td>
-<td>Ano atual</td>
-<td>Ano final</td>
+<td><code>None</code> (ano atual)</td>
+<td>Ano final da extração (inclusivo)</td>
 </tr>
 <tr>
 <td><code>destination_path</code></td>
-<td><code>Optional[str]</code></td>
+<td><code>str \| None</code></td>
 <td>Não</td>
-<td><code>path_of_docs</code></td>
-<td>Diretório de saída</td>
+<td><code>None</code> (<code>path_of_docs</code>)</td>
+<td>Diretório de destino do Parquet gerado</td>
 </tr>
 <tr>
 <td><code>output_filename</code></td>
 <td><code>str</code></td>
 <td>Não</td>
 <td><code>"cotahist_extracted"</code></td>
-<td>Nome do arquivo</td>
+<td>Nome base obrigatório (basename); <code>.parquet</code> é opcional e acrescentado apenas quando ausente</td>
 </tr>
 <tr>
 <td><code>processing_mode</code></td>
 <td><code>str</code></td>
 <td>Não</td>
 <td><code>"fast"</code></td>
-<td>Modo: &ldquo;fast&rdquo; ou &ldquo;slow&rdquo;</td>
+<td>Modo de processamento: <code>"fast"</code> (paralelo) ou <code>"slow"</code> (baixo consumo de RAM)</td>
+</tr>
+<tr>
+<td><code>verbose</code></td>
+<td><code>bool</code></td>
+<td>Não</td>
+<td><code>True</code></td>
+<td>Se <code>True</code>, imprime o resumo formatado no console</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Retorno</strong>: Dicionário com chaves:</p>
+<p>As barras <code>Validating B3 files</code> e <code>Processing B3 files</code> aparecem em <code>stdout</code><br />
+nos modos <code>fast</code> e <code>slow</code>, independentemente de <code>verbose</code>. Elas contam fontes<br />
+anuais encontradas: a primeira avança após a validação de uma fonte; a segunda<br />
+avança quando uma tentativa de processamento termina, inclusive com erro.<br />
+O resumo é emitido somente quando <code>verbose=True</code>. A consolidação, a leitura de<br />
+verificação e a publicação do Parquet continuam após a barra de processamento;<br />
+o resultado retornado confirma o sucesso completo. Falhas e cancelamento<br />
+encerram a linha da barra com o contador observado. Seleções sem arquivos não<br />
+exibem barras vazias.</p>
+<p><strong>Retorno (<code>ExtractionResultB3</code>)</strong>:</p>
+<p>Objeto <code>TypedDict</code> contendo o resultado da extração:</p>
 <ul>
-<li><code>success</code> (bool): Sucesso da operação</li>
-<li><code>message</code> (str): Mensagem resumida</li>
-<li><code>total_files</code> (int): Total de arquivos processados</li>
-<li><code>success_count</code> (int): Arquivos com sucesso</li>
-<li><code>error_count</code> (int): Arquivos com erro</li>
-<li><code>total_records</code> (int): Total de registros extraídos</li>
-<li><code>output_file</code> (str): Caminho do arquivo Parquet</li>
-<li><code>errors</code> (List[str]): Lista de erros (se houver)</li>
+<li><code>success: bool</code> — Indica se a extração foi concluída com sucesso.</li>
+<li><code>message: str</code> — Mensagem descritiva com o resumo da execução.</li>
+<li><code>total_files: int</code> — Quantidade de entradas anuais resolvidas para a solicitação.</li>
+<li><code>success_count: int</code> — Quantidade de fontes incluídas na saída publicada.</li>
+<li><code>error_count: int</code> — Quantidade de entradas em <code>errors</code>.</li>
+<li><code>total_records: int</code> — Quantidade de linhas da saída publicada.</li>
+<li><code>output_file: str</code> — Caminho da nova saída publicada; vazio em caso de falha.</li>
+<li><code>errors: dict[str, str]</code> — Dicionário mapeando arquivos com falha para a mensagem de erro (se houver).</li>
+<li><code>assets: list[str]</code> — Lista de classes de ativos filtradas.</li>
+<li><code>processing_mode: str</code> — Modo de processamento utilizado (<code>"fast"</code> ou <code>"slow"</code>).</li>
+<li><code>elapsed_time: float</code> — Tempo total de execução em segundos.</li>
+<li><code>schema_version: int</code> — Versão do schema Parquet (<code>2</code>).</li>
+<li><code>integrity: B3IntegrityReport</code> — Cobertura, seleção, fontes, verificações,<br />
+  avisos e hash da saída publicada.</li>
 </ul>
+<p>Quando o preflight falha, <code>integrity</code> preserva as fontes já validadas, os anos<br />
+ausentes e a seleção normalizada. Os contadores <code>success_count</code> e<br />
+<code>total_records</code> permanecem zerados. Cada fonte validada inclui hashes da<br />
+entrada e do conteúdo, tamanho descompactado, contagens por mercado,<br />
+controles originais em Base64, data de geração, intervalo de pregões,<br />
+convenção do trailer, linhas vazias, avisos e digests esperados e verificados.</p>
+<p><strong>Semântica de entrada e resultado vazio</strong>:</p>
+<ul>
+<li>A API aceita <code>COTAHIST_A{YYYY}.ZIP</code> e <code>COTAHIST_A{YYYY}.TXT</code>; quando os dois<br />
+  formatos existem para o mesmo ano, ambos são validados integralmente. O ZIP<br />
+  é selecionado somente quando os conteúdos descompactados são idênticos;<br />
+  conteúdos diferentes causam falha.</li>
+<li>Cada leitura de ZIP verifica o CRC de todos os membros, inclusive os não<br />
+  selecionados, e lê o membro COTAHIST no mesmo arquivo aberto e validado.<br />
+  As validações são renovadas a cada passagem, com os limites de descompressão<br />
+  e as verificações de identidade da fonte preservados.</li>
+<li><code>output_filename</code> deve ser um basename, sem separadores de caminho. O sufixo<br />
+<code>.parquet</code> é aceito; quando omitido, é acrescentado automaticamente uma única<br />
+  vez.</li>
+<li>A falta de qualquer ano solicitado retorna <code>success=False</code>, lista o ano em<br />
+<code>integrity.missing_years</code> e não publica uma nova saída. Um diretório vazio<br />
+  informa zero arquivos resolvidos e todos os anos solicitados como ausentes.</li>
+<li>Se todas as fontes solicitadas são válidas e o filtro exclui todas as suas<br />
+  cotações, a extração publica um resultado vazio (<code>success=True</code>).</li>
+</ul>
+<p>Se arquivos válidos não tiverem registros após o filtro de ativos, a extração<br />
+continua bem-sucedida e publica Parquet B3 vazio com schema explícito.</p>
+<p><code>assets_list=None</code> aplica <code>todos</code>, incluindo códigos TPMERC numéricos desconhecidos;<br />
+<code>lote_bloco</code> seleciona <code>021</code>. A implementação valida todos os campos antes de<br />
+filtrar, exige cada ano solicitado e lê a saída completa antes de publicar.<br />
+Falhas e lacunas de ano retornam <code>success=False</code>; <code>integrity</code> contém a cobertura<br />
+observada e o motivo. Veja a <a href="../b3-schema-v2/">referência do schema COTAHIST v2</a><br />
+e o <a href="../../user-guide/migration-pyarrow-integrity/">guia de migração</a>.</p>
+<p>Em um cancelamento assíncrono antes do commit, o serviço aborta a publicação,<br />
+limpa o estado temporário e relança <code>asyncio.CancelledError</code>; um artefato final<br />
+anterior permanece intacto.</p>
+<p>A preparação, a recuperação e abertura da transação, as verificações dos<br />
+Parquets, a consolidação, a reconferência dos hashes e o rollback executam<br />
+fora da thread do event loop. Trabalhadores de threads e processos recebem<br />
+um sinal de cancelamento próprio de cada execução. O cancelamento<br />
+é observado nos limites de leitura e de lotes. O serviço aguarda o término<br />
+dos leitores e escritores antes de remover seus temporários, inclusive se<br />
+receber pedidos repetidos de cancelamento. Há um ponto de cancelamento<br />
+imediatamente antes da decisão de commit. Depois que essa decisão inicia a<br />
+publicação atômica, novos pedidos de cancelamento aguardam o término e a API<br />
+retorna o resultado da publicação. O commit também executa fora do event loop.</p>
+<p>A reconferência final dos arquivos de entrada e a decisão de publicação<br />
+executam no mesmo trabalhador, sem retornar ao event loop entre elas. A leitura<br />
+dos hashes continua cancelável; o trabalhador verifica o cancelamento uma<br />
+última vez antes de iniciar a publicação. Alterações detectadas na fonte falham<br />
+e preservam a saída anterior. O chamador deve manter os ZIP/TXT inalterados<br />
+durante a extração: essa reconferência não bloqueia escritores externos nem<br />
+oferece isolamento absoluto contra modificações concorrentes.</p>
+<p>Uma falha de limpeza posterior ao commit durável mantém <code>success=True</code>, o<br />
+caminho, as contagens verificadas e o hash da saída publicada. O diagnóstico<br />
+fica em <code>integrity.warnings</code>: <code>PUBLICATION_CLEANUP_RECOVERED</code> indica que a<br />
+nova tentativa de limpeza funcionou; <code>PUBLICATION_CLEANUP_PENDING</code> indica que<br />
+o estado de recuperação foi preservado. Nesses avisos, <code>source</code> identifica o<br />
+nome do Parquet publicado. O diagnóstico original também fica no log.<br />
+Falhas anteriores ao commit continuam retornando falha e preservando a saída<br />
+anterior por rollback.</p>
 <p><strong>Exceções</strong>:</p>
 <ul>
-<li><code>EmptyAssetListError</code>: Lista de ativos vazia</li>
-<li><code>InvalidAssetsName</code>: Ativo inválido</li>
-<li><code>InvalidFirstYear</code>: Ano inicial inválido</li>
-<li><code>InvalidLastYear</code>: Ano final inválido</li>
-<li><code>EmptyDirectoryError</code>: Diretório vazio</li>
-<li><code>ExtractionError</code>: Erro na extração</li>
+<li><code>EmptyAssetListError</code>: Lista de ativos vazia; <code>None</code> seleciona <code>todos</code>.</li>
+<li><code>InvalidAssetsName</code>: Classe de ativo não suportada.</li>
+<li><code>InvalidFirstYear</code>: Ano inicial fora da faixa válida (1986 até o ano atual).</li>
+<li><code>InvalidLastYear</code>: Ano final fora da faixa válida ou menor que o ano inicial.</li>
+<li><code>InvalidOutputFilename</code>: Nome de arquivo de saída inválido (contém barras ou traversal).</li>
+<li><code>InvalidProcessingMode</code>: Modo diferente de <code>"fast"</code> ou <code>"slow"</code>.</li>
+<li><code>InvalidDestinationPathError</code>: Caminho vazio ou composto apenas por espaços.</li>
+<li><code>PathIsNotDirectoryError</code>: Caminho de entrada ausente ou que não é diretório.</li>
+<li><code>SecurityError</code>: Caminho rejeitado pela política de segurança.</li>
 </ul>
+<p>Falhas de conteúdo e processamento são consolidadas em <code>errors</code> com<br />
+<code>success=False</code>. Consulte o <a href="../exceptions/">catálogo de exceções</a> para os<br />
+tipos usados por chamadas de baixo nível.</p>
 <p><strong>Exemplo</strong>:</p>
-<div class="highlight"><pre><span></span><code><span class="n">b3</span> <span class="o">=</span> <span class="n">HistoricalQuotesB3</span><span class="p">()</span>
-<span class="n">result</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
-    <span class="n">path_of_docs</span><span class="o">=</span><span class="s2">&quot;/data/cotahist&quot;</span><span class="p">,</span>
-    <span class="n">assets_list</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ações&quot;</span><span class="p">,</span> <span class="s2">&quot;etf&quot;</span><span class="p">],</span>
-    <span class="n">initial_year</span><span class="o">=</span><span class="mi">2022</span><span class="p">,</span>
-    <span class="n">last_year</span><span class="o">=</span><span class="mi">2023</span><span class="p">,</span>
-    <span class="n">processing_mode</span><span class="o">=</span><span class="s2">&quot;fast&quot;</span>
-<span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Extraídos </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;total_records&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> registros&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">HistoricalQuotesB3</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">b3</span> <span class="o">=</span> <span class="n">HistoricalQuotesB3</span><span class="p">()</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
+        <span class="n">path_of_docs</span><span class="o">=</span><span class="s2">"/data/cotahist"</span><span class="p">,</span>
+        <span class="n">assets_list</span><span class="o">=</span><span class="p">[</span><span class="s2">"ações"</span><span class="p">,</span> <span class="s2">"opções"</span><span class="p">],</span>
+        <span class="n">initial_year</span><span class="o">=</span><span class="mi">2022</span><span class="p">,</span>
+        <span class="n">last_year</span><span class="o">=</span><span class="mi">2023</span><span class="p">,</span>
+        <span class="n">processing_mode</span><span class="o">=</span><span class="s2">"fast"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="p">[</span><span class="s2">"success"</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">"errors"</span><span class="p">]</span> <span class="ow">or</span> <span class="n">result</span><span class="p">[</span><span class="s2">"message"</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Extraídos </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">'total_records'</span><span class="p">]</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> registros"</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
 </code></pre></div>
-<h4 id="get_available_assets"><code>get_available_assets()</code><a class="headerlink" href="#get_available_assets" title="Link para esta seção">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_available_assets</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+<h3 id="extract_async"><code>extract_async()</code><a class="headerlink" href="#extract_async" title="Link para esta seção">&para;</a></h3>
+<p>Variante assíncrona de <code>extract()</code>, com os mesmos argumentos, padrões e<br />
+resultado. Em notebooks ou aplicações com event loop ativo, use<br />
+<code>await client.extract_async(...)</code> em vez do wrapper síncrono. A assinatura<br />
+completa também está na <a href="../../dev-guide/api-reference/">visão geral da API</a>.</p>
+<h3 id="get_available_assets"><code>get_available_assets()</code><a class="headerlink" href="#get_available_assets" title="Link para esta seção">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_available_assets</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+    <span class="o">...</span>
 </code></pre></div>
 <p><strong>Descrição</strong>: Retorna lista de classes de ativos disponíveis.</p>
 <p><strong>Retorno</strong>: Lista de strings</p>
 <p><strong>Exemplo</strong>:</p>
 <div class="highlight"><pre><span></span><code><span class="n">assets</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">get_available_assets</span><span class="p">()</span>
-<span class="c1"># [&#39;ações&#39;, &#39;etf&#39;, &#39;opções&#39;, ...]</span>
+<span class="c1"># ['ações', 'etf', 'opções', 'termo', 'exercicio_opcoes', 'forward', 'leilao', 'lote_bloco', 'todos']</span>
 </code></pre></div>
-<h4 id="get_available_years"><code>get_available_years()</code><a class="headerlink" href="#get_available_years" title="Link para esta seção">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_available_years</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>
+<h3 id="get_available_years"><code>get_available_years()</code><a class="headerlink" href="#get_available_years" title="Link para esta seção">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_available_years</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+    <span class="o">...</span>
 </code></pre></div>
-<p><strong>Descrição</strong>: Retorna intervalo de anos disponível.</p>
-<p><strong>Retorno</strong>: Dicionário com chaves:</p>
-<ul>
-<li><code>"minimal_year"</code>: 1986</li>
-<li><code>"current_year"</code>: Ano atual</li>
-</ul>
+<p><strong>Descrição</strong>: Retorna dicionário com os limites dos anos disponíveis.</p>
+<p><strong>Retorno</strong>: Dicionário contendo <code>minimal_year</code> e <code>current_year</code>.</p>
 <p><strong>Exemplo</strong>:</p>
 <div class="highlight"><pre><span></span><code><span class="n">years</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">get_available_years</span><span class="p">()</span>
-<span class="c1"># {&#39;minimal_year&#39;: 1986, &#39;current_year&#39;: ano atual}</span>
+<span class="c1"># `current_year` corresponde ao ano corrente de execução.</span>
 </code></pre></div>
+<h3 id="propriedades-da-instancia">Propriedades da instância<a class="headerlink" href="#propriedades-da-instancia" title="Link para esta seção">&para;</a></h3>
+<ul>
+<li><code>settings: Settings</code>: Snapshot imutável da configuração de runtime do cliente.</li>
+</ul>
+<hr />
+<h2 id="relatorio-de-integridade">Relatório de integridade<a class="headerlink" href="#relatorio-de-integridade" title="Link para esta seção">&para;</a></h2>
+<p><code>result["integrity"]</code> é um <code>B3IntegrityReport</code>. Todas as chaves abaixo estão<br />
+presentes, inclusive em falhas; valores anuláveis usam <code>None</code>. Datas são strings<br />
+ISO <code>YYYY-MM-DD</code>. Contagens e flags se referem às fontes fornecidas, sem<br />
+reconciliação com um calendário ou cadastro externo de instrumentos.</p>
+<table>
+<thead>
+<tr>
+<th>Chave</th>
+<th>Tipo</th>
+<th>Significado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>status</code></td>
+<td><code>Literal["passed", "failed", "not_run"]</code></td>
+<td>Estado da verificação</td>
+</tr>
+<tr>
+<td><code>schema_version</code></td>
+<td><code>int</code></td>
+<td>Versão do schema, <code>2</code></td>
+</tr>
+<tr>
+<td><code>verification_method</code></td>
+<td><code>str</code></td>
+<td>Método de verificação ou <code>"not completed"</code></td>
+</tr>
+<tr>
+<td><code>requested_years</code></td>
+<td><code>list[int]</code></td>
+<td>Anos solicitados</td>
+</tr>
+<tr>
+<td><code>selected_years</code></td>
+<td><code>list[int]</code></td>
+<td>Anos das fontes selecionadas e validadas</td>
+</tr>
+<tr>
+<td><code>missing_years</code></td>
+<td><code>list[int]</code></td>
+<td>Anos solicitados sem fonte</td>
+</tr>
+<tr>
+<td><code>complete_market_selection</code></td>
+<td><code>bool</code></td>
+<td>Seleção <code>todos</code>, incluindo códigos numéricos desconhecidos</td>
+</tr>
+<tr>
+<td><code>market_codes</code></td>
+<td><code>list[str]</code></td>
+<td>Códigos selecionados; vazio na seleção completa</td>
+</tr>
+<tr>
+<td><code>asset_classes</code></td>
+<td><code>list[str]</code></td>
+<td>Aliases normalizados e sem duplicatas</td>
+</tr>
+<tr>
+<td><code>raw_quotes</code></td>
+<td><code>int</code></td>
+<td>Total de registros <code>01</code> nas fontes validadas</td>
+</tr>
+<tr>
+<td><code>selected_quotes</code></td>
+<td><code>int</code></td>
+<td>Registros selecionados pelo filtro</td>
+</tr>
+<tr>
+<td><code>intentional_exclusions</code></td>
+<td><code>int</code></td>
+<td>Registros excluídos pelo filtro</td>
+</tr>
+<tr>
+<td><code>excluded_records</code></td>
+<td><code>int</code></td>
+<td>Mesmo valor de <code>intentional_exclusions</code></td>
+</tr>
+<tr>
+<td><code>written_rows</code></td>
+<td><code>int</code></td>
+<td>Linhas escritas</td>
+</tr>
+<tr>
+<td><code>verified_rows</code></td>
+<td><code>int</code></td>
+<td>Linhas conferidas na leitura de verificação</td>
+</tr>
+<tr>
+<td><code>selection_complete</code></td>
+<td><code>bool</code></td>
+<td>Verificação passou e selecionadas = escritas = verificadas</td>
+</tr>
+<tr>
+<td><code>source_complete</code></td>
+<td><code>bool</code></td>
+<td>Seleção completa em linhas, sem exclusões, e brutas = escritas = verificadas</td>
+</tr>
+<tr>
+<td><code>source_first_trading_date</code></td>
+<td><code>str \| None</code></td>
+<td>Primeira data nas fontes validadas</td>
+</tr>
+<tr>
+<td><code>source_last_trading_date</code></td>
+<td><code>str \| None</code></td>
+<td>Última data nas fontes validadas</td>
+</tr>
+<tr>
+<td><code>output_first_trading_date</code></td>
+<td><code>str \| None</code></td>
+<td>Primeira data na saída verificada</td>
+</tr>
+<tr>
+<td><code>output_last_trading_date</code></td>
+<td><code>str \| None</code></td>
+<td>Última data na saída verificada</td>
+</tr>
+<tr>
+<td><code>unknown_market_counts</code></td>
+<td><code>dict[str, int]</code></td>
+<td>Contagens por TPMERC desconhecido</td>
+</tr>
+<tr>
+<td><code>warnings</code></td>
+<td><code>list[B3IntegrityWarning]</code></td>
+<td>Avisos associados a uma fonte ou saída publicada</td>
+</tr>
+<tr>
+<td><code>sources</code></td>
+<td><code>list[B3SourceIntegrityReport]</code></td>
+<td>Evidência por fonte, detalhada abaixo</td>
+</tr>
+<tr>
+<td><code>ignored_duplicate_sources</code></td>
+<td><code>list[str]</code></td>
+<td>TXTs equivalentes preteridos em favor do ZIP</td>
+</tr>
+<tr>
+<td><code>output_sha256</code></td>
+<td><code>str \| None</code></td>
+<td>SHA-256 da saída publicada; <code>None</code> sem saída confirmada</td>
+</tr>
+</tbody>
+</table>
+<p><code>output_sha256</code> identifica os bytes do arquivo Parquet publicado. Os modos<br />
+<code>fast</code> e <code>slow</code> podem produzir hashes diferentes com os mesmos valores, tipos<br />
+e ordem de linhas: seus limites de lote distintos podem alterar a organização<br />
+física do Parquet, e uma extração com uma única fonte reutiliza o artefato<br />
+privado sem reescrevê-lo.<br />
+O hash também pode mudar com a versão do PyArrow ou a organização física do<br />
+Parquet. Use-o para conferir a identidade de um arquivo específico. Para<br />
+comparar conteúdo entre modos, confira <code>expected_rows_sha256</code> e<br />
+<code>verified_rows_sha256</code> de cada fonte, na mesma ordem, junto ao schema e à<br />
+seleção; esses digests preservam valores e ocorrências ordenadas.</p>
+<p>Cada item de <code>sources</code> contém estas chaves obrigatórias:</p>
+<table>
+<thead>
+<tr>
+<th>Chave</th>
+<th>Tipo</th>
+<th>Significado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>source</code></td>
+<td><code>str</code></td>
+<td>Nome do arquivo de entrada</td>
+</tr>
+<tr>
+<td><code>year</code></td>
+<td><code>int</code></td>
+<td>Ano da fonte</td>
+</tr>
+<tr>
+<td><code>member</code></td>
+<td><code>str</code></td>
+<td>Membro ZIP; vazio para TXT</td>
+</tr>
+<tr>
+<td><code>outer_sha256</code></td>
+<td><code>str</code></td>
+<td>SHA-256 do arquivo de entrada</td>
+</tr>
+<tr>
+<td><code>content_sha256</code></td>
+<td><code>str</code></td>
+<td>SHA-256 dos bytes COTAHIST descompactados</td>
+</tr>
+<tr>
+<td><code>uncompressed_bytes</code></td>
+<td><code>int</code></td>
+<td>Tamanho do conteúdo descompactado</td>
+</tr>
+<tr>
+<td><code>market_counts</code></td>
+<td><code>dict[str, int]</code></td>
+<td>Contagens por TPMERC</td>
+</tr>
+<tr>
+<td><code>unknown_market_counts</code></td>
+<td><code>dict[str, int]</code></td>
+<td>Contagens por TPMERC desconhecido</td>
+</tr>
+<tr>
+<td><code>header_records</code></td>
+<td><code>int</code></td>
+<td>Contagem de controles <code>00</code></td>
+</tr>
+<tr>
+<td><code>trailer_records</code></td>
+<td><code>int</code></td>
+<td>Contagem de controles <code>99</code></td>
+</tr>
+<tr>
+<td><code>generation_date</code></td>
+<td><code>str</code></td>
+<td>Data de geração declarada</td>
+</tr>
+<tr>
+<td><code>blank_lines</code></td>
+<td><code>int</code></td>
+<td>Linhas vazias observadas</td>
+</tr>
+<tr>
+<td><code>warnings</code></td>
+<td><code>list[B3SourceWarningReport]</code></td>
+<td>Avisos da fonte</td>
+</tr>
+<tr>
+<td><code>raw_quotes</code></td>
+<td><code>int</code></td>
+<td>Total de registros <code>01</code></td>
+</tr>
+<tr>
+<td><code>selected_quotes</code></td>
+<td><code>int</code></td>
+<td>Registros selecionados</td>
+</tr>
+<tr>
+<td><code>intentional_exclusions</code></td>
+<td><code>int</code></td>
+<td>Registros excluídos pelo filtro</td>
+</tr>
+<tr>
+<td><code>excluded_records</code></td>
+<td><code>int</code></td>
+<td>Mesmo valor de <code>intentional_exclusions</code></td>
+</tr>
+<tr>
+<td><code>written_rows</code></td>
+<td><code>int</code></td>
+<td>Linhas escritas desta fonte</td>
+</tr>
+<tr>
+<td><code>verified_rows</code></td>
+<td><code>int</code></td>
+<td>Linhas verificadas desta fonte</td>
+</tr>
+<tr>
+<td><code>declared_records</code></td>
+<td><code>int</code></td>
+<td>Contagem declarada no trailer</td>
+</tr>
+<tr>
+<td><code>trailer_convention</code></td>
+<td><code>str</code></td>
+<td>Convenção usada na contagem do trailer</td>
+</tr>
+<tr>
+<td><code>first_trading_date</code></td>
+<td><code>str</code></td>
+<td>Primeira data de pregão da fonte</td>
+</tr>
+<tr>
+<td><code>last_trading_date</code></td>
+<td><code>str</code></td>
+<td>Última data de pregão da fonte</td>
+</tr>
+<tr>
+<td><code>header_base64</code></td>
+<td><code>str</code></td>
+<td>Controle <code>00</code> original em Base64</td>
+</tr>
+<tr>
+<td><code>trailer_base64</code></td>
+<td><code>str</code></td>
+<td>Controle <code>99</code> original em Base64</td>
+</tr>
+<tr>
+<td><code>expected_rows_sha256</code></td>
+<td><code>str</code></td>
+<td>Digest ordenado das linhas selecionadas no preflight</td>
+</tr>
+<tr>
+<td><code>verified_rows_sha256</code></td>
+<td><code>str \| None</code></td>
+<td>Digest conferido na saída; <code>None</code> antes da verificação</td>
+</tr>
+</tbody>
+</table>
+<p><code>B3SourceWarningReport</code> contém <code>code: str</code>, <code>count: int</code> e <code>explanation: str</code>.<br />
+<code>B3IntegrityWarning</code> acrescenta <code>source: str</code>, o nome da fonte ou do Parquet<br />
+publicado. Os códigos de limpeza pós-commit estão descritos em <code>extract()</code>.<br />
+O <a href="../b3-schema-v2/">schema B3 v2</a> define o framing do digest de linhas.</p>
+<h2 id="configuracao-de-execucao-e-variaveis-de-ambiente">Configuração de Execução e Variáveis de Ambiente<a class="headerlink" href="#configuracao-de-execucao-e-variaveis-de-ambiente" title="Link para esta seção">&para;</a></h2>
+<p><code>GDF_B3_EXECUTOR_BACKEND</code> é resolvido ao construir <code>HistoricalQuotesB3()</code> e não<br />
+altera uma instância existente. <code>GDF_B3_WORKER_LIMIT</code> é lido pela política de<br />
+recursos ao calcular a admissão de workers. Essas opções não adicionam parâmetros<br />
+ao construtor público. O padrão <code>process</code> é aplicado em <code>fast</code> com duas fontes, dois<br />
+workers e contexto compatível com <code>spawn</code>. As condições e medições estão no<br />
+<a href="../../dev-guide/cotahist-performance/">guia de performance COTAHIST</a>.</p>
+<ul>
+<li><code>GDF_B3_EXECUTOR_BACKEND</code>: Aceita <code>"thread"</code> ou <code>"process"</code>; o padrão é <code>"process"</code>.</li>
+<li><code>"thread"</code>: Usa <code>ThreadPoolExecutor</code>, com menor custo de inicialização e buffers no processo pai.</li>
+<li><code>"process"</code>: Usa <code>ProcessPoolExecutor</code> com <code>spawn</code> nas condições elegíveis. Isola buffers por fonte e pode aumentar o RSS agregado. Avalie tempo completo, CPU e memória no corpus do consumidor.</li>
+<li>Fallback: <code>slow</code>, uma fonte ou limite de um worker usam um worker de thread. Daemons e sessões sem módulo principal importável ou script legível usam threads. O logger registra a incompatibilidade e <code>last_phase_timings['effective_backend']</code> informa o backend efetivo. Falhas após a submissão mantêm diagnósticos e limpeza normal.</li>
+<li>Preflight anual: Em <code>fast</code> com <code>process</code>, admite processos quando a política permite pelo menos dois workers, o contexto é compatível e os candidatos anuais somam pelo menos 64 MiB armazenados. ZIP e TXT coexistentes entram na soma. Cargas menores e erros de leitura do tamanho seguem validação serial. Ordem, primeiro erro, causas tipadas e encerramento dos workers antes da limpeza são preservados.</li>
+<li>Os workers filhos criam leitores e parsers padrão; colaboradores customizados injetados internamente não são serializados. Use threads para esses colaboradores.</li>
+<li>Scripts devem proteger a chamada com <code>if __name__ == '__main__':</code>. Defina <code>GDF_B3_EXECUTOR_BACKEND=thread</code> para selecionar threads explicitamente. Valores inválidos geram <code>ValueError</code> na construção.</li>
+<li><code>GDF_B3_WORKER_LIMIT</code>: Limite opcional de workers para o modo <code>fast</code>. Use um inteiro positivo; o limite efetivo continua sendo o menor entre esse valor, a quantidade de arquivos, CPUs disponíveis e orçamento de memória. O modo <code>slow</code> continua com um worker. Um valor não numérico preserva o teto padrão; valores menores que um são limitados a um worker.</li>
+</ul>
 <hr />
 <h2 id="classes-de-ativos">Classes de Ativos<a class="headerlink" href="#classes-de-ativos" title="Link para esta seção">&para;</a></h2>
 <table>
@@ -1374,78 +2651,99 @@
 <tr>
 <th>Código</th>
 <th>Descrição</th>
-<th>Mercados</th>
+<th>Códigos TPMERC B3</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>ações</td>
+<td><code>ações</code></td>
 <td>Ações</td>
-<td>010 (à vista), 012 (fracionário)</td>
+<td>010 (Mercado à Vista), 020 (Mercado Fracionário)</td>
 </tr>
 <tr>
-<td>etf</td>
+<td><code>etf</code></td>
 <td>ETFs</td>
-<td>Exchange Traded Funds</td>
+<td>010 (Mercado à Vista), 020 (Mercado Fracionário)</td>
 </tr>
 <tr>
-<td>opções</td>
+<td><code>opções</code></td>
 <td>Opções</td>
-<td>070 (call), 080 (put)</td>
+<td>070 (Opções de Compra), 080 (Opções de Venda)</td>
 </tr>
 <tr>
-<td>termo</td>
+<td><code>termo</code></td>
 <td>Mercado a Termo</td>
-<td>Contratos a termo</td>
+<td>030 (Mercado a Termo)</td>
 </tr>
 <tr>
-<td>exercicio_opcoes</td>
+<td><code>exercicio_opcoes</code></td>
 <td>Exercício de Opções</td>
-<td>Exercício de opções</td>
+<td>012 (Exercício Compra), 013 (Exercício Venda)</td>
 </tr>
 <tr>
-<td>forward</td>
-<td>Mercado Forward</td>
+<td><code>forward</code></td>
 <td>Contratos forward</td>
+<td>050 (Forward c/ Ganho), 060 (Forward c/ Movimentação)</td>
 </tr>
 <tr>
-<td>leilao</td>
+<td><code>leilao</code></td>
 <td>Leilão</td>
-<td>Mercado de leilão</td>
+<td>017 (Mercado de Leilão)</td>
+</tr>
+<tr>
+<td><code>lote_bloco</code></td>
+<td>Lote em bloco</td>
+<td>021 (BBT e Midpoint)</td>
+</tr>
+<tr>
+<td><code>todos</code></td>
+<td>Seleção completa</td>
+<td>Todo TPMERC numérico válido</td>
 </tr>
 </tbody>
 </table>
+<p>As strings em português desta tabela são os aliases aceitos por <code>assets_list</code>.<br />
+A validação converte os valores para minúsculas; grafia e acentos continuam<br />
+relevantes. <code>ações</code> e <code>etf</code> selecionam os mesmos mercados <code>010</code> e <code>020</code>, sem<br />
+distinguir ações de ETFs ou classificar emissores. Os aliases <code>bdr</code> e <code>futuro</code><br />
+não estão no catálogo. Use <code>get_available_assets()</code> para consultar os valores<br />
+aceitos na versão instalada.</p>
 <hr />
 <h2 id="modos-de-processamento">Modos de Processamento<a class="headerlink" href="#modos-de-processamento" title="Link para esta seção">&para;</a></h2>
 <table>
 <thead>
 <tr>
 <th>Modo</th>
-<th>Performance</th>
-<th>CPU</th>
-<th>RAM</th>
+<th>Execução</th>
 <th>Uso</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>fast</td>
-<td>Alta</td>
-<td>Alto</td>
-<td>~2GB</td>
-<td>Padrão, máquinas com bons recursos</td>
+<td><code>fast</code></td>
+<td>Fontes concorrentes dentro dos limites de CPU, memória e quantidade de arquivos; teto padrão de 4 workers</td>
+<td>Permitir paralelismo por fonte</td>
 </tr>
 <tr>
-<td>slow</td>
-<td>Moderada</td>
-<td>Baixo</td>
-<td>~500MB</td>
-<td>Recursos limitados</td>
+<td><code>slow</code></td>
+<td>Um worker de fonte e lotes menores</td>
+<td>Limitar concorrência e uso de memória</td>
 </tr>
 </tbody>
 </table>
+<p>Ambos usam lotes limitados e o mesmo schema e validações. <code>slow</code> não reduz o<br />
+conjunto solicitado nem o espaço necessário para os temporários e a saída.<br />
+As <a href="../../dev-guide/cotahist-performance/">medições COTAHIST</a> registram ambiente,<br />
+corpus e resultados. Os números do schema anterior permanecem nos<br />
+<a href="../../dev-guide/benchmarks/">benchmarks históricos</a>.</p>
+<p>Para consumidores que importam <code>ProcessingModeEnumB3</code> pelo namespace da fonte,<br />
+os valores <code>FAST</code> e <code>SLOW</code> permanecem. Na revisão de 20/10/2026, foram removidas<br />
+as propriedades <code>desired_concurrent_files</code>, <code>desired_workers</code>,<br />
+<code>use_parallel_parsing</code> e <code>memory_threshold_mb</code>, que não controlavam a extração.<br />
+Os limites efetivos continuam sendo calculados por <code>ResourcePolicyB3</code>, e o<br />
+backend e a quantidade efetiva de workers são expostos pela telemetria.</p>
 <hr />
-<p>Veja também:</p>
+<h2 id="documentacao-relacionada">Documentação Relacionada<a class="headerlink" href="#documentacao-relacionada" title="Link para esta seção">&para;</a></h2>
 <ul>
 <li><a href="../../user-guide/b3-docs/">Guia de Uso B3</a></li>
 <li><a href="../exceptions/">Exceções</a></li>

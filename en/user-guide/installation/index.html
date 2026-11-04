@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Biblioteca Python para extração e processamento de dados financeiros globais">
+        <meta name="description" content="Biblioteca Python para baixar documentos da CVM e processar cotações históricas da B3 em Parquet">
       
       
         <meta name="author" content="Jordan Estralioto">
@@ -309,7 +309,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../dev-guide/architecture/" class="md-tabs__link">
+        <a href="../../dev-guide/contributing/" class="md-tabs__link">
           
   
   
@@ -329,7 +329,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../reference/cvm-api/" class="md-tabs__link">
+        <a href="../../dev-guide/api-reference/" class="md-tabs__link">
           
   
   
@@ -539,88 +539,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#system-requirements" class="md-nav__link">
+  <a href="#install-with-pip" class="md-nav__link">
     <span class="md-ellipsis">
       
-        System Requirements
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="System Requirements">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#mandatory-requirements" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Mandatory Requirements
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#check-python-version" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Check Python Version
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#installing-via-pip-recommended-for-consumers" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Installing via pip (Recommended for Consumers)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Installing via pip (Recommended for Consumers)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#installation-within-a-virtual-environment-recommended" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Installation within a Virtual Environment (Recommended)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#upgrade-to-the-latest-release" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Upgrade to the Latest Release
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#installing-via-uv-alternative-to-pip" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Installing via uv (Alternative to pip)
+        Install with pip
       
     </span>
   </a>
@@ -628,221 +550,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#development-installation" class="md-nav__link">
+  <a href="#install-in-a-project-with-uv" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Development Installation
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Development Installation">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-clone-the-repository" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Clone the Repository
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-install-with-uv-recommended-for-contributors" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Install with uv (Recommended for Contributors)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-install-with-pip-in-editable-mode" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Install with pip in Editable Mode
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#runtime-dependencies" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Runtime Dependencies
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Runtime Dependencies">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#mandatory-dependencies" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Mandatory Dependencies
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#development-dependencies-optional" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Development Dependencies (Optional)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#verifying-your-installation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Verifying Your Installation
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Verifying Your Installation">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-verify-public-symbol-imports" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Verify Public Symbol Imports
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-check-package-version" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Check Package Version
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-basic-inspection-test" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Basic Inspection Test
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Troubleshooting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#error-no-module-named-globaldatafinance" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Error: &ldquo;No module named &lsquo;globaldatafinance&rsquo;&rdquo;
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#error-python-version-312-or-higher-required" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Error: &ldquo;Python version 3.12 or higher required&rdquo;
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#dependency-resolution-conflicts" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dependency Resolution Conflicts
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#permission-denied-linuxmacos" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Permission Denied (Linux/macOS)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#corporate-proxy-restrictions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Corporate Proxy Restrictions
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#uninstallation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Uninstallation
+        Install in a project with uv
       
     </span>
   </a>
@@ -850,10 +561,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#next-steps" class="md-nav__link">
+  <a href="#verify-the-installation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Next Steps
+        Verify the installation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resolve-common-problems" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resolve common problems
       
     </span>
   </a>
@@ -1075,62 +797,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev-guide/architecture/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Architecture
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../dev-guide/api-reference/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    API Reference
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../dev-guide/contributing/" class="md-nav__link">
         
   
@@ -1159,6 +825,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../dev-guide/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../dev-guide/testing/" class="md-nav__link">
         
   
@@ -1167,6 +861,86 @@
     
   
     Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Maintenance and evidence
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Maintenance and evidence
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/release-readiness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Acceptance
   
 
     
@@ -1215,6 +989,633 @@
   
   
     <li class="md-nav__item">
+      <a href="../../dev-guide/cotahist-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    COTAHIST Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/real-data-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation with external data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cotahist-v2-supplied-corpus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    COTAHIST Corpus Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Technical Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/test-execution-tiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Execution Tiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/real-validation-campaign/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auditable Real-Data Campaign
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/archive-safety-and-unc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ZIP Limits and UNC Destinations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/cvm-failure-atomic-batch-commit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Failure-Atomic CVM Batch Commit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/cvm-ingestion-ownership/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shared CVM Ingestion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/pyarrow-ingestion-integrity-cutover/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PyArrow and Integrity Cutover
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/shared-infrastructure-clean-cut/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shared Infrastructure Clean Cut
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Technical Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cvm-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CVM API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/b3-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    B3 API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/b3-schema-v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    B3 Parquet Schema v2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/exceptions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exceptions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/transactional-publication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transactional publication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_7" id="__nav_4_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration and operation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configuration and operation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../dev-guide/advanced-usage/" class="md-nav__link">
         
   
@@ -1223,6 +1624,34 @@
     
   
     Advanced Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../b3-operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    B3 Operational Practices
   
 
     
@@ -1326,9 +1755,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -1347,17 +1777,17 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Technical Reference
+    Migrations
   
 
     
@@ -1368,12 +1798,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Technical Reference
+    Migrations
   
 
           </label>
@@ -1386,14 +1816,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/cvm-api/" class="md-nav__link">
+      <a href="../migration-pyarrow-integrity/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    CVM API
+    Migration 0.2.0
   
 
     
@@ -1414,14 +1844,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/b3-api/" class="md-nav__link">
+      <a href="../migration-infrastructure-clean-cut/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    B3 API
+    Infrastructure Clean Cut Migration
   
 
     
@@ -1442,14 +1872,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/exceptions/" class="md-nav__link">
+      <a href="../migration-cvm-exact-text/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Exceptions
+    CVM Exact Text Migration
   
 
     
@@ -1458,6 +1888,14 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1491,271 +1929,83 @@
 
 
 <h1 id="installation">Installation<a class="headerlink" href="#installation" title="Link para esta seção">&para;</a></h1>
-<p>This guide provides detailed instructions to install and configure the <strong>Global-Data-Finance</strong> library across different runtime environments.</p>
-<hr />
-<h2 id="system-requirements">System Requirements<a class="headerlink" href="#system-requirements" title="Link para esta seção">&para;</a></h2>
-<p>Before installing Global-Data-Finance, verify that your machine meets the following minimum operating requirements:</p>
-<h3 id="mandatory-requirements">Mandatory Requirements<a class="headerlink" href="#mandatory-requirements" title="Link para esta seção">&para;</a></h3>
-<ul>
-<li><strong>Python</strong>: Version 3.12 or higher</li>
-<li><strong>Operating System</strong>: Linux, macOS, or Windows</li>
-<li><strong>Disk Space</strong>: Minimum of 2 GB to store large multi-year regulatory and market datasets</li>
-<li><strong>RAM</strong>: Minimum of 3 GB (6 GB or more recommended when processing extensive multi-year historical quotes)</li>
-</ul>
-<h3 id="check-python-version">Check Python Version<a class="headerlink" href="#check-python-version" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>python<span class="w"> </span>--version
-<span class="c1"># or</span>
-python3<span class="w"> </span>--version
+<p>Use Python <code>&gt;=3.12,&lt;4.0</code>. CI checks Python 3.12, 3.13, and 3.14. Required disk<br />
+space and memory depend on the files and years being processed.</p>
+<h2 id="install-with-pip">Install with pip<a class="headerlink" href="#install-with-pip" title="Link para esta seção">&para;</a></h2>
+<p>Create a virtual environment:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv
 </code></pre></div>
-<div class="admonition warning">
-<p class="admonition-title">Python Version</p>
-<p>Global-Data-Finance strictly requires Python 3.12 or newer. If your system runs an older version, you must upgrade Python before attempting installation.</p>
-</div>
-<hr />
-<h2 id="installing-via-pip-recommended-for-consumers">Installing via pip (Recommended for Consumers)<a class="headerlink" href="#installing-via-pip-recommended-for-consumers" title="Link para esta seção">&para;</a></h2>
-<p>The simplest way to integrate Global-Data-Finance as a dependency is via PyPI using <code>pip</code>:</p>
-<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>globaldatafinance
-</code></pre></div>
-<h3 id="installation-within-a-virtual-environment-recommended">Installation within a Virtual Environment (Recommended)<a class="headerlink" href="#installation-within-a-virtual-environment-recommended" title="Link para esta seção">&para;</a></h3>
-<p>To prevent dependency collisions with systemic Python packages or unrelated workspaces, always install Global-Data-Finance inside an isolated virtual environment:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Create a dedicated virtual environment</span>
-python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>venv
-
-<span class="c1"># Activate the virtual environment</span>
-<span class="c1"># On Linux/macOS:</span>
-<span class="nb">source</span><span class="w"> </span>venv/bin/activate
-
-<span class="c1"># On Windows:</span>
-venv<span class="se">\S</span>cripts<span class="se">\a</span>ctivate
-
-<span class="c1"># Install Global-Data-Finance</span>
-pip<span class="w"> </span>install<span class="w"> </span>globaldatafinance
-</code></pre></div>
-<h3 id="upgrade-to-the-latest-release">Upgrade to the Latest Release<a class="headerlink" href="#upgrade-to-the-latest-release" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span>globaldatafinance
-</code></pre></div>
-<hr />
-<h2 id="installing-via-uv-alternative-to-pip">Installing via uv (Alternative to pip)<a class="headerlink" href="#installing-via-uv-alternative-to-pip" title="Link para esta seção">&para;</a></h2>
-<p><code>uv</code> is an ultra-fast Python package and project manager and serves as the canonical tool for repository development in this project. To add the library to an external project managed by <code>uv</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Add as a project runtime dependency</span>
-uv<span class="w"> </span>add<span class="w"> </span>globaldatafinance
-
-<span class="c1"># Add as a development dependency</span>
-uv<span class="w"> </span>add<span class="w"> </span>--dev<span class="w"> </span>globaldatafinance
-</code></pre></div>
-<hr />
-<h2 id="development-installation">Development Installation<a class="headerlink" href="#development-installation" title="Link para esta seção">&para;</a></h2>
-<p>If you intend to modify the library code, run test suites, or submit pull requests:</p>
-<h3 id="1-clone-the-repository">1. Clone the Repository<a class="headerlink" href="#1-clone-the-repository" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/jordanestralioto/Global-Data-Finance.git
-<span class="nb">cd</span><span class="w"> </span>Global-Data-Finance
-</code></pre></div>
-<h3 id="2-install-with-uv-recommended-for-contributors">2. Install with uv (Recommended for Contributors)<a class="headerlink" href="#2-install-with-uv-recommended-for-contributors" title="Link para esta seção">&para;</a></h3>
-<p>The repository commits an exact dependency lock (<code>uv.lock</code>). Running <code>uv sync</code> reproduces the exact verification environment utilized by GitHub Actions CI gates.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Synchronize dependencies (automatically bootstraps .venv)</span>
-uv<span class="w"> </span>sync
-
-<span class="c1"># Run diagnostic suites inside the managed environment</span>
-uv<span class="w"> </span>run<span class="w"> </span>pytest
-uv<span class="w"> </span>run<span class="w"> </span>pre-commit<span class="w"> </span>run<span class="w"> </span>--all-files
-</code></pre></div>
-<h3 id="3-install-with-pip-in-editable-mode">3. Install with pip in Editable Mode<a class="headerlink" href="#3-install-with-pip-in-editable-mode" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Create and activate a new virtual environment</span>
-python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>venv
-<span class="nb">source</span><span class="w"> </span>venv/bin/activate<span class="w">  </span><span class="c1"># Linux/macOS</span>
-<span class="c1"># or</span>
-venv<span class="se">\S</span>cripts<span class="se">\a</span>ctivate<span class="w">  </span><span class="c1"># Windows</span>
-
-<span class="c1"># Install library in editable mode</span>
-pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.
-
-<span class="c1"># Install with development dependency tools</span>
-pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[dev]&quot;</span>
-</code></pre></div>
-<hr />
-<h2 id="runtime-dependencies">Runtime Dependencies<a class="headerlink" href="#runtime-dependencies" title="Link para esta seção">&para;</a></h2>
-<p>Global-Data-Finance builds upon an optimized selection of high-performance libraries:</p>
-<h3 id="mandatory-dependencies">Mandatory Dependencies<a class="headerlink" href="#mandatory-dependencies" title="Link para esta seção">&para;</a></h3>
+<p>Activate it using the command for your terminal:</p>
 <table>
 <thead>
 <tr>
-<th>Library</th>
-<th>Version</th>
-<th>Purpose</th>
+<th>Terminal</th>
+<th>Command</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>httpx</code></td>
-<td>≥0.28.1</td>
-<td>Asynchronous HTTP client with HTTP/2 support</td>
+<td>Linux/macOS</td>
+<td><code>source .venv/bin/activate</code></td>
 </tr>
 <tr>
-<td><code>pandas</code></td>
-<td>≥2.3.3</td>
-<td>Data structures and numerical analytics</td>
+<td>Windows PowerShell</td>
+<td><code>.venv\Scripts\Activate.ps1</code></td>
 </tr>
 <tr>
-<td><code>polars</code></td>
-<td>≥1.0.0</td>
-<td>High-performance columnar dataframe processing</td>
-</tr>
-<tr>
-<td><code>pyarrow</code></td>
-<td>≥22.0.0</td>
-<td>Native support for Apache Parquet storage</td>
-</tr>
-<tr>
-<td><code>pydantic-settings</code></td>
-<td>≥2.11.0</td>
-<td>Typed runtime configuration and environment validation</td>
-</tr>
-<tr>
-<td><code>psutil</code></td>
-<td>≥5.9.0</td>
-<td>Real-time CPU and RAM monitoring for adaptive throttling</td>
+<td>Windows cmd</td>
+<td><code>.venv\Scripts\activate.bat</code></td>
 </tr>
 </tbody>
 </table>
-<h3 id="development-dependencies-optional">Development Dependencies (Optional)<a class="headerlink" href="#development-dependencies-optional" title="Link para esta seção">&para;</a></h3>
-<p>Installed automatically only when bootstrapping development mode:</p>
+<p>Install the library in the active environment:</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>globaldatafinance
+</code></pre></div>
+<h2 id="install-in-a-project-with-uv">Install in a project with uv<a class="headerlink" href="#install-in-a-project-with-uv" title="Link para esta seção">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>add<span class="w"> </span>globaldatafinance
+</code></pre></div>
+<p>To change the library&rsquo;s source code, follow the locked environment setup in the<br />
+<a href="../../dev-guide/contributing/">contributing guide</a>.</p>
+<h2 id="verify-the-installation">Verify the installation<a class="headerlink" href="#verify-the-installation" title="Link para esta seção">&para;</a></h2>
+<p>In the same environment where you installed the library:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">importlib.metadata</span><span class="w"> </span><span class="kn">import</span> <span class="n">version</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">FundamentalStocksDataCVM</span><span class="p">,</span> <span class="n">HistoricalQuotesB3</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">version</span><span class="p">(</span><span class="s2">"globaldatafinance"</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">FundamentalStocksDataCVM</span><span class="p">()</span><span class="o">.</span><span class="n">get_available_docs</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">HistoricalQuotesB3</span><span class="p">()</span><span class="o">.</span><span class="n">get_available_assets</span><span class="p">())</span>
+</code></pre></div>
+<p>These queries do not download data. The library already installs PyArrow.<br />
+Pandas and Polars are optional readers for Parquet analysis; install them<br />
+separately when needed.</p>
+<h2 id="resolve-common-problems">Resolve common problems<a class="headerlink" href="#resolve-common-problems" title="Link para esta seção">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Library</th>
-<th>Purpose</th>
+<th>Symptom</th>
+<th>What to check</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>pytest</code></td>
-<td>Core test execution framework</td>
+<td><code>No module named globaldatafinance</code></td>
+<td>Use the same Python for installation and execution; check <code>python -m pip show globaldatafinance</code>.</td>
 </tr>
 <tr>
-<td><code>pytest-cov</code></td>
-<td>Code coverage reporting and threshold gates</td>
+<td>Unsupported Python</td>
+<td>Create the virtual environment with a version in the supported range.</td>
 </tr>
 <tr>
-<td><code>pytest-asyncio</code></td>
-<td>Asynchronous test fixture support</td>
+<td>Dependency conflict</td>
+<td>Install in a new virtual environment; project versions are in <code>pyproject.toml</code>.</td>
 </tr>
 <tr>
-<td><code>mypy</code></td>
-<td>Static structural type checking</td>
-</tr>
-<tr>
-<td><code>pre-commit</code></td>
-<td>Automated code formatting and pre-commit linting</td>
-</tr>
-<tr>
-<td><code>mkdocs</code></td>
-<td>Documentation rendering engine</td>
-</tr>
-<tr>
-<td><code>mkdocs-material</code></td>
-<td>Material design visual theme for MkDocs</td>
+<td>Installation permission failure</td>
+<td>Use a virtual environment in a directory where you have write access.</td>
 </tr>
 </tbody>
 </table>
-<hr />
-<h2 id="verifying-your-installation">Verifying Your Installation<a class="headerlink" href="#verifying-your-installation" title="Link para esta seção">&para;</a></h2>
-<p>After installation completes, run these quick smoke tests to confirm functional operation:</p>
-<h3 id="1-verify-public-symbol-imports">1. Verify Public Symbol Imports<a class="headerlink" href="#1-verify-public-symbol-imports" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Open an interactive Python terminal</span>
-<span class="n">python</span>
-
-<span class="c1"># Attempt to import public facade entry points</span>
-<span class="o">&gt;&gt;&gt;</span> <span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">FundamentalStocksDataCVM</span><span class="p">,</span> <span class="n">HistoricalQuotesB3</span>
-<span class="o">&gt;&gt;&gt;</span> <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✓ Global-Data-Finance successfully installed and imported!&quot;</span><span class="p">)</span>
-</code></pre></div>
-<h3 id="2-check-package-version">2. Check Package Version<a class="headerlink" href="#2-check-package-version" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="o">&gt;&gt;&gt;</span> <span class="kn">import</span><span class="w"> </span><span class="nn">globaldatafinance</span>
-<span class="o">&gt;&gt;&gt;</span> <span class="nb">print</span><span class="p">(</span><span class="n">globaldatafinance</span><span class="o">.</span><span class="n">__version__</span><span class="p">)</span>
-<span class="mf">0.1.4</span>
-</code></pre></div>
-<h3 id="3-basic-inspection-test">3. Basic Inspection Test<a class="headerlink" href="#3-basic-inspection-test" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">FundamentalStocksDataCVM</span>
-
-<span class="c1"># Instantiate CVM public facade</span>
-<span class="n">cvm</span> <span class="o">=</span> <span class="n">FundamentalStocksDataCVM</span><span class="p">()</span>
-
-<span class="c1"># Retrieve supported document classifications</span>
-<span class="n">docs</span> <span class="o">=</span> <span class="n">cvm</span><span class="o">.</span><span class="n">get_available_docs</span><span class="p">()</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">docs</span><span class="p">)</span><span class="si">}</span><span class="s2"> supported regulatory document types&quot;</span><span class="p">)</span>
-
-<span class="c1"># Retrieve permissible historical time windows</span>
-<span class="n">years</span> <span class="o">=</span> <span class="n">cvm</span><span class="o">.</span><span class="n">get_available_years</span><span class="p">()</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Available data spanning from </span><span class="si">{</span><span class="n">years</span><span class="p">[</span><span class="s1">&#39;General Document Years&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="n">years</span><span class="p">[</span><span class="s1">&#39;Current Year&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</code></pre></div>
-<p>If all evaluations above execute cleanly without exceptions, your installation is fully verified! ✅</p>
-<hr />
-<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link para esta seção">&para;</a></h2>
-<h3 id="error-no-module-named-globaldatafinance">Error: &ldquo;No module named &lsquo;globaldatafinance&rsquo;&rdquo;<a class="headerlink" href="#error-no-module-named-globaldatafinance" title="Link para esta seção">&para;</a></h3>
-<p><strong>Cause</strong>: The package was installed in a different Python runtime or your virtual environment remains inactive.</p>
-<p><strong>Solution</strong>:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Verify active Python interpreter path</span>
-which<span class="w"> </span>python<span class="w">  </span><span class="c1"># Linux/macOS</span>
-where<span class="w"> </span>python<span class="w">  </span><span class="c1"># Windows</span>
-
-<span class="c1"># Reinstall the library explicitly within active environment</span>
-pip<span class="w"> </span>install<span class="w"> </span>--force-reinstall<span class="w"> </span>globaldatafinance
-</code></pre></div>
-<h3 id="error-python-version-312-or-higher-required">Error: &ldquo;Python version 3.12 or higher required&rdquo;<a class="headerlink" href="#error-python-version-312-or-higher-required" title="Link para esta seção">&para;</a></h3>
-<p><strong>Cause</strong>: The interpreter executing the command is older than Python 3.12.</p>
-<p><strong>Solution</strong>:</p>
-<ol>
-<li>Install Python 3.12 or newer from <a href="https://www.python.org/downloads/">python.org</a>.</li>
-<li>Create a clean virtual environment targeting the compliant binary:</li>
-</ol>
-<div class="highlight"><pre><span></span><code>python3.12<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>venv
-<span class="nb">source</span><span class="w"> </span>venv/bin/activate
-pip<span class="w"> </span>install<span class="w"> </span>globaldatafinance
-</code></pre></div>
-<h3 id="dependency-resolution-conflicts">Dependency Resolution Conflicts<a class="headerlink" href="#dependency-resolution-conflicts" title="Link para esta seção">&para;</a></h3>
-<p><strong>Cause</strong>: An existing package in your system or environment requires incompatible dependency constraints.</p>
-<p><strong>Solution</strong>:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Create an entirely isolated virtual environment</span>
-python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>venv_clean
-<span class="nb">source</span><span class="w"> </span>venv_clean/bin/activate
-pip<span class="w"> </span>install<span class="w"> </span>globaldatafinance
-</code></pre></div>
-<h3 id="permission-denied-linuxmacos">Permission Denied (Linux/macOS)<a class="headerlink" href="#permission-denied-linuxmacos" title="Link para esta seção">&para;</a></h3>
-<p><strong>Cause</strong>: Attempting to install libraries into global system directories without administrative permissions.</p>
-<p><strong>Solution</strong>:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># NEVER execute sudo pip install!</span>
-<span class="c1"># Always contain installations inside a virtual environment:</span>
-python<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>venv
-<span class="nb">source</span><span class="w"> </span>venv/bin/activate
-pip<span class="w"> </span>install<span class="w"> </span>globaldatafinance
-</code></pre></div>
-<h3 id="corporate-proxy-restrictions">Corporate Proxy Restrictions<a class="headerlink" href="#corporate-proxy-restrictions" title="Link para esta seção">&para;</a></h3>
-<p>If executing behind a strict corporate web firewall or proxy:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Export proxy environmental overrides</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">HTTP_PROXY</span><span class="o">=</span><span class="s2">&quot;http://proxy.enterprise.com:8080&quot;</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">HTTPS_PROXY</span><span class="o">=</span><span class="s2">&quot;http://proxy.enterprise.com:8080&quot;</span>
-
-<span class="c1"># Execute standard pip installation</span>
-pip<span class="w"> </span>install<span class="w"> </span>globaldatafinance
-</code></pre></div>
-<hr />
-<h2 id="uninstallation">Uninstallation<a class="headerlink" href="#uninstallation" title="Link para esta seção">&para;</a></h2>
-<p>To remove Global-Data-Finance from your current Python environment:</p>
-<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>uninstall<span class="w"> </span>globaldatafinance
-</code></pre></div>
-<hr />
-<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Link para esta seção">&para;</a></h2>
-<p>With your runtime configured and verified, dive into practical implementations:</p>
-<ul>
-<li>🚀 <strong><a href="../quickstart/">Quick Start</a></strong> - Essential code snippets and foundational concepts</li>
-<li>📄 <strong><a href="../cvm-docs/">CVM Documents</a></strong> - Comprehensive documentation of regulatory disclosures</li>
-<li>📈 <strong><a href="../b3-docs/">B3 Quotes</a></strong> - Complete reference for historical market quote extraction</li>
-<li>💻 <strong><a href="../examples/">Practical Examples</a></strong> - Production data workflows and pipelines</li>
-</ul>
-<hr />
-<div class="admonition tip">
-<p class="admonition-title">Contributor Tip</p>
-<p>If you plan to submit improvements or architectural enhancements to the repository, read the <a href="../../dev-guide/contributing/">Contribution Guide</a> to initialize local git pre-commit verification hooks.</p>
-</div>
+<p>Continue with the <a href="../quickstart/">quickstart</a>.</p>
 
 
 

@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Biblioteca Python para extração e processamento de dados financeiros globais">
+        <meta name="description" content="Biblioteca Python para baixar documentos da CVM e processar cotações históricas da B3 em Parquet">
       
       
         <meta name="author" content="Jordan Estralioto">
@@ -18,7 +18,7 @@
         <link rel="prev" href="../resource-monitoring/">
       
       
-        <link rel="next" href="../../reference/cvm-api/">
+        <link rel="next" href="../../user-guide/migration-pyarrow-integrity/">
       
       
         
@@ -303,13 +303,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../architecture/" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../contributing/" class="md-tabs__link">
           
   
   
@@ -325,11 +323,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../reference/cvm-api/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../api-reference/" class="md-tabs__link">
           
   
   
@@ -646,31 +646,26 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   
@@ -688,7 +683,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -698,62 +693,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../architecture/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Arquitetura
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../api-reference/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Referência da API
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -790,6 +729,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Arquitetura
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../testing/" class="md-nav__link">
         
   
@@ -798,6 +765,86 @@
     
   
     Testes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manutenção e evidências
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Manutenção e evidências
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release-readiness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Aceite de release
   
 
     
@@ -846,6 +893,643 @@
   
   
     <li class="md-nav__item">
+      <a href="../cotahist-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance COTAHIST
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../real-data-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validação com dados externos
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cotahist-v2-supplied-corpus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auditoria do corpus COTAHIST
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisões Técnicas
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Decisões Técnicas
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/test-execution-tiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Níveis de Execução de Testes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/real-validation-campaign/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Campanha Real Auditável
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/archive-safety-and-unc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Limites ZIP e Destinos UNC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/cvm-failure-atomic-batch-commit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Commit CVM Tolerante a Falhas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/cvm-ingestion-ownership/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ingestão compartilhada CVM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/pyarrow-ingestion-integrity-cutover/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cutover PyArrow e Integridade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/shared-infrastructure-clean-cut/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Corte limpo da infraestrutura compartilhada
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Referência Técnica
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Referência Técnica
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Referência da API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cvm-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API CVM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/b3-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API B3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/b3-schema-v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schema Parquet B3 v2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/exceptions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exceções
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/transactional-publication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Publicação transacional
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_7" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4_7" id="__nav_4_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuração e operação
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configuração e operação
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../advanced-usage/" class="md-nav__link">
         
   
@@ -854,6 +1538,34 @@
     
   
     Uso Avançado
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/b3-operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Boas práticas B3
   
 
     
@@ -1056,6 +1768,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#status-http-nos-downloads-cvm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Status HTTP nos downloads CVM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#limites-e-redirects-http" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limites e redirects HTTP
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1172,6 +1906,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#documentacao-relacionada" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Documentação Relacionada
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1187,9 +1932,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -1200,25 +1946,28 @@
     
       
       
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="">
             
   
   
   <span class="md-ellipsis">
     
   
-    Referência Técnica
+    Migrações
   
 
     
@@ -1229,12 +1978,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Referência Técnica
+    Migrações
   
 
           </label>
@@ -1247,14 +1996,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/cvm-api/" class="md-nav__link">
+      <a href="../../user-guide/migration-pyarrow-integrity/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    API CVM
+    Migração 0.2.0
   
 
     
@@ -1275,14 +2024,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/b3-api/" class="md-nav__link">
+      <a href="../../user-guide/migration-infrastructure-clean-cut/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    API B3
+    Migração de infraestrutura
   
 
     
@@ -1303,14 +2052,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/exceptions/" class="md-nav__link">
+      <a href="../../user-guide/migration-cvm-exact-text/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Exceções
+    Migração CVM exata
   
 
     
@@ -1319,6 +2068,14 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1355,24 +2112,25 @@
 <p>Documentação da estratégia de retry do Global-Data-Finance.</p>
 <hr />
 <h2 id="visao-geral">Visão Geral<a class="headerlink" href="#visao-geral" title="Link para esta seção">&para;</a></h2>
-<p>A classe <code>RetryStrategy</code> determina quais exceções garantem retry e calcula o tempo de backoff exponencial.</p>
+<p>A classe <code>RetryStrategy</code> classifica exceções por tipo e mensagem e calcula o<br />
+backoff exponencial com jitter. O chamador decide quando repetir a operação.</p>
 <hr />
 <h2 id="caracteristicas">Características<a class="headerlink" href="#caracteristicas" title="Link para esta seção">&para;</a></h2>
 <ul>
-<li>✅ <strong>Inteligente</strong>: Apenas retries em erros transientes</li>
-<li>✅ <strong>Backoff Exponencial</strong>: Aumenta tempo de espera progressivamente</li>
-<li>✅ <strong>Configurável</strong>: Backoff inicial, máximo e multiplicador customizáveis</li>
-<li>✅ <strong>Type-safe</strong>: Usa hierarquia de exceções do projeto</li>
+<li>Classificação por exceção, com fallback para palavras na mensagem.</li>
+<li>Backoff exponencial com jitter multiplicativo e teto configurável.</li>
+<li>Exclusões explícitas para <code>PathPermissionError</code>, <code>DiskFullError</code> e <code>ValueError</code>.</li>
 </ul>
 <hr />
 <h2 id="excecoes-retryable">Exceções Retryable<a class="headerlink" href="#excecoes-retryable" title="Link para esta seção">&para;</a></h2>
 <h3 id="sempre-retryable">Sempre Retryable<a class="headerlink" href="#sempre-retryable" title="Link para esta seção">&para;</a></h3>
 <ul>
 <li><code>NetworkError</code> - Erros de rede</li>
-<li><code>TimeoutError</code> - Timeout de requisições</li>
+<li><code>DownloadTimeoutError</code> - Timeout de downloads CVM</li>
 </ul>
 <h3 id="baseado-em-mensagem">Baseado em Mensagem<a class="headerlink" href="#baseado-em-mensagem" title="Link para esta seção">&para;</a></h3>
-<p>Erros com keywords retryáveis na mensagem:</p>
+<p>Para qualquer outra exceção não excluída, a estratégia procura estas palavras<br />
+na mensagem convertida para minúsculas:</p>
 <ul>
 <li><code>"timeout"</code></li>
 <li><code>"connection refused"</code></li>
@@ -1382,12 +2140,45 @@
 <li><code>"unavailable"</code></li>
 <li><code>"try again"</code></li>
 </ul>
+<p>Esse fallback também aceita uma exceção genérica, como<br />
+<code>Exception("Operation timeout occurred")</code>. A mensagem não comprova que a<br />
+falha é transitória. Ao usar retry manual, escolha operações idempotentes ou<br />
+aplique sua própria classificação antes de repetir uma alteração de estado.</p>
 <h3 id="nunca-retryable">Nunca Retryable<a class="headerlink" href="#nunca-retryable" title="Link para esta seção">&para;</a></h3>
 <ul>
 <li><code>PathPermissionError</code> - Sem permissão</li>
 <li><code>DiskFullError</code> - Disco cheio</li>
 <li><code>ValueError</code> - Erro de validação</li>
 </ul>
+<h3 id="status-http-nos-downloads-cvm">Status HTTP nos downloads CVM<a class="headerlink" href="#status-http-nos-downloads-cvm" title="Link para esta seção">&para;</a></h3>
+<p>O adaptador CVM classifica o status HTTP antes de traduzir a falha para<br />
+<code>NetworkError</code>. Apenas <code>408</code>, <code>429</code>, <code>500</code>, <code>502</code>, <code>503</code> e <code>504</code> permitem<br />
+retry. Os demais status, incluindo <code>403</code>, <code>404</code> e <code>410</code>, encerram a tentativa<br />
+sem backoff adicional. O diagnóstico mantém o status original. A seleção por<br />
+status tem precedência sobre palavras presentes na mensagem ou no URL;<br />
+timeouts e falhas de conexão continuam usando a estratégia compartilhada.</p>
+<h3 id="limites-e-redirects-http">Limites e redirects HTTP<a class="headerlink" href="#limites-e-redirects-http" title="Link para esta seção">&para;</a></h3>
+<p>O limite de bytes do download exige <code>Accept-Encoding: identity</code>. Respostas<br />
+com outra codificação HTTP são rejeitadas antes da leitura, inclusive em<br />
+redirects; a compressão interna do ZIP continua permitida e passa pelos<br />
+limites próprios de extração. O contador limita também corpos intermediários<br />
+de redirects sem <code>Content-Length</code>. Chamadas ao adaptador compartilhado sem<br />
+limite de bytes mantêm a decodificação HTTP existente.</p>
+<p>Downloads com codificação HTTP <code>identity</code> conferem o tamanho recebido contra<br />
+o <code>Content-Length</code> válido da própria resposta GET. Uma divergência rejeita<br />
+e remove apenas o staging da tentativa; na CVM, ela entra na política de<br />
+retry de falhas de transporte. Metadados ausentes ou inválidos não dispensam<br />
+os limites de bytes nem a validação completa do ZIP. A CVM não consulta HEAD<br />
+depois do download, evitando comparar representações de versões diferentes<br />
+quando a origem republica o arquivo.</p>
+<p>HEAD também solicita <code>identity</code> e fecha corpos sem ler ou decodificar,<br />
+inclusive em redirects. O header <code>Content-Length</code> é preservado como metadado<br />
+do recurso; seu valor não é tratado como tamanho de um corpo HEAD.</p>
+<p>No adaptador HTTP compartilhado, redirects que mudam esquema, host ou porta<br />
+retêm somente <code>Accept</code>, <code>Accept-Encoding</code>, <code>Accept-Language</code>, <code>Connection</code>,<br />
+<code>Host</code> e <code>User-Agent</code>. Credenciais e headers personalizados ficam restritos à<br />
+origem inicial. A configuração de headers da CVM fornece <code>User-Agent</code> quando<br />
+informado.</p>
 <hr />
 <h2 id="api">API<a class="headerlink" href="#api" title="Link para esta seção">&para;</a></h2>
 <h3 id="criar-instancia">Criar Instância<a class="headerlink" href="#criar-instancia" title="Link para esta seção">&para;</a></h3>
@@ -1406,24 +2197,27 @@
     <span class="n">download_file</span><span class="p">()</span>
 <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
     <span class="k">if</span> <span class="n">strategy</span><span class="o">.</span><span class="n">is_retryable</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Erro retryable, tentando novamente&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"Erro retryable, tentando novamente"</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Erro não-retryable, parando&quot;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"Erro não-retryable, parando"</span><span class="p">)</span>
         <span class="k">raise</span>
 </code></pre></div>
 <h3 id="calcular-backoff">Calcular Backoff<a class="headerlink" href="#calcular-backoff" title="Link para esta seção">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Calcula tempo de espera para cada tentativa</span>
 <span class="k">for</span> <span class="n">retry_count</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
     <span class="n">backoff</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">calculate_backoff</span><span class="p">(</span><span class="n">retry_count</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Tentativa </span><span class="si">{</span><span class="n">retry_count</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">: esperar </span><span class="si">{</span><span class="n">backoff</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Tentativa </span><span class="si">{</span><span class="n">retry_count</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">: esperar </span><span class="si">{</span><span class="n">backoff</span><span class="si">}</span><span class="s2">s"</span><span class="p">)</span>
 </code></pre></div>
-<p><strong>Exemplo de Saída Estimada (initial=1.0, multiplier=2.0 com Jitter [0.5, 1.5])</strong>:</p>
+<p><strong>Exemplo de Saída Estimada (initial=1.0, multiplier=2.0 com jitter multiplicativo limitado [0.5, 1.5])</strong>:</p>
 <div class="highlight"><pre><span></span><code>Tentativa 1: esperar ~1.0s (ex.: 0.92s)
 Tentativa 2: esperar ~2.0s (ex.: 2.15s)
 Tentativa 3: esperar ~4.0s (ex.: 3.80s)
 </code></pre></div>
 <blockquote>
-<p>Nota: O método <code>calculate_backoff</code> aplica <em>Full Jitter</em> aleatório (<code>[0.5, 1.5]</code>) sobre o valor exponencial determinístico para evitar colisões simultâneas de retries (<em>thundering herd problem</em>).</p>
+<p>Nota: O método <code>calculate_backoff</code> aplica jitter multiplicativo limitado<br />
+aleatório, com fator uniforme entre <code>0.5</code> e <code>1.5</code>, sobre o valor exponencial<br />
+determinístico. Isso evita colisões simultâneas de retries (<em>thundering herd<br />
+problem</em>).</p>
 </blockquote>
 <hr />
 <h2 id="exemplo-de-uso">Exemplo de Uso<a class="headerlink" href="#exemplo-de-uso" title="Link para esta seção">&para;</a></h2>
@@ -1440,7 +2234,8 @@ Tentativa 3: esperar ~4.0s (ex.: 3.80s)
 
 <span class="n">max_retries</span> <span class="o">=</span> <span class="mi">3</span>
 
-<span class="k">for</span> <span class="n">attempt</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_retries</span><span class="p">):</span>
+<span class="c1"># max_retries conta tentativas adicionais após a primeira execução.</span>
+<span class="k">for</span> <span class="n">attempt</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_retries</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">result</span> <span class="o">=</span> <span class="n">download_file</span><span class="p">()</span>
         <span class="k">break</span>  <span class="c1"># Sucesso</span>
@@ -1448,9 +2243,9 @@ Tentativa 3: esperar ~4.0s (ex.: 3.80s)
         <span class="k">if</span> <span class="ow">not</span> <span class="n">strategy</span><span class="o">.</span><span class="n">is_retryable</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
             <span class="k">raise</span>  <span class="c1"># Erro não-retryable</span>
 
-        <span class="k">if</span> <span class="n">attempt</span> <span class="o">&lt;</span> <span class="n">max_retries</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">attempt</span> <span class="o">&lt;</span> <span class="n">max_retries</span><span class="p">:</span>
             <span class="n">backoff</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">calculate_backoff</span><span class="p">(</span><span class="n">attempt</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Tentativa </span><span class="si">{</span><span class="n">attempt</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2"> falhou. Aguardando </span><span class="si">{</span><span class="n">backoff</span><span class="si">}</span><span class="s2">s...&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Tentativa </span><span class="si">{</span><span class="n">attempt</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2"> falhou. Aguardando </span><span class="si">{</span><span class="n">backoff</span><span class="si">}</span><span class="s2">s..."</span><span class="p">)</span>
             <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">backoff</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span>  <span class="c1"># Esgotou tentativas</span>
@@ -1458,9 +2253,16 @@ Tentativa 3: esperar ~4.0s (ex.: 3.80s)
 <hr />
 <h2 id="uso-automatico-nos-adapters">Uso Automático nos Adapters<a class="headerlink" href="#uso-automatico-nos-adapters" title="Link para esta seção">&para;</a></h2>
 <p>Os adapters de download usam <code>RetryStrategy</code> automaticamente:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># AsyncDownloadAdapterCVM já implementa retry com backoff</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">FundamentalStocksDataCVM</span>
+
+<span class="c1"># CvmDownloadAdapter já implementa retry com backoff</span>
 <span class="n">cvm</span> <span class="o">=</span> <span class="n">FundamentalStocksDataCVM</span><span class="p">()</span>
-<span class="n">cvm</span><span class="o">.</span><span class="n">download</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>  <span class="c1"># Retry automático em erros de rede</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">cvm</span><span class="o">.</span><span class="n">download</span><span class="p">(</span>
+    <span class="n">destination_path</span><span class="o">=</span><span class="s2">"/data/cvm"</span><span class="p">,</span>
+    <span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">"DFP"</span><span class="p">],</span>
+    <span class="n">initial_year</span><span class="o">=</span><span class="mi">2023</span><span class="p">,</span>
+    <span class="n">last_year</span><span class="o">=</span><span class="mi">2023</span><span class="p">,</span>
+<span class="p">)</span>
 </code></pre></div>
 <p>O adapter faz:</p>
 <ol>
@@ -1468,7 +2270,7 @@ Tentativa 3: esperar ~4.0s (ex.: 3.80s)
 <li>Se falhar, verifica se é retryable</li>
 <li>Calcula backoff</li>
 <li>Aguarda e tenta novamente</li>
-<li>Repete até max_retries ou sucesso</li>
+<li>Repete até a execução inicial mais <code>max_retries</code> tentativas adicionais, ou sucesso</li>
 </ol>
 <hr />
 <h2 id="configuracao-de-retry">Configuração de Retry<a class="headerlink" href="#configuracao-de-retry" title="Link para esta seção">&para;</a></h2>
@@ -1484,13 +2286,13 @@ Tentativa 3: esperar ~4.0s (ex.: 3.80s)
 <p>O <code>RetryStrategy</code> usa as exceções definidas em <code>macro_exceptions</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.macro_exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">NetworkError</span><span class="p">,</span>          <span class="c1"># Erro de rede</span>
-    <span class="ne">TimeoutError</span><span class="p">,</span>          <span class="c1"># Timeout</span>
+    <span class="n">DownloadTimeoutError</span><span class="p">,</span>  <span class="c1"># Timeout de download</span>
     <span class="n">PathPermissionError</span><span class="p">,</span>   <span class="c1"># Sem permissão</span>
     <span class="n">DiskFullError</span>          <span class="c1"># Disco cheio</span>
 <span class="p">)</span>
 </code></pre></div>
 <hr />
-<p>Veja também:</p>
+<h2 id="documentacao-relacionada">Documentação Relacionada<a class="headerlink" href="#documentacao-relacionada" title="Link para esta seção">&para;</a></h2>
 <ul>
 <li><a href="../../reference/exceptions/">Exceções</a></li>
 <li><a href="../advanced-usage/#configuracao-global">Configuration</a></li>

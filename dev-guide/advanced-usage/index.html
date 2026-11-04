@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Biblioteca Python para extração e processamento de dados financeiros globais">
+        <meta name="description" content="Biblioteca Python para baixar documentos da CVM e processar cotações históricas da B3 em Parquet">
       
       
         <meta name="author" content="Jordan Estralioto">
@@ -15,10 +15,10 @@
         <link rel="canonical" href="https://jordanestralioto.github.io/Global-Data-Finance/dev-guide/advanced-usage/">
       
       
-        <link rel="prev" href="../benchmarks/">
+        <link rel="prev" href="../../reference/transactional-publication/">
       
       
-        <link rel="next" href="../logging-system/">
+        <link rel="next" href="../../user-guide/b3-operations/">
       
       
         
@@ -303,13 +303,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../architecture/" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../contributing/" class="md-tabs__link">
           
   
   
@@ -325,11 +323,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../reference/cvm-api/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../api-reference/" class="md-tabs__link">
           
   
   
@@ -646,31 +646,26 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   
@@ -688,7 +683,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -706,62 +701,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../architecture/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Arquitetura
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../api-reference/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Referência da API
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../contributing/" class="md-nav__link">
         
   
@@ -770,6 +709,34 @@
     
   
     Como Contribuir
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Arquitetura
   
 
     
@@ -817,6 +784,86 @@
   
   
   
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manutenção e evidências
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Manutenção e evidências
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release-readiness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Aceite de release
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     <li class="md-nav__item">
       <a href="../benchmarks/" class="md-nav__link">
         
@@ -838,6 +885,643 @@
   
 
               
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cotahist-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance COTAHIST
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../real-data-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validação com dados externos
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cotahist-v2-supplied-corpus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auditoria do corpus COTAHIST
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisões Técnicas
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Decisões Técnicas
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/test-execution-tiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Níveis de Execução de Testes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/real-validation-campaign/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Campanha Real Auditável
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/archive-safety-and-unc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Limites ZIP e Destinos UNC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/cvm-failure-atomic-batch-commit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Commit CVM Tolerante a Falhas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/cvm-ingestion-ownership/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ingestão compartilhada CVM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/pyarrow-ingestion-integrity-cutover/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cutover PyArrow e Integridade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/shared-infrastructure-clean-cut/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Corte limpo da infraestrutura compartilhada
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Referência Técnica
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Referência Técnica
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Referência da API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cvm-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API CVM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/b3-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API B3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/b3-schema-v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schema Parquet B3 v2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/exceptions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exceções
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/transactional-publication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Publicação transacional
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_7" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4_7" id="__nav_4_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuração e operação
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configuração e operação
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
             
               
                 
@@ -933,6 +1617,17 @@
     <span class="md-ellipsis">
       
         Configuração Global
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#limites-de-zip-e-destinos-unc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limites de ZIP e destinos UNC
       
     </span>
   </a>
@@ -1102,10 +1797,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#uso-eficiente-de-memoria" class="md-nav__link">
+  <a href="#projecao-de-colunas-e-filtro-em-batches" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Uso Eficiente de Memória
+        Projeção de colunas e filtro em batches
       
     </span>
   </a>
@@ -1113,10 +1808,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#processamento-em-chunks" class="md-nav__link">
+  <a href="#processamento-em-batches-streaming-com-pyarrow" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Processamento em Chunks
+        Processamento em Batches (Streaming com PyArrow)
       
     </span>
   </a>
@@ -1156,10 +1851,49 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#proximos-passos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Próximos Passos
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/b3-operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Boas práticas B3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1255,9 +1989,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -1268,25 +2003,28 @@
     
       
       
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="">
             
   
   
   <span class="md-ellipsis">
     
   
-    Referência Técnica
+    Migrações
   
 
     
@@ -1297,12 +2035,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Referência Técnica
+    Migrações
   
 
           </label>
@@ -1315,14 +2053,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/cvm-api/" class="md-nav__link">
+      <a href="../../user-guide/migration-pyarrow-integrity/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    API CVM
+    Migração 0.2.0
   
 
     
@@ -1343,14 +2081,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/b3-api/" class="md-nav__link">
+      <a href="../../user-guide/migration-infrastructure-clean-cut/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    API B3
+    Migração de infraestrutura
   
 
     
@@ -1371,14 +2109,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/exceptions/" class="md-nav__link">
+      <a href="../../user-guide/migration-cvm-exact-text/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Exceções
+    Migração CVM exata
   
 
     
@@ -1387,6 +2125,14 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1425,27 +2171,57 @@
 <h2 id="core-utilities">Core Utilities<a class="headerlink" href="#core-utilities" title="Link para esta seção">&para;</a></h2>
 <h3 id="sistema-de-logging">Sistema de Logging<a class="headerlink" href="#sistema-de-logging" title="Link para esta seção">&para;</a></h3>
 <p>Habilite logging profissional para rastreamento e debugging:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">setup_logging</span><span class="p">,</span> <span class="n">get_logger</span><span class="p">,</span> <span class="n">log_execution_time</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">FundamentalStocksDataCVM</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core.logging_config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">LoggingSettings</span><span class="p">,</span>
+    <span class="n">get_logger</span><span class="p">,</span>
+    <span class="n">log_execution_time</span><span class="p">,</span>
+    <span class="n">setup_logging</span><span class="p">,</span>
+<span class="p">)</span>
 
 <span class="c1"># Configurar logging</span>
-<span class="n">setup_logging</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span> <span class="n">log_file</span><span class="o">=</span><span class="s2">&quot;app.log&quot;</span><span class="p">)</span>
+<span class="n">setup_logging</span><span class="p">(</span><span class="n">LoggingSettings</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s2">"INFO"</span><span class="p">,</span> <span class="n">log_file</span><span class="o">=</span><span class="s2">"app.log"</span><span class="p">))</span>
 
 <span class="c1"># Obter logger</span>
-<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="s2">"globaldatafinance.example"</span><span class="p">)</span>
+<span class="n">cvm</span> <span class="o">=</span> <span class="n">FundamentalStocksDataCVM</span><span class="p">()</span>
 
 <span class="c1"># Logging estruturado</span>
 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-    <span class="s2">&quot;Download iniciado&quot;</span><span class="p">,</span>
-    <span class="n">extra</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;doc_type&quot;</span><span class="p">:</span> <span class="s2">&quot;DFP&quot;</span><span class="p">,</span> <span class="s2">&quot;year&quot;</span><span class="p">:</span> <span class="mi">2023</span><span class="p">}</span>
+    <span class="s2">"Download iniciado"</span><span class="p">,</span>
+    <span class="n">extra</span><span class="o">=</span><span class="p">{</span><span class="s2">"doc_type"</span><span class="p">:</span> <span class="s2">"DFP"</span><span class="p">,</span> <span class="s2">"year"</span><span class="p">:</span> <span class="mi">2023</span><span class="p">}</span>
 <span class="p">)</span>
 
 <span class="c1"># Performance timing</span>
-<span class="k">with</span> <span class="n">log_execution_time</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="s2">&quot;Download CVM&quot;</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
-    <span class="n">cvm</span><span class="o">.</span><span class="n">download</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">log_execution_time</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="s2">"Download CVM"</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">cvm</span><span class="o">.</span><span class="n">download</span><span class="p">(</span>
+        <span class="n">destination_path</span><span class="o">=</span><span class="s2">"/data/cvm"</span><span class="p">,</span>
+        <span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">"DFP"</span><span class="p">],</span>
+        <span class="n">initial_year</span><span class="o">=</span><span class="mi">2023</span><span class="p">,</span>
+        <span class="n">last_year</span><span class="o">=</span><span class="mi">2023</span><span class="p">,</span>
+    <span class="p">)</span>
 </code></pre></div>
 <p><a href="../logging-system/">Ver documentação completa →</a></p>
+<p>O logger <code>globaldatafinance</code> começa silencioso com <code>NullHandler</code> e<br />
+<code>propagate=False</code>; <code>setup_logging()</code> não altera o root logger da aplicação.<br />
+Reconfigurações substituem apenas handlers gerenciados. Se a preparação ou a<br />
+troca falhar, a configuração anterior é restaurada. <code>LoggingSettings</code> rejeita<br />
+campos extras e variáveis <code>DATAFIN_LOG_*</code> desconhecidas, incluindo o removido<br />
+<code>structured</code>.</p>
 <h3 id="configuracao-global">Configuração Global<a class="headerlink" href="#configuracao-global" title="Link para esta seção">&para;</a></h3>
 <p>Customize network settings via environment variables:</p>
+<p>A biblioteca lê os valores padrão e as variáveis <code>DATAFINANCE_*</code> do ambiente<br />
+do processo. Ela não procura nem carrega automaticamente um arquivo <code>.env</code> a<br />
+partir do diretório de trabalho atual. Em casos avançados, os consumidores<br />
+podem passar <code>_env_file=...</code> diretamente para <code>Settings</code> quando quiserem que o<br />
+pydantic-settings carregue um arquivo explicitamente; isso não adiciona uma<br />
+opção dotenv às facades públicas.</p>
+<p>Ao passar <code>_env_file</code> ao <code>Settings</code> raiz, use o objeto aninhado em JSON para<br />
+configurar a rede, por exemplo <code>DATAFINANCE_NETWORK={"timeout": 240}</code> no arquivo.<br />
+A chave plana <code>DATAFINANCE_NETWORK_TIMEOUT</code> funciona no ambiente do processo;<br />
+não presuma que o arquivo do modelo raiz seja propagado ao <code>NetworkSettings</code>.<br />
+O snapshot explícito pode ser injetado com <code>FundamentalStocksDataCVM(settings=...)</code><br />
+ou <code>HistoricalQuotesB3(settings=...)</code>.</p>
 <div class="highlight"><pre><span></span><code><span class="c1"># Aumentar timeout para conexões lentas</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">DATAFINANCE_NETWORK_TIMEOUT</span><span class="o">=</span><span class="m">900</span>
 
@@ -1455,19 +2231,46 @@
 <span class="c1"># Backoff mais agressivo</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">DATAFINANCE_NETWORK_RETRY_BACKOFF</span><span class="o">=</span><span class="m">3</span>.0
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">settings</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">FundamentalStocksDataCVM</span><span class="p">,</span> <span class="n">HistoricalQuotesB3</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">NetworkSettings</span><span class="p">,</span> <span class="n">Settings</span>
 
-<span class="c1"># Verificar configurações atuais</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Timeout: </span><span class="si">{</span><span class="n">settings</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">timeout</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Max retries: </span><span class="si">{</span><span class="n">settings</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">max_retries</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="c1"># Snapshot imutável a partir do ambiente atual</span>
+<span class="n">settings</span> <span class="o">=</span> <span class="n">Settings</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Timeout: </span><span class="si">{</span><span class="n">settings</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">timeout</span><span class="si">}</span><span class="s2">s"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Max retries: </span><span class="si">{</span><span class="n">settings</span><span class="o">.</span><span class="n">network</span><span class="o">.</span><span class="n">max_retries</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+<span class="c1"># Configuração explícita injetada nas fachadas públicas</span>
+<span class="n">custom_settings</span> <span class="o">=</span> <span class="n">Settings</span><span class="p">(</span><span class="n">network</span><span class="o">=</span><span class="n">NetworkSettings</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">300</span><span class="p">))</span>
+<span class="n">cvm</span> <span class="o">=</span> <span class="n">FundamentalStocksDataCVM</span><span class="p">(</span><span class="n">settings</span><span class="o">=</span><span class="n">custom_settings</span><span class="p">)</span>
+<span class="n">b3</span> <span class="o">=</span> <span class="n">HistoricalQuotesB3</span><span class="p">(</span><span class="n">settings</span><span class="o">=</span><span class="n">custom_settings</span><span class="p">)</span>
 </code></pre></div>
+<h3 id="limites-de-zip-e-destinos-unc">Limites de ZIP e destinos UNC<a class="headerlink" href="#limites-de-zip-e-destinos-unc" title="Link para esta seção">&para;</a></h3>
+<p>Os limites de arquivos também pertencem a <code>Settings</code>, aplicam-se tanto à CVM<br />
+quanto à B3 e são validados antes de qualquer extração. Os defaults são 2 GiB<br />
+para o ZIP compactado e para cada membro, 8 GiB descompactados no total, 10.000<br />
+membros e razão máxima de compressão de 200. Valores inválidos falham na<br />
+inicialização da configuração, não durante uma escrita parcial.</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">DATAFINANCE_ARCHIVE_MAX_ARCHIVE_BYTES</span><span class="o">=</span><span class="m">2147483648</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DATAFINANCE_ARCHIVE_MAX_MEMBERS</span><span class="o">=</span><span class="m">10000</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DATAFINANCE_ARCHIVE_MAX_MEMBER_UNCOMPRESSED_BYTES</span><span class="o">=</span><span class="m">2147483648</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DATAFINANCE_ARCHIVE_MAX_TOTAL_UNCOMPRESSED_BYTES</span><span class="o">=</span><span class="m">8589934592</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DATAFINANCE_ARCHIVE_MAX_COMPRESSION_RATIO</span><span class="o">=</span><span class="m">200</span>
+
+<span class="c1"># UNC permanece negado por padrão. A lista JSON só deve conter raízes confiáveis.</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">DATAFINANCE_PATH_SAFETY_ALLOWED_UNC_ROOTS</span><span class="o">=</span><span class="s1">'["\\\\fileserver\\finance\\exports"]'</span>
+</code></pre></div>
+<p>Raízes POSIX, roots de drive Windows, diretórios Windows de sistema e shares<br />
+UNC não autorizados são recusados antes de criar diretórios. Mesmo com uma<br />
+allowlist, shares administrativos terminados em <code>$</code> continuam proibidos. Essa<br />
+política reduz escrita acidental em destinos sensíveis; não limita um chamador<br />
+que já possui os privilégios do processo.</p>
+<p>Os limites de ZIP vivem no namespace canônico <code>Settings.archive</code>; não use o<br />
+nome removido <code>Settings.archive_safety</code>. O helper de CRC diferencia<br />
+<code>infos=None</code> (validar o diretório central) de <code>infos=[]</code> (seleção vazia já<br />
+validada).</p>
 <h3 id="resource-monitoring">Resource Monitoring<a class="headerlink" href="#resource-monitoring" title="Link para esta seção">&para;</a></h3>
-<p>Monitore e gerencie recursos automaticamente:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core.utils.resource_monitor</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">ResourceMonitor</span><span class="p">,</span>
-    <span class="n">ResourceState</span><span class="p">,</span>
-    <span class="n">ResourceLimits</span>
-<span class="p">)</span>
+<p>Use o monitor para consultar recursos e decidir quantos workers iniciar:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">ResourceMonitor</span><span class="p">,</span> <span class="n">ResourceState</span>
 
 <span class="c1"># Criar monitor</span>
 <span class="n">monitor</span> <span class="o">=</span> <span class="n">ResourceMonitor</span><span class="p">()</span>
@@ -1475,16 +2278,21 @@
 <span class="c1"># Verificar estado</span>
 <span class="n">state</span> <span class="o">=</span> <span class="n">monitor</span><span class="o">.</span><span class="n">check_resources</span><span class="p">()</span>
 <span class="k">if</span> <span class="n">state</span> <span class="o">==</span> <span class="n">ResourceState</span><span class="o">.</span><span class="n">CRITICAL</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Recursos críticos!&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"Recursos críticos!"</span><span class="p">)</span>
 
 <span class="c1"># Calcular workers seguros</span>
 <span class="n">safe_workers</span> <span class="o">=</span> <span class="n">monitor</span><span class="o">.</span><span class="n">get_safe_worker_count</span><span class="p">(</span><span class="n">max_workers</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Usando </span><span class="si">{</span><span class="n">safe_workers</span><span class="si">}</span><span class="s2"> workers&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Usando </span><span class="si">{</span><span class="n">safe_workers</span><span class="si">}</span><span class="s2"> workers"</span><span class="p">)</span>
 
 <span class="c1"># Aguardar recursos disponíveis</span>
-<span class="n">monitor</span><span class="o">.</span><span class="n">wait_for_resources</span><span class="p">(</span><span class="n">timeout_seconds</span><span class="o">=</span><span class="mi">120</span><span class="p">)</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">monitor</span><span class="o">.</span><span class="n">wait_for_resources</span><span class="p">(</span><span class="n">timeout_seconds</span><span class="o">=</span><span class="mi">120</span><span class="p">):</span>
+    <span class="k">raise</span> <span class="ne">TimeoutError</span><span class="p">(</span><span class="s2">"Resources unavailable after 120 seconds"</span><span class="p">)</span>
 </code></pre></div>
 <p><a href="../resource-monitoring/">Ver documentação completa →</a></p>
+<p><code>ResourceMonitor</code> mantém seu contrato singleton; o caminho B3 usa uma<br />
+instância isolada quando precisa de limites próprios, sem substituir o<br />
+singleton global. O cache privado dos módulos PyArrow também é lazy e só é<br />
+preenchido quando a operação Parquet é realmente usada.</p>
 <h3 id="retry-strategy">Retry Strategy<a class="headerlink" href="#retry-strategy" title="Link para esta seção">&para;</a></h3>
 <p>Implemente retry customizado:</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core.utils.retry_strategy</span><span class="w"> </span><span class="kn">import</span> <span class="n">RetryStrategy</span>
@@ -1496,8 +2304,8 @@
     <span class="n">multiplier</span><span class="o">=</span><span class="mf">2.0</span>
 <span class="p">)</span>
 
-<span class="n">max_retries</span> <span class="o">=</span> <span class="mi">5</span>
-<span class="k">for</span> <span class="n">attempt</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_retries</span><span class="p">):</span>
+<span class="n">max_retries</span> <span class="o">=</span> <span class="mi">5</span>  <span class="c1"># Tentativas adicionais após a primeira execução.</span>
+<span class="k">for</span> <span class="n">attempt</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_retries</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">result</span> <span class="o">=</span> <span class="n">risky_operation</span><span class="p">()</span>
         <span class="k">break</span>
@@ -1505,36 +2313,46 @@
         <span class="k">if</span> <span class="ow">not</span> <span class="n">strategy</span><span class="o">.</span><span class="n">is_retryable</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
             <span class="k">raise</span>
 
-        <span class="k">if</span> <span class="n">attempt</span> <span class="o">&lt;</span> <span class="n">max_retries</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">attempt</span> <span class="o">&lt;</span> <span class="n">max_retries</span><span class="p">:</span>
             <span class="n">backoff</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">calculate_backoff</span><span class="p">(</span><span class="n">attempt</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Retry </span><span class="si">{</span><span class="n">attempt</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2"> após </span><span class="si">{</span><span class="n">backoff</span><span class="si">}</span><span class="s2">s...&quot;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Retry </span><span class="si">{</span><span class="n">attempt</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2"> após </span><span class="si">{</span><span class="n">backoff</span><span class="si">}</span><span class="s2">s..."</span><span class="p">)</span>
             <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">backoff</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span>
 </code></pre></div>
 <p><a href="../retry-strategy/">Ver documentação completa →</a></p>
 <hr />
 <h2 id="customizacao-de-adapters">Customização de Adapters<a class="headerlink" href="#customizacao-de-adapters" title="Link para esta seção">&para;</a></h2>
-<p>O adapter HTTP (<code>AsyncDownloadAdapterCVM</code>) e o adapter de extração (<code>ParquetExtractorAdapterCVM</code>) operam como classes concretas com contratos limpos e bem definidos. O orquestrador (<code>DownloadDocumentsUseCaseCVM</code>) aceita qualquer objeto que exponha o método público (<code>download_docs(tasks)</code>), utilizando duck typing. Para substituir o adapter, basta passar uma classe alternativa que implemente o mesmo contrato de métodos.</p>
+<p>Os adaptadores CVM de download e extração são classes concretas.<br />
+<code>DownloadDocumentsUseCaseCVM</code> aceita um colaborador com o método esperado<br />
+<code>download_docs(tasks, *, automatic_extractor=False)</code>. Este é um exemplo de<br />
+extensão interna: o resultado é ilustrativo. Implemente o transporte e<br />
+registre os resultados reais antes de usar um adaptador próprio.</p>
 <h3 id="substituir-o-adapter-http">Substituir o Adapter HTTP<a class="headerlink" href="#substituir-o-adapter-http" title="Link para esta seção">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.brazil.cvm.fundamental_stocks_data.client</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">DownloadDocumentsUseCaseCVM</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.brazil.cvm.fundamental_stocks_data.core</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.brazil.cvm.ingestion.models</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">DownloadResultCVM</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.brazil.cvm.ingestion.http</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">DownloadTaskCVM</span><span class="p">,</span>
 <span class="p">)</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">MyCustomAdapter</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Adapter alternativo de download (duck-typed).&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Adapter alternativo de download (duck-typed)."""</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">download_docs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tasks</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DownloadResultCVM</span><span class="p">:</span>
-        <span class="c1"># tasks é a estrutura produzida por GenerateUrlsUseCaseCVM:</span>
-        <span class="c1"># uma sequência de (doc_name, url, destination_path).</span>
-        <span class="c1"># Implemente sua lógica (wget, aiohttp, gsutil, etc.) e devolva</span>
-        <span class="c1"># o mesmo objeto de resultado.</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">download_docs</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">tasks</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">DownloadTaskCVM</span><span class="p">],</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">automatic_extractor</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DownloadResultCVM</span><span class="p">:</span>
+        <span class="c1"># tasks é uma lista de DownloadTaskCVM: (url, doc_name, year, destination_path).</span>
+        <span class="c1"># Implemente sua lógica (wget, aiohttp, gsutil, etc.) e devolva o objeto de resultado.</span>
         <span class="k">return</span> <span class="n">DownloadResultCVM</span><span class="p">(</span>
-            <span class="n">success_count_downloads</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-            <span class="n">error_count_downloads</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-            <span class="n">successful_downloads</span><span class="o">=</span><span class="p">[],</span>
+            <span class="n">successful_downloads</span><span class="o">=</span><span class="p">[</span><span class="s2">"DFP_2023"</span><span class="p">],</span>
             <span class="n">failed_downloads</span><span class="o">=</span><span class="p">{},</span>
             <span class="n">elapsed_time</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
         <span class="p">)</span>
@@ -1543,15 +2361,14 @@
 <span class="n">adapter</span> <span class="o">=</span> <span class="n">MyCustomAdapter</span><span class="p">()</span>
 <span class="n">use_case</span> <span class="o">=</span> <span class="n">DownloadDocumentsUseCaseCVM</span><span class="p">(</span><span class="n">repository</span><span class="o">=</span><span class="n">adapter</span><span class="p">)</span>
 <span class="n">result</span> <span class="o">=</span> <span class="n">use_case</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
-    <span class="n">destination_path</span><span class="o">=</span><span class="s2">&quot;./dados_cvm&quot;</span><span class="p">,</span>
-    <span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DFP&quot;</span><span class="p">],</span>
+    <span class="n">destination_path</span><span class="o">=</span><span class="s2">"./dados_cvm"</span><span class="p">,</span>
+    <span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">"DFP"</span><span class="p">],</span>
     <span class="n">initial_year</span><span class="o">=</span><span class="mi">2023</span><span class="p">,</span>
     <span class="n">last_year</span><span class="o">=</span><span class="mi">2023</span><span class="p">,</span>
 <span class="p">)</span>
 </code></pre></div>
-<blockquote>
-<p>O sistema foi desenhado visando clareza e extensibilidade: o orquestrador interage com adaptadores através do seu contrato público de métodos (duck typing), permitindo que customizações sejam injetadas sem burocracia ou herança complexa. Veja <code>docs/dev-guide/architecture.md</code> para detalhes.</p>
-</blockquote>
+<p>O orquestrador usa o contrato de métodos do colaborador sem exigir uma classe<br />
+base comum. Veja <a href="../architecture/">arquitetura</a> para os limites e responsáveis.</p>
 <hr />
 <h2 id="logging-avancado">Logging Avançado<a class="headerlink" href="#logging-avancado" title="Link para esta seção">&para;</a></h2>
 <h3 id="configuracao-personalizada">Configuração Personalizada<a class="headerlink" href="#configuracao-personalizada" title="Link para esta seção">&para;</a></h3>
@@ -1559,45 +2376,73 @@
 <span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
 
 <span class="c1"># Criar logger personalizado</span>
-<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="s2">&quot;meu_modulo&quot;</span><span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="s2">"meu_modulo"</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
 
 <span class="c1"># Adicionar handler para arquivo</span>
-<span class="n">file_handler</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">FileHandler</span><span class="p">(</span><span class="s2">&quot;globaldatafinance.log&quot;</span><span class="p">)</span>
+<span class="n">file_handler</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">FileHandler</span><span class="p">(</span><span class="s2">"globaldatafinance.log"</span><span class="p">)</span>
 <span class="n">file_handler</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
 <span class="n">formatter</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">Formatter</span><span class="p">(</span>
-    <span class="s1">&#39;</span><span class="si">%(asctime)s</span><span class="s1"> - </span><span class="si">%(name)s</span><span class="s1"> - </span><span class="si">%(levelname)s</span><span class="s1"> - </span><span class="si">%(message)s</span><span class="s1">&#39;</span>
+    <span class="s1">'</span><span class="si">%(asctime)s</span><span class="s1"> - </span><span class="si">%(name)s</span><span class="s1"> - </span><span class="si">%(levelname)s</span><span class="s1"> - </span><span class="si">%(message)s</span><span class="s1">'</span>
 <span class="p">)</span>
 <span class="n">file_handler</span><span class="o">.</span><span class="n">setFormatter</span><span class="p">(</span><span class="n">formatter</span><span class="p">)</span>
 <span class="n">logger</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">file_handler</span><span class="p">)</span>
 
 <span class="c1"># Usar</span>
-<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Iniciando processamento...&quot;</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Iniciando processamento..."</span><span class="p">)</span>
 </code></pre></div>
 <hr />
 <h2 id="processamento-paralelo">Processamento Paralelo<a class="headerlink" href="#processamento-paralelo" title="Link para esta seção">&para;</a></h2>
 <h3 id="multiplos-anos-em-paralelo">Múltiplos Anos em Paralelo<a class="headerlink" href="#multiplos-anos-em-paralelo" title="Link para esta seção">&para;</a></h3>
+<p>O extrator B3 aceita <code>COTAHIST_A{YYYY}.ZIP</code> ou <code>.TXT</code>. Se ambos existirem para<br />
+o mesmo ano, ambos são validados; o ZIP é selecionado somente quando seus<br />
+conteúdos descompactados são idênticos. Conteúdos diferentes causam falha.</p>
+<p>Para uma saída consolidada, prefira uma única chamada com o intervalo completo:<br />
+o próprio extrator coordena as fontes. O exemplo abaixo cria uma saída por ano.<br />
+Seu pool externo é responsabilidade do consumidor: <code>GDF_B3_WORKER_LIMIT</code><br />
+limita cada extração e não a soma de processos externos. Defina o limite do<br />
+pool conforme o orçamento total de CPU e RAM; cada chamada usa <code>slow</code> para<br />
+manter um worker de fonte.</p>
+<p>Cada execução paralela usa um diretório de destino próprio: o lock de<br />
+publicação é por diretório, mesmo quando os nomes dos arquivos são diferentes.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">concurrent.futures</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProcessPoolExecutor</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">HistoricalQuotesB3</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExtractionResultB3</span><span class="p">,</span> <span class="n">HistoricalQuotesB3</span>
 
-<span class="k">def</span><span class="w"> </span><span class="nf">extract_year</span><span class="p">(</span><span class="n">year</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">extract_year</span><span class="p">(</span><span class="n">year</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ExtractionResultB3</span><span class="p">:</span>
     <span class="n">b3</span> <span class="o">=</span> <span class="n">HistoricalQuotesB3</span><span class="p">()</span>
     <span class="k">return</span> <span class="n">b3</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
-        <span class="n">path_of_docs</span><span class="o">=</span><span class="s2">&quot;/data/cotahist&quot;</span><span class="p">,</span>
-        <span class="n">assets_list</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ações&quot;</span><span class="p">],</span>
+        <span class="n">path_of_docs</span><span class="o">=</span><span class="s2">"/data/cotahist"</span><span class="p">,</span>
+        <span class="n">assets_list</span><span class="o">=</span><span class="p">[</span><span class="s2">"ações"</span><span class="p">],</span>
         <span class="n">initial_year</span><span class="o">=</span><span class="n">year</span><span class="p">,</span>
         <span class="n">last_year</span><span class="o">=</span><span class="n">year</span><span class="p">,</span>
-        <span class="n">output_filename</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;acoes_</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="n">destination_path</span><span class="o">=</span><span class="sa">f</span><span class="s2">"./data_b3/</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+        <span class="n">output_filename</span><span class="o">=</span><span class="sa">f</span><span class="s2">"acoes_</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+        <span class="n">processing_mode</span><span class="o">=</span><span class="s2">"slow"</span><span class="p">,</span>
     <span class="p">)</span>
 
-<span class="n">years</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2020</span><span class="p">,</span> <span class="mi">2024</span><span class="p">)</span>
-<span class="k">with</span> <span class="n">ProcessPoolExecutor</span><span class="p">(</span><span class="n">max_workers</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span> <span class="k">as</span> <span class="n">executor</span><span class="p">:</span>
-    <span class="n">results</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">executor</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">extract_year</span><span class="p">,</span> <span class="n">years</span><span class="p">))</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">years</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2020</span><span class="p">,</span> <span class="mi">2024</span><span class="p">)</span>
+    <span class="n">caller_worker_limit</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="k">with</span> <span class="n">ProcessPoolExecutor</span><span class="p">(</span><span class="n">max_workers</span><span class="o">=</span><span class="n">caller_worker_limit</span><span class="p">)</span> <span class="k">as</span> <span class="n">executor</span><span class="p">:</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">executor</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">extract_year</span><span class="p">,</span> <span class="n">years</span><span class="p">))</span>
 
-<span class="k">for</span> <span class="n">year</span><span class="p">,</span> <span class="n">result</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">years</span><span class="p">,</span> <span class="n">results</span><span class="p">):</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;total_records&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> registros&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">year</span><span class="p">,</span> <span class="n">result</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">years</span><span class="p">,</span> <span class="n">results</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="p">[</span><span class="s2">"success"</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">"errors"</span><span class="p">]</span> <span class="ow">or</span> <span class="n">result</span><span class="p">[</span><span class="s2">"message"</span><span class="p">])</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">'total_records'</span><span class="p">]</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> registros"</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
 </code></pre></div>
 <hr />
 <h2 id="integracao-com-frameworks">Integração com Frameworks<a class="headerlink" href="#integracao-com-frameworks" title="Link para esta seção">&para;</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Dependências Opcionais</p>
+<p>Frameworks de orquestração mencionados nesta seção (<code>apache-airflow</code>, <code>prefect</code>) são dependências externas opcionais:</p>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>apache-airflow<span class="w"> </span>prefect
+</code></pre></div>
+</div>
 <h3 id="apache-airflow">Apache Airflow<a class="headerlink" href="#apache-airflow" title="Link para esta seção">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">airflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">DAG</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">airflow.operators.python</span><span class="w"> </span><span class="kn">import</span> <span class="n">PythonOperator</span>
@@ -1607,19 +2452,19 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">download_cvm_task</span><span class="p">():</span>
     <span class="n">cvm</span> <span class="o">=</span> <span class="n">FundamentalStocksDataCVM</span><span class="p">()</span>
     <span class="n">cvm</span><span class="o">.</span><span class="n">download</span><span class="p">(</span>
-        <span class="n">destination_path</span><span class="o">=</span><span class="s2">&quot;/data/cvm&quot;</span><span class="p">,</span>
-        <span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DFP&quot;</span><span class="p">],</span>
+        <span class="n">destination_path</span><span class="o">=</span><span class="s2">"/data/cvm"</span><span class="p">,</span>
+        <span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">"DFP"</span><span class="p">],</span>
         <span class="n">initial_year</span><span class="o">=</span><span class="mi">2023</span>
     <span class="p">)</span>
 
 <span class="k">with</span> <span class="n">DAG</span><span class="p">(</span>
-    <span class="s1">&#39;cvm_download_dag&#39;</span><span class="p">,</span>
+    <span class="s1">'cvm_download_dag'</span><span class="p">,</span>
     <span class="n">start_date</span><span class="o">=</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2024</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
-    <span class="n">schedule_interval</span><span class="o">=</span><span class="s1">&#39;@daily&#39;</span>
+    <span class="n">schedule_interval</span><span class="o">=</span><span class="s1">'@daily'</span>
 <span class="p">)</span> <span class="k">as</span> <span class="n">dag</span><span class="p">:</span>
 
     <span class="n">download</span> <span class="o">=</span> <span class="n">PythonOperator</span><span class="p">(</span>
-        <span class="n">task_id</span><span class="o">=</span><span class="s1">&#39;download_cvm&#39;</span><span class="p">,</span>
+        <span class="n">task_id</span><span class="o">=</span><span class="s1">'download_cvm'</span><span class="p">,</span>
         <span class="n">python_callable</span><span class="o">=</span><span class="n">download_cvm_task</span>
     <span class="p">)</span>
 </code></pre></div>
@@ -1631,8 +2476,8 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">download_cvm</span><span class="p">():</span>
     <span class="n">cvm</span> <span class="o">=</span> <span class="n">FundamentalStocksDataCVM</span><span class="p">()</span>
     <span class="n">cvm</span><span class="o">.</span><span class="n">download</span><span class="p">(</span>
-        <span class="n">destination_path</span><span class="o">=</span><span class="s2">&quot;/data/cvm&quot;</span><span class="p">,</span>
-        <span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DFP&quot;</span><span class="p">],</span>
+        <span class="n">destination_path</span><span class="o">=</span><span class="s2">"/data/cvm"</span><span class="p">,</span>
+        <span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">"DFP"</span><span class="p">],</span>
         <span class="n">initial_year</span><span class="o">=</span><span class="mi">2023</span>
     <span class="p">)</span>
 
@@ -1640,8 +2485,8 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">extract_b3</span><span class="p">():</span>
     <span class="n">b3</span> <span class="o">=</span> <span class="n">HistoricalQuotesB3</span><span class="p">()</span>
     <span class="k">return</span> <span class="n">b3</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
-        <span class="n">path_of_docs</span><span class="o">=</span><span class="s2">&quot;/data/cotahist&quot;</span><span class="p">,</span>
-        <span class="n">assets_list</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ações&quot;</span><span class="p">],</span>
+        <span class="n">path_of_docs</span><span class="o">=</span><span class="s2">"/data/cotahist"</span><span class="p">,</span>
+        <span class="n">assets_list</span><span class="o">=</span><span class="p">[</span><span class="s2">"ações"</span><span class="p">],</span>
         <span class="n">initial_year</span><span class="o">=</span><span class="mi">2023</span>
     <span class="p">)</span>
 
@@ -1652,55 +2497,58 @@
     <span class="k">return</span> <span class="n">result</span>
 
 <span class="c1"># Executar</span>
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
     <span class="n">financial_data_pipeline</span><span class="p">()</span>
 </code></pre></div>
 <hr />
 <h2 id="otimizacoes-de-performance">Otimizações de Performance<a class="headerlink" href="#otimizacoes-de-performance" title="Link para esta seção">&para;</a></h2>
-<h3 id="uso-eficiente-de-memoria">Uso Eficiente de Memória<a class="headerlink" href="#uso-eficiente-de-memoria" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
+<h3 id="projecao-de-colunas-e-filtro-em-batches">Projeção de colunas e filtro em batches<a class="headerlink" href="#projecao-de-colunas-e-filtro-em-batches" title="Link para esta seção">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow.compute</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pc</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow.parquet</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pq</span>
 
-<span class="c1"># Ler apenas colunas necessárias</span>
-<span class="n">df</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span>
-    <span class="s2">&quot;cotahist.parquet&quot;</span><span class="p">,</span>
-    <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;codigo_negociacao&quot;</span><span class="p">,</span> <span class="s2">&quot;preco_fechamento&quot;</span><span class="p">]</span>
-<span class="p">)</span>
-
-<span class="c1"># Filtrar durante leitura</span>
-<span class="n">df</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">scan_parquet</span><span class="p">(</span><span class="s2">&quot;cotahist.parquet&quot;</span><span class="p">)</span> \
-    <span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">pl</span><span class="o">.</span><span class="n">col</span><span class="p">(</span><span class="s2">&quot;codigo_negociacao&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;PETR4&quot;</span><span class="p">)</span> \
-    <span class="o">.</span><span class="n">collect</span><span class="p">()</span>
-</code></pre></div>
-<h3 id="processamento-em-chunks">Processamento em Chunks<a class="headerlink" href="#processamento-em-chunks" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-
-<span class="c1"># Processar arquivo grande em chunks</span>
-<span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span>
-    <span class="s2">&quot;cotahist.parquet&quot;</span><span class="p">,</span>
-    <span class="n">chunksize</span><span class="o">=</span><span class="mi">100000</span>
+<span class="c1"># Ler somente as colunas necessárias em batches limitados</span>
+<span class="n">parquet</span> <span class="o">=</span> <span class="n">pq</span><span class="o">.</span><span class="n">ParquetFile</span><span class="p">(</span><span class="s2">"cotahist.parquet"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">batch</span> <span class="ow">in</span> <span class="n">parquet</span><span class="o">.</span><span class="n">iter_batches</span><span class="p">(</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">100_000</span><span class="p">,</span>
+    <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">"data_pregao"</span><span class="p">,</span> <span class="s2">"ticker"</span><span class="p">,</span> <span class="s2">"preco_fechamento"</span><span class="p">],</span>
 <span class="p">):</span>
-    <span class="c1"># Processar chunk</span>
-    <span class="n">process_chunk</span><span class="p">(</span><span class="n">chunk</span><span class="p">)</span>
+    <span class="n">petr4</span> <span class="o">=</span> <span class="n">batch</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">pc</span><span class="o">.</span><span class="n">equal</span><span class="p">(</span><span class="n">batch</span><span class="o">.</span><span class="n">column</span><span class="p">(</span><span class="s2">"ticker"</span><span class="p">),</span> <span class="s2">"PETR4"</span><span class="p">))</span>
+    <span class="n">process_chunk</span><span class="p">(</span><span class="n">petr4</span><span class="p">)</span>
 </code></pre></div>
+<p>Polars não é dependência de runtime. Aplicações que o utilizem como leitor<br />
+downstream devem declarar essa dependência no próprio ambiente.</p>
+<h3 id="processamento-em-batches-streaming-com-pyarrow">Processamento em Batches (Streaming com PyArrow)<a class="headerlink" href="#processamento-em-batches-streaming-com-pyarrow" title="Link para esta seção">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow.parquet</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pq</span>
+
+<span class="c1"># Processar arquivo Parquet grande em batches com streaming</span>
+<span class="n">parquet_file</span> <span class="o">=</span> <span class="n">pq</span><span class="o">.</span><span class="n">ParquetFile</span><span class="p">(</span><span class="s2">"cotahist.parquet"</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">batch</span> <span class="ow">in</span> <span class="n">parquet_file</span><span class="o">.</span><span class="n">iter_batches</span><span class="p">(</span><span class="n">batch_size</span><span class="o">=</span><span class="mi">100000</span><span class="p">):</span>
+    <span class="n">process_chunk</span><span class="p">(</span><span class="n">batch</span><span class="p">)</span>
+</code></pre></div>
+<p>O import dos módulos PyArrow usados pela escrita permanece lazy e cacheado<br />
+privadamente: a dependência só é carregada quando o caminho Parquet é<br />
+executado.</p>
 <hr />
 <h2 id="monitoramento-e-metricas">Monitoramento e Métricas<a class="headerlink" href="#monitoramento-e-metricas" title="Link para esta seção">&para;</a></h2>
 <h3 id="tracking-de-progresso">Tracking de Progresso<a class="headerlink" href="#tracking-de-progresso" title="Link para esta seção">&para;</a></h3>
+<p>Este exemplo usa <code>tqdm</code>, uma dependência opcional que deve ser instalada<br />
+separadamente no ambiente consumidor.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">tqdm</span><span class="w"> </span><span class="kn">import</span> <span class="n">tqdm</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">HistoricalQuotesB3</span>
 
 <span class="n">b3</span> <span class="o">=</span> <span class="n">HistoricalQuotesB3</span><span class="p">()</span>
 
 <span class="n">years</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2020</span><span class="p">,</span> <span class="mi">2024</span><span class="p">)</span>
-<span class="k">for</span> <span class="n">year</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">years</span><span class="p">,</span> <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Extraindo anos&quot;</span><span class="p">):</span>
+<span class="k">for</span> <span class="n">year</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">years</span><span class="p">,</span> <span class="n">desc</span><span class="o">=</span><span class="s2">"Extraindo anos"</span><span class="p">):</span>
     <span class="n">result</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
-        <span class="n">path_of_docs</span><span class="o">=</span><span class="s2">&quot;/data/cotahist&quot;</span><span class="p">,</span>
-        <span class="n">assets_list</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ações&quot;</span><span class="p">],</span>
+        <span class="n">path_of_docs</span><span class="o">=</span><span class="s2">"/data/cotahist"</span><span class="p">,</span>
+        <span class="n">assets_list</span><span class="o">=</span><span class="p">[</span><span class="s2">"ações"</span><span class="p">],</span>
         <span class="n">initial_year</span><span class="o">=</span><span class="n">year</span><span class="p">,</span>
         <span class="n">last_year</span><span class="o">=</span><span class="n">year</span>
     <span class="p">)</span>
 </code></pre></div>
 <hr />
-<p>Veja também:</p>
+<h2 id="proximos-passos">Próximos Passos<a class="headerlink" href="#proximos-passos" title="Link para esta seção">&para;</a></h2>
 <ul>
 <li><a href="../architecture/">Arquitetura</a></li>
 <li><a href="../../user-guide/examples/">Exemplos Práticos</a></li>

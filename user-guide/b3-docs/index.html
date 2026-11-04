@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Biblioteca Python para extração e processamento de dados financeiros globais">
+        <meta name="description" content="Biblioteca Python para baixar documentos da CVM e processar cotações históricas da B3 em Parquet">
       
       
         <meta name="author" content="Jordan Estralioto">
@@ -309,7 +309,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../dev-guide/architecture/" class="md-tabs__link">
+        <a href="../../dev-guide/contributing/" class="md-tabs__link">
           
   
   
@@ -329,7 +329,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../reference/cvm-api/" class="md-tabs__link">
+        <a href="../../dev-guide/api-reference/" class="md-tabs__link">
           
   
   
@@ -623,22 +623,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#visao-geral" class="md-nav__link">
+  <a href="#preparar-os-arquivos" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Visão Geral
+        Preparar os arquivos
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Visão Geral">
+    <nav class="md-nav" aria-label="Preparar os arquivos">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#caracteristicas" class="md-nav__link">
+  <a href="#diagnosticar-texto-utf-8-em-registros-com-largura-invalida" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Características
+        Diagnosticar texto UTF-8 em registros com largura inválida
       
     </span>
   </a>
@@ -651,10 +651,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#classes-de-ativos-disponiveis" class="md-nav__link">
+  <a href="#extrair-cotacoes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Classes de Ativos Disponíveis
+        Extrair cotações
       
     </span>
   </a>
@@ -662,388 +662,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#uso-basico" class="md-nav__link">
+  <a href="#escolher-mercados" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Uso Básico
+        Escolher mercados
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Uso Básico">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#importacao" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Importação
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#criar-instancia" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Criar Instância
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#extracao-simples" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Extração Simples
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#metodos-principais" class="md-nav__link">
+  <a href="#escolher-modo-e-destino" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Métodos Principais
+        Escolher modo e destino
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Métodos Principais">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#extract" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        extract()
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#get_available_assets" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        get_available_assets()
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#get_available_years" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        get_available_years()
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#modos-de-processamento" class="md-nav__link">
+  <a href="#conferir-e-consumir-o-resultado" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Modos de Processamento
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Modos de Processamento">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#modo-fast-padrao" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Modo Fast (Padrão) ⚡
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#modo-slow" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Modo Slow 🐢
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#comparacao-de-performance" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Comparação de Performance
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#exemplos-avancados" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Exemplos Avançados
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Exemplos Avançados">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#extracao-de-todos-os-ativos" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Extração de Todos os Ativos
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#extracao-incremental-por-ano" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Extração Incremental por Ano
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#validacao-antes-da-extracao" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Validação Antes da Extração
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#tratamento-de-erros" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tratamento de Erros
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Tratamento de Erros">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#excecoes-comuns" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Exceções Comuns
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#formato-dos-arquivos-cotahist" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Formato dos Arquivos COTAHIST
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Formato dos Arquivos COTAHIST">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#nomenclatura" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Nomenclatura
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#onde-obter" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Onde Obter
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#estrutura-interna" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Estrutura Interna
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#estrutura-do-arquivo-parquet-gerado" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Estrutura do Arquivo Parquet Gerado
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Estrutura do Arquivo Parquet Gerado">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#colunas" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Colunas
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#leitura-com-pandas" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Leitura com Pandas
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#leitura-com-polars-mais-rapido" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Leitura com Polars (Mais Rápido)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#boas-praticas" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Boas Práticas
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Boas Práticas">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-use-modo-fast-para-grandes-volumes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Use Modo Fast para Grandes Volumes
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-separe-extracoes-por-classe-de-ativo" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Separe Extrações por Classe de Ativo
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-verifique-espaco-em-disco" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Verifique Espaço em Disco
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#proximos-passos" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Próximos Passos
+        Conferir e consumir o resultado
       
     </span>
   </a>
@@ -1181,62 +825,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev-guide/architecture/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Arquitetura
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../dev-guide/api-reference/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Referência da API
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../dev-guide/contributing/" class="md-nav__link">
         
   
@@ -1265,6 +853,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../dev-guide/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Arquitetura
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../dev-guide/testing/" class="md-nav__link">
         
   
@@ -1273,6 +889,86 @@
     
   
     Testes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manutenção e evidências
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Manutenção e evidências
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/release-readiness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Aceite de release
   
 
     
@@ -1321,6 +1017,633 @@
   
   
     <li class="md-nav__item">
+      <a href="../../dev-guide/cotahist-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance COTAHIST
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/real-data-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validação com dados externos
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cotahist-v2-supplied-corpus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auditoria do corpus COTAHIST
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisões Técnicas
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Decisões Técnicas
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/test-execution-tiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Níveis de Execução de Testes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/real-validation-campaign/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Campanha Real Auditável
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/archive-safety-and-unc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Limites ZIP e Destinos UNC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/cvm-failure-atomic-batch-commit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Commit CVM Tolerante a Falhas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/cvm-ingestion-ownership/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ingestão compartilhada CVM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/pyarrow-ingestion-integrity-cutover/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cutover PyArrow e Integridade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/shared-infrastructure-clean-cut/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Corte limpo da infraestrutura compartilhada
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Referência Técnica
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Referência Técnica
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Referência da API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cvm-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API CVM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/b3-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API B3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/b3-schema-v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schema Parquet B3 v2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/exceptions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exceções
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/transactional-publication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Publicação transacional
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_7" id="__nav_4_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuração e operação
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configuração e operação
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../dev-guide/advanced-usage/" class="md-nav__link">
         
   
@@ -1329,6 +1652,34 @@
     
   
     Uso Avançado
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../b3-operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Boas práticas B3
   
 
     
@@ -1432,9 +1783,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -1453,17 +1805,17 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Referência Técnica
+    Migrações
   
 
     
@@ -1474,12 +1826,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Referência Técnica
+    Migrações
   
 
           </label>
@@ -1492,14 +1844,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/cvm-api/" class="md-nav__link">
+      <a href="../migration-pyarrow-integrity/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    API CVM
+    Migração 0.2.0
   
 
     
@@ -1520,14 +1872,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/b3-api/" class="md-nav__link">
+      <a href="../migration-infrastructure-clean-cut/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    API B3
+    Migração de infraestrutura
   
 
     
@@ -1548,14 +1900,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/exceptions/" class="md-nav__link">
+      <a href="../migration-cvm-exact-text/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Exceções
+    Migração CVM exata
   
 
     
@@ -1564,6 +1916,14 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1596,707 +1956,203 @@
   
 
 
-<h1 id="cotacoes-historicas-b3">Cotações Históricas B3<a class="headerlink" href="#cotacoes-historicas-b3" title="Link para esta seção">&para;</a></h1>
-<p>Guia completo para usar a API <code>HistoricalQuotesB3</code> e extrair cotações históricas da B3 (Brasil, Bolsa, Balcão) a partir de arquivos COTAHIST.</p>
-<hr />
-<h2 id="visao-geral">Visão Geral<a class="headerlink" href="#visao-geral" title="Link para esta seção">&para;</a></h2>
-<p>A classe <code>HistoricalQuotesB3</code> fornece uma interface poderosa para processar arquivos COTAHIST da B3, extraindo cotações históricas de diferentes classes de ativos e convertendo-as para o formato Parquet otimizado para análise.</p>
-<h3 id="caracteristicas">Características<a class="headerlink" href="#caracteristicas" title="Link para esta seção">&para;</a></h3>
-<ul>
-<li>✅ Extração de múltiplas classes de ativos</li>
-<li>✅ Processamento de alto desempenho (modo fast/slow)</li>
-<li>✅ Conversão automática para formato Parquet</li>
-<li>✅ Suporte a dados desde 1986</li>
-<li>✅ Filtragem inteligente por tipo de ativo</li>
-<li>✅ Progress tracking detalhado</li>
-</ul>
-<hr />
-<h2 id="classes-de-ativos-disponiveis">Classes de Ativos Disponíveis<a class="headerlink" href="#classes-de-ativos-disponiveis" title="Link para esta seção">&para;</a></h2>
-<p>A B3 disponibiliza cotações históricas para as seguintes classes de ativos:</p>
+<h1 id="cotacoes-historicas-b3">Cotações históricas B3<a class="headerlink" href="#cotacoes-historicas-b3" title="Link para esta seção">&para;</a></h1>
+<p>Use <code>HistoricalQuotesB3</code> para converter arquivos anuais COTAHIST locais em um<br />
+Parquet consolidado. A biblioteca retorna status e metadados da extração.</p>
+<h2 id="preparar-os-arquivos">Preparar os arquivos<a class="headerlink" href="#preparar-os-arquivos" title="Link para esta seção">&para;</a></h2>
+<p>O extrator aceita ZIP ou TXT locais com nomes <code>COTAHIST_A{YYYY}.ZIP</code> ou<br />
+<code>COTAHIST_A{YYYY}.TXT</code>. Obtenha os arquivos na<br />
+<a href="https://www.b3.com.br/pt_br/market-data-e-indices/servicos-de-dados/market-data/historico/mercado-a-vista/cotacoes-historicas/">página oficial da B3</a><br />
+e coloque-os em uma pasta existente. A biblioteca não faz esse download.</p>
+<div class="highlight"><pre><span></span><code>cotahist/
+├── COTAHIST_A2022.ZIP
+└── COTAHIST_A2023.TXT
+</code></pre></div>
+<p>Forneça <strong>todos os anos solicitados</strong>. Se ZIP e TXT coexistirem para um ano,<br />
+ambos são validados integralmente; o ZIP é escolhido somente quando os<br />
+conteúdos descompactados são idênticos. Conteúdos diferentes causam falha.<br />
+Mantenha os arquivos inalterados durante a extração.</p>
+<p>Dentro do ZIP, o membro COTAHIST deve ser único, estar na raiz e usar um dos<br />
+nomes <code>COTAHIST_A{YYYY}.TXT</code>, <code>COTAHIST.A{YYYY}</code> ou <code>COTAHIST_A{YYYY}</code>,<br />
+com o mesmo ano do arquivo externo. Membros ausentes, aninhados, ambíguos ou<br />
+com ano diferente são rejeitados. A fonte deve conter ao menos um registro<br />
+<code>01</code> válido, além dos controles.</p>
+<h3 id="diagnosticar-texto-utf-8-em-registros-com-largura-invalida">Diagnosticar texto UTF-8 em registros com largura inválida<a class="headerlink" href="#diagnosticar-texto-utf-8-em-registros-com-largura-invalida" title="Link para esta seção">&para;</a></h3>
+<p>O layout COTAHIST exige registros de <strong>245 bytes</strong>, sem o terminador de linha.<br />
+Um registro com 245 caracteres pode ultrapassar essa largura quando um acento<br />
+está codificado em UTF-8. Por exemplo, <code>Â</code> ocupa dois bytes em UTF-8 e um byte<br />
+em Latin-1. O erro <code>field=record_length</code> informa a linha física e o tamanho<br />
+observado. Quando a conversão estrita para Latin-1 produz 245 bytes, o<br />
+diagnóstico também identifica esse possível problema de codificação.</p>
+<p>Todos os mercados são validados antes do filtro; um registro de leilão inválido<br />
+também impede uma extração de <code>ações</code>. <code>fast</code> e <code>slow</code> aplicam a mesma regra.</p>
+<p>Depois de confirmar que a fonte é UTF-8, preserve o original e crie uma cópia<br />
+Latin-1 em outra pasta. No Linux, para um ZIP com o membro moderno:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">set</span><span class="w"> </span>-o<span class="w"> </span>pipefail
+mkdir<span class="w"> </span>./cotahist_latin1
+unzip<span class="w"> </span>-p<span class="w"> </span>./cotahist/COTAHIST_A2026.ZIP<span class="w"> </span>COTAHIST_A2026.TXT<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>iconv<span class="w"> </span>-f<span class="w"> </span>UTF-8<span class="w"> </span>-t<span class="w"> </span>ISO-8859-1<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>&gt;<span class="w"> </span>./cotahist_latin1/COTAHIST_A2026.TXT
+</code></pre></div>
+<p>Prossiga apenas se a conversão terminar com sucesso; em caso de falha, remova<br />
+a cópia parcial antes de tentar novamente. Use <code>path_of_docs="./cotahist_latin1"</code><br />
+para que a cópia passe pela validação completa. A conversão deve preservar<br />
+texto, linhas, ordem e valores, com erros estritos de codificação. No Parquet,<br />
+<code>id_fonte</code> e <code>registro_original</code> descrevem a cópia normalizada. Guarde também<br />
+os hashes do original e da cópia para rastrear essa preparação.</p>
+<h2 id="extrair-cotacoes">Extrair cotações<a class="headerlink" href="#extrair-cotacoes" title="Link para esta seção">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">HistoricalQuotesB3</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">b3</span> <span class="o">=</span> <span class="n">HistoricalQuotesB3</span><span class="p">()</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
+        <span class="n">path_of_docs</span><span class="o">=</span><span class="s2">"./cotahist"</span><span class="p">,</span>
+        <span class="n">destination_path</span><span class="o">=</span><span class="s2">"./data_b3"</span><span class="p">,</span>
+        <span class="n">assets_list</span><span class="o">=</span><span class="p">[</span><span class="s2">"ações"</span><span class="p">,</span> <span class="s2">"opções"</span><span class="p">],</span>
+        <span class="n">initial_year</span><span class="o">=</span><span class="mi">2022</span><span class="p">,</span>
+        <span class="n">last_year</span><span class="o">=</span><span class="mi">2023</span><span class="p">,</span>
+        <span class="n">output_filename</span><span class="o">=</span><span class="s2">"quotes_2022_2023"</span><span class="p">,</span>
+        <span class="n">processing_mode</span><span class="o">=</span><span class="s2">"fast"</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="p">[</span><span class="s2">"success"</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">"errors"</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">"output_file"</span><span class="p">],</span> <span class="n">result</span><span class="p">[</span><span class="s2">"total_records"</span><span class="p">])</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</code></pre></div>
+<p>Esse exemplo gera <code>data_b3/quotes_2022_2023.parquet</code> após validar as fontes<br />
+e conferir o arquivo final. Os anos são inclusivos. Informe-os explicitamente;<br />
+os padrões abrangem 1986 até o ano atual.</p>
+<h2 id="escolher-mercados">Escolher mercados<a class="headerlink" href="#escolher-mercados" title="Link para esta seção">&para;</a></h2>
+<p>Os valores de <code>assets_list</code> são aliases de mercados COTAHIST. Eles não<br />
+selecionam empresas por ticker. <code>ações</code> e <code>etf</code> usam os mesmos códigos e<br />
+incluem o mercado à vista (010) e o fracionário (020).</p>
 <table>
 <thead>
 <tr>
-<th>Código</th>
-<th>Descrição</th>
-<th>Mercados Incluídos</th>
+<th>Valor da API</th>
+<th>Seleção</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>ações</strong></td>
-<td>Ações</td>
-<td>Mercado à vista (010) e fracionário (012)</td>
+<td><code>ações</code>, <code>etf</code></td>
+<td>À vista e fracionário: <code>010</code>, <code>020</code></td>
 </tr>
 <tr>
-<td><strong>etf</strong></td>
-<td>ETFs</td>
-<td>Exchange Traded Funds</td>
+<td><code>opções</code></td>
+<td>Compra e venda: <code>070</code>, <code>080</code></td>
 </tr>
 <tr>
-<td><strong>opções</strong></td>
-<td>Opções</td>
-<td>Calls (070) e Puts (080)</td>
+<td><code>termo</code></td>
+<td>Termo: <code>030</code></td>
 </tr>
 <tr>
-<td><strong>termo</strong></td>
-<td>Mercado a Termo</td>
-<td>Contratos a termo</td>
+<td><code>exercicio_opcoes</code></td>
+<td>Exercício: <code>012</code>, <code>013</code></td>
 </tr>
 <tr>
-<td><strong>exercicio_opcoes</strong></td>
-<td>Exercício de Opções</td>
-<td>Exercício de opções</td>
+<td><code>forward</code></td>
+<td>Forward: <code>050</code>, <code>060</code></td>
 </tr>
 <tr>
-<td><strong>forward</strong></td>
-<td>Mercado Forward</td>
-<td>Contratos forward</td>
+<td><code>leilao</code></td>
+<td>Leilão: <code>017</code></td>
 </tr>
 <tr>
-<td><strong>leilao</strong></td>
-<td>Leilão</td>
-<td>Mercado de leilão</td>
+<td><code>lote_bloco</code></td>
+<td>Lote em bloco: <code>021</code></td>
+</tr>
+<tr>
+<td><code>todos</code></td>
+<td>Todo TPMERC numérico válido, inclusive códigos desconhecidos</td>
 </tr>
 </tbody>
 </table>
-<div class="admonition info">
-<p class="admonition-title">Dados Históricos</p>
-</div>
-<p>Cotações históricas da B3 estão disponíveis desde <strong>1986</strong> até o ano atual.</p>
-<hr />
-<h2 id="uso-basico">Uso Básico<a class="headerlink" href="#uso-basico" title="Link para esta seção">&para;</a></h2>
-<h3 id="importacao">Importação<a class="headerlink" href="#importacao" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">HistoricalQuotesB3</span>
-</code></pre></div>
-<h3 id="criar-instancia">Criar Instância<a class="headerlink" href="#criar-instancia" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="n">b3</span> <span class="o">=</span> <span class="n">HistoricalQuotesB3</span><span class="p">()</span>
-</code></pre></div>
-<h3 id="extracao-simples">Extração Simples<a class="headerlink" href="#extracao-simples" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Extrair cotações de ações do ano atual</span>
-<span class="n">result</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
-    <span class="n">path_of_docs</span><span class="o">=</span><span class="s2">&quot;/home/usuario/cotahist_zips&quot;</span><span class="p">,</span>
-    <span class="n">assets_list</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ações&quot;</span><span class="p">],</span>
-    <span class="n">initial_year</span><span class="o">=</span><span class="mi">2023</span>
-<span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Extraídos </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;total_records&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> registros&quot;</span><span class="p">)</span>
-</code></pre></div>
-<hr />
-<h2 id="metodos-principais">Métodos Principais<a class="headerlink" href="#metodos-principais" title="Link para esta seção">&para;</a></h2>
-<h3 id="extract"><code>extract()</code><a class="headerlink" href="#extract" title="Link para esta seção">&para;</a></h3>
-<p>Extrai cotações históricas de arquivos COTAHIST ZIP para formato Parquet.</p>
-<h4 id="assinatura">Assinatura<a class="headerlink" href="#assinatura" title="Link para esta seção">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">extract</span><span class="p">(</span>
-    <span class="bp">self</span><span class="p">,</span>
-    <span class="n">path_of_docs</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-    <span class="n">assets_list</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
-    <span class="n">initial_year</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">last_year</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">destination_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">output_filename</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cotahist_extracted&quot;</span><span class="p">,</span>
-    <span class="n">processing_mode</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;fast&quot;</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
-</code></pre></div>
-<h4 id="parametros">Parâmetros<a class="headerlink" href="#parametros" title="Link para esta seção">&para;</a></h4>
+<p>O padrão <code>assets_list=None</code> equivale a <code>todos</code>; uma lista vazia é inválida.<br />
+<code>get_available_assets()</code> lista os aliases aceitos. Os valores da API permanecem<br />
+em português, inclusive quando o restante do programa usa outro idioma.</p>
+<h2 id="escolher-modo-e-destino">Escolher modo e destino<a class="headerlink" href="#escolher-modo-e-destino" title="Link para esta seção">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Parâmetro</th>
-<th>Tipo</th>
-<th>Obrigatório</th>
-<th>Descrição</th>
+<th>Opção</th>
+<th>Quando usar</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>path_of_docs</code></td>
-<td><code>str</code></td>
-<td>✅ Sim</td>
-<td>Diretório contendo arquivos COTAHIST ZIP</td>
+<td><code>processing_mode="fast"</code></td>
+<td>Padrão: processa arquivos com concorrência limitada por CPU, memória e número de fontes.</td>
 </tr>
 <tr>
-<td><code>assets_list</code></td>
-<td><code>List[str]</code></td>
-<td>✅ Sim</td>
-<td>Lista de classes de ativos a extrair</td>
-</tr>
-<tr>
-<td><code>initial_year</code></td>
-<td><code>int</code></td>
-<td>❌ Não</td>
-<td>Ano inicial (padrão: 1986)</td>
-</tr>
-<tr>
-<td><code>last_year</code></td>
-<td><code>int</code></td>
-<td>❌ Não</td>
-<td>Ano final (padrão: ano atual)</td>
+<td><code>processing_mode="slow"</code></td>
+<td>Usa um worker e reduz o consumo de memória.</td>
 </tr>
 <tr>
 <td><code>destination_path</code></td>
-<td><code>str</code></td>
-<td>❌ Não</td>
-<td>Diretório de saída (padrão: mesmo que <code>path_of_docs</code>)</td>
+<td>Pasta de saída; quando omitida, usa <code>path_of_docs</code>.</td>
 </tr>
 <tr>
 <td><code>output_filename</code></td>
-<td><code>str</code></td>
-<td>❌ Não</td>
-<td>Nome do arquivo de saída sem extensão</td>
+<td>Apenas nome base, sem pastas; <code>.parquet</code> é opcional e acrescentado quando ausente.</td>
 </tr>
 <tr>
-<td><code>processing_mode</code></td>
-<td><code>str</code></td>
-<td>❌ Não</td>
-<td>Modo de processamento: <code>"fast"</code> ou <code>"slow"</code></td>
+<td><code>verbose=False</code></td>
+<td>Oculta o resumo final; as barras de progresso continuam visíveis.</td>
 </tr>
 </tbody>
 </table>
-<h4 id="retorno">Retorno<a class="headerlink" href="#retorno" title="Link para esta seção">&para;</a></h4>
-<p>Dicionário com as seguintes chaves:</p>
+<p>Os dois modos aplicam as mesmas regras de dados e integridade. Para ajustar<br />
+workers e recursos, consulte <a href="../../dev-guide/advanced-usage/">uso avançado</a>.</p>
+<h2 id="conferir-e-consumir-o-resultado">Conferir e consumir o resultado<a class="headerlink" href="#conferir-e-consumir-o-resultado" title="Link para esta seção">&para;</a></h2>
+<p>O <code>ExtractionResultB3</code> contém os campos principais abaixo. A lista completa e<br />
+as exceções estão na <a href="../../reference/b3-api/">referência B3</a>.<br />
+Em um event loop já ativo, use <code>await b3.extract_async(...)</code>; os argumentos e<br />
+o resultado são os mesmos. Em scripts que processam várias fontes com<br />
+processos, proteja a chamada com <code>if __name__ == '__main__':</code>, conforme o<br />
+<a href="../../dev-guide/advanced-usage/">exemplo de processamento paralelo</a>.</p>
 <table>
 <thead>
 <tr>
-<th>Chave</th>
-<th>Tipo</th>
-<th>Descrição</th>
+<th>Campo</th>
+<th>Como usar</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>success</code></td>
-<td><code>bool</code></td>
-<td><code>True</code> se extração foi bem-sucedida</td>
-</tr>
-<tr>
-<td><code>message</code></td>
-<td><code>str</code></td>
-<td>Mensagem resumida do resultado</td>
-</tr>
-<tr>
-<td><code>total_files</code></td>
-<td><code>int</code></td>
-<td>Total de arquivos ZIP processados</td>
-</tr>
-<tr>
-<td><code>success_count</code></td>
-<td><code>int</code></td>
-<td>Arquivos processados com sucesso</td>
-</tr>
-<tr>
-<td><code>error_count</code></td>
-<td><code>int</code></td>
-<td>Arquivos com erro</td>
-</tr>
-<tr>
-<td><code>total_records</code></td>
-<td><code>int</code></td>
-<td>Total de registros extraídos</td>
-</tr>
-<tr>
-<td><code>output_file</code></td>
-<td><code>str</code></td>
-<td>Caminho completo do arquivo Parquet gerado</td>
+<td>Confira antes de consumir a saída.</td>
 </tr>
 <tr>
 <td><code>errors</code></td>
-<td><code>List[str]</code></td>
-<td>Lista de erros (se houver)</td>
+<td>Diagnósticos de falha por fonte ou etapa.</td>
+</tr>
+<tr>
+<td><code>output_file</code></td>
+<td>Caminho do novo Parquet publicado; vazio em caso de falha.</td>
+</tr>
+<tr>
+<td><code>total_records</code></td>
+<td>Quantidade de linhas publicadas.</td>
+</tr>
+<tr>
+<td><code>integrity</code></td>
+<td>Cobertura anual, validações, proveniência e avisos.</td>
 </tr>
 </tbody>
 </table>
-<h4 id="exemplos">Exemplos<a class="headerlink" href="#exemplos" title="Link para esta seção">&para;</a></h4>
-<p><strong>Exemplo 1: Extração básica de ações</strong></p>
-<div class="highlight"><pre><span></span><code><span class="n">b3</span> <span class="o">=</span> <span class="n">HistoricalQuotesB3</span><span class="p">()</span>
-
-<span class="n">result</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
-    <span class="n">path_of_docs</span><span class="o">=</span><span class="s2">&quot;/data/cotahist&quot;</span><span class="p">,</span>
-    <span class="n">assets_list</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ações&quot;</span><span class="p">],</span>
-    <span class="n">initial_year</span><span class="o">=</span><span class="mi">2022</span><span class="p">,</span>
-    <span class="n">last_year</span><span class="o">=</span><span class="mi">2023</span>
-<span class="p">)</span>
-
-<span class="k">if</span> <span class="n">result</span><span class="p">[</span><span class="s1">&#39;success&#39;</span><span class="p">]:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Arquivo gerado: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;output_file&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Total de registros: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;total_records&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</code></pre></div>
-<p><strong>Exemplo 2: Múltiplas classes de ativos</strong></p>
-<div class="highlight"><pre><span></span><code><span class="n">result</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
-    <span class="n">path_of_docs</span><span class="o">=</span><span class="s2">&quot;/data/cotahist&quot;</span><span class="p">,</span>
-    <span class="n">assets_list</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ações&quot;</span><span class="p">,</span> <span class="s2">&quot;etf&quot;</span><span class="p">,</span> <span class="s2">&quot;opções&quot;</span><span class="p">],</span>
-    <span class="n">initial_year</span><span class="o">=</span><span class="mi">2020</span><span class="p">,</span>
-    <span class="n">last_year</span><span class="o">=</span><span class="mi">2023</span><span class="p">,</span>
-    <span class="n">output_filename</span><span class="o">=</span><span class="s2">&quot;multi_ativos_2020_2023&quot;</span>
-<span class="p">)</span>
-</code></pre></div>
-<p><strong>Exemplo 3: Modo de baixa performance (economia de recursos)</strong></p>
-<div class="highlight"><pre><span></span><code><span class="n">result</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
-    <span class="n">path_of_docs</span><span class="o">=</span><span class="s2">&quot;/data/cotahist&quot;</span><span class="p">,</span>
-    <span class="n">assets_list</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ações&quot;</span><span class="p">],</span>
-    <span class="n">initial_year</span><span class="o">=</span><span class="mi">2023</span><span class="p">,</span>
-    <span class="n">processing_mode</span><span class="o">=</span><span class="s2">&quot;slow&quot;</span>  <span class="c1"># Usa menos CPU/RAM</span>
-<span class="p">)</span>
-</code></pre></div>
-<p><strong>Exemplo 4: Destino personalizado</strong></p>
-<div class="highlight"><pre><span></span><code><span class="n">result</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
-    <span class="n">path_of_docs</span><span class="o">=</span><span class="s2">&quot;/data/cotahist_zips&quot;</span><span class="p">,</span>
-    <span class="n">destination_path</span><span class="o">=</span><span class="s2">&quot;/data/cotacoes_extraidas&quot;</span><span class="p">,</span>
-    <span class="n">assets_list</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ações&quot;</span><span class="p">,</span> <span class="s2">&quot;etf&quot;</span><span class="p">],</span>
-    <span class="n">initial_year</span><span class="o">=</span><span class="mi">2023</span><span class="p">,</span>
-    <span class="n">output_filename</span><span class="o">=</span><span class="s2">&quot;acoes_etf_2023&quot;</span>
-<span class="p">)</span>
-<span class="c1"># Arquivo salvo em: /data/cotacoes_extraidas/acoes_etf_2023.parquet</span>
-</code></pre></div>
-<hr />
-<h3 id="get_available_assets"><code>get_available_assets()</code><a class="headerlink" href="#get_available_assets" title="Link para esta seção">&para;</a></h3>
-<p>Retorna lista de todas as classes de ativos disponíveis.</p>
-<h4 id="assinatura_1">Assinatura<a class="headerlink" href="#assinatura_1" title="Link para esta seção">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_available_assets</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
-</code></pre></div>
-<h4 id="retorno_1">Retorno<a class="headerlink" href="#retorno_1" title="Link para esta seção">&para;</a></h4>
-<p>Lista de strings com códigos das classes de ativos.</p>
-<h4 id="exemplo">Exemplo<a class="headerlink" href="#exemplo" title="Link para esta seção">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="n">b3</span> <span class="o">=</span> <span class="n">HistoricalQuotesB3</span><span class="p">()</span>
-<span class="n">assets</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">get_available_assets</span><span class="p">()</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Classes de ativos disponíveis:&quot;</span><span class="p">)</span>
-<span class="k">for</span> <span class="n">asset</span> <span class="ow">in</span> <span class="n">assets</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  • </span><span class="si">{</span><span class="n">asset</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</code></pre></div>
-<p><strong>Saída</strong>:</p>
-<div class="highlight"><pre><span></span><code>Classes de ativos disponíveis:
-  • ações
-  • etf
-  • opções
-  • termo
-  • exercicio_opcoes
-  • forward
-  • leilao
-</code></pre></div>
-<hr />
-<h3 id="get_available_years"><code>get_available_years()</code><a class="headerlink" href="#get_available_years" title="Link para esta seção">&para;</a></h3>
-<p>Retorna informações sobre o intervalo de anos disponível.</p>
-<h4 id="assinatura_2">Assinatura<a class="headerlink" href="#assinatura_2" title="Link para esta seção">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_available_years</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>
-</code></pre></div>
-<h4 id="retorno_2">Retorno<a class="headerlink" href="#retorno_2" title="Link para esta seção">&para;</a></h4>
-<p>Dicionário com:</p>
-<table>
-<thead>
-<tr>
-<th>Chave</th>
-<th>Descrição</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>"minimal_year"</code></td>
-<td>Ano mínimo disponível (1986)</td>
-</tr>
-<tr>
-<td><code>"current_year"</code></td>
-<td>Ano atual</td>
-</tr>
-</tbody>
-</table>
-<h4 id="exemplo_1">Exemplo<a class="headerlink" href="#exemplo_1" title="Link para esta seção">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="n">b3</span> <span class="o">=</span> <span class="n">HistoricalQuotesB3</span><span class="p">()</span>
-<span class="n">years</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">get_available_years</span><span class="p">()</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Dados disponíveis de </span><span class="si">{</span><span class="n">years</span><span class="p">[</span><span class="s1">&#39;minimal_year&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> até </span><span class="si">{</span><span class="n">years</span><span class="p">[</span><span class="s1">&#39;current_year&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</code></pre></div>
-<p><strong>Saída</strong>:</p>
-<div class="highlight"><pre><span></span><code>Dados disponíveis de 1986 até ano atual
-</code></pre></div>
-<hr />
-<h2 id="modos-de-processamento">Modos de Processamento<a class="headerlink" href="#modos-de-processamento" title="Link para esta seção">&para;</a></h2>
-<p>A extração suporta dois modos de processamento:</p>
-<h3 id="modo-fast-padrao">Modo Fast (Padrão) ⚡<a class="headerlink" href="#modo-fast-padrao" title="Link para esta seção">&para;</a></h3>
-<ul>
-<li><strong>Performance</strong>: Alto desempenho</li>
-<li><strong>CPU</strong>: Uso intensivo (multi-core)</li>
-<li><strong>RAM</strong>: Maior consumo de memória</li>
-<li><strong>Recomendado para</strong>: Máquinas com bons recursos, processamento de grandes volumes</li>
-</ul>
-<div class="highlight"><pre><span></span><code><span class="n">result</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
-    <span class="n">path_of_docs</span><span class="o">=</span><span class="s2">&quot;/data/cotahist&quot;</span><span class="p">,</span>
-    <span class="n">assets_list</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ações&quot;</span><span class="p">],</span>
-    <span class="n">processing_mode</span><span class="o">=</span><span class="s2">&quot;fast&quot;</span>  <span class="c1"># Padrão</span>
-<span class="p">)</span>
-</code></pre></div>
-<h3 id="modo-slow">Modo Slow 🐢<a class="headerlink" href="#modo-slow" title="Link para esta seção">&para;</a></h3>
-<ul>
-<li><strong>Performance</strong>: Moderada</li>
-<li><strong>CPU</strong>: Uso reduzido (single-core ou poucos cores)</li>
-<li><strong>RAM</strong>: Menor consumo de memória</li>
-<li><strong>Recomendado para</strong>: Máquinas com recursos limitados, processamento em background</li>
-</ul>
-<div class="highlight"><pre><span></span><code><span class="n">result</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
-    <span class="n">path_of_docs</span><span class="o">=</span><span class="s2">&quot;/data/cotahist&quot;</span><span class="p">,</span>
-    <span class="n">assets_list</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ações&quot;</span><span class="p">],</span>
-    <span class="n">processing_mode</span><span class="o">=</span><span class="s2">&quot;slow&quot;</span>
-<span class="p">)</span>
-</code></pre></div>
-<h3 id="comparacao-de-performance">Comparação de Performance<a class="headerlink" href="#comparacao-de-performance" title="Link para esta seção">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Modo</th>
-<th>Throughput medido</th>
-<th>CPU</th>
-<th>Pico de RAM</th>
-<th>Recomendado</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>fast</strong></td>
-<td>~12.317 reg/s</td>
-<td>Alto</td>
-<td>~4.260 MB</td>
-<td>✅ Sim (padrão)</td>
-</tr>
-<tr>
-<td><strong>slow</strong></td>
-<td>~8.557 reg/s</td>
-<td>Baixo</td>
-<td>~1.571 MB</td>
-<td>Recursos limitados</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="exemplos-avancados">Exemplos Avançados<a class="headerlink" href="#exemplos-avancados" title="Link para esta seção">&para;</a></h2>
-<h3 id="extracao-de-todos-os-ativos">Extração de Todos os Ativos<a class="headerlink" href="#extracao-de-todos-os-ativos" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">HistoricalQuotesB3</span>
-
-<span class="n">b3</span> <span class="o">=</span> <span class="n">HistoricalQuotesB3</span><span class="p">()</span>
-
-<span class="c1"># Obter todas as classes de ativos</span>
-<span class="n">all_assets</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">get_available_assets</span><span class="p">()</span>
-
-<span class="c1"># Extrair tudo</span>
-<span class="n">result</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
-    <span class="n">path_of_docs</span><span class="o">=</span><span class="s2">&quot;/data/cotahist&quot;</span><span class="p">,</span>
-    <span class="n">assets_list</span><span class="o">=</span><span class="n">all_assets</span><span class="p">,</span>  <span class="c1"># Todas as classes</span>
-    <span class="n">initial_year</span><span class="o">=</span><span class="mi">2023</span><span class="p">,</span>
-    <span class="n">output_filename</span><span class="o">=</span><span class="s2">&quot;todos_ativos_2023&quot;</span>
-<span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Extraídos </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;total_records&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> registros de </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">all_assets</span><span class="p">)</span><span class="si">}</span><span class="s2"> classes&quot;</span><span class="p">)</span>
-</code></pre></div>
-<h3 id="extracao-incremental-por-ano">Extração Incremental por Ano<a class="headerlink" href="#extracao-incremental-por-ano" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">HistoricalQuotesB3</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-
-<span class="n">b3</span> <span class="o">=</span> <span class="n">HistoricalQuotesB3</span><span class="p">()</span>
-<span class="n">base_path</span> <span class="o">=</span> <span class="s2">&quot;/data/cotahist&quot;</span>
-<span class="n">output_path</span> <span class="o">=</span> <span class="s2">&quot;/data/cotacoes_extraidas&quot;</span>
-
-<span class="c1"># Extrair cada ano separadamente</span>
-<span class="k">for</span> <span class="n">year</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2020</span><span class="p">,</span> <span class="mi">2024</span><span class="p">):</span>
-    <span class="n">output_file</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;acoes_</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">&quot;</span>
-
-    <span class="n">result</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
-        <span class="n">path_of_docs</span><span class="o">=</span><span class="n">base_path</span><span class="p">,</span>
-        <span class="n">destination_path</span><span class="o">=</span><span class="n">output_path</span><span class="p">,</span>
-        <span class="n">assets_list</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ações&quot;</span><span class="p">],</span>
-        <span class="n">initial_year</span><span class="o">=</span><span class="n">year</span><span class="p">,</span>
-        <span class="n">last_year</span><span class="o">=</span><span class="n">year</span><span class="p">,</span>
-        <span class="n">output_filename</span><span class="o">=</span><span class="n">output_file</span>
-    <span class="p">)</span>
-
-    <span class="k">if</span> <span class="n">result</span><span class="p">[</span><span class="s1">&#39;success&#39;</span><span class="p">]:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ </span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;total_records&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> registros&quot;</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✗ </span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">: Erro na extração&quot;</span><span class="p">)</span>
-</code></pre></div>
-<h3 id="validacao-antes-da-extracao">Validação Antes da Extração<a class="headerlink" href="#validacao-antes-da-extracao" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">HistoricalQuotesB3</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-
-<span class="n">b3</span> <span class="o">=</span> <span class="n">HistoricalQuotesB3</span><span class="p">()</span>
-<span class="n">path_docs</span> <span class="o">=</span> <span class="s2">&quot;/data/cotahist&quot;</span>
-
-<span class="c1"># 1. Verificar se diretório existe</span>
-<span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path_docs</span><span class="p">):</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✗ Diretório não encontrado: </span><span class="si">{</span><span class="n">path_docs</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-
-<span class="c1"># 2. Verificar se há arquivos COTAHIST</span>
-<span class="n">zip_files</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">path_docs</span><span class="p">)</span> <span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;COTAHIST&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="n">f</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.ZIP&quot;</span><span class="p">)]</span>
-
-<span class="k">if</span> <span class="ow">not</span> <span class="n">zip_files</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✗ Nenhum arquivo COTAHIST encontrado em </span><span class="si">{</span><span class="n">path_docs</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Encontrados </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">zip_files</span><span class="p">)</span><span class="si">}</span><span class="s2"> arquivos COTAHIST&quot;</span><span class="p">)</span>
-
-<span class="c1"># 3. Validar classes de ativos</span>
-<span class="n">requested_assets</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;ações&quot;</span><span class="p">,</span> <span class="s2">&quot;etf&quot;</span><span class="p">]</span>
-<span class="n">available_assets</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">get_available_assets</span><span class="p">()</span>
-
-<span class="n">invalid_assets</span> <span class="o">=</span> <span class="p">[</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">requested_assets</span> <span class="k">if</span> <span class="n">a</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">available_assets</span><span class="p">]</span>
-<span class="k">if</span> <span class="n">invalid_assets</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✗ Ativos inválidos: </span><span class="si">{</span><span class="n">invalid_assets</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Ativos disponíveis: </span><span class="si">{</span><span class="n">available_assets</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-
-<span class="c1"># 4. Prosseguir com extração</span>
-<span class="n">result</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
-    <span class="n">path_of_docs</span><span class="o">=</span><span class="n">path_docs</span><span class="p">,</span>
-    <span class="n">assets_list</span><span class="o">=</span><span class="n">requested_assets</span><span class="p">,</span>
-    <span class="n">initial_year</span><span class="o">=</span><span class="mi">2023</span>
-<span class="p">)</span>
-</code></pre></div>
-<hr />
-<h2 id="tratamento-de-erros">Tratamento de Erros<a class="headerlink" href="#tratamento-de-erros" title="Link para esta seção">&para;</a></h2>
-<h3 id="excecoes-comuns">Exceções Comuns<a class="headerlink" href="#excecoes-comuns" title="Link para esta seção">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Exceção</th>
-<th>Quando ocorre</th>
-<th>Como tratar</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>EmptyAssetListError</code></td>
-<td><code>assets_list</code> está vazio</td>
-<td>Fornecer pelo menos um ativo</td>
-</tr>
-<tr>
-<td><code>InvalidAssetsName</code></td>
-<td>Ativo inválido em <code>assets_list</code></td>
-<td>Verificar com <code>get_available_assets()</code></td>
-</tr>
-<tr>
-<td><code>InvalidFirstYear</code></td>
-<td><code>initial_year</code> fora do intervalo</td>
-<td>Usar 1986 ≤ ano ≤ ano atual</td>
-</tr>
-<tr>
-<td><code>InvalidLastYear</code></td>
-<td><code>last_year</code> inválido</td>
-<td>Usar <code>initial_year</code> ≤ ano ≤ ano atual</td>
-</tr>
-<tr>
-<td><code>EmptyDirectoryError</code></td>
-<td>Diretório sem arquivos COTAHIST</td>
-<td>Verificar caminho e arquivos</td>
-</tr>
-<tr>
-<td><code>ExtractionError</code></td>
-<td>Erro ao processar ZIP</td>
-<td>Verificar integridade dos arquivos</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="formato-dos-arquivos-cotahist">Formato dos Arquivos COTAHIST<a class="headerlink" href="#formato-dos-arquivos-cotahist" title="Link para esta seção">&para;</a></h2>
-<h3 id="nomenclatura">Nomenclatura<a class="headerlink" href="#nomenclatura" title="Link para esta seção">&para;</a></h3>
-<p>Os arquivos COTAHIST seguem o padrão:</p>
-<div class="highlight"><pre><span></span><code>COTAHIST_AXXXX.ZIP
-</code></pre></div>
-<p>Onde <code>XXXX</code> é o ano (ex: <code>COTAHIST_A2023.ZIP</code>).</p>
-<h3 id="onde-obter">Onde Obter<a class="headerlink" href="#onde-obter" title="Link para esta seção">&para;</a></h3>
-<p>Os arquivos COTAHIST podem ser baixados do site oficial da B3:</p>
-<p>🔗 <strong><a href="https://www.b3.com.br/pt_br/market-data-e-indices/servicos-de-dados/market-data/historico/mercado-a-vista/cotacoes-historicas/">https://www.b3.com.br/pt_br/market-data-e-indices/servicos-de-dados/market-data/historico/mercado-a-vista/cotacoes-historicas/</a></strong></p>
-<h3 id="estrutura-interna">Estrutura Interna<a class="headerlink" href="#estrutura-interna" title="Link para esta seção">&para;</a></h3>
-<p>Cada arquivo ZIP contém um arquivo TXT com layout de largura fixa:</p>
-<div class="highlight"><pre><span></span><code>COTAHIST_A2023.ZIP
-└── COTAHIST_A2023.TXT  (arquivo de texto com largura fixa)
-</code></pre></div>
-<p>O Global-Data-Finance processa automaticamente este formato e converte para Parquet.</p>
-<hr />
-<h2 id="estrutura-do-arquivo-parquet-gerado">Estrutura do Arquivo Parquet Gerado<a class="headerlink" href="#estrutura-do-arquivo-parquet-gerado" title="Link para esta seção">&para;</a></h2>
-<h3 id="colunas">Colunas<a class="headerlink" href="#colunas" title="Link para esta seção">&para;</a></h3>
-<p>O arquivo Parquet gerado contém as seguintes colunas:</p>
-<table>
-<thead>
-<tr>
-<th>Coluna</th>
-<th>Tipo</th>
-<th>Descrição</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>data_pregao</code></td>
-<td><code>date</code></td>
-<td>Data do pregão</td>
-</tr>
-<tr>
-<td><code>codigo_bdi</code></td>
-<td><code>string</code></td>
-<td>Código BDI</td>
-</tr>
-<tr>
-<td><code>ticker</code></td>
-<td><code>string</code></td>
-<td>Código de negociação (ex: PETR4)</td>
-</tr>
-<tr>
-<td><code>tipo_mercado</code></td>
-<td><code>string</code></td>
-<td>Tipo de mercado</td>
-</tr>
-<tr>
-<td><code>nome_resumido</code></td>
-<td><code>string</code></td>
-<td>Nome resumido da empresa</td>
-</tr>
-<tr>
-<td><code>especificacao_papel</code></td>
-<td><code>string</code></td>
-<td>Especificação do papel (ex: ON, PN)</td>
-</tr>
-<tr>
-<td><code>preco_abertura</code></td>
-<td><code>decimal</code></td>
-<td>Preço de abertura</td>
-</tr>
-<tr>
-<td><code>preco_maximo</code></td>
-<td><code>decimal</code></td>
-<td>Preço máximo do dia</td>
-</tr>
-<tr>
-<td><code>preco_minimo</code></td>
-<td><code>decimal</code></td>
-<td>Preço mínimo do dia</td>
-</tr>
-<tr>
-<td><code>preco_medio</code></td>
-<td><code>decimal</code></td>
-<td>Preço médio do dia</td>
-</tr>
-<tr>
-<td><code>preco_fechamento</code></td>
-<td><code>decimal</code></td>
-<td>Preço de fechamento</td>
-</tr>
-<tr>
-<td><code>melhor_oferta_compra</code></td>
-<td><code>decimal</code></td>
-<td>Melhor oferta de compra</td>
-</tr>
-<tr>
-<td><code>melhor_oferta_venda</code></td>
-<td><code>decimal</code></td>
-<td>Melhor oferta de venda</td>
-</tr>
-<tr>
-<td><code>numero_negocios</code></td>
-<td><code>int</code></td>
-<td>Número de negócios efetuados</td>
-</tr>
-<tr>
-<td><code>quantidade_total</code></td>
-<td><code>int</code></td>
-<td>Quantidade total de títulos negociados</td>
-</tr>
-<tr>
-<td><code>volume_total</code></td>
-<td><code>decimal</code></td>
-<td>Volume total financeiro</td>
-</tr>
-<tr>
-<td><code>data_vencimento</code></td>
-<td><code>date</code></td>
-<td>Data de vencimento (opções/termo)</td>
-</tr>
-<tr>
-<td><code>fator_cotacao</code></td>
-<td><code>int</code></td>
-<td>Fator de cotação</td>
-</tr>
-<tr>
-<td><code>codigo_isin</code></td>
-<td><code>string</code></td>
-<td>Código ISIN</td>
-</tr>
-<tr>
-<td><code>numero_distribuicao</code></td>
-<td><code>int</code></td>
-<td>Número de distribuição</td>
-</tr>
-</tbody>
-</table>
-<h3 id="leitura-com-pandas">Leitura com Pandas<a class="headerlink" href="#leitura-com-pandas" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-
-<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="s2">&quot;/data/cotacoes_extraidas/cotahist_extracted.parquet&quot;</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Shape: </span><span class="si">{</span><span class="n">df</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Período: </span><span class="si">{</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;data_pregao&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">}</span><span class="s2"> a </span><span class="si">{</span><span class="n">df</span><span class="p">[</span><span class="s1">&#39;data_pregao&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</code></pre></div>
-<h3 id="leitura-com-polars-mais-rapido">Leitura com Polars (Mais Rápido)<a class="headerlink" href="#leitura-com-polars-mais-rapido" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
-
-<span class="n">df</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span><span class="s2">&quot;/data/cotacoes_extraidas/cotahist_extracted.parquet&quot;</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Shape: </span><span class="si">{</span><span class="n">df</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Memória: </span><span class="si">{</span><span class="n">df</span><span class="o">.</span><span class="n">estimated_size</span><span class="p">(</span><span class="s1">&#39;mb&#39;</span><span class="p">)</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> MB&quot;</span><span class="p">)</span>
-</code></pre></div>
-<hr />
-<h2 id="boas-praticas">Boas Práticas<a class="headerlink" href="#boas-praticas" title="Link para esta seção">&para;</a></h2>
-<h3 id="1-use-modo-fast-para-grandes-volumes">1. Use Modo Fast para Grandes Volumes<a class="headerlink" href="#1-use-modo-fast-para-grandes-volumes" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># ✅ Recomendado para grandes volumes</span>
-<span class="n">result</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
-    <span class="n">path_of_docs</span><span class="o">=</span><span class="s2">&quot;/data/cotahist&quot;</span><span class="p">,</span>
-    <span class="n">assets_list</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ações&quot;</span><span class="p">],</span>
-    <span class="n">initial_year</span><span class="o">=</span><span class="mi">1986</span><span class="p">,</span>  <span class="c1"># 23+ anos</span>
-    <span class="n">processing_mode</span><span class="o">=</span><span class="s2">&quot;fast&quot;</span>
-<span class="p">)</span>
-</code></pre></div>
-<h3 id="2-separe-extracoes-por-classe-de-ativo">2. Separe Extrações por Classe de Ativo<a class="headerlink" href="#2-separe-extracoes-por-classe-de-ativo" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># ✅ Melhor: arquivos separados por classe</span>
-<span class="k">for</span> <span class="n">asset</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;ações&quot;</span><span class="p">,</span> <span class="s2">&quot;etf&quot;</span><span class="p">,</span> <span class="s2">&quot;opções&quot;</span><span class="p">]:</span>
-    <span class="n">result</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
-        <span class="n">path_of_docs</span><span class="o">=</span><span class="s2">&quot;/data/cotahist&quot;</span><span class="p">,</span>
-        <span class="n">assets_list</span><span class="o">=</span><span class="p">[</span><span class="n">asset</span><span class="p">],</span>
-        <span class="n">initial_year</span><span class="o">=</span><span class="mi">2023</span><span class="p">,</span>
-        <span class="n">output_filename</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">asset</span><span class="si">}</span><span class="s2">_2023&quot;</span>
-    <span class="p">)</span>
-
-<span class="c1"># ❌ Evite: tudo em um arquivo (pode ficar muito grande)</span>
-<span class="n">result</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
-    <span class="n">path_of_docs</span><span class="o">=</span><span class="s2">&quot;/data/cotahist&quot;</span><span class="p">,</span>
-    <span class="n">assets_list</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ações&quot;</span><span class="p">,</span> <span class="s2">&quot;etf&quot;</span><span class="p">,</span> <span class="s2">&quot;opções&quot;</span><span class="p">,</span> <span class="s2">&quot;termo&quot;</span><span class="p">,</span> <span class="s2">&quot;forward&quot;</span><span class="p">],</span>
-    <span class="n">initial_year</span><span class="o">=</span><span class="mi">1986</span><span class="p">,</span>  <span class="c1"># 38+ anos!</span>
-    <span class="n">output_filename</span><span class="o">=</span><span class="s2">&quot;tudo&quot;</span>
-<span class="p">)</span>
-</code></pre></div>
-<h3 id="3-verifique-espaco-em-disco">3. Verifique Espaço em Disco<a class="headerlink" href="#3-verifique-espaco-em-disco" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
-
-<span class="n">stats</span> <span class="o">=</span> <span class="n">shutil</span><span class="o">.</span><span class="n">disk_usage</span><span class="p">(</span><span class="s2">&quot;/data&quot;</span><span class="p">)</span>
-<span class="n">free_gb</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">free</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1024</span><span class="o">**</span><span class="mi">3</span><span class="p">)</span>
-
-<span class="k">if</span> <span class="n">free_gb</span> <span class="o">&lt;</span> <span class="mi">5</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️  Pouco espaço: </span><span class="si">{</span><span class="n">free_gb</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> GB&quot;</span><span class="p">)</span>
-    <span class="c1"># Use modo slow ou processe menos anos</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="c1"># Prosseguir normalmente</span>
-    <span class="k">pass</span>
-</code></pre></div>
-<hr />
-<h2 id="proximos-passos">Próximos Passos<a class="headerlink" href="#proximos-passos" title="Link para esta seção">&para;</a></h2>
-<ul>
-<li>📄 <strong><a href="../cvm-docs/">Documentos CVM</a></strong> - Aprenda a baixar documentos CVM</li>
-<li>💻 <strong><a href="../examples/">Exemplos Práticos</a></strong> - Veja casos de uso completos</li>
-<li>🔧 <strong><a href="../../reference/b3-api/">API Reference</a></strong> - Documentação técnica detalhada</li>
-<li>❓ <strong><a href="../faq/">FAQ</a></strong> - Perguntas frequentes</li>
-</ul>
-<hr />
-<div class="admonition tip">
-<p class="admonition-title">Dica de Análise</p>
-</div>
-<p>Após extrair para Parquet, use Polars para análises de alto desempenho. É significativamente mais rápido que Pandas para grandes volumes de dados.</p>
+<p>Um ano ausente ou uma fonte inválida retorna falha e não publica uma nova<br />
+saída. Se todas as fontes forem válidas, mas o filtro não selecionar cotações,<br />
+o resultado é bem-sucedido com Parquet vazio. Zero linhas não significa, por<br />
+si só, erro.</p>
+<p>O Parquet usa <a href="../../reference/b3-schema-v2/">schema B3 v2</a>: preços decimais<br />
+exatos, campos de proveniência e o registro original. Leia-o com PyArrow como<br />
+no <a href="../quickstart/">início rápido</a>. Para arquivos gerados por versões anteriores,<br />
+consulte a <a href="../migration-pyarrow-integrity/">migração</a>.</p>
 
 
 

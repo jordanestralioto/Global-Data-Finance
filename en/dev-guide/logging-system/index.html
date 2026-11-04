@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Biblioteca Python para extração e processamento de dados financeiros globais">
+        <meta name="description" content="Biblioteca Python para baixar documentos da CVM e processar cotações históricas da B3 em Parquet">
       
       
         <meta name="author" content="Jordan Estralioto">
@@ -15,7 +15,7 @@
         <link rel="canonical" href="https://jordanestralioto.github.io/Global-Data-Finance/en/dev-guide/logging-system/">
       
       
-        <link rel="prev" href="../advanced-usage/">
+        <link rel="prev" href="../../user-guide/b3-operations/">
       
       
         <link rel="next" href="../resource-monitoring/">
@@ -303,13 +303,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../architecture/" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../contributing/" class="md-tabs__link">
           
   
   
@@ -325,11 +323,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../reference/cvm-api/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../api-reference/" class="md-tabs__link">
           
   
   
@@ -646,31 +646,26 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
         
           
-          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
             
   
   
@@ -688,7 +683,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -698,62 +693,6 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../architecture/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Architecture
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../api-reference/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    API Reference
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
             
               
                 
@@ -790,6 +729,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../testing/" class="md-nav__link">
         
   
@@ -798,6 +765,86 @@
     
   
     Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Maintenance and evidence
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Maintenance and evidence
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release-readiness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Acceptance
   
 
     
@@ -846,6 +893,643 @@
   
   
     <li class="md-nav__item">
+      <a href="../cotahist-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    COTAHIST Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../real-data-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation with external data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cotahist-v2-supplied-corpus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    COTAHIST Corpus Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Technical Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/test-execution-tiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Execution Tiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/real-validation-campaign/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auditable Real-Data Campaign
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/archive-safety-and-unc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ZIP Limits and UNC Destinations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/cvm-failure-atomic-batch-commit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Failure-Atomic CVM Batch Commit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/cvm-ingestion-ownership/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shared CVM Ingestion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/pyarrow-ingestion-integrity-cutover/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PyArrow and Integrity Cutover
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/shared-infrastructure-clean-cut/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shared Infrastructure Clean Cut
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Technical Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cvm-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CVM API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/b3-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    B3 API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/b3-schema-v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    B3 Parquet Schema v2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/exceptions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exceptions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/transactional-publication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transactional publication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_7" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4_7" id="__nav_4_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration and operation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configuration and operation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../advanced-usage/" class="md-nav__link">
         
   
@@ -854,6 +1538,34 @@
     
   
     Advanced Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/b3-operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    B3 Operational Practices
   
 
     
@@ -938,6 +1650,28 @@
     <span class="md-ellipsis">
       
         Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#initial-state-and-isolation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Initial State and Isolation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reconfiguration-and-rollback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reconfiguration and Rollback
       
     </span>
   </a>
@@ -1118,10 +1852,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#accessing-active-settings-metrics" class="md-nav__link">
+  <a href="#configuration-snapshot" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Accessing Active Settings Metrics
+        Configuration Snapshot
       
     </span>
   </a>
@@ -1246,10 +1980,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-consistently-register-module-hierarchies-via-get_logger__name__" class="md-nav__link">
+  <a href="#1-choose-a-name-within-the-configured-logger-hierarchy" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Consistently Register Module Hierarchies via get_logger(__name__)
+        1. Choose a name within the configured logger hierarchy
       
     </span>
   </a>
@@ -1426,9 +2160,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -1439,25 +2174,28 @@
     
       
       
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="">
             
   
   
   <span class="md-ellipsis">
     
   
-    Technical Reference
+    Migrations
   
 
     
@@ -1468,12 +2206,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Technical Reference
+    Migrations
   
 
           </label>
@@ -1486,14 +2224,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/cvm-api/" class="md-nav__link">
+      <a href="../../user-guide/migration-pyarrow-integrity/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    CVM API
+    Migration 0.2.0
   
 
     
@@ -1514,14 +2252,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/b3-api/" class="md-nav__link">
+      <a href="../../user-guide/migration-infrastructure-clean-cut/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    B3 API
+    Infrastructure Clean Cut Migration
   
 
     
@@ -1542,14 +2280,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/exceptions/" class="md-nav__link">
+      <a href="../../user-guide/migration-cvm-exact-text/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Exceptions
+    CVM Exact Text Migration
   
 
     
@@ -1558,6 +2296,14 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1597,13 +2343,59 @@
 <p>Global-Data-Finance incorporates a professional centralized logging subsystem designed specifically for high-throughput library distribution:</p>
 <ul>
 <li>✅ <strong>Lazy Initialization</strong>: Logging remains silently disabled by default (respecting standard Python library citizenship practices)</li>
-<li>✅ <strong>Multi-Target Handlers</strong>: Configurable simultaneous routing to console outputs and rotating filesystem files</li>
+<li>✅ <strong>Multi-Target Handlers</strong>: Configurable simultaneous routing to console outputs and filesystem files</li>
 <li>✅ <strong>Granular Level Filtering</strong>: Full support for standard severity thresholds (<code>DEBUG</code>, <code>INFO</code>, <code>WARNING</code>, <code>ERROR</code>, <code>CRITICAL</code>)</li>
 <li>✅ <strong>Performance Benchmarking</strong>: Integrated timing context managers designed to capture operation latencies automatically</li>
 <li>✅ <strong>Structured Metadata Binding</strong>: Context-aware log emission supporting structured parameter propagation</li>
-<li>✅ <strong>Environment Override Compatibility</strong>: Real-time runtime overrides via confirmed OS environment variables</li>
+<li>✅ <strong>Environment Override Compatibility</strong>: Runtime configuration via confirmed OS environment variables</li>
 </ul>
 <hr />
+<h2 id="initial-state-and-isolation">Initial State and Isolation<a class="headerlink" href="#initial-state-and-isolation" title="Link para esta seção">&para;</a></h2>
+<p>Importing the library does not configure the application root logger or attach<br />
+visible output handlers. The <code>globaldatafinance</code> logger starts with a<br />
+<code>NullHandler</code> and <code>propagate=False</code>, so events remain quiet until the consumer<br />
+explicitly calls <code>setup_logging()</code>. Configuration affects only this logger<br />
+hierarchy.</p>
+<p><code>LoggingSettings</code> accepts only its documented fields: <code>level</code>, <code>format</code>,<br />
+<code>log_file</code>, and <code>detailed_format</code>. Extra fields, including the removed<br />
+<code>structured</code> field, raise <code>ValidationError</code>.</p>
+<p>Supported environment variables are <code>DATAFIN_LOG_LEVEL</code>,<br />
+<code>DATAFIN_LOG_FORMAT</code>, <code>DATAFIN_LOG_FILE</code>, and<br />
+<code>DATAFIN_LOG_DETAILED_FORMAT</code>. <code>DATAFIN_LOG_LOG_FILE</code> is also accepted for<br />
+compatibility with the field-derived name. Any other <code>DATAFIN_LOG_*</code> variable,<br />
+including <code>DATAFIN_LOG_STRUCTURED</code>, raises <code>ValidationError</code> when<br />
+<code>LoggingSettings()</code> is created.</p>
+<p>The formatter performs best-effort redaction for common URL parameters and<br />
+sensitive context fields such as <code>token</code>, <code>password</code>, <code>authorization</code>, and<br />
+<code>cookie</code>. It also covers URL parameters <code>key</code>, <code>code</code>, and <code>state</code>, and quoted sensitive fields<br />
+in JSON text, including formatted exceptions. URL authority credentials<br />
+(<code>https://&lt;userinfo&gt;@host/</code>) become <code>[REDACTED]@</code>, preserving the host,<br />
+path, and public parameters. The same protection covers protocol-relative<br />
+authorities (<code>//user:password@host/</code>). This does not replace the consumer&rsquo;s<br />
+responsibility: secrets must not be passed in messages, exceptions, or<br />
+logging context.</p>
+<p>Compound names with <code>_</code> or <code>-</code>, such as <code>id_token</code> and <code>auth_token</code>, receive<br />
+the same protection in URLs, serialized messages, and context fields.<br />
+URL parameter names are decoded before identifying sensitive fields; the<br />
+original parameter spelling and public values are preserved.</p>
+<p><code>log_file</code> must point to a consumer-approved application path. Before creating<br />
+directories or the file, <code>setup_logging()</code> rejects system roots, protected<br />
+directories, and untrusted UNC destinations using the same path-safety policy<br />
+as the data facades. Use an application-owned directory or <code>/tmp</code> for local<br />
+diagnostics.</p>
+<h2 id="reconfiguration-and-rollback">Reconfiguration and Rollback<a class="headerlink" href="#reconfiguration-and-rollback" title="Link para esta seção">&para;</a></h2>
+<p><code>setup_logging()</code> builds and configures every candidate handler before touching<br />
+the package logger. On success, only library-managed handlers are replaced;<br />
+external handlers are preserved. If file creation or the handler swap fails,<br />
+the candidates are closed and the previous level, propagation setting, and<br />
+handlers are restored.</p>
+<p>This lets applications reconfigure library logging without losing the active<br />
+configuration:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core.logging_config</span><span class="w"> </span><span class="kn">import</span> <span class="n">LoggingSettings</span><span class="p">,</span> <span class="n">setup_logging</span>
+
+<span class="n">setup_logging</span><span class="p">(</span><span class="n">LoggingSettings</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s2">"INFO"</span><span class="p">))</span>
+<span class="n">setup_logging</span><span class="p">(</span><span class="n">LoggingSettings</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s2">"DEBUG"</span><span class="p">,</span> <span class="n">log_file</span><span class="o">=</span><span class="s2">"app-debug.log"</span><span class="p">))</span>
+</code></pre></div>
 <h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Link para esta seção">&para;</a></h2>
 <h3 id="primary-subsystem-components">Primary Subsystem Components<a class="headerlink" href="#primary-subsystem-components" title="Link para esta seção">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>src/core/logging_config.py
@@ -1619,32 +2411,35 @@
 <h2 id="basic-usage">Basic Usage<a class="headerlink" href="#basic-usage" title="Link para esta seção">&para;</a></h2>
 <h3 id="1-enable-library-logging">1. Enable Library Logging<a class="headerlink" href="#1-enable-library-logging" title="Link para esta seção">&para;</a></h3>
 <p>In accordance with Python best practices for dependency distributions, logging is <strong>disabled by default</strong>. To activate event reporting:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">setup_logging</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core.logging_config</span><span class="w"> </span><span class="kn">import</span> <span class="n">LoggingSettings</span><span class="p">,</span> <span class="n">setup_logging</span>
 
 <span class="c1"># Activate logging across the library hierarchy at severity INFO</span>
-<span class="n">setup_logging</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s2">&quot;INFO&quot;</span><span class="p">)</span>
+<span class="n">setup_logging</span><span class="p">(</span><span class="n">LoggingSettings</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s2">"INFO"</span><span class="p">))</span>
 </code></pre></div>
 <h3 id="2-retrieve-a-module-logger-instance">2. Retrieve a Module Logger Instance<a class="headerlink" href="#2-retrieve-a-module-logger-instance" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+<p>The examples use a child of <code>globaldatafinance</code> to receive the handlers<br />
+configured above. Configure application loggers with application-owned<br />
+handlers separately.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core.logging_config</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
 
-<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
-<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Processing job started&quot;</span><span class="p">)</span>
-<span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Detailed debug tracing&quot;</span><span class="p">)</span>
-<span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Potential configuration warning&quot;</span><span class="p">)</span>
-<span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Exception encountered during operational step&quot;</span><span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="s2">"globaldatafinance.example"</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Processing job started"</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Detailed debug tracing"</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"Potential configuration warning"</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"Exception encountered during operational step"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="3-structured-context-logging">3. Structured Context Logging<a class="headerlink" href="#3-structured-context-logging" title="Link para esta seção">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-    <span class="s2">&quot;Dataset normalization completed&quot;</span><span class="p">,</span>
+    <span class="s2">"Dataset normalization completed"</span><span class="p">,</span>
     <span class="n">extra</span><span class="o">=</span><span class="p">{</span>
-        <span class="s2">&quot;filename&quot;</span><span class="p">:</span> <span class="s2">&quot;dfp_cia_aberta_2023.csv&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;records&quot;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span>
-        <span class="s2">&quot;elapsed_ms&quot;</span><span class="p">:</span> <span class="mi">250</span>
+        <span class="s2">"file_target"</span><span class="p">:</span> <span class="s2">"dfp_cia_aberta_2023.csv"</span><span class="p">,</span>
+        <span class="s2">"records"</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span>
+        <span class="s2">"elapsed_ms"</span><span class="p">:</span> <span class="mi">250</span>
     <span class="p">}</span>
 <span class="p">)</span>
 </code></pre></div>
 <p><strong>Console Output</strong>:</p>
-<div class="highlight"><pre><span></span><code>2025-11-25 17:30:00 | INFO     | my_pipeline_module | Dataset normalization completed | filename=dfp_cia_aberta_2023.csv | records=1000 | elapsed_ms=250
+<div class="highlight"><pre><span></span><code>2025-11-25 17:30:00 | INFO     | my_pipeline_module | Dataset normalization completed | file_target=dfp_cia_aberta_2023.csv | records=1000 | elapsed_ms=250
 </code></pre></div>
 <hr />
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Link para esta seção">&para;</a></h2>
@@ -1686,21 +2481,25 @@
 </tbody>
 </table>
 <h3 id="programmatic-configuration">Programmatic Configuration<a class="headerlink" href="#programmatic-configuration" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">setup_logging</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core.logging_config</span><span class="w"> </span><span class="kn">import</span> <span class="n">LoggingSettings</span><span class="p">,</span> <span class="n">setup_logging</span>
 
 <span class="c1"># Standard activation</span>
-<span class="n">setup_logging</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s2">&quot;INFO&quot;</span><span class="p">)</span>
+<span class="n">setup_logging</span><span class="p">(</span><span class="n">LoggingSettings</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s2">"INFO"</span><span class="p">))</span>
 
 <span class="c1"># Route logging outputs directly to a filesystem log destination</span>
 <span class="n">setup_logging</span><span class="p">(</span>
-    <span class="n">level</span><span class="o">=</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">,</span>
-    <span class="n">log_file</span><span class="o">=</span><span class="s2">&quot;/var/log/datafinance/execution.log&quot;</span>
+    <span class="n">LoggingSettings</span><span class="p">(</span>
+        <span class="n">level</span><span class="o">=</span><span class="s2">"DEBUG"</span><span class="p">,</span>
+        <span class="n">log_file</span><span class="o">=</span><span class="s2">"/tmp/datafinance/execution.log"</span><span class="p">,</span>
+    <span class="p">)</span>
 <span class="p">)</span>
 
 <span class="c1"># Enable detailed formatting (includes precise line numbers and symbol signatures)</span>
 <span class="n">setup_logging</span><span class="p">(</span>
-    <span class="n">level</span><span class="o">=</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">,</span>
-    <span class="n">use_detailed_format</span><span class="o">=</span><span class="kc">True</span>
+    <span class="n">LoggingSettings</span><span class="p">(</span>
+        <span class="n">level</span><span class="o">=</span><span class="s2">"DEBUG"</span><span class="p">,</span>
+        <span class="n">detailed_format</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
 <span class="p">)</span>
 </code></pre></div>
 <h3 id="environment-variable-configuration">Environment Variable Configuration<a class="headerlink" href="#environment-variable-configuration" title="Link para esta seção">&para;</a></h3>
@@ -1709,131 +2508,143 @@
 <span class="nb">export</span><span class="w"> </span><span class="nv">DATAFIN_LOG_LEVEL</span><span class="o">=</span>DEBUG
 
 <span class="c1"># Direct logging output to file destination</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">DATAFIN_LOG_FILE</span><span class="o">=</span>/var/log/datafin.log
+<span class="nb">export</span><span class="w"> </span><span class="nv">DATAFIN_LOG_FILE</span><span class="o">=</span>/tmp/datafin.log
 
 <span class="c1"># Enable detailed structural reporting</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">DATAFIN_LOG_DETAILED_FORMAT</span><span class="o">=</span><span class="nb">true</span>
-
-<span class="c1"># Toggle structured formatting</span>
-<span class="nb">export</span><span class="w"> </span><span class="nv">DATAFIN_LOG_STRUCTURED</span><span class="o">=</span><span class="nb">true</span>
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">setup_logging</span>
+<p>Unknown <code>DATAFIN_LOG_*</code> variables are rejected so removed or misspelled<br />
+options cannot appear to have been applied.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core.logging_config</span><span class="w"> </span><span class="kn">import</span> <span class="n">setup_logging</span>
 
-<span class="c1"># Ingest settings directly from environment declarations</span>
+<span class="c1"># Ingest settings directly from environment declarations (default LoggingSettings snapshot)</span>
 <span class="n">setup_logging</span><span class="p">()</span>
 </code></pre></div>
 <hr />
 <h2 id="advanced-capabilities">Advanced Capabilities<a class="headerlink" href="#advanced-capabilities" title="Link para esta seção">&para;</a></h2>
 <h3 id="performance-timing-latency-profiling">Performance Timing &amp; Latency Profiling<a class="headerlink" href="#performance-timing-latency-profiling" title="Link para esta seção">&para;</a></h3>
 <p>Leverage the automated <code>log_execution_time()</code> context manager to track operational durations:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">log_execution_time</span><span class="p">,</span> <span class="n">get_logger</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core.logging_config</span><span class="w"> </span><span class="kn">import</span> <span class="n">log_execution_time</span><span class="p">,</span> <span class="n">get_logger</span>
 
-<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="s2">"globaldatafinance.example"</span><span class="p">)</span>
 
-<span class="k">with</span> <span class="n">log_execution_time</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="s2">&quot;Parse COTAHIST ZIP archive&quot;</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="s2">&quot;COTAHIST_A2023.ZIP&quot;</span><span class="p">):</span>
-    <span class="n">parse_file</span><span class="p">(</span><span class="s2">&quot;COTAHIST_A2023.ZIP&quot;</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">log_execution_time</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="s2">"Parse COTAHIST ZIP archive"</span><span class="p">,</span> <span class="n">file_target</span><span class="o">=</span><span class="s2">"COTAHIST_A2023.ZIP"</span><span class="p">):</span>
+    <span class="n">parse_file</span><span class="p">(</span><span class="s2">"COTAHIST_A2023.ZIP"</span><span class="p">)</span>
 </code></pre></div>
 <p><strong>Console Output</strong>:</p>
-<div class="highlight"><pre><span></span><code>Starting: Parse COTAHIST ZIP archive | operation=Parse COTAHIST ZIP archive | filename=COTAHIST_A2023.ZIP
-Completed: Parse COTAHIST ZIP archive | operation=Parse COTAHIST ZIP archive | elapsed_seconds=2.45 | filename=COTAHIST_A2023.ZIP
+<div class="highlight"><pre><span></span><code>Starting: Parse COTAHIST ZIP archive | operation=Parse COTAHIST ZIP archive | file_target=COTAHIST_A2023.ZIP
+Completed: Parse COTAHIST ZIP archive | operation=Parse COTAHIST ZIP archive | elapsed_seconds=2.45 | file_target=COTAHIST_A2023.ZIP
 </code></pre></div>
 <p>Upon encountering runtime failures:</p>
-<div class="highlight"><pre><span></span><code>Failed: Parse COTAHIST ZIP archive | operation=Parse COTAHIST ZIP archive | elapsed_seconds=1.23 | error=File not found | filename=COTAHIST_A2023.ZIP
+<div class="highlight"><pre><span></span><code>Failed: Parse COTAHIST ZIP archive | operation=Parse COTAHIST ZIP archive | elapsed_seconds=1.23 | error=File not found | file_target=COTAHIST_A2023.ZIP
 </code></pre></div>
 <h3 id="contextual-event-reporting">Contextual Event Reporting<a class="headerlink" href="#contextual-event-reporting" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">log_with_context</span><span class="p">,</span> <span class="n">get_logger</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core.logging_config</span><span class="w"> </span><span class="kn">import</span> <span class="n">log_with_context</span><span class="p">,</span> <span class="n">get_logger</span>
 
-<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="s2">"globaldatafinance.example"</span><span class="p">)</span>
 
 <span class="n">log_with_context</span><span class="p">(</span>
     <span class="n">logger</span><span class="p">,</span>
-    <span class="s2">&quot;info&quot;</span><span class="p">,</span>
-    <span class="s2">&quot;Parallel download batch completed&quot;</span><span class="p">,</span>
-    <span class="n">url</span><span class="o">=</span><span class="s2">&quot;https://example.com/bundle.zip&quot;</span><span class="p">,</span>
+    <span class="s2">"info"</span><span class="p">,</span>
+    <span class="s2">"Parallel download batch completed"</span><span class="p">,</span>
+    <span class="n">url</span><span class="o">=</span><span class="s2">"https://example.com/bundle.zip"</span><span class="p">,</span>
+    <span class="n">file_target</span><span class="o">=</span><span class="s2">"bundle.zip"</span><span class="p">,</span>
     <span class="n">size_mb</span><span class="o">=</span><span class="mf">125.5</span><span class="p">,</span>
     <span class="n">duration_seconds</span><span class="o">=</span><span class="mi">45</span>
 <span class="p">)</span>
 </code></pre></div>
 <h3 id="confirming-active-configuration-state">Confirming Active Configuration State<a class="headerlink" href="#confirming-active-configuration-state" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">is_logging_configured</span><span class="p">,</span> <span class="n">setup_logging</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core.logging_config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">LoggingSettings</span><span class="p">,</span>
+    <span class="n">is_logging_configured</span><span class="p">,</span>
+    <span class="n">setup_logging</span><span class="p">,</span>
+<span class="p">)</span>
 
 <span class="k">if</span> <span class="ow">not</span> <span class="n">is_logging_configured</span><span class="p">():</span>
-    <span class="n">setup_logging</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s2">&quot;INFO&quot;</span><span class="p">)</span>
+    <span class="n">setup_logging</span><span class="p">(</span><span class="n">LoggingSettings</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s2">"INFO"</span><span class="p">))</span>
 </code></pre></div>
-<h3 id="accessing-active-settings-metrics">Accessing Active Settings Metrics<a class="headerlink" href="#accessing-active-settings-metrics" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logging_settings</span>
+<h3 id="configuration-snapshot">Configuration Snapshot<a class="headerlink" href="#configuration-snapshot" title="Link para esta seção">&para;</a></h3>
+<p><code>setup_logging()</code> returns the immutable <code>LoggingSettings</code> snapshot applied to the library hierarchy:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core.logging_config</span><span class="w"> </span><span class="kn">import</span> <span class="n">LoggingSettings</span><span class="p">,</span> <span class="n">setup_logging</span>
 
-<span class="n">settings</span> <span class="o">=</span> <span class="n">get_logging_settings</span><span class="p">()</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Active threshold level: </span><span class="si">{</span><span class="n">settings</span><span class="o">.</span><span class="n">level</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Registered file sink: </span><span class="si">{</span><span class="n">settings</span><span class="o">.</span><span class="n">log_file</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Detailed syntax enabled: </span><span class="si">{</span><span class="n">settings</span><span class="o">.</span><span class="n">detailed_format</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="n">settings</span> <span class="o">=</span> <span class="n">setup_logging</span><span class="p">(</span><span class="n">LoggingSettings</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s2">"INFO"</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Active threshold level: </span><span class="si">{</span><span class="n">settings</span><span class="o">.</span><span class="n">level</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Registered file sink: </span><span class="si">{</span><span class="n">settings</span><span class="o">.</span><span class="n">log_file</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Detailed syntax enabled: </span><span class="si">{</span><span class="n">settings</span><span class="o">.</span><span class="n">detailed_format</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
 <hr />
 <h2 id="practical-examples">Practical Examples<a class="headerlink" href="#practical-examples" title="Link para esta seção">&para;</a></h2>
 <h3 id="example-1-standard-application-logging-integration">Example 1: Standard Application Logging Integration<a class="headerlink" href="#example-1-standard-application-logging-integration" title="Link para esta seção">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">FundamentalStocksDataCVM</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">setup_logging</span><span class="p">,</span> <span class="n">get_logger</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core.logging_config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">LoggingSettings</span><span class="p">,</span>
+    <span class="n">get_logger</span><span class="p">,</span>
+    <span class="n">setup_logging</span><span class="p">,</span>
+<span class="p">)</span>
 
 <span class="c1"># Activate operational logging</span>
-<span class="n">setup_logging</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span> <span class="n">log_file</span><span class="o">=</span><span class="s2">&quot;pipeline.log&quot;</span><span class="p">)</span>
+<span class="n">setup_logging</span><span class="p">(</span><span class="n">LoggingSettings</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s2">"INFO"</span><span class="p">,</span> <span class="n">log_file</span><span class="o">=</span><span class="s2">"pipeline.log"</span><span class="p">))</span>
 
-<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
-<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Application execution commenced&quot;</span><span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="s2">"globaldatafinance.example"</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Application execution commenced"</span><span class="p">)</span>
 
 <span class="c1"># Execute library operations</span>
 <span class="n">cvm</span> <span class="o">=</span> <span class="n">FundamentalStocksDataCVM</span><span class="p">()</span>
 <span class="n">cvm</span><span class="o">.</span><span class="n">download</span><span class="p">(</span>
-    <span class="n">destination_path</span><span class="o">=</span><span class="s2">&quot;/data/cvm&quot;</span><span class="p">,</span>
-    <span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DFP&quot;</span><span class="p">],</span>
+    <span class="n">destination_path</span><span class="o">=</span><span class="s2">"/data/cvm"</span><span class="p">,</span>
+    <span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">"DFP"</span><span class="p">],</span>
     <span class="n">initial_year</span><span class="o">=</span><span class="mi">2023</span>
 <span class="p">)</span>
 
-<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Application execution finished successfully&quot;</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Application execution finished successfully"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="example-2-diagnostic-debugging-configuration">Example 2: Diagnostic Debugging Configuration<a class="headerlink" href="#example-2-diagnostic-debugging-configuration" title="Link para esta seção">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">HistoricalQuotesB3</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">setup_logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core.logging_config</span><span class="w"> </span><span class="kn">import</span> <span class="n">LoggingSettings</span><span class="p">,</span> <span class="n">setup_logging</span>
 
 <span class="c1"># Enable DEBUG intensity alongside detailed function line signatures</span>
 <span class="n">setup_logging</span><span class="p">(</span>
-    <span class="n">level</span><span class="o">=</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">,</span>
-    <span class="n">log_file</span><span class="o">=</span><span class="s2">&quot;/tmp/datafinance_debug.log&quot;</span><span class="p">,</span>
-    <span class="n">use_detailed_format</span><span class="o">=</span><span class="kc">True</span>
+    <span class="n">LoggingSettings</span><span class="p">(</span>
+        <span class="n">level</span><span class="o">=</span><span class="s2">"DEBUG"</span><span class="p">,</span>
+        <span class="n">log_file</span><span class="o">=</span><span class="s2">"/tmp/datafinance_debug.log"</span><span class="p">,</span>
+        <span class="n">detailed_format</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
 <span class="p">)</span>
 
 <span class="n">b3</span> <span class="o">=</span> <span class="n">HistoricalQuotesB3</span><span class="p">()</span>
 <span class="n">result</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
-    <span class="n">path_of_docs</span><span class="o">=</span><span class="s2">&quot;/data/cotahist&quot;</span><span class="p">,</span>
-    <span class="n">assets_list</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ações&quot;</span><span class="p">],</span>
+    <span class="n">path_of_docs</span><span class="o">=</span><span class="s2">"/data/cotahist"</span><span class="p">,</span>
+    <span class="n">assets_list</span><span class="o">=</span><span class="p">[</span><span class="s2">"ações"</span><span class="p">],</span>
     <span class="n">initial_year</span><span class="o">=</span><span class="mi">2023</span>
 <span class="p">)</span>
 </code></pre></div>
 <h3 id="example-3-dedicated-module-logger-patterns">Example 3: Dedicated Module Logger Patterns<a class="headerlink" href="#example-3-dedicated-module-logger-patterns" title="Link para esta seção">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># my_processing_pipeline.py</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">FundamentalStocksDataCVM</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">setup_logging</span><span class="p">,</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core.logging_config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">LoggingSettings</span><span class="p">,</span>
     <span class="n">get_logger</span><span class="p">,</span>
-    <span class="n">log_execution_time</span>
+    <span class="n">log_execution_time</span><span class="p">,</span>
+    <span class="n">setup_logging</span><span class="p">,</span>
 <span class="p">)</span>
 
-<span class="n">setup_logging</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s2">&quot;INFO&quot;</span><span class="p">)</span>
-<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<span class="n">setup_logging</span><span class="p">(</span><span class="n">LoggingSettings</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s2">"INFO"</span><span class="p">))</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="s2">"globaldatafinance.example"</span><span class="p">)</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">process_financial_filings</span><span class="p">():</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting filing processing workflow&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Starting filing processing workflow"</span><span class="p">)</span>
 
-    <span class="k">with</span> <span class="n">log_execution_time</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="s2">&quot;CVM Document Extraction&quot;</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">log_execution_time</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="s2">"CVM Document Extraction"</span><span class="p">):</span>
         <span class="n">cvm</span> <span class="o">=</span> <span class="n">FundamentalStocksDataCVM</span><span class="p">()</span>
         <span class="n">cvm</span><span class="o">.</span><span class="n">download</span><span class="p">(</span>
-            <span class="n">destination_path</span><span class="o">=</span><span class="s2">&quot;/data/cvm&quot;</span><span class="p">,</span>
-            <span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DFP&quot;</span><span class="p">],</span>
+            <span class="n">destination_path</span><span class="o">=</span><span class="s2">"/data/cvm"</span><span class="p">,</span>
+            <span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">"DFP"</span><span class="p">],</span>
             <span class="n">initial_year</span><span class="o">=</span><span class="mi">2023</span>
         <span class="p">)</span>
 
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Workflow execution completed cleanly&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Workflow execution completed cleanly"</span><span class="p">)</span>
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
     <span class="n">process_financial_filings</span><span class="p">()</span>
 </code></pre></div>
 <hr />
@@ -1850,62 +2661,59 @@ Completed: Parse COTAHIST ZIP archive | operation=Parse COTAHIST ZIP archive | e
 </code></pre></div>
 <hr />
 <h2 id="best-practices">Best Practices<a class="headerlink" href="#best-practices" title="Link para esta seção">&para;</a></h2>
-<h3 id="1-consistently-register-module-hierarchies-via-get_logger__name__">1. Consistently Register Module Hierarchies via <code>get_logger(__name__)</code><a class="headerlink" href="#1-consistently-register-module-hierarchies-via-get_logger__name__" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># ✅ Correct - preserve clean namespace nesting</span>
-<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
-
-<span class="c1"># ❌ Discouraged - using isolated literal identifier names</span>
-<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="s2">&quot;my_logger&quot;</span><span class="p">)</span>
+<h3 id="1-choose-a-name-within-the-configured-logger-hierarchy">1. Choose a name within the configured logger hierarchy<a class="headerlink" href="#1-choose-a-name-within-the-configured-logger-hierarchy" title="Link para esta seção">&para;</a></h3>
+<p>Inside library modules, use <code>get_logger(__name__)</code>: those names already start<br />
+with <code>globaldatafinance</code>. In applications, a name such as the example below<br />
+inherits the library handlers; names outside that hierarchy need their own<br />
+configuration.</p>
+<div class="highlight"><pre><span></span><code><span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="s2">"globaldatafinance.example"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="2-match-severity-levels-accurately-to-impact">2. Match Severity Levels Accurately to Impact<a class="headerlink" href="#2-match-severity-levels-accurately-to-impact" title="Link para esta seção">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># ✅ Correct usage</span>
-<span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Inspected iteration state variable: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Extraction loop commenced&quot;</span><span class="p">)</span>
-<span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Archive verification checksum bypassed&quot;</span><span class="p">)</span>
-<span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed decompressing archive file&quot;</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Inspected iteration state variable: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Extraction loop commenced"</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"Archive verification checksum bypassed"</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"Failed decompressing archive file"</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
 <span class="c1"># ❌ Discouraged usage</span>
-<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Loop index variable: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>  <span class="c1"># Should utilize DEBUG</span>
-<span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Completed extraction step&quot;</span><span class="p">)</span>      <span class="c1"># Should utilize INFO</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Loop index variable: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>  <span class="c1"># Should utilize DEBUG</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"Completed extraction step"</span><span class="p">)</span>      <span class="c1"># Should utilize INFO</span>
 </code></pre></div>
 <h3 id="3-rely-on-structured-metadata-dictionaries">3. Rely on Structured Metadata Dictionaries<a class="headerlink" href="#3-rely-on-structured-metadata-dictionaries" title="Link para esta seção">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># ✅ Correct - explicit structured field assignment</span>
 <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-    <span class="s2">&quot;Dataframe normalized&quot;</span><span class="p">,</span>
-    <span class="n">extra</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;filename&quot;</span><span class="p">:</span> <span class="s2">&quot;cotahist.parquet&quot;</span><span class="p">,</span> <span class="s2">&quot;size_mb&quot;</span><span class="p">:</span> <span class="mf">10.5</span><span class="p">}</span>
+    <span class="s2">"Dataframe normalized"</span><span class="p">,</span>
+    <span class="n">extra</span><span class="o">=</span><span class="p">{</span><span class="s2">"file_target"</span><span class="p">:</span> <span class="s2">"cotahist.parquet"</span><span class="p">,</span> <span class="s2">"size_mb"</span><span class="p">:</span> <span class="mf">10.5</span><span class="p">}</span>
 <span class="p">)</span>
 
 <span class="c1"># ❌ Discouraged - mixing unparseable values within string interpolation</span>
-<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;File cotahist.parquet processed with size: 10.5 MB&quot;</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">"File cotahist.parquet processed with size: 10.5 MB"</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="4-harness-context-managers-for-latency-profiling">4. Harness Context Managers for Latency Profiling<a class="headerlink" href="#4-harness-context-managers-for-latency-profiling" title="Link para esta seção">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># ✅ Correct - automated exception tracking and duration timing</span>
-<span class="k">with</span> <span class="n">log_execution_time</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="s2">&quot;Download Workflow&quot;</span><span class="p">):</span>
-    <span class="n">download_files</span><span class="p">()</span>
+<span class="k">with</span> <span class="n">log_execution_time</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="s2">"Download Workflow"</span><span class="p">):</span>
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
 <span class="c1"># ❌ Discouraged - manual timer bookkeeping</span>
 <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-<span class="n">download_files</span><span class="p">()</span>
-<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Execution took </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">start</span><span class="si">}</span><span class="s2"> seconds&quot;</span><span class="p">)</span>
+<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Execution took </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">start</span><span class="si">}</span><span class="s2"> seconds"</span><span class="p">)</span>
 </code></pre></div>
 <hr />
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link para esta seção">&para;</a></h2>
 <h3 id="log-outputs-are-not-displayed-in-the-console">Log outputs are not displayed in the console<a class="headerlink" href="#log-outputs-are-not-displayed-in-the-console" title="Link para esta seção">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><span class="c1"># Confirm explicit initialization was performed</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">setup_logging</span>
-<span class="n">setup_logging</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s2">&quot;INFO&quot;</span><span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.core.logging_config</span><span class="w"> </span><span class="kn">import</span> <span class="n">LoggingSettings</span><span class="p">,</span> <span class="n">setup_logging</span>
+<span class="n">setup_logging</span><span class="p">(</span><span class="n">LoggingSettings</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s2">"INFO"</span><span class="p">))</span>
 </code></pre></div>
 <h3 id="duplicate-log-statements-emitting-simultaneously">Duplicate log statements emitting simultaneously<a class="headerlink" href="#duplicate-log-statements-emitting-simultaneously" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Ensure setup_logging() is not instantiated within internal functional loops;</span>
-<span class="c1"># Re-invoking setup_logging() dynamically reconfigures existing root handlers cleanly.</span>
-<span class="n">setup_logging</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s2">&quot;DEBUG&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Re-invoking setup_logging() safely replaces only library-managed handlers</span>
+<span class="n">setup_logging</span><span class="p">(</span><span class="n">LoggingSettings</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s2">"DEBUG"</span><span class="p">))</span>
 </code></pre></div>
 <h3 id="filesystem-log-generation-fails-with-permissions-exceptions">Filesystem log generation fails with permissions exceptions<a class="headerlink" href="#filesystem-log-generation-fails-with-permissions-exceptions" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Ensure appropriate directory read/write capability exists for target destinations</span>
-<span class="n">setup_logging</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span> <span class="n">log_file</span><span class="o">=</span><span class="s2">&quot;/var/log/app.log&quot;</span><span class="p">)</span>
-
-<span class="c1"># On unprivileged user workstations, direct sinks toward /tmp or user profile folders</span>
-<span class="n">setup_logging</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span> <span class="n">log_file</span><span class="o">=</span><span class="s2">&quot;/tmp/app.log&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="c1"># Use an application-owned directory or /tmp; roots and protected directories</span>
+<span class="c1"># are rejected before any creation or write.</span>
+<span class="n">setup_logging</span><span class="p">(</span><span class="n">LoggingSettings</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s2">"INFO"</span><span class="p">,</span> <span class="n">log_file</span><span class="o">=</span><span class="s2">"/tmp/app.log"</span><span class="p">))</span>
 </code></pre></div>
 <hr />
 <h2 id="related-documentation">Related Documentation<a class="headerlink" href="#related-documentation" title="Link para esta seção">&para;</a></h2>

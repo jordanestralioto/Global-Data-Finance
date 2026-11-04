@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Biblioteca Python para extração e processamento de dados financeiros globais">
+        <meta name="description" content="Biblioteca Python para baixar documentos da CVM e processar cotações históricas da B3 em Parquet">
       
       
         <meta name="author" content="Jordan Estralioto">
@@ -15,10 +15,10 @@
         <link rel="canonical" href="https://jordanestralioto.github.io/Global-Data-Finance/en/dev-guide/testing/">
       
       
-        <link rel="prev" href="../contributing/">
+        <link rel="prev" href="../architecture/">
       
       
-        <link rel="next" href="../benchmarks/">
+        <link rel="next" href="../release-readiness/">
       
       
         
@@ -88,7 +88,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#testing-strategy" class="md-skip">
+        <a href="#testing" class="md-skip">
           Skip to content
         </a>
       
@@ -309,7 +309,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../architecture/" class="md-tabs__link">
+        <a href="../contributing/" class="md-tabs__link">
           
   
   
@@ -329,7 +329,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../reference/cvm-api/" class="md-tabs__link">
+        <a href="../api-reference/" class="md-tabs__link">
           
   
   
@@ -706,62 +706,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../architecture/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Architecture
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../api-reference/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    API Reference
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../contributing/" class="md-nav__link">
         
   
@@ -770,6 +714,34 @@
     
   
     Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
   
 
     
@@ -850,10 +822,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#test-repository-hierarchy" class="md-nav__link">
+  <a href="#run-the-default-gate" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Test Repository Hierarchy
+        Run the default gate
       
     </span>
   </a>
@@ -861,110 +833,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#executing-tests" class="md-nav__link">
+  <a href="#classify-each-test" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Executing Tests
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Executing Tests">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#running-the-entire-suite" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Running the Entire Suite
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#evaluating-code-coverage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Evaluating Code Coverage
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#utilizing-pytest-markers" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Utilizing Pytest Markers
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#authoring-tests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Authoring Tests
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Authoring Tests">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#unit-test-pattern" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Unit Test Pattern
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#mock-and-dependency-substitution-strategies" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Mock and Dependency Substitution Strategies
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#integration-testing-pattern" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Integration Testing Pattern
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#standard-test-fixtures" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Standard Test Fixtures
+        Classify each test
       
     </span>
   </a>
@@ -972,10 +844,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#coverage-goals-gates" class="md-nav__link">
+  <a href="#write-useful-tests" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Coverage Goals &amp; Gates
+        Write useful tests
       
     </span>
   </a>
@@ -983,10 +855,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#continuous-integration-cicd" class="md-nav__link">
+  <a href="#use-local-cotahist" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Continuous Integration (CI/CD)
+        Use local COTAHIST
       
     </span>
   </a>
@@ -994,10 +866,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#next-steps" class="md-nav__link">
+  <a href="#coverage-and-ci" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Next Steps
+        Coverage and CI
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#audit-external-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Audit external data
       
     </span>
   </a>
@@ -1008,6 +891,89 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Maintenance and evidence
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Maintenance and evidence
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release-readiness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Acceptance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1048,6 +1014,636 @@
   
   
     <li class="md-nav__item">
+      <a href="../cotahist-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    COTAHIST Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../real-data-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation with external data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cotahist-v2-supplied-corpus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    COTAHIST Corpus Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Technical Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/test-execution-tiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Execution Tiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/real-validation-campaign/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auditable Real-Data Campaign
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/archive-safety-and-unc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ZIP Limits and UNC Destinations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/cvm-failure-atomic-batch-commit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Failure-Atomic CVM Batch Commit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/cvm-ingestion-ownership/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shared CVM Ingestion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/pyarrow-ingestion-integrity-cutover/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PyArrow and Integrity Cutover
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/shared-infrastructure-clean-cut/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shared Infrastructure Clean Cut
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Technical Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cvm-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CVM API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/b3-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    B3 API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/b3-schema-v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    B3 Parquet Schema v2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/exceptions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exceptions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/transactional-publication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transactional publication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_7" id="__nav_4_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration and operation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configuration and operation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../advanced-usage/" class="md-nav__link">
         
   
@@ -1056,6 +1652,34 @@
     
   
     Advanced Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/b3-operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    B3 Operational Practices
   
 
     
@@ -1159,9 +1783,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -1180,17 +1805,17 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Technical Reference
+    Migrations
   
 
     
@@ -1201,12 +1826,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Technical Reference
+    Migrations
   
 
           </label>
@@ -1219,14 +1844,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/cvm-api/" class="md-nav__link">
+      <a href="../../user-guide/migration-pyarrow-integrity/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    CVM API
+    Migration 0.2.0
   
 
     
@@ -1247,14 +1872,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/b3-api/" class="md-nav__link">
+      <a href="../../user-guide/migration-infrastructure-clean-cut/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    B3 API
+    Infrastructure Clean Cut Migration
   
 
     
@@ -1275,14 +1900,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/exceptions/" class="md-nav__link">
+      <a href="../../user-guide/migration-cvm-exact-text/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Exceptions
+    CVM Exact Text Migration
   
 
     
@@ -1291,6 +1916,14 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1323,150 +1956,110 @@
   
 
 
-<h1 id="testing-strategy">Testing Strategy<a class="headerlink" href="#testing-strategy" title="Link para esta seção">&para;</a></h1>
-<p>Comprehensive guide detailing automated test organization, execution commands, and testing patterns implemented within Global-Data-Finance.</p>
-<hr />
-<h2 id="test-repository-hierarchy">Test Repository Hierarchy<a class="headerlink" href="#test-repository-hierarchy" title="Link para esta seção">&para;</a></h2>
-<p>The test directory structure cleanly mirrors the source tree. Subdirectories inside individual source test folders serve an strictly <strong>organizational</strong> purpose (grouping test scripts by functional topic to enhance code legibility) rather than architectural enforcement—all testing fixtures import symbols directly from flat source modules (<code>from globaldatafinance.brazil.&lt;country&gt;.&lt;source&gt;.&lt;module&gt; import ...</code>).</p>
-<div class="highlight"><pre><span></span><code>tests/
-├── application/                       # Unit tests evaluating public application facades
-│   ├── cvm_docs/
-│   └── b3_docs/
-│       └── result_formatters/
-├── brazil/
-│   ├── b3_data/
-│   │   └── historical_quotes/         # Flat layout containing 21 test_*.py scripts directly in folder
-│   └── cvm/
-│       └── fundamental_stocks_data/
-│           ├── application/use_cases/ # Orchestration use case tests (client.py)
-│           ├── domain/                # Value object and domain validator tests (core.py)
-│           ├── infra/adapters/        # Concrete I/O adapter tests (http.py, extract.py)
-│           ├── exceptions/            # Custom exception triggering suites (errors.py)
-│           └── integration/           # Integration test suites marked with @pytest.mark.integration
-├── core/
-├── macro_infra/
-└── macro_exceptions/
+<h1 id="testing">Testing<a class="headerlink" href="#testing" title="Link para esta seção">&para;</a></h1>
+<p>Use the environment prepared in the <a href="../contributing/">contributing guide</a>.<br />
+The default gate combines unit tests and deterministic integrations; each test<br />
+creates its own local inputs.</p>
+<h2 id="run-the-default-gate">Run the default gate<a class="headerlink" href="#run-the-default-gate" title="Link para esta seção">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>pytest<span class="w"> </span>-m<span class="w"> </span><span class="s2">"not slow and not real_data and not perf"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--cov<span class="w"> </span>--cov-report<span class="o">=</span>xml<span class="w"> </span>--cov-report<span class="o">=</span>term-missing
 </code></pre></div>
-<hr />
-<h2 id="executing-tests">Executing Tests<a class="headerlink" href="#executing-tests" title="Link para esta seção">&para;</a></h2>
-<h3 id="running-the-entire-suite">Running the Entire Suite<a class="headerlink" href="#running-the-entire-suite" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>pytest
+<p>For a localized change, start with the affected module, for example:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>pytest<span class="w"> </span>tests/application/b3_docs
 </code></pre></div>
-<h3 id="evaluating-code-coverage">Evaluating Code Coverage<a class="headerlink" href="#evaluating-code-coverage" title="Link para esta seção">&para;</a></h3>
-<p>The root <code>pytest.ini</code> file structurally enforces a coverage floor of <code>fail_under = 70</code> across aggregated runs.</p>
-<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>--cov<span class="o">=</span>src<span class="w"> </span>--cov-report<span class="o">=</span>html
+<p><code>pytest.ini</code> defines discovery and markers; <code>pyproject.toml</code> defines coverage.<br />
+For an HTML report, add <code>--cov-report=html</code> to the coverage command.</p>
+<h2 id="classify-each-test">Classify each test<a class="headerlink" href="#classify-each-test" title="Link para esta seção">&para;</a></h2>
+<p>Every test has <strong>exactly one primary tier</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Contract</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>unit</code></td>
+<td>Isolated behavior with pure collaborators, fakes, or stubs.</td>
+</tr>
+<tr>
+<td><code>integration</code></td>
+<td>Multiple real components and deterministic local filesystem.</td>
+</tr>
+<tr>
+<td><code>perf</code></td>
+<td>Benchmarks or resource measurements; always opt-in.</td>
+</tr>
+</tbody>
+</table>
+<p>Use <code>slow</code> for heavy scenarios and <code>asyncio</code> for asynchronous execution.<br />
+<code>real_data</code> requires <code>integration</code>, uses caller-supplied COTAHIST, and is<br />
+opt-in. These qualifiers do not replace the primary tier.</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>pytest<span class="w"> </span>-m<span class="w"> </span>unit
+uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>pytest<span class="w"> </span>-m<span class="w"> </span><span class="s2">"integration and not slow and not real_data"</span>
+uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>pytest<span class="w"> </span>tests/perf<span class="w"> </span>-m<span class="w"> </span>perf<span class="w"> </span>-o<span class="w"> </span><span class="nv">addopts</span><span class="o">=</span><span class="s1">''</span>
 </code></pre></div>
-<h3 id="utilizing-pytest-markers">Utilizing Pytest Markers<a class="headerlink" href="#utilizing-pytest-markers" title="Link para esta seção">&para;</a></h3>
-<p>Registered markers in <code>pytest.ini</code> include: <code>unit</code>, <code>integration</code>, <code>slow</code>, and <code>asyncio</code> (enforced via <code>--strict-markers</code> to catch undeclared custom markers immediately).</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Execute only rapid isolated unit tests</span>
-uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-m<span class="w"> </span>unit
-
-<span class="c1"># Execute integration tests</span>
-uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-m<span class="w"> </span>integration
-
-<span class="c1"># Combine logical marker constraints</span>
-uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-m<span class="w"> </span><span class="s2">&quot;integration and not slow&quot;</span>
-</code></pre></div>
-<hr />
-<h2 id="authoring-tests">Authoring Tests<a class="headerlink" href="#authoring-tests" title="Link para esta seção">&para;</a></h2>
-<h3 id="unit-test-pattern">Unit Test Pattern<a class="headerlink" href="#unit-test-pattern" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.brazil.cvm.fundamental_stocks_data.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">AvailableDocsCVM</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.brazil.cvm.fundamental_stocks_data.errors</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">InvalidDocumentName</span><span class="p">,</span>
-<span class="p">)</span>
-
-<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">unit</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">TestAvailableDocs</span><span class="p">:</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">test_validate_valid_doc</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Verifies validation succeeds without exception on valid document code.&quot;&quot;&quot;</span>
-        <span class="n">docs</span> <span class="o">=</span> <span class="n">AvailableDocsCVM</span><span class="p">()</span>
-        <span class="n">docs</span><span class="o">.</span><span class="n">validate_docs_name</span><span class="p">(</span><span class="s2">&quot;DFP&quot;</span><span class="p">)</span>  <span class="c1"># Should pass silently</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">test_validate_invalid_doc</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Verifies InvalidDocumentName is raised upon supplying unverified strings.&quot;&quot;&quot;</span>
-        <span class="n">docs</span> <span class="o">=</span> <span class="n">AvailableDocsCVM</span><span class="p">()</span>
-        <span class="k">with</span> <span class="n">pytest</span><span class="o">.</span><span class="n">raises</span><span class="p">(</span><span class="n">InvalidDocumentName</span><span class="p">):</span>
-            <span class="n">docs</span><span class="o">.</span><span class="n">validate_docs_name</span><span class="p">(</span><span class="s2">&quot;INVALID_CODE&quot;</span><span class="p">)</span>
-</code></pre></div>
-<blockquote>
-<p>Types and exceptions belong within the flat modules of their owning source feature: for CVM inside <code>brazil.cvm.fundamental_stocks_data.core</code> and <code>brazil.cvm.fundamental_stocks_data.errors</code>; for B3 logical separation is segmented topically—entities in <code>models.py</code>, value objects in <code>years.py</code>/<code>processing.py</code>, path security validators in <code>filesystem.py</code>, asset services in <code>assets.py</code>, and exceptions in <code>errors.py</code>.</p>
-</blockquote>
-<h3 id="mock-and-dependency-substitution-strategies">Mock and Dependency Substitution Strategies<a class="headerlink" href="#mock-and-dependency-substitution-strategies" title="Link para esta seção">&para;</a></h3>
-<p>To decouple unit verification from live network servers or real storage file system IO, test fixtures substitute external adapters using duck-typed stubs or <code>monkeypatch.setattr</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">MockRepository</span><span class="p">:</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">download_docs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tasks</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">DownloadResultCVM</span><span class="p">(</span>
-            <span class="n">success_count_downloads</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-            <span class="n">error_count_downloads</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-            <span class="n">successful_downloads</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DFP_2023&quot;</span><span class="p">,</span> <span class="s2">&quot;ITR_2023&quot;</span><span class="p">],</span>
-            <span class="n">failed_downloads</span><span class="o">=</span><span class="p">{},</span>
-        <span class="p">)</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.brazil.cvm.fundamental_stocks_data.client</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">DownloadDocumentsUseCaseCVM</span><span class="p">,</span>
-<span class="p">)</span>
-
-<span class="n">use_case</span> <span class="o">=</span> <span class="n">DownloadDocumentsUseCaseCVM</span><span class="p">(</span><span class="n">MockRepository</span><span class="p">())</span>
-<span class="n">result</span> <span class="o">=</span> <span class="n">use_case</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">destination_path</span><span class="o">=</span><span class="s2">&quot;/tmp/cvm&quot;</span><span class="p">)</span>
-<span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">success_count_downloads</span> <span class="o">==</span> <span class="mi">2</span>
-</code></pre></div>
-<h3 id="integration-testing-pattern">Integration Testing Pattern<a class="headerlink" href="#integration-testing-pattern" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">FundamentalStocksDataCVM</span>
-
-<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">integration</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">TestFundamentalStocksDataIntegration</span><span class="p">:</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">test_get_available_docs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Evaluates live instantiation and catalog mapping generation.&quot;&quot;&quot;</span>
-        <span class="n">cvm</span> <span class="o">=</span> <span class="n">FundamentalStocksDataCVM</span><span class="p">()</span>
-        <span class="n">docs</span> <span class="o">=</span> <span class="n">cvm</span><span class="o">.</span><span class="n">get_available_docs</span><span class="p">()</span>
-
-        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">docs</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
-        <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">docs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
-        <span class="k">assert</span> <span class="s2">&quot;DFP&quot;</span> <span class="ow">in</span> <span class="n">docs</span>
-</code></pre></div>
-<hr />
-<h2 id="standard-test-fixtures">Standard Test Fixtures<a class="headerlink" href="#standard-test-fixtures" title="Link para esta seção">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-
-<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">temp_dir</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Provides an isolated temporary directory per test execution.&quot;&quot;&quot;</span>
-    <span class="k">return</span> <span class="n">tmp_path</span>
-
-<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">sample_zip_file</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Creates an automated mockup ZIP archive file fixture.&quot;&quot;&quot;</span>
-    <span class="n">zip_path</span> <span class="o">=</span> <span class="n">tmp_path</span> <span class="o">/</span> <span class="s2">&quot;test.zip&quot;</span>
-    <span class="c1"># Construct mockup ZIP structural headers...</span>
-    <span class="k">return</span> <span class="n">zip_path</span>
-</code></pre></div>
-<hr />
-<h2 id="coverage-goals-gates">Coverage Goals &amp; Gates<a class="headerlink" href="#coverage-goals-gates" title="Link para esta seção">&para;</a></h2>
-<p>Target: <strong>&gt;= 70% aggregated code coverage</strong> (automatically enforced via <code>fail_under = 70</code> within <code>pytest.ini</code>). The practical recommended target for newly introduced feature modules is <code>&gt;= 80%</code>.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Generate terminal missing line summary report</span>
-uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>--cov<span class="o">=</span>src<span class="w"> </span>--cov-report<span class="o">=</span>term-missing
-
-<span class="c1"># Compile interactive HTML diagnostic coverage tree</span>
-uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>--cov<span class="o">=</span>src<span class="w"> </span>--cov-report<span class="o">=</span>html
-open<span class="w"> </span>htmlcov/index.html
-</code></pre></div>
-<hr />
-<h2 id="continuous-integration-cicd">Continuous Integration (CI/CD)<a class="headerlink" href="#continuous-integration-cicd" title="Link para esta seção">&para;</a></h2>
-<p>Automated quality verification gates execute on GitHub Actions during:</p>
+<p>A command with <code>-m</code> replaces the default selection; use explicit qualifiers<br />
+to keep external and slow scenarios outside the intended run.</p>
+<h2 id="write-useful-tests">Write useful tests<a class="headerlink" href="#write-useful-tests" title="Link para esta seção">&para;</a></h2>
 <ul>
-<li>Commit pushes targeting <code>main</code> or <code>develop</code> branches</li>
-<li>Every Pull Request opened against project target branches</li>
-<li>Tagged release build packaging workflows</li>
+<li>Mirror the affected boundary: <code>tests/application/</code>, the source under<br />
+<code>tests/brazil/</code>, or shared foundations. Subdirectories organize topics.</li>
+<li>Prove behavior, limits, transitions, and regressions through observable<br />
+  outcomes; covered line counts do not replace useful assertions.</li>
+<li>Use <code>tmp_path</code> and ZIP, CSV, or Parquet inputs created by the test. Replace<br />
+  network calls with <code>httpx.MockTransport</code> or local collaborators.</li>
+<li>Parquet reading and writing also need real PyArrow proofs of schema,<br />
+  types, content, and temporary-file cleanup. Pandas and Polars are not runtime<br />
+  dependencies of the library.</li>
+<li>Document deletions and consolidations in <code>.test-integrity-policy.json</code>.</li>
 </ul>
-<hr />
-<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Link para esta seção">&para;</a></h2>
-<ul>
-<li><a href="../contributing/">Contributing Guide</a> - Workflow expectations for contributors</li>
-<li><a href="../architecture/">Architecture Guide</a> - Deep structural design concepts</li>
-</ul>
+<p>The structural gate below checks tiers and observations in test bodies;<br />
+it is heuristic and does not prove assertion semantics:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>python<span class="w"> </span>scripts/check_test_quality.py
+</code></pre></div>
+<h2 id="use-local-cotahist">Use local COTAHIST<a class="headerlink" href="#use-local-cotahist" title="Link para esta seção">&para;</a></h2>
+<p>Official data belongs in a caller-owned directory such as<br />
+<code>cotahist_b3_local/</code>, which Git ignores. Tests do not download these files or<br />
+read <code>.env</code> implicitly. Supply paths and a year explicitly:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">COTAHIST_PATH</span><span class="o">=</span>./cotahist_b3_local<span class="w"> </span><span class="nv">COTAHIST_TEST_YEAR</span><span class="o">=</span><span class="m">2023</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>pytest<span class="w"> </span>-m<span class="w"> </span><span class="s2">"real_data and not slow"</span>
+<span class="nv">COTAHIST_PATH</span><span class="o">=</span>./cotahist_b3_local<span class="w"> </span><span class="nv">COTAHIST_TEST_YEAR</span><span class="o">=</span><span class="m">2023</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>pytest<span class="w"> </span>-m<span class="w"> </span><span class="s2">"real_data and slow"</span>
+</code></pre></div>
+<p>The first selection does not write Parquet, but the current fixture performs<br />
+full preflight of every catalog year, including hashes and every record.<br />
+Even with <code>not slow</code>, this setup can read large files in full. Extraction<br />
+proofs, including sampling, annual validation, and <code>fast</code>/<code>slow</code> parity, are<br />
+<code>slow</code>. Full auditing uses an independent decoder.</p>
+<p>The fixture inspects the complete catalog before selecting a year. Without<br />
+<code>COTAHIST_PATH</code>, the selected suite is skipped. When it is set, invalid, empty,<br />
+unreadable, or missing-year input fails. A sole year can be inferred; with<br />
+multiple years, <code>COTAHIST_TEST_YEAR</code> is required and must contain four digits.<br />
+ZIP takes precedence over TXT. Internal members accept modern<br />
+<code>COTAHIST_A{YYYY}.TXT</code> and historical <code>COTAHIST.A{YYYY}</code> and<br />
+<code>COTAHIST_A{YYYY}</code> names, always matching the year.</p>
+<p><code>cotahist_b3/</code> contains only the examples&rsquo; versioned synthetic samples,<br />
+generated by <code>scripts/generate_example_cotahist.py</code>. They are tested under<br />
+<code>tests/examples</code> without <code>real_data</code>. An official annual dataset may become<br />
+mandatory in CI only after a versioned fixture or a published artifact with<br />
+a compatible license exists.</p>
+<h2 id="coverage-and-ci">Coverage and CI<a class="headerlink" href="#coverage-and-ci" title="Link para esta seção">&para;</a></h2>
+<p>The product requires <strong>85% aggregate coverage of <code>src/</code>, including branches</strong>.<br />
+The real-validation executor has a separate 85% floor, also including branches.<br />
+To run its gate without copying the module list and options:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>pre-commit<span class="w"> </span>run<span class="w"> </span>real-validation-coverage<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--hook-stage<span class="w"> </span>pre-push<span class="w"> </span>--all-files
+</code></pre></div>
+<p>The quality matrix runs on Python 3.12, 3.13, and 3.14. Canonical settings are<br />
+<code>pyproject.toml</code>, <code>pytest.ini</code>, <code>.pre-commit-config.yaml</code>, and<br />
+<code>.github/workflows/pipeline.yml</code>. <a href="../release-readiness/">Release acceptance</a><br />
+adds native Windows/macOS evidence, publication fault scenarios, and packages.</p>
+<h2 id="audit-external-data">Audit external data<a class="headerlink" href="#audit-external-data" title="Link para esta seção">&para;</a></h2>
+<p>The complete CVM/COTAHIST campaign is opt-in and may take hours. Use the<br />
+<a href="../real-data-validation/">external-data validation guide</a> to run it, interpret<br />
+reports, and resume a campaign. It is outside the deterministic local gate.</p>
 
 
 

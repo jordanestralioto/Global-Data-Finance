@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Biblioteca Python para extração e processamento de dados financeiros globais">
+        <meta name="description" content="Biblioteca Python para baixar documentos da CVM e processar cotações históricas da B3 em Parquet">
       
       
         <meta name="author" content="Jordan Estralioto">
@@ -309,7 +309,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../dev-guide/architecture/" class="md-tabs__link">
+        <a href="../../dev-guide/contributing/" class="md-tabs__link">
           
   
   
@@ -329,7 +329,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../reference/cvm-api/" class="md-tabs__link">
+        <a href="../../dev-guide/api-reference/" class="md-tabs__link">
           
   
   
@@ -595,38 +595,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#visao-geral" class="md-nav__link">
+  <a href="#escolher-documentos-e-anos" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Visão Geral
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Visão Geral">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#caracteristicas" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Características
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#tipos-de-documentos-disponiveis" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tipos de Documentos Disponíveis
+        Escolher documentos e anos
       
     </span>
   </a>
@@ -634,305 +606,43 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#uso-basico" class="md-nav__link">
+  <a href="#baixar-e-converter" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Uso Básico
+        Baixar e converter
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Uso Básico">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#importacao" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Importação
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#criar-instancia" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Criar Instância
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#download-simples" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Download Simples
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#metodos-principais" class="md-nav__link">
+  <a href="#entender-os-arquivos-gerados" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Métodos Principais
+        Entender os arquivos gerados
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Métodos Principais">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#download" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        download()
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#get_available_docs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        get_available_docs()
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#get_available_years" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        get_available_years()
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#exemplos-avancados" class="md-nav__link">
+  <a href="#conferir-sucesso-e-tratar-falhas" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Exemplos Avançados
+        Conferir sucesso e tratar falhas
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Exemplos Avançados">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#download-incremental" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Download Incremental
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#download-com-validacao" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Download com Validação
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#tratamento-de-erros" class="md-nav__link">
+  <a href="#retomar-downloads-com-checkpoint" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Tratamento de Erros
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Tratamento de Erros">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#excecoes-comuns" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Exceções Comuns
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#estrutura-dos-arquivos-baixados" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Estrutura dos Arquivos Baixados
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Estrutura dos Arquivos Baixados">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#organizacao-de-diretorios" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Organização de Diretórios
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#conteudo-dos-arquivos-zip" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Conteúdo dos Arquivos ZIP
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#extracao-automatica-para-parquet" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Extração Automática para Parquet
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#boas-praticas" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Boas Práticas
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Boas Práticas">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-use-intervalos-de-anos-razoaveis" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Use Intervalos de Anos Razoáveis
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-use-extracao-automatica-para-analise" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Use Extração Automática para Análise
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#performance" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Performance
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Performance">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#modo-de-download" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Modo de Download
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#benchmarks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Benchmarks
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#proximos-passos" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Próximos Passos
+        Retomar downloads com checkpoint
       
     </span>
   </a>
@@ -1098,62 +808,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev-guide/architecture/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Arquitetura
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../dev-guide/api-reference/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Referência da API
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../dev-guide/contributing/" class="md-nav__link">
         
   
@@ -1182,6 +836,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../dev-guide/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Arquitetura
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../dev-guide/testing/" class="md-nav__link">
         
   
@@ -1190,6 +872,86 @@
     
   
     Testes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manutenção e evidências
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Manutenção e evidências
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/release-readiness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Aceite de release
   
 
     
@@ -1238,6 +1000,633 @@
   
   
     <li class="md-nav__item">
+      <a href="../../dev-guide/cotahist-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance COTAHIST
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/real-data-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validação com dados externos
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cotahist-v2-supplied-corpus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auditoria do corpus COTAHIST
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisões Técnicas
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Decisões Técnicas
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/test-execution-tiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Níveis de Execução de Testes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/real-validation-campaign/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Campanha Real Auditável
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/archive-safety-and-unc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Limites ZIP e Destinos UNC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/cvm-failure-atomic-batch-commit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Commit CVM Tolerante a Falhas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/cvm-ingestion-ownership/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ingestão compartilhada CVM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/pyarrow-ingestion-integrity-cutover/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cutover PyArrow e Integridade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/shared-infrastructure-clean-cut/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Corte limpo da infraestrutura compartilhada
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Referência Técnica
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Referência Técnica
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Referência da API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cvm-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API CVM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/b3-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API B3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/b3-schema-v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schema Parquet B3 v2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/exceptions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exceções
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/transactional-publication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Publicação transacional
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_7" id="__nav_4_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuração e operação
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configuração e operação
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../dev-guide/advanced-usage/" class="md-nav__link">
         
   
@@ -1246,6 +1635,34 @@
     
   
     Uso Avançado
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../b3-operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Boas práticas B3
   
 
     
@@ -1349,9 +1766,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -1370,17 +1788,17 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Referência Técnica
+    Migrações
   
 
     
@@ -1391,12 +1809,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Referência Técnica
+    Migrações
   
 
           </label>
@@ -1409,14 +1827,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/cvm-api/" class="md-nav__link">
+      <a href="../migration-pyarrow-integrity/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    API CVM
+    Migração 0.2.0
   
 
     
@@ -1437,14 +1855,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/b3-api/" class="md-nav__link">
+      <a href="../migration-infrastructure-clean-cut/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    API B3
+    Migração de infraestrutura
   
 
     
@@ -1465,14 +1883,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/exceptions/" class="md-nav__link">
+      <a href="../migration-cvm-exact-text/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Exceções
+    Migração CVM exata
   
 
     
@@ -1481,6 +1899,14 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1514,549 +1940,169 @@
 
 
 <h1 id="documentos-cvm">Documentos CVM<a class="headerlink" href="#documentos-cvm" title="Link para esta seção">&para;</a></h1>
-<p>Guia completo para usar a API <code>FundamentalStocksDataCVM</code> e baixar documentos fundamentalistas da Comissão de Valores Mobiliários (CVM).</p>
-<hr />
-<h2 id="visao-geral">Visão Geral<a class="headerlink" href="#visao-geral" title="Link para esta seção">&para;</a></h2>
-<p>A classe <code>FundamentalStocksDataCVM</code> fornece uma interface simples e poderosa para baixar documentos oficiais da CVM, incluindo demonstrações financeiras, formulários de referência e outros documentos regulatórios de empresas brasileiras de capital aberto.</p>
-<h3 id="caracteristicas">Características<a class="headerlink" href="#caracteristicas" title="Link para esta seção">&para;</a></h3>
-<ul>
-<li>✅ Download automático de múltiplos tipos de documentos</li>
-<li>✅ Suporte a intervalos de anos flexíveis</li>
-<li>✅ Extração automática para formato Parquet (opcional)</li>
-<li>✅ Download paralelo de alto desempenho (3-5x mais rápido)</li>
-<li>✅ Tratamento robusto de erros e retry automático</li>
-<li>✅ Logging detalhado do progresso</li>
-</ul>
-<hr />
-<h2 id="tipos-de-documentos-disponiveis">Tipos de Documentos Disponíveis<a class="headerlink" href="#tipos-de-documentos-disponiveis" title="Link para esta seção">&para;</a></h2>
-<p>A CVM disponibiliza os seguintes tipos de documentos:</p>
+<p>Use <code>FundamentalStocksDataCVM</code> para baixar documentos da CVM por tipo e ano.<br />
+O download requer internet; a conversão para Parquet é opcional.</p>
+<h2 id="escolher-documentos-e-anos">Escolher documentos e anos<a class="headerlink" href="#escolher-documentos-e-anos" title="Link para esta seção">&para;</a></h2>
 <table>
 <thead>
 <tr>
 <th>Código</th>
-<th>Nome Completo</th>
-<th>Descrição</th>
-<th>Disponível desde</th>
+<th>Conteúdo</th>
+<th>Primeiro ano</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>DFP</strong></td>
-<td>Demonstração Financeira Padronizada</td>
-<td>Balanços anuais completos</td>
+<td><code>DFP</code></td>
+<td>Demonstrações financeiras anuais</td>
 <td>2010</td>
 </tr>
 <tr>
-<td><strong>ITR</strong></td>
-<td>Informação Trimestral</td>
-<td>Demonstrações financeiras trimestrais</td>
+<td><code>ITR</code></td>
+<td>Informações trimestrais</td>
 <td>2011</td>
 </tr>
 <tr>
-<td><strong>FRE</strong></td>
-<td>Formulário de Referência</td>
-<td>Informações detalhadas sobre a empresa</td>
+<td><code>FRE</code></td>
+<td>Formulário de referência</td>
 <td>2010</td>
 </tr>
 <tr>
-<td><strong>FCA</strong></td>
-<td>Formulário Cadastral</td>
-<td>Dados cadastrais da empresa</td>
+<td><code>FCA</code></td>
+<td>Formulário cadastral</td>
 <td>2010</td>
 </tr>
 <tr>
-<td><strong>CGVN</strong></td>
-<td>Código de Governança</td>
-<td>Práticas de governança corporativa</td>
+<td><code>CGVN</code></td>
+<td>Informe de governança</td>
 <td>2018</td>
 </tr>
 <tr>
-<td><strong>VLMO</strong></td>
-<td>Valores Mobiliários</td>
-<td>Informações sobre valores mobiliários</td>
+<td><code>VLMO</code></td>
+<td>Valores mobiliários negociados e detidos</td>
 <td>2018</td>
 </tr>
 <tr>
-<td><strong>IPE</strong></td>
-<td>Informações Periódicas e Eventuais</td>
+<td><code>IPE</code></td>
 <td>Documentos periódicos e eventuais</td>
-<td>2010</td>
+<td>2003</td>
 </tr>
 </tbody>
 </table>
-<div class="admonition info">
-<p class="admonition-title">Dados Históricos</p>
-</div>
-<p>A maioria dos documentos está disponível desde 2010, exceto ITR (2011) e CGVN/VLMO (2018).</p>
-<hr />
-<h2 id="uso-basico">Uso Básico<a class="headerlink" href="#uso-basico" title="Link para esta seção">&para;</a></h2>
-<h3 id="importacao">Importação<a class="headerlink" href="#importacao" title="Link para esta seção">&para;</a></h3>
+<p>Os anos inicial e final são inclusivos. Em seleções mistas, cada documento<br />
+respeita seu primeiro ano. <code>get_available_docs()</code> retorna os códigos e suas<br />
+descrições; <code>get_available_years()</code> retorna os limites por grupo e o ano atual.</p>
+<h2 id="baixar-e-converter">Baixar e converter<a class="headerlink" href="#baixar-e-converter" title="Link para esta seção">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">FundamentalStocksDataCVM</span>
-</code></pre></div>
-<h3 id="criar-instancia">Criar Instância<a class="headerlink" href="#criar-instancia" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="n">cvm</span> <span class="o">=</span> <span class="n">FundamentalStocksDataCVM</span><span class="p">()</span>
-</code></pre></div>
-<h3 id="download-simples">Download Simples<a class="headerlink" href="#download-simples" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Baixar DFP dos últimos 3 anos</span>
-<span class="n">cvm</span><span class="o">.</span><span class="n">download</span><span class="p">(</span>
-    <span class="n">destination_path</span><span class="o">=</span><span class="s2">&quot;/home/usuario/dados_cvm&quot;</span><span class="p">,</span>
-    <span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DFP&quot;</span><span class="p">],</span>
-    <span class="n">initial_year</span><span class="o">=</span><span class="mi">2021</span><span class="p">,</span>
-    <span class="n">last_year</span><span class="o">=</span><span class="mi">2023</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">FundamentalStocksDataCVM</span><span class="p">()</span><span class="o">.</span><span class="n">download</span><span class="p">(</span>
+    <span class="n">destination_path</span><span class="o">=</span><span class="s2">"./data_cvm"</span><span class="p">,</span>
+    <span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">"DFP"</span><span class="p">,</span> <span class="s2">"ITR"</span><span class="p">],</span>
+    <span class="n">initial_year</span><span class="o">=</span><span class="mi">2023</span><span class="p">,</span>
+    <span class="n">last_year</span><span class="o">=</span><span class="mi">2023</span><span class="p">,</span>
+    <span class="n">automatic_extractor</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
 <span class="p">)</span>
+<span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">error_count_downloads</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">result</span><span class="o">.</span><span class="n">success_count_downloads</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">failed_downloads</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">successful_downloads</span><span class="p">)</span>
 </code></pre></div>
-<hr />
-<h2 id="metodos-principais">Métodos Principais<a class="headerlink" href="#metodos-principais" title="Link para esta seção">&para;</a></h2>
-<h3 id="download"><code>download()</code><a class="headerlink" href="#download" title="Link para esta seção">&para;</a></h3>
-<p>Baixa documentos CVM para um diretório especificado.</p>
-<h4 id="assinatura">Assinatura<a class="headerlink" href="#assinatura" title="Link para esta seção">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">download</span><span class="p">(</span>
-    <span class="bp">self</span><span class="p">,</span>
-    <span class="n">destination_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-    <span class="n">list_docs</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">initial_year</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">last_year</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">automatic_extractor</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
-</code></pre></div>
-<h4 id="parametros">Parâmetros<a class="headerlink" href="#parametros" title="Link para esta seção">&para;</a></h4>
+<p>Escolha um intervalo pequeno na primeira execução. A pasta de destino pode ser<br />
+relativa ou absoluta e precisa permitir escrita.</p>
 <table>
 <thead>
 <tr>
-<th>Parâmetro</th>
-<th>Tipo</th>
-<th>Obrigatório</th>
-<th>Descrição</th>
+<th>Opção</th>
+<th>Comportamento</th>
 </tr>
 </thead>
 <tbody>
-<tr>
-<td><code>destination_path</code></td>
-<td><code>str</code></td>
-<td>✅ Sim</td>
-<td>Diretório onde os arquivos serão salvos</td>
-</tr>
 <tr>
 <td><code>list_docs</code></td>
-<td><code>List[str]</code></td>
-<td>❌ Não</td>
-<td>Lista de tipos de documentos. Se <code>None</code>, baixa todos</td>
+<td>Lista de códigos. <code>None</code> ou <code>[]</code> seleciona todos os tipos.</td>
 </tr>
 <tr>
-<td><code>initial_year</code></td>
-<td><code>int</code></td>
-<td>❌ Não</td>
-<td>Ano inicial (inclusive). Se <code>None</code>, usa ano mínimo disponível</td>
+<td><code>initial_year</code> / <code>last_year</code></td>
+<td>Limites inclusivos. Sem limites explícitos, a seleção usa os mínimos disponíveis e o ano atual.</td>
 </tr>
 <tr>
-<td><code>last_year</code></td>
-<td><code>int</code></td>
-<td>❌ Não</td>
-<td>Ano final (inclusive). Se <code>None</code>, usa ano atual</td>
+<td><code>automatic_extractor=False</code></td>
+<td>Padrão: salva os ZIPs.</td>
 </tr>
 <tr>
-<td><code>automatic_extractor</code></td>
-<td><code>bool</code></td>
-<td>❌ Não</td>
-<td>Se <code>True</code>, extrai ZIPs para Parquet automaticamente</td>
+<td><code>automatic_extractor=True</code></td>
+<td>Salva os ZIPs e converte seus CSVs para Parquet.</td>
 </tr>
 </tbody>
 </table>
-<h4 id="exemplos">Exemplos<a class="headerlink" href="#exemplos" title="Link para esta seção">&para;</a></h4>
-<p><strong>Exemplo 1: Download básico de DFP</strong></p>
-<div class="highlight"><pre><span></span><code><span class="n">cvm</span> <span class="o">=</span> <span class="n">FundamentalStocksDataCVM</span><span class="p">()</span>
-<span class="n">cvm</span><span class="o">.</span><span class="n">download</span><span class="p">(</span>
-    <span class="n">destination_path</span><span class="o">=</span><span class="s2">&quot;/data/cvm&quot;</span><span class="p">,</span>
-    <span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DFP&quot;</span><span class="p">],</span>
-    <span class="n">initial_year</span><span class="o">=</span><span class="mi">2020</span><span class="p">,</span>
-    <span class="n">last_year</span><span class="o">=</span><span class="mi">2023</span>
-<span class="p">)</span>
+<p>A <a href="../../reference/cvm-api/">referência CVM</a> contém a assinatura completa,<br />
+os limites de anos e as exceções.</p>
+<h2 id="entender-os-arquivos-gerados">Entender os arquivos gerados<a class="headerlink" href="#entender-os-arquivos-gerados" title="Link para esta seção">&para;</a></h2>
+<p>Os ZIPs originais são preservados, inclusive anexos que não são CSV. A extração<br />
+gera um Parquet por CSV, com o mesmo nome base. ZIPs e Parquets ficam em<br />
+<code>{destination_path}/{DOC}/{YEAR}/</code>, por exemplo:</p>
+<div class="highlight"><pre><span></span><code>data_cvm/DFP/2023/
+├── dfp_cia_aberta_2023.zip
+└── dfp_cia_aberta_BPA_con_2023.parquet
 </code></pre></div>
-<p><strong>Exemplo 2: Download de múltiplos documentos</strong></p>
-<div class="highlight"><pre><span></span><code><span class="n">cvm</span><span class="o">.</span><span class="n">download</span><span class="p">(</span>
-    <span class="n">destination_path</span><span class="o">=</span><span class="s2">&quot;/data/cvm&quot;</span><span class="p">,</span>
-    <span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DFP&quot;</span><span class="p">,</span> <span class="s2">&quot;ITR&quot;</span><span class="p">,</span> <span class="s2">&quot;FRE&quot;</span><span class="p">],</span>
-    <span class="n">initial_year</span><span class="o">=</span><span class="mi">2022</span>
-<span class="p">)</span>
-</code></pre></div>
-<p><strong>Exemplo 3: Download com extração automática</strong></p>
-<div class="highlight"><pre><span></span><code><span class="n">cvm</span><span class="o">.</span><span class="n">download</span><span class="p">(</span>
-    <span class="n">destination_path</span><span class="o">=</span><span class="s2">&quot;/data/cvm&quot;</span><span class="p">,</span>
-    <span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DFP&quot;</span><span class="p">],</span>
-    <span class="n">initial_year</span><span class="o">=</span><span class="mi">2022</span><span class="p">,</span>
-    <span class="n">automatic_extractor</span><span class="o">=</span><span class="kc">True</span>  <span class="c1"># Extrai para Parquet</span>
-<span class="p">)</span>
-</code></pre></div>
-<p><strong>Exemplo 4: Download de todos os documentos</strong></p>
-<div class="highlight"><pre><span></span><code><span class="c1"># list_docs=None baixa TODOS os tipos disponíveis</span>
-<span class="n">cvm</span><span class="o">.</span><span class="n">download</span><span class="p">(</span>
-    <span class="n">destination_path</span><span class="o">=</span><span class="s2">&quot;/data/cvm_completo&quot;</span><span class="p">,</span>
-    <span class="n">initial_year</span><span class="o">=</span><span class="mi">2023</span>
-<span class="p">)</span>
-</code></pre></div>
-<hr />
-<h3 id="get_available_docs"><code>get_available_docs()</code><a class="headerlink" href="#get_available_docs" title="Link para esta seção">&para;</a></h3>
-<p>Retorna todos os tipos de documentos disponíveis com suas descrições.</p>
-<h4 id="assinatura_1">Assinatura<a class="headerlink" href="#assinatura_1" title="Link para esta seção">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_available_docs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
-</code></pre></div>
-<h4 id="retorno">Retorno<a class="headerlink" href="#retorno" title="Link para esta seção">&para;</a></h4>
-<p>Dicionário mapeando códigos de documentos para descrições completas.</p>
-<h4 id="exemplo">Exemplo<a class="headerlink" href="#exemplo" title="Link para esta seção">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="n">cvm</span> <span class="o">=</span> <span class="n">FundamentalStocksDataCVM</span><span class="p">()</span>
-<span class="n">docs</span> <span class="o">=</span> <span class="n">cvm</span><span class="o">.</span><span class="n">get_available_docs</span><span class="p">()</span>
+<p>O nome de cada Parquet depende dos CSVs presentes no ZIP.</p>
+<p>No contrato <code>exact-text-v1</code>, <strong>todas as colunas CVM são texto</strong>. Zeros iniciais,<br />
+separadores decimais e tokens literais são preservados; campos vazios são<br />
+<code>""</code>. Converta datas e valores numéricos explicitamente na análise. Um CSV<br />
+com apenas cabeçalho produz um Parquet vazio com as colunas definidas.</p>
+<p>O conteúdo é conferido antes da publicação. O lote de Parquets é recuperável<br />
+em caso de falha; leitores concorrentes não recebem uma troca instantânea de<br />
+todo o diretório. Os detalhes ficam na <a href="../../reference/cvm-api/">referência CVM</a><br />
+e no <a href="../../reference/transactional-publication/">protocolo de publicação</a>.</p>
+<h2 id="conferir-sucesso-e-tratar-falhas">Conferir sucesso e tratar falhas<a class="headerlink" href="#conferir-sucesso-e-tratar-falhas" title="Link para esta seção">&para;</a></h2>
+<p>O retorno é um <code>DownloadResultCVM</code>, não uma tabela de dados:</p>
+<ul>
+<li><code>successful_downloads</code> lista os identificadores concluídos, como <code>DFP_2023</code>.</li>
+<li><code>failed_downloads</code> associa falhas aos respectivos diagnósticos.</li>
+<li><code>success_count_downloads</code> e <code>error_count_downloads</code> resumem o lote.</li>
+</ul>
+<p>Falhas de arquivos individuais são registradas no resultado e podem coexistir<br />
+com downloads concluídos. Verifique esses campos antes de continuar a análise.<br />
+Erros de parâmetros ou caminhos podem levantar exceções imediatamente; consulte<br />
+as <a href="../../reference/cvm-api/">exceções documentadas</a>.</p>
+<p>Em notebooks ou aplicações com event loop ativo, use<br />
+<code>await cvm.async_download(...)</code> com os mesmos argumentos e resultado, conforme<br />
+a <a href="../../reference/cvm-api/#async_download">API assíncrona</a>.</p>
+<p>Para ajustar logs e tentativas, veja <a href="../../dev-guide/logging-system/">logging</a><br />
+e <a href="../../dev-guide/retry-strategy/">retry</a>. Se já consumia os Parquets com tipos<br />
+inferidos, siga a <a href="../migration-cvm-exact-text/">migração para texto exato</a>.</p>
+<h2 id="retomar-downloads-com-checkpoint">Retomar downloads com checkpoint<a class="headerlink" href="#retomar-downloads-com-checkpoint" title="Link para esta seção">&para;</a></h2>
+<p>Ajuste <code>base_path</code> para uma pasta onde a aplicação tenha permissão de escrita.</p>
+<p>Registre <code>successful_downloads</code> em um checkpoint da aplicação. A pasta do ano pode existir após uma falha. Solicite cada ano pendente separadamente para respeitar lacunas no histórico:</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
-<span class="k">for</span> <span class="n">code</span><span class="p">,</span> <span class="n">description</span> <span class="ow">in</span> <span class="n">docs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">code</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">description</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</code></pre></div>
-<p><strong>Saída</strong>:</p>
-<div class="highlight"><pre><span></span><code>DFP: Demonstração Financeira Padronizada
-ITR: Informação Trimestral
-FRE: Formulário de Referência
-FCA: Formulário Cadastral
-CGVN: Código de Governança
-VLMO: Valores Mobiliários
-IPE: Informações Periódicas e Eventuais
-</code></pre></div>
-<hr />
-<h3 id="get_available_years"><code>get_available_years()</code><a class="headerlink" href="#get_available_years" title="Link para esta seção">&para;</a></h3>
-<p>Retorna informações sobre os anos disponíveis para cada tipo de documento.</p>
-<h4 id="assinatura_2">Assinatura<a class="headerlink" href="#assinatura_2" title="Link para esta seção">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_available_years</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span>
-</code></pre></div>
-<h4 id="retorno_1">Retorno<a class="headerlink" href="#retorno_1" title="Link para esta seção">&para;</a></h4>
-<p>Dicionário com informações de anos disponíveis:</p>
-<table>
-<thead>
-<tr>
-<th>Chave</th>
-<th>Descrição</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>"General Document Years"</code></td>
-<td>Ano mínimo para documentos gerais (2010)</td>
-</tr>
-<tr>
-<td><code>"ITR Document Years"</code></td>
-<td>Ano mínimo para ITR (2011)</td>
-</tr>
-<tr>
-<td><code>"CGVN and VMLO Document Years"</code></td>
-<td>Ano mínimo para CGVN/VLMO (2018)</td>
-</tr>
-<tr>
-<td><code>"Current Year"</code></td>
-<td>Ano atual</td>
-</tr>
-</tbody>
-</table>
-<h4 id="exemplo_1">Exemplo<a class="headerlink" href="#exemplo_1" title="Link para esta seção">&para;</a></h4>
-<div class="highlight"><pre><span></span><code><span class="n">cvm</span> <span class="o">=</span> <span class="n">FundamentalStocksDataCVM</span><span class="p">()</span>
-<span class="n">years</span> <span class="o">=</span> <span class="n">cvm</span><span class="o">.</span><span class="n">get_available_years</span><span class="p">()</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Documentos gerais disponíveis desde: </span><span class="si">{</span><span class="n">years</span><span class="p">[</span><span class="s1">&#39;General Document Years&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;ITR disponível desde: </span><span class="si">{</span><span class="n">years</span><span class="p">[</span><span class="s1">&#39;ITR Document Years&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Ano atual: </span><span class="si">{</span><span class="n">years</span><span class="p">[</span><span class="s1">&#39;Current Year&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</code></pre></div>
-<hr />
-<h2 id="exemplos-avancados">Exemplos Avançados<a class="headerlink" href="#exemplos-avancados" title="Link para esta seção">&para;</a></h2>
-<h3 id="download-incremental">Download Incremental<a class="headerlink" href="#download-incremental" title="Link para esta seção">&para;</a></h3>
-<p>Baixar apenas anos que ainda não foram baixados:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">FundamentalStocksDataCVM</span>
 
 <span class="n">cvm</span> <span class="o">=</span> <span class="n">FundamentalStocksDataCVM</span><span class="p">()</span>
-<span class="n">base_path</span> <span class="o">=</span> <span class="s2">&quot;/data/cvm&quot;</span>
-
-<span class="c1"># Verificar quais anos já existem</span>
-<span class="n">existing_years</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">base_path</span><span class="p">):</span>
-    <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">base_path</span><span class="p">):</span>
-        <span class="k">if</span> <span class="s2">&quot;DFP&quot;</span> <span class="ow">in</span> <span class="n">filename</span><span class="p">:</span>
-            <span class="c1"># Extrair ano do nome do arquivo</span>
-            <span class="n">year</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">filename</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.zip&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">))</span>
-            <span class="n">existing_years</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">year</span><span class="p">)</span>
-
-<span class="c1"># Baixar apenas anos faltantes</span>
-<span class="n">current_year</span> <span class="o">=</span> <span class="mi">2023</span>
-<span class="n">all_years</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">2020</span><span class="p">,</span> <span class="n">current_year</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
-<span class="n">missing_years</span> <span class="o">=</span> <span class="n">all_years</span> <span class="o">-</span> <span class="n">existing_years</span>
-
-<span class="k">if</span> <span class="n">missing_years</span><span class="p">:</span>
-    <span class="n">min_year</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">missing_years</span><span class="p">)</span>
-    <span class="n">max_year</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">missing_years</span><span class="p">)</span>
-
-    <span class="n">cvm</span><span class="o">.</span><span class="n">download</span><span class="p">(</span>
-        <span class="n">destination_path</span><span class="o">=</span><span class="n">base_path</span><span class="p">,</span>
-        <span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DFP&quot;</span><span class="p">],</span>
-        <span class="n">initial_year</span><span class="o">=</span><span class="n">min_year</span><span class="p">,</span>
-        <span class="n">last_year</span><span class="o">=</span><span class="n">max_year</span>
+<span class="n">base_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">"/data/cvm"</span><span class="p">)</span>
+<span class="n">checkpoint</span> <span class="o">=</span> <span class="n">base_path</span> <span class="o">/</span> <span class="s2">"completed-downloads.json"</span>
+<span class="n">completed_downloads</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">checkpoint</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+    <span class="n">completed_downloads</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">checkpoint</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)))</span>
+<span class="n">current_year</span> <span class="o">=</span> <span class="n">cvm</span><span class="o">.</span><span class="n">get_available_years</span><span class="p">()</span><span class="o">.</span><span class="n">current_year</span>
+<span class="n">refresh_years</span> <span class="o">=</span> <span class="p">{</span><span class="n">current_year</span><span class="p">}</span>
+<span class="k">for</span> <span class="n">year</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2020</span><span class="p">,</span> <span class="n">current_year</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+    <span class="n">identifier</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"DFP_</span><span class="si">{</span><span class="n">year</span><span class="si">}</span><span class="s2">"</span>
+    <span class="k">if</span> <span class="n">identifier</span> <span class="ow">in</span> <span class="n">completed_downloads</span> <span class="ow">and</span> <span class="n">year</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">refresh_years</span><span class="p">:</span>
+        <span class="k">continue</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">cvm</span><span class="o">.</span><span class="n">download</span><span class="p">(</span>
+        <span class="n">destination_path</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">base_path</span><span class="p">),</span> <span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">"DFP"</span><span class="p">],</span>
+        <span class="n">initial_year</span><span class="o">=</span><span class="n">year</span><span class="p">,</span> <span class="n">last_year</span><span class="o">=</span><span class="n">year</span><span class="p">,</span> <span class="n">automatic_extractor</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✓ Todos os anos já foram baixados&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">identifier</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">successful_downloads</span><span class="p">:</span>
+        <span class="n">completed_downloads</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">identifier</span><span class="p">)</span>
+        <span class="n">pending</span> <span class="o">=</span> <span class="n">checkpoint</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">".tmp"</span><span class="p">)</span>
+        <span class="n">pending</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">completed_downloads</span><span class="p">)),</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
+        <span class="n">pending</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">checkpoint</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">has_errors</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">failed_downloads</span><span class="p">)</span>
 </code></pre></div>
-<h3 id="download-com-validacao">Download com Validação<a class="headerlink" href="#download-com-validacao" title="Link para esta seção">&para;</a></h3>
-<p>Validar documentos antes de baixar:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">FundamentalStocksDataCVM</span>
-
-<span class="n">cvm</span> <span class="o">=</span> <span class="n">FundamentalStocksDataCVM</span><span class="p">()</span>
-
-<span class="c1"># Validar tipos de documentos</span>
-<span class="n">requested_docs</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;DFP&quot;</span><span class="p">,</span> <span class="s2">&quot;ITR&quot;</span><span class="p">,</span> <span class="s2">&quot;FRE&quot;</span><span class="p">]</span>
-<span class="n">available_docs</span> <span class="o">=</span> <span class="n">cvm</span><span class="o">.</span><span class="n">get_available_docs</span><span class="p">()</span>
-
-<span class="n">valid_docs</span> <span class="o">=</span> <span class="p">[</span><span class="n">doc</span> <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">requested_docs</span> <span class="k">if</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">available_docs</span><span class="p">]</span>
-<span class="n">invalid_docs</span> <span class="o">=</span> <span class="p">[</span><span class="n">doc</span> <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">requested_docs</span> <span class="k">if</span> <span class="n">doc</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">available_docs</span><span class="p">]</span>
-
-<span class="k">if</span> <span class="n">invalid_docs</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️  Documentos inválidos: </span><span class="si">{</span><span class="n">invalid_docs</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;✓ Documentos válidos: </span><span class="si">{</span><span class="n">valid_docs</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-
-<span class="c1"># Validar anos</span>
-<span class="n">years_info</span> <span class="o">=</span> <span class="n">cvm</span><span class="o">.</span><span class="n">get_available_years</span><span class="p">()</span>
-<span class="n">requested_year</span> <span class="o">=</span> <span class="mi">2015</span>
-
-<span class="k">if</span> <span class="n">requested_year</span> <span class="o">&lt;</span> <span class="n">years_info</span><span class="p">[</span><span class="s1">&#39;General Document Years&#39;</span><span class="p">]:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️  Ano </span><span class="si">{</span><span class="n">requested_year</span><span class="si">}</span><span class="s2"> não disponível (mínimo: </span><span class="si">{</span><span class="n">years_info</span><span class="p">[</span><span class="s1">&#39;General Document Years&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="c1"># Prosseguir com download</span>
-    <span class="n">cvm</span><span class="o">.</span><span class="n">download</span><span class="p">(</span>
-        <span class="n">destination_path</span><span class="o">=</span><span class="s2">&quot;/data/cvm&quot;</span><span class="p">,</span>
-        <span class="n">list_docs</span><span class="o">=</span><span class="n">valid_docs</span><span class="p">,</span>
-        <span class="n">initial_year</span><span class="o">=</span><span class="n">requested_year</span>
-    <span class="p">)</span>
-</code></pre></div>
-<hr />
-<h2 id="tratamento-de-erros">Tratamento de Erros<a class="headerlink" href="#tratamento-de-erros" title="Link para esta seção">&para;</a></h2>
-<h3 id="excecoes-comuns">Exceções Comuns<a class="headerlink" href="#excecoes-comuns" title="Link para esta seção">&para;</a></h3>
-<p>A API pode lançar as seguintes exceções:</p>
-<table>
-<thead>
-<tr>
-<th>Exceção</th>
-<th>Quando ocorre</th>
-<th>Como tratar</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>InvalidDocumentName</code></td>
-<td>Tipo de documento inválido</td>
-<td>Verificar lista com <code>get_available_docs()</code></td>
-</tr>
-<tr>
-<td><code>InvalidFirstYear</code></td>
-<td>Ano inicial fora do intervalo</td>
-<td>Verificar anos com <code>get_available_years()</code></td>
-</tr>
-<tr>
-<td><code>InvalidLastYear</code></td>
-<td>Ano final inválido ou menor que inicial</td>
-<td>Validar intervalo de anos</td>
-</tr>
-<tr>
-<td><code>NetworkError</code></td>
-<td>Erro de conexão</td>
-<td>Verificar internet e tentar novamente</td>
-</tr>
-<tr>
-<td><code>TimeoutError</code></td>
-<td>Timeout na requisição</td>
-<td>Aumentar timeout ou tentar mais tarde</td>
-</tr>
-<tr>
-<td><code>InvalidDestinationPathError</code></td>
-<td>Caminho de destino inválido</td>
-<td>Verificar permissões e caminho</td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="estrutura-dos-arquivos-baixados">Estrutura dos Arquivos Baixados<a class="headerlink" href="#estrutura-dos-arquivos-baixados" title="Link para esta seção">&para;</a></h2>
-<h3 id="organizacao-de-diretorios">Organização de Diretórios<a class="headerlink" href="#organizacao-de-diretorios" title="Link para esta seção">&para;</a></h3>
-<p>Após o download, os arquivos são organizados da seguinte forma:</p>
-<div class="highlight"><pre><span></span><code>destination_path/
-    DFP/
-        2020/
-            dfp_cia_aberta_2020.zip
-        2021/
-            dfp_cia_aberta_2021.zip
-        2022/
-            dfp_cia_aberta_2022.zip
-        2023/
-            dfp_cia_aberta_2023.zip
-    ITR/
-        2020/
-            itr_cia_aberta_2020.zip
-        2021/
-            itr_cia_aberta_2021.zip
-        2022/
-            itr_cia_aberta_2022.zip
-        2023/
-            itr_cia_aberta_2023.zip
-    FRE/
-        2020/
-            fre_cia_aberta_2020.zip
-        2021/
-            fre_cia_aberta_2021.zip
-        2022/
-            fre_cia_aberta_2022.zip
-        2023/
-            fre_cia_aberta_2023.zip
-    FCA/
-        2020/
-            fca_cia_aberta_2020.zip
-        2021/
-            fca_cia_aberta_2021.zip
-        2022/
-            fca_cia_aberta_2022.zip
-        2023/
-            fca_cia_aberta_2023.zip
-    etc...
-</code></pre></div>
-<h3 id="conteudo-dos-arquivos-zip">Conteúdo dos Arquivos ZIP<a class="headerlink" href="#conteudo-dos-arquivos-zip" title="Link para esta seção">&para;</a></h3>
-<p>Cada arquivo ZIP contém múltiplos arquivos CSV com dados estruturados:</p>
-<div class="highlight"><pre><span></span><code>dfp_cia_aberta_2023.zip
-├── dfp_cia_aberta_2023.csv # Dados principais
-├── dfp_cia_aberta_BPA_con_2023.csv # Balanço Patrimonial Ativo Consolidado
-├── dfp_cia_aberta_BPP_con_2023.csv # Balanço Patrimonial Passivo Consolidado
-├── dfp_cia_aberta_DRE_con_2023.csv # Demonstração do Resultado
-├── dfp_cia_aberta_DFC_MD_con_2023.csv # Fluxo de Caixa (Método Direto)
-├── dfp_cia_aberta_DFC_MI_con_2023.csv # Fluxo de Caixa (Método Indireto)
-├── dfp_cia_aberta_DVA_con_2023.csv # Demonstração do Valor Adicionado
-└── ...
-</code></pre></div>
-<h3 id="extracao-automatica-para-parquet">Extração Automática para Parquet<a class="headerlink" href="#extracao-automatica-para-parquet" title="Link para esta seção">&para;</a></h3>
-<p>Quando <code>automatic_extractor=True</code>, os arquivos são convertidos para Parquet:</p>
-<div class="highlight"><pre><span></span><code>destination_path/
-├── DFP/
-    2023/
-    │ ├── dfp_cia_aberta_2023.parquet
-    │ ├── dfp_cia_aberta_BPA_con_2023.parquet
-    │ ├── dfp_cia_aberta_BPP_con_2023.parquet
-    │ └── ...
-└── ...
-</code></pre></div>
-<hr />
-<h2 id="boas-praticas">Boas Práticas<a class="headerlink" href="#boas-praticas" title="Link para esta seção">&para;</a></h2>
-<h3 id="1-use-intervalos-de-anos-razoaveis">1. Use Intervalos de Anos Razoáveis<a class="headerlink" href="#1-use-intervalos-de-anos-razoaveis" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># ❌ Evite baixar muitos anos de uma vez</span>
-<span class="n">cvm</span><span class="o">.</span><span class="n">download</span><span class="p">(</span>
-    <span class="n">destination_path</span><span class="o">=</span><span class="s2">&quot;/data&quot;</span><span class="p">,</span>
-    <span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DFP&quot;</span><span class="p">],</span>
-    <span class="n">initial_year</span><span class="o">=</span><span class="mi">2010</span><span class="p">,</span>  <span class="c1"># 25+ anos!</span>
-    <span class="n">last_year</span><span class="o">=</span><span class="mi">2023</span>
-<span class="p">)</span>
-
-<span class="c1"># ✅ Prefira intervalos menores</span>
-<span class="n">cvm</span><span class="o">.</span><span class="n">download</span><span class="p">(</span>
-    <span class="n">destination_path</span><span class="o">=</span><span class="s2">&quot;/data&quot;</span><span class="p">,</span>
-    <span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DFP&quot;</span><span class="p">],</span>
-    <span class="n">initial_year</span><span class="o">=</span><span class="mi">2020</span><span class="p">,</span>  <span class="c1"># 3-4 anos</span>
-    <span class="n">last_year</span><span class="o">=</span><span class="mi">2023</span>
-<span class="p">)</span>
-<span class="err">````</span>
-
-<span class="c1">### 2. Verifique Espaço em Disco</span>
-
-<span class="err">```</span><span class="n">python</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
-
-<span class="c1"># Verificar espaço disponível</span>
-<span class="n">stats</span> <span class="o">=</span> <span class="n">shutil</span><span class="o">.</span><span class="n">disk_usage</span><span class="p">(</span><span class="s2">&quot;/data&quot;</span><span class="p">)</span>
-<span class="n">free_gb</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">free</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1024</span><span class="o">**</span><span class="mi">3</span><span class="p">)</span>
-
-<span class="k">if</span> <span class="n">free_gb</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;⚠️  Pouco espaço disponível: </span><span class="si">{</span><span class="n">free_gb</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2"> GB&quot;</span><span class="p">)</span>
-<span class="k">else</span><span class="p">:</span>
-    <span class="n">cvm</span><span class="o">.</span><span class="n">download</span><span class="p">(</span><span class="n">destination_path</span><span class="o">=</span><span class="s2">&quot;/data&quot;</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
-</code></pre></div>
-<h3 id="3-use-extracao-automatica-para-analise">3. Use Extração Automática para Análise<a class="headerlink" href="#3-use-extracao-automatica-para-analise" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Se você vai analisar os dados, use Parquet</span>
-<span class="n">cvm</span><span class="o">.</span><span class="n">download</span><span class="p">(</span>
-    <span class="n">destination_path</span><span class="o">=</span><span class="s2">&quot;/data/cvm&quot;</span><span class="p">,</span>
-    <span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DFP&quot;</span><span class="p">],</span>
-    <span class="n">initial_year</span><span class="o">=</span><span class="mi">2022</span><span class="p">,</span>
-    <span class="n">automatic_extractor</span><span class="o">=</span><span class="kc">True</span>  <span class="c1"># Muito mais rápido para ler</span>
-<span class="p">)</span>
-</code></pre></div>
-<hr />
-<h2 id="performance">Performance<a class="headerlink" href="#performance" title="Link para esta seção">&para;</a></h2>
-<h3 id="modo-de-download">Modo de Download<a class="headerlink" href="#modo-de-download" title="Link para esta seção">&para;</a></h3>
-<p>O <code>FundamentalStocksDataCVM</code> usa <code>AsyncDownloadAdapterCVM</code> por padrão, que oferece:</p>
-<ul>
-<li>⚡ <strong>3-5x mais rápido</strong> que download sequencial</li>
-<li>🔄 <strong>Retry automático</strong> em caso de falhas</li>
-<li>📊 <strong>Progress tracking</strong> detalhado</li>
-<li>🧵 <strong>8 workers paralelos</strong> (configurável)</li>
-</ul>
-<h3 id="benchmarks">Benchmarks<a class="headerlink" href="#benchmarks" title="Link para esta seção">&para;</a></h3>
-<p><strong>Fluxo completo: download + extração CSV→Parquet (2026-08-06):</strong></p>
-<table>
-<thead>
-<tr>
-<th>Docs</th>
-<th>Período</th>
-<th style="text-align: right;">ZIPs</th>
-<th style="text-align: right;">Parquets</th>
-<th style="text-align: right;">Linhas</th>
-<th style="text-align: right;">Saída</th>
-<th style="text-align: right;">Tempo</th>
-<th style="text-align: right;">Pico RSS</th>
-<th style="text-align: right;">Erros</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>DFP, ITR, FRE, etc.</td>
-<td>2010-2024</td>
-<td style="text-align: right;">88</td>
-<td style="text-align: right;">1.392</td>
-<td style="text-align: right;">63.300.208</td>
-<td style="text-align: right;">337,93 MB</td>
-<td style="text-align: right;">505,04 s</td>
-<td style="text-align: right;">459,18 MB</td>
-<td style="text-align: right;">0</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Tempo aproximado para download de DFP (1 ano):</strong></p>
-<table>
-<thead>
-<tr>
-<th>Método</th>
-<th>Tempo</th>
-<th>Velocidade</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Download sequencial</td>
-<td>~60s</td>
-<td>1x (baseline)</td>
-</tr>
-<tr>
-<td>AsyncDownloadAdapterCVM</td>
-<td>~15s</td>
-<td><strong>4x mais rápido</strong></td>
-</tr>
-</tbody>
-</table>
-<hr />
-<h2 id="proximos-passos">Próximos Passos<a class="headerlink" href="#proximos-passos" title="Link para esta seção">&para;</a></h2>
-<ul>
-<li>📈 <strong><a href="../b3-docs/">Cotações B3</a></strong> - Aprenda a extrair cotações históricas</li>
-<li>💻 <strong><a href="../examples/">Exemplos Práticos</a></strong> - Veja casos de uso completos</li>
-<li>🔧 <strong><a href="../../reference/cvm-api/">API Reference</a></strong> - Documentação técnica detalhada</li>
-<li>❓ <strong><a href="../faq/">FAQ</a></strong> - Perguntas frequentes</li>
-</ul>
-<hr />
-<div class="admonition tip">
-<p class="admonition-title">Dica de Performance</p>
-</div>
-<p>Para análises de dados, sempre use <code>automatic_extractor=True</code>. O formato Parquet é muito mais eficiente que CSV para leitura e processamento.</p>
+<p>O exemplo usa um checkpoint de um único processo e atualiza o ano corrente a cada execução. A CVM também pode revisar anos anteriores: inclua-os em <code>refresh_years</code> conforme a política da aplicação. O checkpoint registra sucessos anteriores; revalide os artefatos locais antes de reutilizá-los e remova os identificadores cujos arquivos estejam ausentes ou corrompidos.</p>
 
 
 

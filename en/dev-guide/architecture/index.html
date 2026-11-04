@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Biblioteca Python para extração e processamento de dados financeiros globais">
+        <meta name="description" content="Biblioteca Python para baixar documentos da CVM e processar cotações históricas da B3 em Parquet">
       
       
         <meta name="author" content="Jordan Estralioto">
@@ -15,10 +15,10 @@
         <link rel="canonical" href="https://jordanestralioto.github.io/Global-Data-Finance/en/dev-guide/architecture/">
       
       
-        <link rel="prev" href="../../user-guide/faq/">
+        <link rel="prev" href="../contributing/">
       
       
-        <link rel="next" href="../api-reference/">
+        <link rel="next" href="../testing/">
       
       
         
@@ -309,7 +309,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="./" class="md-tabs__link">
+        <a href="../contributing/" class="md-tabs__link">
           
   
   
@@ -329,7 +329,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../reference/cvm-api/" class="md-tabs__link">
+        <a href="../api-reference/" class="md-tabs__link">
           
   
   
@@ -703,6 +703,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -766,10 +794,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
+  <a href="#where-to-start-in-the-code" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Overview
+        Where to start in the code
       
     </span>
   </a>
@@ -777,10 +805,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#repository-structure" class="md-nav__link">
+  <a href="#data-flows" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Repository Structure
+        Data flows
       
     </span>
   </a>
@@ -788,10 +816,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#source-module-patterns" class="md-nav__link">
+  <a href="#contracts-a-change-must-preserve" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Source Module Patterns
+        Contracts a change must preserve
       
     </span>
   </a>
@@ -799,171 +827,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#observable-architectural-layers" class="md-nav__link">
+  <a href="#organize-a-change" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Observable Architectural Layers
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Observable Architectural Layers">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-public-facade-layer-application" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Public Facade Layer (application/)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-source-implementation-layer-brazilcountrysource" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Source Implementation Layer (brazil/&lt;country&gt;/&lt;source&gt;/)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#foundational-design-patterns" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Foundational Design Patterns
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Foundational Design Patterns">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#functions-or-lightweight-classes-per-operation-in-clientpy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Functions (or Lightweight Classes) per Operation in client.py
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#direct-and-concrete-adapters" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Direct and Concrete Adapters
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#explicit-result-objects" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Explicit Result Objects
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#immutable-value-objects" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Immutable Value Objects
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#separation-of-console-presentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Separation of Console Presentation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#preserved-path-traversal-defense-contracts" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Preserved Path-Traversal Defense Contracts
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#runtime-data-flows" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Runtime Data Flows
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Runtime Data Flows">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cvm-document-download-pipeline" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        CVM Document Download Pipeline
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#b3-historical-quote-extraction-pipeline" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        B3 Historical Quote Extraction Pipeline
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#adding-a-new-data-source" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Adding a New Data Source
+        Organize a change
       
     </span>
   </a>
@@ -971,38 +838,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#testing-patterns" class="md-nav__link">
+  <a href="#read-further-when-needed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Testing Patterns
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Testing Patterns">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#mock-and-stub-strategies" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Mock and Stub Strategies
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#next-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Next Steps
+        Read further when needed
       
     </span>
   </a>
@@ -1025,62 +864,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../api-reference/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    API Reference
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../contributing/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Contributing
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../testing/" class="md-nav__link">
         
   
@@ -1089,6 +872,89 @@
     
   
     Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Maintenance and evidence
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Maintenance and evidence
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release-readiness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Acceptance
   
 
     
@@ -1137,6 +1003,636 @@
   
   
     <li class="md-nav__item">
+      <a href="../cotahist-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    COTAHIST Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../real-data-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation with external data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cotahist-v2-supplied-corpus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    COTAHIST Corpus Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Technical Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/test-execution-tiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Execution Tiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/real-validation-campaign/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auditable Real-Data Campaign
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/archive-safety-and-unc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ZIP Limits and UNC Destinations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/cvm-failure-atomic-batch-commit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Failure-Atomic CVM Batch Commit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/cvm-ingestion-ownership/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shared CVM Ingestion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/pyarrow-ingestion-integrity-cutover/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PyArrow and Integrity Cutover
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/shared-infrastructure-clean-cut/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shared Infrastructure Clean Cut
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Technical Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cvm-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CVM API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/b3-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    B3 API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/b3-schema-v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    B3 Parquet Schema v2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/exceptions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exceptions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/transactional-publication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transactional publication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_7" id="__nav_4_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration and operation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configuration and operation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../advanced-usage/" class="md-nav__link">
         
   
@@ -1145,6 +1641,34 @@
     
   
     Advanced Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/b3-operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    B3 Operational Practices
   
 
     
@@ -1248,9 +1772,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -1269,17 +1794,17 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Technical Reference
+    Migrations
   
 
     
@@ -1290,12 +1815,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Technical Reference
+    Migrations
   
 
           </label>
@@ -1308,14 +1833,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/cvm-api/" class="md-nav__link">
+      <a href="../../user-guide/migration-pyarrow-integrity/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    CVM API
+    Migration 0.2.0
   
 
     
@@ -1336,14 +1861,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/b3-api/" class="md-nav__link">
+      <a href="../../user-guide/migration-infrastructure-clean-cut/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    B3 API
+    Infrastructure Clean Cut Migration
   
 
     
@@ -1364,14 +1889,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/exceptions/" class="md-nav__link">
+      <a href="../../user-guide/migration-cvm-exact-text/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Exceptions
+    CVM Exact Text Migration
   
 
     
@@ -1380,6 +1905,14 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1413,320 +1946,152 @@
 
 
 <h1 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Link para esta seção">&para;</a></h1>
-<p>Comprehensive documentation detailing the structural architecture of Global-Data-Finance, foundational design patterns, and internal module organization.</p>
-<hr />
-<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Link para esta seção">&para;</a></h2>
-<p>Global-Data-Finance is a Python distribution library published via PyPI whose public API boundary is deliberately narrow — exposing at the package root level the core classes <code>FundamentalStocksDataCVM</code> and <code>HistoricalQuotesB3</code>, alongside the typed dictionary contract <code>ExtractionResultB3</code>. Internamente, each supported data source is implemented within its own dedicated directory utilizing a <strong>flat layout of role-named modules</strong>.</p>
-<p>This architectural paradigm prioritizes:</p>
-<ul>
-<li>✅ <strong>Readability</strong>: concise module files with explicit operational roles (CVM: <code>core.py</code>, <code>client.py</code>, <code>http.py</code>, <code>extract.py</code>, <code>errors.py</code>; B3: role-named modules — <code>client.py</code>, <code>assets.py</code>, <code>models.py</code>, <code>years.py</code>, <code>processing.py</code>, <code>filesystem.py</code>, <code>errors.py</code>, supplemented by domain subpackages)</li>
-<li>✅ <strong>Maintainability</strong>: a clean, concise structure pragmatically aligned with module capabilities and functional boundaries</li>
-<li>✅ <strong>Extensibility</strong>: integrating a new regulatory source = adding a sibling source folder implementing the identical flat role set</li>
-<li>✅ <strong>Testability</strong>: straightforward dependency injection and duck typing to isolate and test components cleanly without ceremony</li>
-</ul>
-<hr />
-<h2 id="repository-structure">Repository Structure<a class="headerlink" href="#repository-structure" title="Link para esta seção">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>globaldatafinance/
-├── src/globaldatafinance/
-│   ├── __init__.py                  # public top-level re-exports
-│   ├── application/                 # PUBLIC FACADE LAYER (top-level)
-│   │   ├── b3_docs/
-│   │   │   ├── historical_quotes.py            # HistoricalQuotesB3
-│   │   │   ├── extraction_result_formatter.py
-│   │   │   └── result_formatters/
-│   │   └── cvm_docs/
-│   │       ├── fundamental_stocks_data.py      # FundamentalStocksDataCVM
-│   │       └── download_result_formatter.py
-│   ├── brazil/                      # SOURCE FEATURE IMPLEMENTATIONS
-│   │   ├── b3_data/
-│   │   │   └── historical_quotes/   # role-named modules + domain subpackages
-│   │   │       ├── client.py                  # ExtractHistoricalQuotesUseCaseB3 + orchestration routines
-│   │   │       ├── assets.py                  # AvailableAssetsServiceB3 (validation + TPMERC mapping)
-│   │   │       ├── models.py                  # DocsToExtractorB3 (dataclass)
-│   │   │       ├── years.py                   # YearRangeB3 (value object + boundary validators)
-│   │   │       ├── processing.py              # ProcessingModeEnumB3, _ProcessingModeConfig
-│   │   │       ├── filesystem.py              # FileSystemServiceB3.validate_directory_path
-│   │   │       ├── errors.py                  # source-specific exception definitions
-│   │   │       ├── zip_reader.py              # COTAHIST ZIP discovery and decompression
-│   │   │       ├── cotahist_parser.py         # fixed-width positional parser (isolated domain module)
-│   │   │       ├── parquet_writer/            # subpackage: Parquet compiler and writer
-│   │   │       └── extraction_service/        # subpackage: thread-pool streaming orchestration
-│   │   └── cvm/
-│   │       └── fundamental_stocks_data/   # flat module layout (5 core modules + 2 helpers)
-│   │           ├── core.py                    # AvailableDocsCVM, AvailableYearsCVM, DictZipsToDownloadCVM, DownloadResultCVM
-│   │           ├── client.py                  # DownloadDocumentsUseCaseCVM, GenerateUrlsUseCaseCVM, VerifyPathsUseCasesCVM
-│   │           ├── http.py                    # AsyncDownloadAdapterCVM (async httpx + retry + integrity check)
-│   │           ├── extract.py                 # ParquetExtractorAdapterCVM
-│   │           ├── download_validation.py     # validate_downloaded_file, validate_parquet_files, find_parquet_files
-│   │           ├── download_extraction.py     # extract_downloaded_file (orchestrates extraction + validation)
-│   │           └── errors.py                  # source-specific exception definitions
-│   ├── core/                        # cross-cutting infrastructure utilities
-│   ├── macro_infra/                 # shared generic HTTP and filesystem adapters
-│   └── macro_exceptions/            # root project exception hierarchy
-├── tests/                           # pytest suites mirroring src structure
-├── docs/                            # MkDocs documentation corpus
-└── pyproject.toml
+<p>Global-Data-Finance is a Python library consumed by applications. It receives<br />
+caller selections, files, and paths; it returns structured results and Parquet<br />
+artifacts. Current sources are CVM and B3.</p>
+<div class="highlight"><pre><span></span><code>flowchart TD
+    Caller[Python application] --&gt; API[Public facades]
+    API --&gt; CVM[CVM download and extraction]
+    API --&gt; B3[B3 COTAHIST extraction]
+    CVM --&gt; Shared[Shared configuration, safety, and I/O]
+    B3 --&gt; Shared
 </code></pre></div>
-<hr />
-<h2 id="source-module-patterns">Source Module Patterns<a class="headerlink" href="#source-module-patterns" title="Link para esta seção">&para;</a></h2>
-<p>Every folder under <code>brazil/&lt;country&gt;/&lt;source&gt;/</code> implements the identical set of <strong>system roles</strong>. The role-to-file mapping is unified in CVM (one designated file per role) and decomposed granularly in B3 (where pure data constructs and domain validation routines are broken into topical modules to prevent an oversized <code>core.py</code>). Introducing a new data source can adopt either pattern — the guiding principle is long-term code legibility.</p>
+<h2 id="where-to-start-in-the-code">Where to start in the code<a class="headerlink" href="#where-to-start-in-the-code" title="Link para esta seção">&para;</a></h2>
+<p>Paths below are relative to <code>src/globaldatafinance/</code>.</p>
 <table>
 <thead>
 <tr>
-<th>Architectural Role</th>
-<th>CVM</th>
-<th>B3</th>
+<th>Responsibility</th>
+<th>Location</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Pure data constructs</td>
-<td><code>core.py</code></td>
-<td><code>models.py</code> + <code>years.py</code> + <code>processing.py</code></td>
+<td>Public exports</td>
+<td><code>__init__.py</code>: <code>FundamentalStocksDataCVM</code>, <code>HistoricalQuotesB3</code>, <code>ExtractionResultB3</code></td>
 </tr>
 <tr>
-<td>Validation / domain services</td>
-<td><code>core.py</code> (<code>AvailableDocsCVM.validate_*</code>)</td>
-<td><code>assets.py</code> (<code>AvailableAssetsServiceB3</code>) + <code>filesystem.py</code> (<code>validate_directory_path</code>)</td>
+<td>Facade validation and orchestration</td>
+<td><code>application/cvm_docs/</code> and <code>application/b3_docs/</code></td>
 </tr>
 <tr>
-<td>Orchestration / use cases</td>
-<td><code>client.py</code></td>
-<td><code>client.py</code></td>
+<td>CVM company selection and policies</td>
+<td><code>brazil/cvm/fundamental_stocks_data/</code></td>
 </tr>
 <tr>
-<td>HTTP network adaptation</td>
-<td><code>http.py</code> (<code>AsyncDownloadAdapterCVM</code>)</td>
-<td>(N/A — COTAHIST ingestion operates on localized ZIP/TXT files via <code>zip_reader.py</code>)</td>
+<td>CVM archive downloads and preservation</td>
+<td><code>brazil/cvm/ingestion/</code></td>
 </tr>
 <tr>
-<td>Extraction / Parquet writer</td>
-<td><code>extract.py</code> (<code>ParquetExtractorAdapterCVM</code>)</td>
-<td><code>parquet_writer/</code> (subpackage)</td>
+<td>B3 behavior</td>
+<td><code>brazil/b3_data/historical_quotes/</code></td>
 </tr>
 <tr>
-<td>Format schema parser</td>
-<td>—</td>
-<td><code>cotahist_parser.py</code></td>
+<td>Configuration, logging, retry, and safety</td>
+<td><code>core/</code></td>
 </tr>
 <tr>
-<td>Validation helpers</td>
-<td><code>download_validation.py</code>, <code>download_extraction.py</code></td>
-<td>Embedded inside <code>filesystem.py</code> / <code>client.py</code></td>
+<td>Generic I/O and recoverable publication</td>
+<td><code>macro_infra/</code></td>
 </tr>
 <tr>
-<td>Exception definitions</td>
-<td><code>errors.py</code></td>
-<td><code>errors.py</code></td>
+<td>Shared base exceptions</td>
+<td><code>macro_exceptions/</code></td>
 </tr>
 </tbody>
 </table>
-<p>Auxiliary utility classes or helper functions remain internal to their module unless explicitly consumed across boundaries — the true unit of extensibility in the codebase is the <em>source implementation</em>, not abstract object hierarchies.</p>
-<blockquote>
-<p><strong>Why B3 avoids a consolidated <code>core.py</code>.</strong> The operational domain of B3 resides across topical modules (<code>assets.py</code>, <code>models.py</code>, <code>years.py</code>, <code>processing.py</code>, <code>filesystem.py</code>) rather than a single <code>core.py</code> because each topic possesses substantial critical mass (~100–300 lines of logic) and serves divergent internal callers. Consolidating them would sacrifice 5 clean, focused files in favor of an unwieldy monolith.</p>
-</blockquote>
-<hr />
-<h2 id="observable-architectural-layers">Observable Architectural Layers<a class="headerlink" href="#observable-architectural-layers" title="Link para esta seção">&para;</a></h2>
-<p>The repository is organized around <strong>two well-delineated operational layers</strong>:</p>
-<h3 id="1-public-facade-layer-application">1. Public Facade Layer (<code>application/</code>)<a class="headerlink" href="#1-public-facade-layer-application" title="Link para esta seção">&para;</a></h3>
-<p><strong>Responsibility</strong>: Maintains the semantic versioning contract exposed to external library consumers.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># src/globaldatafinance/application/cvm_docs/fundamental_stocks_data.py</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">...brazil.cvm.fundamental_stocks_data</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">AsyncDownloadAdapterCVM</span><span class="p">,</span>
-    <span class="n">DownloadDocumentsUseCaseCVM</span><span class="p">,</span>
-    <span class="n">DownloadResultCVM</span><span class="p">,</span>
-    <span class="n">ParquetExtractorAdapterCVM</span><span class="p">,</span>
-    <span class="c1"># ...</span>
-<span class="p">)</span>
-
-<span class="k">class</span><span class="w"> </span><span class="nc">FundamentalStocksDataCVM</span><span class="p">:</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">download_adapter</span> <span class="o">=</span> <span class="n">AsyncDownloadAdapterCVM</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">__download_use_case</span> <span class="o">=</span> <span class="n">DownloadDocumentsUseCaseCVM</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">download_adapter</span><span class="p">)</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">download</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">destination_path</span><span class="p">,</span> <span class="n">list_docs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">initial_year</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">last_year</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__download_use_case</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
-            <span class="n">destination_path</span><span class="o">=</span><span class="n">destination_path</span><span class="p">,</span>
-            <span class="n">list_docs</span><span class="o">=</span><span class="n">list_docs</span><span class="p">,</span>
-            <span class="n">initial_year</span><span class="o">=</span><span class="n">initial_year</span><span class="p">,</span>
-            <span class="n">last_year</span><span class="o">=</span><span class="n">last_year</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">__result_formatter</span><span class="o">.</span><span class="n">print_result</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">result</span>
-</code></pre></div>
-<p>The public facade imports <strong>directly</strong> from the source flat modules without traversing obscure re-exports in intermediate <code>brazil/__init__.py</code> bridges.</p>
-<h3 id="2-source-implementation-layer-brazilcountrysource">2. Source Implementation Layer (<code>brazil/&lt;country&gt;/&lt;source&gt;/</code>)<a class="headerlink" href="#2-source-implementation-layer-brazilcountrysource" title="Link para esta seção">&para;</a></h3>
-<p>Each financial feed is self-contained across ~5–8 functional modules. CVM implementation example:</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># src/globaldatafinance/brazil/cvm/fundamental_stocks_data/core.py</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">AvailableDocsCVM</span><span class="p">:</span>
-    <span class="n">DOCS_MAPPING</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s1">&#39;DFP&#39;</span><span class="p">:</span> <span class="s1">&#39;Demonstração Financeira Padronizada&#39;</span><span class="p">,</span>
-        <span class="s1">&#39;ITR&#39;</span><span class="p">:</span> <span class="s1">&#39;Informação Trimestral&#39;</span><span class="p">,</span>
-        <span class="c1"># ...</span>
-    <span class="p">}</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">validate_docs_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">doc_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">DOCS_MAPPING</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="n">InvalidDocumentName</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Invalid document: </span><span class="si">{</span><span class="n">doc_name</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
-</code></pre></div>
-<div class="highlight"><pre><span></span><code><span class="c1"># src/globaldatafinance/brazil/cvm/fundamental_stocks_data/client.py</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">DownloadDocumentsUseCaseCVM</span><span class="p">:</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">repository</span><span class="p">:</span> <span class="n">AsyncDownloadAdapterCVM</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">__repository</span><span class="p">:</span> <span class="n">AsyncDownloadAdapterCVM</span> <span class="o">=</span> <span class="n">repository</span>
-        <span class="c1"># ...</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">destination_path</span><span class="p">,</span> <span class="n">list_docs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">initial_year</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">last_year</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DownloadResultCVM</span><span class="p">:</span>
-        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-        <span class="c1"># ... orchestration tasks ...</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__repository</span><span class="o">.</span><span class="n">download_docs</span><span class="p">(</span><span class="n">tasks</span><span class="p">)</span>
-        <span class="n">result</span><span class="o">.</span><span class="n">elapsed_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
-        <span class="k">return</span> <span class="n">result</span>
-</code></pre></div>
-<div class="highlight"><pre><span></span><code><span class="c1"># src/globaldatafinance/brazil/cvm/fundamental_stocks_data/http.py</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">AsyncDownloadAdapterCVM</span><span class="p">:</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">download_docs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tasks</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DownloadResultCVM</span><span class="p">:</span>
-        <span class="c1"># Concrete implementation utilizing async httpx pools, retry policies, and MD5 integrity verification</span>
-        <span class="o">...</span>
-</code></pre></div>
-<p>The orchestration use case interacts with <code>AsyncDownloadAdapterCVM</code> via its observable method signature, allowing unit test suites to substitute lightweight duck-typed stubs without unnecessary mock framework overhead (see &ldquo;Testing Patterns&rdquo; below).</p>
-<hr />
-<h2 id="foundational-design-patterns">Foundational Design Patterns<a class="headerlink" href="#foundational-design-patterns" title="Link para esta seção">&para;</a></h2>
-<h3 id="functions-or-lightweight-classes-per-operation-in-clientpy">Functions (or Lightweight Classes) per Operation in <code>client.py</code><a class="headerlink" href="#functions-or-lightweight-classes-per-operation-in-clientpy" title="Link para esta seção">&para;</a></h3>
-<p>Most operations are modeled as clean module-level functions or concise classes focused strictly on their specialized operational responsibility, invoked directly by the application facade. Classes are utilized primarily when <strong>reusable execution state exists</strong>: for instance, <code>ExtractHistoricalQuotesUseCaseB3</code> preserves references to <code>zip_reader + parser + writer + processing_mode</code> across invocations and therefore remains structured as a class.</p>
-<div class="highlight"><pre><span></span><code><span class="c1"># Pure operational helper in client.py</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">generate_range_years</span><span class="p">(</span><span class="n">initial_year</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">last_year</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
-    <span class="o">...</span>
-
-<span class="c1"># Stateful orchestration use case</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">ExtractHistoricalQuotesUseCaseB3</span><span class="p">:</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">zip_reader</span><span class="p">,</span> <span class="n">parser</span><span class="p">,</span> <span class="n">writer</span><span class="p">,</span> <span class="n">processing_mode</span><span class="p">):</span>
-        <span class="o">...</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">paths_of_docs</span><span class="p">,</span> <span class="n">docs_to_extract</span><span class="p">):</span>
-        <span class="o">...</span>
-</code></pre></div>
-<h3 id="direct-and-concrete-adapters">Direct and Concrete Adapters<a class="headerlink" href="#direct-and-concrete-adapters" title="Link para esta seção">&para;</a></h3>
-<p>Adapters governing network and filesystem I/O—such as <code>AsyncDownloadAdapterCVM</code> and <code>ParquetExtractorAdapterCVM</code>—are imported and instantiated directly within core runtime paths, ensuring maximum traceability and simplified navigation across the codebase.</p>
-<h3 id="explicit-result-objects">Explicit Result Objects<a class="headerlink" href="#explicit-result-objects" title="Link para esta seção">&para;</a></h3>
-<p>Operations capable of partial runtime failures return structured result dataclasses containing explicit success metrics and failure details, rather than executing disruptive <code>raise</code> exceptions upon encountering partial interruptions.</p>
-<div class="highlight"><pre><span></span><code><span class="nd">@dataclass</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">DownloadResultCVM</span><span class="p">:</span>
-    <span class="n">success_count_downloads</span><span class="p">:</span> <span class="nb">int</span>
-    <span class="n">error_count_downloads</span><span class="p">:</span> <span class="nb">int</span>
-    <span class="n">successful_downloads</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
-    <span class="n">failed_downloads</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
-    <span class="n">elapsed_time</span><span class="p">:</span> <span class="nb">float</span>
-
-    <span class="k">def</span><span class="w"> </span><span class="nf">has_errors</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">error_count_downloads</span> <span class="o">&gt;</span> <span class="mi">0</span>
-</code></pre></div>
-<h3 id="immutable-value-objects">Immutable Value Objects<a class="headerlink" href="#immutable-value-objects" title="Link para esta seção">&para;</a></h3>
-<p>Immutable domain constructs in <code>core.py</code> encapsulate data validation and initialization bounds (<code>DictZipsToDownloadCVM</code>, <code>DocsToExtractorB3</code>, etc.).</p>
-<h3 id="separation-of-console-presentation">Separation of Console Presentation<a class="headerlink" href="#separation-of-console-presentation" title="Link para esta seção">&para;</a></h3>
-<p>All CLI presentation output and console diagnostic reporting reside exclusively inside <code>*_formatter.py</code> modules within <code>application/</code>. Core business logic in <code>client.py</code> and domain modules remains completely free of direct formatting calls or interactive I/O.</p>
-<h3 id="preserved-path-traversal-defense-contracts">Preserved Path-Traversal Defense Contracts<a class="headerlink" href="#preserved-path-traversal-defense-contracts" title="Link para esta seção">&para;</a></h3>
-<p><code>VerifyPathsUseCasesCVM</code> (CVM, inside <code>client.py</code>) and helper <code>FileSystemServiceB3</code> (B3, inside <code>filesystem.py</code>) evaluate directory structures and explicitly raise a <code>SecurityError</code> prior to any filesystem <code>mkdir</code> or file write, proactively blocking unauthorized execution inside restricted POSIX paths such as <code>/etc /sys /proc /dev /boot /root</code>. These defense boundaries form an invariant observable contract for <code>FundamentalStocksDataCVM.download(destination_path=...)</code> and <code>HistoricalQuotesB3.extract(path_of_docs=...)</code>—they must remain bit-identical across any future refactoring initiatives.</p>
-<hr />
-<h2 id="runtime-data-flows">Runtime Data Flows<a class="headerlink" href="#runtime-data-flows" title="Link para esta seção">&para;</a></h2>
-<h3 id="cvm-document-download-pipeline">CVM Document Download Pipeline<a class="headerlink" href="#cvm-document-download-pipeline" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>graph TD
-    A[FundamentalStocksDataCVM] --&gt;|1. invoke download| B[DownloadDocumentsUseCaseCVM]
-    B --&gt;|2. validate input boundaries| C[AvailableDocsCVM / AvailableYearsCVM in core.py]
-    B --&gt;|3. compile URL targets| D[GenerateUrlsUseCaseCVM in client.py]
-    B --&gt;|4. path safety evaluation| E[VerifyPathsUseCasesCVM&lt;br/&gt;raise SecurityError on /etc, /sys, ...]
-    B --&gt;|5. trigger async worker pool| F[AsyncDownloadAdapterCVM in http.py]
-    F --&gt;|6. HTTP down-streaming| G[Remote CVM Servers]
-    F --&gt;|7. integrity check &amp; write| H[Local Filesystem Storage]
-    F --&gt;|8. return operational statistics| B
-    B --&gt;|9. return DownloadResultCVM| A
-    A --&gt;|10. render console tracking| I[DownloadResultFormatter]
-</code></pre></div>
-<h3 id="b3-historical-quote-extraction-pipeline">B3 Historical Quote Extraction Pipeline<a class="headerlink" href="#b3-historical-quote-extraction-pipeline" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>graph TD
-    A[HistoricalQuotesB3] --&gt;|1. invoke extract| B[ExtractHistoricalQuotesUseCaseB3]
-    B --&gt;|2. validate asset arguments| C[Domain validators in assets.py / years.py]
-    B --&gt;|3. evaluate target directory| D[validate_directory_path&lt;br/&gt;raise SecurityError on /etc, /sys, ...]
-    B --&gt;|4. discover archive targets| E[zip_reader.py]
-    E --&gt;|5. stream ZIP ascii entries| F[cotahist_parser.py]
-    F --&gt;|6. emit intermediate dataframes| G[extraction_service/]
-    G --&gt;|7. manage threadpool &amp; memory flush| H[parquet_writer/]
-    H --&gt;|8. persist consolidated Parquet| I[Local Filesystem Storage]
-    B --&gt;|9. return ExtractionResultB3| A
-    A --&gt;|10. render execution outcome| J[ExtractionResultFormatter]
-</code></pre></div>
-<hr />
-<h2 id="adding-a-new-data-source">Adding a New Data Source<a class="headerlink" href="#adding-a-new-data-source" title="Link para esta seção">&para;</a></h2>
-<p>To integrate a novel regulatory or exchange feed (e.g., US SEC filings), establish a new sibling directory implementing role-named operational modules. For compact data feeds, the streamlined 5-module CVM pattern provides an ideal baseline; for complex feeds, mirror the granular composition of B3 to segment topical logic before <code>core.py</code> exceeds manageable complexity thresholds.</p>
-<div class="highlight"><pre><span></span><code>src/globaldatafinance/usa/sec/fundamental_data/
-├── core.py        # entities, value objects, domain validators (consolidate if ≤ ~300 lines)
-├── client.py      # orchestration routines / use cases
-├── http.py        # concrete asynchronous HTTP download adapter
-├── extract.py     # concrete extraction adapter (when applicable)
-└── errors.py      # source-specific exception hierarchy
-</code></pre></div>
-<p>Subsequent integration steps:</p>
-<ol>
-<li><strong>Internal Namespace</strong>: Add an <code>__init__.py</code> file inside the source folder (or leave blank if no internal re-export aggregation is required).</li>
-<li><strong>Public Application Facade</strong>: Create <code>src/globaldatafinance/application/sec_docs/fundamental_data.py</code> containing a public facade class <code>FundamentalDataSEC</code> importing directly from your flat source modules:</li>
-</ol>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">...usa.sec.fundamental_data</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">DownloadAdapterSEC</span><span class="p">,</span>
-    <span class="n">DownloadDocumentsUseCaseSEC</span><span class="p">,</span>
-    <span class="c1"># ...</span>
-<span class="p">)</span>
-</code></pre></div>
-<ol start="3">
-<li><strong>Package Boundary Export</strong>: Re-export the new symbol inside <code>src/globaldatafinance/__init__.py</code> and <code>src/globaldatafinance/application/__init__.py</code>. Treat this as a <strong>semver-sensitive feature expansion</strong>.</li>
-<li><strong>Test Suite Mirroring</strong>: Establish <code>tests/usa/sec/fundamental_data/</code> grouped cleanly by functional topic. Test fixtures must import symbols directly from flat source modules.</li>
-<li><strong>Documentation Alignment</strong>: Register the new architecture map within <code>AGENTS.md</code> and this architecture guide, and author reference manuals inside <code>docs/reference/</code>.</li>
-</ol>
-<hr />
-<h2 id="testing-patterns">Testing Patterns<a class="headerlink" href="#testing-patterns" title="Link para esta seção">&para;</a></h2>
-<p>The repository test tree precisely mirrors source implementations:</p>
-<div class="highlight"><pre><span></span><code>tests/
-├── brazil/
-│   ├── cvm/fundamental_stocks_data/
-│   │   ├── application/use_cases/    # topical test grouping (organizational, not architectural)
-│   │   ├── domain/                   # tests covering value objects and validators (core.py)
-│   │   ├── infra/adapters/           # unit tests for concrete I/O adapters (http.py, extract.py)
-│   │   ├── exceptions/               # test suites verifying custom exception triggers (errors.py)
-│   │   └── integration/              # integration test markers
-│   └── b3_data/historical_quotes/    # flat test layout: 21 test_*.py scripts within folder
-└── application/
-    ├── cvm_docs/   # unit tests covering public facades
-    └── b3_docs/
-        └── result_formatters/
-</code></pre></div>
-<p>Subdirectories inside the CVM testing hierarchy are strictly <strong>organizational</strong> (grouping files by topic to maximize scannability) rather than strict architectural assertions—test routines import directly from source modules via <code>from globaldatafinance.brazil.cvm.fundamental_stocks_data.client import ...</code>.</p>
-<h3 id="mock-and-stub-strategies">Mock and Stub Strategies<a class="headerlink" href="#mock-and-stub-strategies" title="Link para esta seção">&para;</a></h3>
-<p>To verify orchestrators and adapters cleanly in isolated environments without triggering real network or IO calls, tests employ simple dependency substitution:</p>
+<p>For CVM, <code>fundamental_stocks_data/client.py</code> plans company documents and years.<br />
+The facade directly composes <code>ingestion/http.py</code> for downloads;<br />
+<code>ingestion/csv_pipeline/</code> preserves<br />
+CSV content and <code>ingestion/transaction.py</code> coordinates publication. Shared CVM<br />
+infrastructure does not depend on the company catalog.<br />
+For B3, <code>catalog.py</code> resolves inputs,<br />
+<code>source_validation/</code> and <code>cotahist_parser/</code> validate and interpret records,<br />
+and <code>extraction_service/</code> and <code>parquet_writer/</code> coordinate output.</p>
+<h2 id="data-flows">Data flows<a class="headerlink" href="#data-flows" title="Link para esta seção">&para;</a></h2>
+<p><strong>CVM:</strong> the facade validates the request, resolves document/year selections,<br />
+and calls the HTTP adapter. The ZIP is validated and retained. When requested,<br />
+extraction converts CSVs in staging, checks content, and publishes the Parquet<br />
+batch.</p>
+<p><strong>B3:</strong> the facade resolves local <code>COTAHIST_A{YYYY}.ZIP</code> or<br />
+<code>COTAHIST_A{YYYY}.TXT</code> files. The extractor accepts ZIP and TXT; it validates<br />
+each source and every record before filtering, processes batches, merges the<br />
+Parquet, and verifies output before publication.</p>
+<p>Presentation belongs to <code>*_formatter.py</code> modules in <code>application/</code>.<br />
+Orchestrators coordinate collaborators; validation and transformation should<br />
+not incorporate I/O that belongs to adapters.</p>
+<p>Additional CVM families can consume <code>ingestion/</code> when they share the<br />
+<code>exact-text-v1</code> contract. They retain document and period selection in their<br />
+own modules and use canonical ingestion types. Source-identity metadata<br />
+determines inventory in direct and automatic extraction, including supplied<br />
+extractors. There are no compatibility adapters or ownership inference from<br />
+old filenames. Another CSV dialect requires its own decision.</p>
+<h2 id="contracts-a-change-must-preserve">Contracts a change must preserve<a class="headerlink" href="#contracts-a-change-must-preserve" title="Link para esta seção">&para;</a></h2>
 <ul>
-<li><strong>Duck-typed Stubs</strong>: Lightweight test classes implementing exclusively the target methods invoked by the orchestrator.</li>
-<li><strong><code>monkeypatch.setattr</code></strong>: Patches targeted instance methods or attributes on concrete adapters during runtime execution.</li>
-<li><strong><code>httpx.MockTransport</code></strong>: Supplies deterministic HTTP payload responses and simulated status codes for network adapter suites without requiring live server bindings.</li>
+<li><strong>API:</strong> public imports, signatures, defaults, results, and exceptions.<br />
+  CVM uses <code>DownloadResultCVM</code>; B3 uses <code>ExtractionResultB3</code>. Check partial<br />
+  failure diagnostics rather than relying only on the absence of exceptions.</li>
+<li><strong>CVM:</strong> retained ZIPs and Parquet <code>string</code> columns under <code>exact-text-v1</code>.</li>
+<li><strong>B3:</strong> annual COTAHIST names, every requested year, complete default<br />
+  selection, and Parquet schema v2. Coexisting ZIP/TXT inputs require<br />
+  equivalent content. <code>fast</code> uses bounded concurrency; <code>slow</code> uses one worker.</li>
+<li><strong>Safety:</strong> validate inputs, ZIPs, names, and destinations before creating<br />
+  directories or writing. Source-specific rules stay within their source.</li>
+<li><strong>Publication:</strong> <code>macro_infra/transactional_publication/</code> provides staging,<br />
+  a journal, lock, backups, and recovery; sources retain parsing, schemas, and<br />
+  validation. Recovery does not authorize removing caller files or guarantee<br />
+  simultaneous batch visibility for concurrent readers.</li>
 </ul>
-<p>Duck-typed stub example:</p>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">MockRepository</span><span class="p">:</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">download_docs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tasks</span><span class="p">):</span>
-        <span class="k">return</span> <span class="n">DownloadResultCVM</span><span class="p">(</span>
-            <span class="n">success_count_downloads</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-            <span class="n">error_count_downloads</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-            <span class="n">successful_downloads</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;DFP_2023&#39;</span><span class="p">,</span> <span class="s1">&#39;ITR_2023&#39;</span><span class="p">],</span>
-            <span class="n">failed_downloads</span><span class="o">=</span><span class="p">{},</span>
-        <span class="p">)</span>
-
-<span class="n">use_case</span> <span class="o">=</span> <span class="n">DownloadDocumentsUseCaseCVM</span><span class="p">(</span><span class="n">MockRepository</span><span class="p">())</span>
-<span class="n">result</span> <span class="o">=</span> <span class="n">use_case</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">destination_path</span><span class="o">=</span><span class="s1">&#39;/tmp/cvm&#39;</span><span class="p">)</span>
-<span class="k">assert</span> <span class="n">result</span><span class="o">.</span><span class="n">success_count_downloads</span> <span class="o">==</span> <span class="mi">2</span>
-</code></pre></div>
-<p>Test coverage gates are enforced per functional capability: <code>tests/brazil/&lt;source&gt;/</code> combined with <code>tests/application/&lt;facade&gt;/</code> thoroughly validates each data source as an autonomous subsystem.</p>
-<hr />
-<h2 id="next-steps">Next Steps<a class="headerlink" href="#next-steps" title="Link para esta seção">&para;</a></h2>
-<ul>
-<li>📖 <strong><a href="../api-reference/">API Reference</a></strong> — Comprehensive surface signatures and interface descriptions</li>
-<li>🤝 <strong><a href="../contributing/">Contributing Guide</a></strong> — Rules and quality workflow for contributors</li>
-<li>🧪 <strong><a href="../testing/">Testing Strategy</a></strong> — Instructions on writing and running automated suites</li>
-<li>🔧 <strong><a href="../advanced-usage/">Advanced Usage</a></strong> — Deep performance tuning and customized execution profiles</li>
-</ul>
+<p>Persistence and recovery details belong to the<br />
+<a href="../api-reference/">technical reference</a> and<br />
+<a href="../../reference/transactional-publication/">publication protocol</a>.</p>
+<h2 id="organize-a-change">Organize a change<a class="headerlink" href="#organize-a-change" title="Link para esta seção">&para;</a></h2>
+<p>CVM and B3 have different needs and may use different internal organizations.<br />
+Move a responsibility to <code>core/</code>, <code>macro_infra/</code>, or <code>macro_exceptions/</code> when it<br />
+is actually shared. Avoid creating interfaces, layers, or re-exports merely<br />
+to make sources uniform.</p>
+<p>A new source needs a complete delivery: source implementation, a facade in<br />
+<code>application/</code>, a public export, behavior tests, and documentation in Portuguese<br />
+and English. Keep dependencies acyclic and restrict <code>__init__.py</code> to explicit<br />
+exports.</p>
+<p>Tests mirror public, source, and shared boundaries. Their subdirectories<br />
+organize topics; they do not create runtime layers. See <a href="../testing/">testing</a><br />
+and <a href="../contributing/">contributing</a> to validate a change.</p>
+<h2 id="read-further-when-needed">Read further when needed<a class="headerlink" href="#read-further-when-needed" title="Link para esta seção">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Topic</th>
+<th>Reference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Fields, results, and exceptions</td>
+<td><a href="../../reference/cvm-api/">CVM API</a> · <a href="../../reference/b3-api/">B3 API</a></td>
+</tr>
+<tr>
+<td>B3 persistence</td>
+<td><a href="../../reference/b3-schema-v2/">Schema v2</a></td>
+</tr>
+<tr>
+<td>ZIP and path safety</td>
+<td><a href="../../decisions/archive-safety-and-unc/">Limits and UNC decision</a></td>
+</tr>
+<tr>
+<td>Ingestion evolution</td>
+<td><a href="../../decisions/pyarrow-ingestion-integrity-cutover/">PyArrow and integrity decision</a></td>
+</tr>
+<tr>
+<td>Shared infrastructure</td>
+<td><a href="../../decisions/shared-infrastructure-clean-cut/">Consolidation decision</a></td>
+</tr>
+<tr>
+<td>Reuse across CVM families</td>
+<td><a href="../../decisions/cvm-ingestion-ownership/">CVM ingestion ownership</a></td>
+</tr>
+</tbody>
+</table>
 
 
 

@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Biblioteca Python para extração e processamento de dados financeiros globais">
+        <meta name="description" content="Biblioteca Python para baixar documentos da CVM e processar cotações históricas da B3 em Parquet">
       
       
         <meta name="author" content="Jordan Estralioto">
@@ -15,10 +15,10 @@
         <link rel="canonical" href="https://jordanestralioto.github.io/Global-Data-Finance/dev-guide/benchmarks/">
       
       
-        <link rel="prev" href="../testing/">
+        <link rel="prev" href="../release-readiness/">
       
       
-        <link rel="next" href="../advanced-usage/">
+        <link rel="next" href="../cotahist-performance/">
       
       
         
@@ -309,7 +309,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../architecture/" class="md-tabs__link">
+        <a href="../contributing/" class="md-tabs__link">
           
   
   
@@ -329,7 +329,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../reference/cvm-api/" class="md-tabs__link">
+        <a href="../api-reference/" class="md-tabs__link">
           
   
   
@@ -706,62 +706,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../architecture/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Arquitetura
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../api-reference/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Referência da API
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../contributing/" class="md-nav__link">
         
   
@@ -790,6 +734,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Arquitetura
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../testing/" class="md-nav__link">
         
   
@@ -798,6 +770,91 @@
     
   
     Testes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manutenção e evidências
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Manutenção e evidências
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release-readiness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Aceite de release
   
 
     
@@ -878,13 +935,52 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-linha-de-base-em-escala-real-b3-2026-08-06" class="md-nav__link">
+  <a href="#1-linha-de-base-em-escala-real-b3" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Linha de Base em Escala Real — B3 (2026-08-06)
+        1. Linha de Base em Escala Real — B3
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="1. Linha de Base em Escala Real — B3">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-medicao-historica-da-implementacao-v3-27-anos-2026-09-16-revisao-f1a2f47" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1. Medição Histórica da Implementação v3 — 27 Anos (2026-09-16, Revisão f1a2f47)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-linha-de-base-historica-v2-25-anos-completos-2026-09-02-revisao-703d9ab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2. Linha de Base Histórica v2 — 25 Anos Completos (2026-09-02, Revisão 703d9ab)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-linha-de-base-historica-v1-17-anos-2026-08-06-revisao-7ee1843" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3. Linha de Base Histórica v1 — 17 Anos (2026-08-06, Revisão 7ee1843)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -899,6 +995,17 @@
   
     <nav class="md-nav" aria-label="2. Linha de Base Sintética Reproduzível — B3">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-candidato-arrow-v3-250-mil-registros-2026-09-12-utc-revisao-703d9ab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1. Candidato Arrow v3 — 250 Mil Registros (2026-09-12 UTC, Revisão 703d9ab)
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#como-reproduzir" class="md-nav__link">
@@ -917,13 +1024,41 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-linha-de-base-cvm-download-extracao-2026-08-06" class="md-nav__link">
+  <a href="#3-linha-de-base-cvm-download-extracao" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Linha de Base CVM — Download + Extração (2026-08-06)
+        3. Linha de Base CVM — Download + Extração
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="3. Linha de Base CVM — Download + Extração">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-linha-de-base-historica-v2-17-anos-20102026-revisao-703d9ab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1. Linha de Base Histórica v2 — 17 Anos (2010–2026, Revisão 703d9ab)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-linha-de-base-historica-v1-15-anos-20102024-revisao-7ee1843" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2. Linha de Base Histórica v1 — 15 Anos (2010–2024, Revisão 7ee1843)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -935,6 +1070,67 @@
       
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-runner-de-ingestao-em-processo-novo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Runner de ingestão em processo novo
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-otimizacoes-cvm-encoding-inferencia-e-http" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Otimizações CVM — Encoding, Inferência e HTTP
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Otimizações CVM — Encoding, Inferência e HTTP">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-historico-de-varredura-de-encoding-e-inferencia-terminal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1. Histórico de varredura de encoding e inferência terminal
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-medicao-por-fase-de-downloads-cvm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2. Medição por fase de downloads CVM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-benchmark-completo-com-fonte-cvm-real" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3. Benchmark completo com fonte CVM real
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -954,6 +1150,636 @@
   
   
     <li class="md-nav__item">
+      <a href="../cotahist-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance COTAHIST
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../real-data-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validação com dados externos
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cotahist-v2-supplied-corpus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auditoria do corpus COTAHIST
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decisões Técnicas
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Decisões Técnicas
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/test-execution-tiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Níveis de Execução de Testes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/real-validation-campaign/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Campanha Real Auditável
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/archive-safety-and-unc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Limites ZIP e Destinos UNC
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/cvm-failure-atomic-batch-commit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Commit CVM Tolerante a Falhas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/cvm-ingestion-ownership/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Ingestão compartilhada CVM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/pyarrow-ingestion-integrity-cutover/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cutover PyArrow e Integridade
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/shared-infrastructure-clean-cut/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Corte limpo da infraestrutura compartilhada
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Referência Técnica
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Referência Técnica
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Referência da API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/cvm-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API CVM
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/b3-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API B3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/b3-schema-v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schema Parquet B3 v2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/exceptions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exceções
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/transactional-publication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Publicação transacional
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_7" id="__nav_4_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuração e operação
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configuração e operação
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../advanced-usage/" class="md-nav__link">
         
   
@@ -962,6 +1788,34 @@
     
   
     Uso Avançado
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/b3-operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Boas práticas B3
   
 
     
@@ -1065,9 +1919,10 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
   
   
   
@@ -1086,17 +1941,17 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="0">
             
   
   
   <span class="md-ellipsis">
     
   
-    Referência Técnica
+    Migrações
   
 
     
@@ -1107,12 +1962,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Referência Técnica
+    Migrações
   
 
           </label>
@@ -1125,14 +1980,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/cvm-api/" class="md-nav__link">
+      <a href="../../user-guide/migration-pyarrow-integrity/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    API CVM
+    Migração 0.2.0
   
 
     
@@ -1153,14 +2008,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/b3-api/" class="md-nav__link">
+      <a href="../../user-guide/migration-infrastructure-clean-cut/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    API B3
+    Migração de infraestrutura
   
 
     
@@ -1181,14 +2036,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/exceptions/" class="md-nav__link">
+      <a href="../../user-guide/migration-cvm-exact-text/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Exceções
+    Migração CVM exata
   
 
     
@@ -1197,6 +2052,14 @@
   
 
       </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
     </li>
   
 
@@ -1234,12 +2097,118 @@
 módulos da B3 e da CVM. Os números são evidência de um cenário de referência e<br />
 servem como métrica para regressão de performance, não uma promessa de tempo<br />
 fixo para qualquer hardware.</p>
-<h2 id="1-linha-de-base-em-escala-real-b3-2026-08-06">1. Linha de Base em Escala Real — B3 (2026-08-06)<a class="headerlink" href="#1-linha-de-base-em-escala-real-b3-2026-08-06" title="Link para esta seção">&para;</a></h2>
+<p>As otimizações COTAHIST de 06/10/2026, suas comparações e condições de uso estão<br />
+no <a href="../cotahist-performance/">guia de performance e integridade</a>.</p>
+<h2 id="1-linha-de-base-em-escala-real-b3">1. Linha de Base em Escala Real — B3<a class="headerlink" href="#1-linha-de-base-em-escala-real-b3" title="Link para esta seção">&para;</a></h2>
+<h3 id="11-medicao-historica-da-implementacao-v3-27-anos-2026-09-16-revisao-f1a2f47">1.1. Medição Histórica da Implementação v3 — 27 Anos (2026-09-16, Revisão <code>f1a2f47</code>)<a class="headerlink" href="#11-medicao-historica-da-implementacao-v3-27-anos-2026-09-16-revisao-f1a2f47" title="Link para esta seção">&para;</a></h3>
 <p><strong>Ambiente:</strong> Python 3.13.7 · Linux x86_64 (kernel 6.8) · 8 CPUs · 7,55 GB de<br />
 memória total. Sem chamadas de rede; apenas extração local dos ZIPs oficiais.</p>
 <ul>
-<li><strong>Dataset:</strong> 17 arquivos ZIP oficiais (2008–2024), 503,77 MB comprimido.</li>
-<li><strong>Assets selecionados:</strong> ações, etf, opções, termo, exercicio_opcoes, forward, leilao.</li>
+<li><strong>Dataset:</strong> 27 arquivos ZIP oficiais (2000–2026), 666,00 MB comprimido.</li>
+<li><strong>Escopo de ativos:</strong> categorias públicas suportadas na revisão v3; a seleção não incluía TPMERC <code>021</code>.</li>
+<li><strong>Erros:</strong> 0 (todos os 27 arquivos processados com sucesso).</li>
+<li><strong>Saída Parquet consolidada:</strong> 481,86 MB por modo (505.265.249 bytes).</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Modo</th>
+<th style="text-align: right;">Linhas gravadas</th>
+<th style="text-align: right;">Tempo decorrido (API)</th>
+<th style="text-align: right;">Tempo decorrido (ponta a ponta)</th>
+<th style="text-align: right;">Pico RSS</th>
+<th style="text-align: right;">Throughput</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fast</code></td>
+<td style="text-align: right;">22.303.577</td>
+<td style="text-align: right;">649,99 s</td>
+<td style="text-align: right;">650,50 s</td>
+<td style="text-align: right;">429,88 MiB</td>
+<td style="text-align: right;">34.313,8 reg/s</td>
+</tr>
+<tr>
+<td><code>slow</code></td>
+<td style="text-align: right;">22.303.577</td>
+<td style="text-align: right;">749,45 s</td>
+<td style="text-align: right;">750,10 s</td>
+<td style="text-align: right;">331,11 MiB</td>
+<td style="text-align: right;">29.759,9 reg/s</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Observação:</strong> O modo <code>slow</code> utilizou apenas 331,11 MiB (~0,32 GiB) de pico<br />
+RSS (uma redução de ~23% de memória em relação ao modo <code>fast</code>), mantendo 100%<br />
+de paridade de esquema e dados em todos os 22.303.577 registros dos 27 anos.<br />
+A diferença de memória de apenas ~98 MiB entre <code>fast</code> e <code>slow</code> deve-se ao<br />
+limite delimitado por worker (<code>python_record_limit</code> de 25.000 vs 10.000 linhas)<br />
+e descarte em chunks (<code>ROW_GROUP_LIMIT = 200.000</code>), mantendo complexidade de<br />
+memória $O(1)$ em relação ao período temporal. O ganho de tempo moderado do<br />
+<code>fast</code> (~15%) reflete a hipótese plausível de contenção do GIL do CPython em<br />
+<code>ThreadPoolExecutor</code> no loop intensivo em CPU de parsing posicional de strings<br />
+Python e montagem de lotes, além da etapa sequencial de merge em disco<br />
+(embora rotinas de descompressão zlib e escrita C++ do PyArrow liberem o GIL,<br />
+a validação posicional e construção de linhas em Python retêm o lock). Em<br />
+relação à linha de base histórica v2 (~4,4 GB), a arquitetura com streaming<br />
+colunar PyArrow reduziu o pico de memória em mais de 90%.</p>
+<p><strong>Escopo da medição:</strong> esses números são uma referência histórica anterior<br />
+ao contrato COTAHIST schema v2. O corpus continha 22.305.860 cotações e a<br />
+medição excluiu 2.283 registros TPMERC <code>021</code>; portanto, ela não mede o volume,<br />
+schema ou custo do contrato atual e não deve ser comparada diretamente.</p>
+</blockquote>
+<h3 id="12-linha-de-base-historica-v2-25-anos-completos-2026-09-02-revisao-703d9ab">1.2. Linha de Base Histórica v2 — 25 Anos Completos (2026-09-02, Revisão <code>703d9ab</code>)<a class="headerlink" href="#12-linha-de-base-historica-v2-25-anos-completos-2026-09-02-revisao-703d9ab" title="Link para esta seção">&para;</a></h3>
+<p><strong>Ambiente:</strong> Python 3.13.7 · Linux x86_64 (kernel 6.8) · 8 CPUs · 7,55 GB de<br />
+memória total. Sem chamadas de rede; apenas extração local dos ZIPs oficiais.</p>
+<ul>
+<li><strong>Dataset:</strong> 25 arquivos ZIP oficiais (2000–2024), 503,77 MB comprimido.</li>
+<li><strong>Escopo de ativos:</strong> todas as categorias atualmente suportadas (<code>ações</code>, <code>etf</code>, <code>opções</code>, <code>termo</code>, <code>exercicio_opcoes</code>, <code>forward</code>, <code>leilao</code>).</li>
+<li><strong>Erros:</strong> 0 (todos os 25 arquivos processados com sucesso).</li>
+<li><strong>Saída Parquet consolidada:</strong> 344,71 MB por modo.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Modo</th>
+<th style="text-align: right;">Linhas gravadas</th>
+<th style="text-align: right;">Tempo decorrido (API)</th>
+<th style="text-align: right;">Tempo decorrido (ponta a ponta)</th>
+<th style="text-align: right;">Pico RSS</th>
+<th style="text-align: right;">Throughput</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fast</code></td>
+<td style="text-align: right;">16.460.458</td>
+<td style="text-align: right;">1.557,73 s</td>
+<td style="text-align: right;">1.557,28 s</td>
+<td style="text-align: right;">4.433,19 MB</td>
+<td style="text-align: right;">10.566,9 reg/s</td>
+</tr>
+<tr>
+<td><code>slow</code></td>
+<td style="text-align: right;">16.460.458</td>
+<td style="text-align: right;">2.143,77 s</td>
+<td style="text-align: right;">2.143,93 s</td>
+<td style="text-align: right;">1.545,97 MB</td>
+<td style="text-align: right;">7.678,3 reg/s</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Observação:</strong> O modo <code>slow</code> utilizou apenas 1.545,97 MB (~1,51 GiB) de pico<br />
+RSS (uma redução de ~65% de memória em relação ao modo <code>fast</code>), mantendo 100%<br />
+de paridade de esquema e dados em todos os 16.460.458 registros dos 25 anos.</p>
+</blockquote>
+<h3 id="13-linha-de-base-historica-v1-17-anos-2026-08-06-revisao-7ee1843">1.3. Linha de Base Histórica v1 — 17 Anos (2026-08-06, Revisão <code>7ee1843</code>)<a class="headerlink" href="#13-linha-de-base-historica-v1-17-anos-2026-08-06-revisao-7ee1843" title="Link para esta seção">&para;</a></h3>
+<p><strong>Ambiente:</strong> Python 3.13.7 · Linux x86_64 (kernel 6.8) · 8 CPUs · 7,55 GB de<br />
+memória total. Sem chamadas de rede; apenas extração local dos ZIPs oficiais.</p>
+<ul>
+<li><strong>Dataset:</strong> 17 arquivos ZIP oficiais (2008–2024), 445,85 MB comprimido.</li>
+<li><strong>Escopo de ativos:</strong> todas as categorias atualmente suportadas (<code>ações</code>, <code>etf</code>, <code>opções</code>, <code>termo</code>, <code>exercicio_opcoes</code>, <code>forward</code>, <code>leilao</code>).</li>
 <li><strong>Erros:</strong> 0 (todos os 17 arquivos processados com sucesso).</li>
 <li><strong>Saída Parquet consolidada:</strong> 311,55 MB por modo.</li>
 </ul>
@@ -1248,8 +2217,8 @@ memória total. Sem chamadas de rede; apenas extração local dos ZIPs oficiais.
 <tr>
 <th>Modo</th>
 <th style="text-align: right;">Linhas gravadas</th>
-<th style="text-align: right;">Tempo da API</th>
-<th style="text-align: right;">Tempo ponta a ponta</th>
+<th style="text-align: right;">Tempo decorrido (API)</th>
+<th style="text-align: right;">Tempo decorrido (ponta a ponta)</th>
 <th style="text-align: right;">Pico RSS</th>
 <th style="text-align: right;">Throughput</th>
 </tr>
@@ -1327,28 +2296,122 @@ erros. O pico RSS inclui interpretador, dependências, parser e escritor Parquet
 picos RSS próximos (~1,1 GB). A diferença significativa de memória (~4,2 GB<br />
 vs ~1,6 GB) só fica evidente em escala real, conforme métricas da Seção 1.</p>
 </blockquote>
+<h3 id="21-candidato-arrow-v3-250-mil-registros-2026-09-12-utc-revisao-703d9ab">2.1. Candidato Arrow v3 — 250 Mil Registros (2026-09-12 UTC, Revisão <code>703d9ab</code>)<a class="headerlink" href="#21-candidato-arrow-v3-250-mil-registros-2026-09-12-utc-revisao-703d9ab" title="Link para esta seção">&para;</a></h3>
+<p>Esta medição usa o runner de ingestão Arrow introduzido neste cutover. Ela não<br />
+substitui a linha de base histórica v1: o gerador de corpus, o schema explícito<br />
+e a separação entre tempo operacional e validação são parte de um protocolo mais<br />
+rigoroso. Serve como evidência reproduzível do candidato e como ponto de partida<br />
+para comparações futuras feitas sob o mesmo protocolo.</p>
+<p><strong>Ambiente:</strong> Python 3.13.7 · Linux x86_64 (kernel 6.8) · 8 CPUs. Três processos<br />
+Python novos processaram o corpus sintético determinístico, sem chamadas de<br />
+rede.</p>
+<table>
+<thead>
+<tr>
+<th>Cenário</th>
+<th style="text-align: right;">Repetições</th>
+<th style="text-align: right;">Linhas</th>
+<th style="text-align: right;">Tempo operacional (mediana)</th>
+<th style="text-align: right;">Pico RSS (mediana)</th>
+<th style="text-align: right;">Saída Parquet</th>
+<th style="text-align: right;">Equivalência lógica</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>B3 250k</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">250.000</td>
+<td style="text-align: right;">5,832 s</td>
+<td style="text-align: right;">215,898 MiB</td>
+<td style="text-align: right;">5.822.005 B</td>
+<td style="text-align: right;">3/3</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>O SHA-256 da entrada é<br />
+<code>329f30c6d160401071ab321ebe796e8d91be5a2e0bf502fc68b1cc1c66c30d39</code>.</li>
+<li>Cada repetição validou contagem, ordem, schema, nulos, valores tipados e<br />
+  precisão decimal; todas produziram o mesmo digest lógico.</li>
+<li>A validação pós-escrita é registrada separadamente do tempo operacional; ela<br />
+  não é misturada à métrica de throughput da tabela.</li>
+<li>O JSON bruto local está em<br />
+<code>.benchmarks/pyarrow-ingestion-integrity-cutover-b3-250k-20260912.json</code>.<br />
+  Esse diretório é ignorado intencionalmente pelo Git porque contém evidência<br />
+  dependente de máquina.</li>
+</ul>
 <h3 id="como-reproduzir">Como reproduzir<a class="headerlink" href="#como-reproduzir" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Dataset sintético (CI/regressão rápida)</span>
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_b3.py<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--records<span class="w"> </span><span class="m">250000</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--mode<span class="w"> </span>both<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--repetitions<span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--output<span class="w"> </span>/tmp/globaldatafinance-b3-benchmark.json
+<div class="highlight"><pre><span></span><code><span class="c1"># Micro-benchmarks de hot paths no repositório (CVM URL gen e B3 parser)</span>
+uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>pytest<span class="w"> </span>tests/perf<span class="w"> </span>-m<span class="w"> </span>perf<span class="w"> </span>-k<span class="w"> </span>benchmark_
 
-<span class="c1"># Arquivos oficiais locais</span>
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_b3.py<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--data-dir<span class="w"> </span>/caminho/para/cotahist<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--initial-year<span class="w"> </span><span class="m">2008</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--last-year<span class="w"> </span><span class="m">2024</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--assets<span class="w"> </span>ações<span class="w"> </span>etf<span class="w"> </span>opções<span class="w"> </span>termo<span class="w"> </span>exercicio_opcoes<span class="w"> </span>forward<span class="w"> </span>leilao<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--mode<span class="w"> </span>both<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--repetitions<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--timeout-seconds<span class="w"> </span><span class="m">7200</span>
+<span class="c1"># Salvar baseline de performance</span>
+uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>pytest<span class="w"> </span>tests/perf<span class="w"> </span>-m<span class="w"> </span>perf<span class="w"> </span>-k<span class="w"> </span>benchmark_<span class="w"> </span>--benchmark-save<span class="o">=</span>baseline_v1
+
+<span class="c1"># Comparar com baseline anterior</span>
+uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>pytest<span class="w"> </span>tests/perf<span class="w"> </span>-m<span class="w"> </span>perf<span class="w"> </span>-k<span class="w"> </span>benchmark_<span class="w"> </span>--benchmark-compare<span class="o">=</span>baseline_v1
+</code></pre></div>
+<p>Os dois microbenchmarks de hot path usam pytest-benchmark. A pasta também tem<br />
+um teste de medição de memória, marcado como <code>perf</code> e <code>slow</code>; os comandos abaixo<br />
+selecionam somente os dois microbenchmarks:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Listar os dois benchmarks sem executá-los</span>
+uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>pytest<span class="w"> </span>tests/perf<span class="w"> </span>-m<span class="w"> </span>perf<span class="w"> </span>-o<span class="w"> </span><span class="nv">addopts</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span>--collect-only<span class="w"> </span>-q<span class="w"> </span>-k<span class="w"> </span>benchmark_
+
+<span class="c1"># Executar os benchmarks de hot paths</span>
+uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>pytest<span class="w"> </span>tests/perf<span class="w"> </span>-m<span class="w"> </span>perf<span class="w"> </span>-o<span class="w"> </span><span class="nv">addopts</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span>-k<span class="w"> </span>benchmark_
+
+<span class="c1"># Salvar resultados para uma comparação posterior</span>
+uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>pytest<span class="w"> </span>tests/perf<span class="w"> </span>-m<span class="w"> </span>perf<span class="w"> </span>-o<span class="w"> </span><span class="nv">addopts</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-k<span class="w"> </span>benchmark_<span class="w"> </span>--benchmark-save<span class="o">=</span>baseline_v1
+
+<span class="c1"># Comparar com o baseline salvo</span>
+uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>pytest<span class="w"> </span>tests/perf<span class="w"> </span>-m<span class="w"> </span>perf<span class="w"> </span>-o<span class="w"> </span><span class="nv">addopts</span><span class="o">=</span><span class="s1">''</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-k<span class="w"> </span>benchmark_<span class="w"> </span>--benchmark-compare<span class="o">=</span>baseline_v1
 </code></pre></div>
 <p>O arquivo sintético da linha de base tem SHA-256<br />
 <code>4ba04707468088975125a536b07f5a9cd361676e8ac68866554241ceb58b7e86</code>.</p>
 <hr />
-<h2 id="3-linha-de-base-cvm-download-extracao-2026-08-06">3. Linha de Base CVM — Download + Extração (2026-08-06)<a class="headerlink" href="#3-linha-de-base-cvm-download-extracao-2026-08-06" title="Link para esta seção">&para;</a></h2>
+<h2 id="3-linha-de-base-cvm-download-extracao">3. Linha de Base CVM — Download + Extração<a class="headerlink" href="#3-linha-de-base-cvm-download-extracao" title="Link para esta seção">&para;</a></h2>
+<h3 id="31-linha-de-base-historica-v2-17-anos-20102026-revisao-703d9ab">3.1. Linha de Base Histórica v2 — 17 Anos (2010–2026, Revisão <code>703d9ab</code>)<a class="headerlink" href="#31-linha-de-base-historica-v2-17-anos-20102026-revisao-703d9ab" title="Link para esta seção">&para;</a></h3>
+<p>Medição do fluxo completo de <code>FundamentalStocksDataCVM</code> com<br />
+<code>automatic_extractor=True</code>: download dos ZIPs brutos da CVM, extração CSV com<br />
+tratamento robusto de aspas em texto livre (<code>QUOTE_NONE</code>) e geração dos Parquets<br />
+primários com commit atômico. Executado na mesma máquina dos benchmarks B3.</p>
+<ul>
+<li><strong>Docs:</strong> DFP, ITR, FRE, FCA, CGVN, VLMO, IPE (todos os 7 tipos disponíveis)</li>
+<li><strong>Período:</strong> 2010–2026 (17 anos)</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">ZIPs baixados</th>
+<th style="text-align: right;">Parquets gerados</th>
+<th style="text-align: right;">Linhas extraídas</th>
+<th style="text-align: right;">Saída total</th>
+<th style="text-align: right;">Tempo decorrido</th>
+<th style="text-align: right;">Pico RSS</th>
+<th style="text-align: right;">Erros</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">102</td>
+<td style="text-align: right;">1.569</td>
+<td style="text-align: right;">70.821.466</td>
+<td style="text-align: right;">382,27 MB</td>
+<td style="text-align: right;">906,85 s</td>
+<td style="text-align: right;">333,91 MB</td>
+<td style="text-align: right;">0</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>Inclui: conexão com servidores CVM, download de todos os 102 ZIPs disponíveis,<br />
+  validação, extração CSV e conversão para Parquet.</li>
+<li>O pico de memória RSS reduziu para 333,91 MB (~27% menor que a v1), mesmo com<br />
+  o processamento de 70,82 milhões de linhas e 1.569 arquivos Parquet.</li>
+</ul>
+<h3 id="32-linha-de-base-historica-v1-15-anos-20102024-revisao-7ee1843">3.2. Linha de Base Histórica v1 — 15 Anos (2010–2024, Revisão <code>7ee1843</code>)<a class="headerlink" href="#32-linha-de-base-historica-v1-15-anos-20102024-revisao-7ee1843" title="Link para esta seção">&para;</a></h3>
 <p>Medição do fluxo completo de <code>FundamentalStocksDataCVM</code> com<br />
 <code>automatic_extractor=True</code>: download dos ZIPs brutos da CVM, extração CSV e<br />
 geração dos Parquets primários. Executado na mesma máquina dos benchmarks B3.</p>
@@ -1363,7 +2426,7 @@ geração dos Parquets primários. Executado na mesma máquina dos benchmarks B3
 <th style="text-align: right;">Parquets gerados</th>
 <th style="text-align: right;">Linhas extraídas</th>
 <th style="text-align: right;">Saída total</th>
-<th style="text-align: right;">Tempo total</th>
+<th style="text-align: right;">Tempo decorrido</th>
 <th style="text-align: right;">Pico RSS</th>
 <th style="text-align: right;">Erros</th>
 </tr>
@@ -1395,7 +2458,283 @@ geração dos Parquets primários. Executado na mesma máquina dos benchmarks B3
 <li>Ao atualizar os números reprodutíveis, preserve: dataset, checksum, hardware,<br />
   versão do Python, revisão do código, número de repetições e definição de cada<br />
   métrica.</li>
+<li>Para atribuir um ganho à refatoração, congele duas versões distintas e registre<br />
+  os hashes dos módulos de produto e validação. Execuções com os mesmos módulos<br />
+  medem a variação da máquina. Compare versões com os mesmos dados, dependências,<br />
+  mercados, backend e limites efetivos de recursos, alternando a ordem em processos<br />
+  novos e preservando todas as amostras.</li>
+<li>O tempo da operação inclui preflight, workers, merge e leitura final completa;<br />
+  a auditoria independente posterior tem seu próprio tempo. Registre carga e<br />
+  atividade de swap, além do RSS agregado. Quando medir CPU, some pai e workers<br />
+  encerrados e informe essa métrica separadamente do tempo de parede.</li>
+<li>Tempos instrumentados por profiler localizam gargalos, mas não comprovam ganho<br />
+  de throughput. Um ganho de microbenchmark precisa de confirmação na operação<br />
+  completa; resultados de uma carga sintética não podem ser extrapolados para<br />
+  todos os anos oficiais.</li>
 </ul>
+<hr />
+<h2 id="5-runner-de-ingestao-em-processo-novo">5. Runner de ingestão em processo novo<a class="headerlink" href="#5-runner-de-ingestao-em-processo-novo" title="Link para esta seção">&para;</a></h2>
+<p><code>scripts/benchmark_ingestion.py</code> mede import raiz, CVM, texto CVM, B3 de 100k e<br />
+250k registros, o cenário multi-arquivo <code>b3_multi_4x25k</code> (por padrão, 4 arquivos<br />
+de 25k linhas), footprint de runtime e, quando disponível, o corpus anual B3.<br />
+Ele gera corpus determinístico em diretório temporário, repete cada cenário três<br />
+vezes por padrão, executa a operação em processo Python novo e amostra RSS a<br />
+cada 10 ms no processo filho. Suporta avaliação comparativa via<br />
+<code>--backend thread|process</code> e <code>--processing-mode fast|slow</code>. Antes de registrar uma<br />
+medição, valida contagem, ordem, schema, valores-limite e o artefato Parquet lógico.<br />
+No corpus anual, o digest de referência e a extração incluem todas as classes<br />
+de ativos suportadas pela API, usando os 27 ZIPs oficiais; cada repetição é<br />
+comparada com esse digest tipado. <code>--processing-mode</code> executa somente o modo<br />
+selecionado, sem iniciar automaticamente o outro. <code>--source-count</code> é exclusivo<br />
+do corpus sintético <code>b3_multi_4x25k</code> e reparte as linhas solicitadas pela<br />
+quantidade exata de fontes; o corpus anual usa sempre suas 27 fontes.<br />
+<code>--worker-limit</code> aplica um teto no processo novo da medição por<br />
+<code>GDF_B3_WORKER_LIMIT</code>; o JSON registra tanto o valor solicitado quanto o valor<br />
+efetivo depois da política de recursos e do fallback de backend.</p>
+<p>A referência anual usa o decoder independente de COTAHIST e inclui os 32 campos,<br />
+com o hash textual do conteúdo descomprimido, ano da fonte, linha física e bytes<br />
+originais. O marcador <code>todos</code> também preserva cotações de mercados sem uma classe<br />
+mapeada. A preparação desse digest fica fora do tempo da extração.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Medição pequena para verificar o protocolo JSON</span>
+uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_ingestion.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--scenario<span class="w"> </span>import_root<span class="w"> </span>--scenario<span class="w"> </span>cvm<span class="w"> </span>--rows<span class="w"> </span><span class="m">10</span><span class="w"> </span>--repeats<span class="w"> </span><span class="m">1</span>
+
+<span class="c1"># Corpora sintéticos completos, três repetições e relatório persistido</span>
+uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_ingestion.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--scenario<span class="w"> </span>cvm<span class="w"> </span>--scenario<span class="w"> </span>cvm_text<span class="w"> </span>--scenario<span class="w"> </span>b3_100k<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--scenario<span class="w"> </span>b3_250k<span class="w"> </span>--scenario<span class="w"> </span>b3_multi_4x25k<span class="w"> </span>--repeats<span class="w"> </span><span class="m">3</span><span class="w"> </span>--output<span class="w"> </span>benchmark.json
+
+<span class="c1"># Comparação explícita de backend e modo de processamento</span>
+uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_ingestion.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--scenario<span class="w"> </span>b3_multi_4x25k<span class="w"> </span>--backend<span class="w"> </span>process<span class="w"> </span>--processing-mode<span class="w"> </span>fast<span class="w"> </span>--repeats<span class="w"> </span><span class="m">3</span>
+
+<span class="c1"># Prova do fallback: duas fontes, mas somente um worker efetivo</span>
+uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_ingestion.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--scenario<span class="w"> </span>b3_multi_4x25k<span class="w"> </span>--rows<span class="w"> </span><span class="m">100</span><span class="w"> </span>--source-count<span class="w"> </span><span class="m">2</span><span class="w"> </span>--worker-limit<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--backend<span class="w"> </span>process<span class="w"> </span>--processing-mode<span class="w"> </span>fast
+
+<span class="c1"># Executa apenas slow em todos os mercados; o corpus precisa dos 27 ZIPs</span>
+mkdir<span class="w"> </span>-p<span class="w"> </span>.benchmarks
+uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_ingestion.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--scenario<span class="w"> </span>b3_annual<span class="w"> </span>--cotahist-path<span class="w"> </span>/caminho/COTAHIST<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--processing-mode<span class="w"> </span>slow<span class="w"> </span>--repeats<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>.benchmarks/b3-annual-slow.json
+</code></pre></div>
+<p>Cada resultado JSON contém versão do schema, revisão, ambiente, checksum de<br />
+entrada, contagem, fingerprint de schema, equivalência lógica, digest lógico,<br />
+SHA-256 do artefato gerado (<code>artifact_sha256</code>), tempo da operação, fases de<br />
+operação/validação, modo de processamento, backend, contagens e limites de<br />
+fontes/workers solicitados e efetivos, RSS inicial/pico/final do processo pai<br />
+(<code>rss_peak_mib</code>, preservando<br />
+a comparação com a linha de base histórica v1),<br />
+pico de RSS agregado da árvore (<code>aggregate_rss_peak_mib</code>), contagem de processos<br />
+filhos observados, bytes de saída, <code>status</code> e <code>worktree_sha256</code>. RSS é memória<br />
+residente por processo, não heap. <code>aggregate_rss_peak_mib</code> é a soma de RSS do pai e<br />
+dos descendentes na mesma amostra; páginas compartilhadas podem ser contadas mais de<br />
+uma vez, portanto essa métrica não equivale à memória física única, à memória global<br />
+do host ou ao uso de memória de um cgroup. A equivalência compara todas as linhas<br />
+tipadas (incluindo nulos, ordem e tuplas decimais), não apenas valores de borda. O<br />
+filho confere o checksum antes da medição; uma fonte modificada falha em vez de<br />
+produzir uma comparação inválida. O status anual sem os 27 ZIPs requeridos é <code>skipped</code><br />
+com a razão <code>external corpus unavailable</code>; não deve ser convertido em sucesso em<br />
+relatórios de release.</p>
+<p>Quando <code>git_sha</code> termina em <code>-dirty</code>, <code>worktree_sha256</code> identifica o diff rastreado<br />
+e o conteúdo de arquivos não rastreados e não ignorados existentes no início da<br />
+medição. Os resultados em <code>.benchmarks/</code> são deliberadamente locais e ignorados;<br />
+para uma alegação revisável, guarde o JSON emitido em um artefato rastreado da revisão<br />
+e cite ambos os campos de proveniência.</p>
+<p>Os gates de referência desta mudança são avaliados apenas em comparação<br />
+baseline/candidato na mesma máquina: import raiz ≤50 MiB e ≤0,50 s; CVM 269.181<br />
+linhas ≤60% do tempo e ≤70% do RSS de baseline; B3 250k ≤50% do tempo e ≤25%<br />
+do RSS; e footprint runtime fechado sem Polars ≤260 MiB. Estes são objetivos de<br />
+release, não limites universais de CI.</p>
+<hr />
+<h2 id="6-otimizacoes-cvm-encoding-inferencia-e-http">6. Otimizações CVM — Encoding, Inferência e HTTP<a class="headerlink" href="#6-otimizacoes-cvm-encoding-inferencia-e-http" title="Link para esta seção">&para;</a></h2>
+<h3 id="61-historico-de-varredura-de-encoding-e-inferencia-terminal">6.1. Histórico de varredura de encoding e inferência terminal<a class="headerlink" href="#61-historico-de-varredura-de-encoding-e-inferencia-terminal" title="Link para esta seção">&para;</a></h3>
+<p>As medições CVM de 2026-09-23 antecedem o contrato <code>exact-text-v1</code> e sua<br />
+validação integral de conteúdo. Elas não são uma linha de base da implementação<br />
+atual. O runner atual verifica digests com todos os campos CVM preservados como<br />
+texto; os cenários numérico e de texto longo usam a mesma preparação de entrada<br />
+nos testes de integração e na CLI.</p>
+<p>Em <strong>2026-09-23</strong>, os cenários <code>cvm</code> e <code>cvm_text</code> foram executados em três<br />
+processos novos por etapa, com o mesmo corpus determinístico. Ambiente: Python<br />
+3.13.9, Linux x86_64, kernel 6.8, 8 CPUs. A etapa <code>scan</code> troca a classificação<br />
+byte a byte por uma tradução C por bloco; <code>scan + inferência</code> também interrompe<br />
+a observação de colunas já promovidas definitivamente a string.</p>
+<table>
+<thead>
+<tr>
+<th>Cenário</th>
+<th>Etapa</th>
+<th style="text-align: right;">Repetições</th>
+<th style="text-align: right;">Tempo mediano</th>
+<th style="text-align: right;">Pico RSS mediano</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cvm</code></td>
+<td>baseline</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">4,092 s</td>
+<td style="text-align: right;">166,30 MiB</td>
+</tr>
+<tr>
+<td><code>cvm</code></td>
+<td>scan</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">1,798 s</td>
+<td style="text-align: right;">165,99 MiB</td>
+</tr>
+<tr>
+<td><code>cvm</code></td>
+<td>scan + inferência</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">1,593 s</td>
+<td style="text-align: right;">162,10 MiB</td>
+</tr>
+<tr>
+<td><code>cvm_text</code></td>
+<td>baseline</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">2,705 s</td>
+<td style="text-align: right;">227,28 MiB</td>
+</tr>
+<tr>
+<td><code>cvm_text</code></td>
+<td>scan</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0,822 s</td>
+<td style="text-align: right;">227,13 MiB</td>
+</tr>
+<tr>
+<td><code>cvm_text</code></td>
+<td>scan + inferência</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">0,762 s</td>
+<td style="text-align: right;">227,33 MiB</td>
+</tr>
+</tbody>
+</table>
+<p>A varredura reduziu o tempo mediano em 56,1% para <code>cvm</code> e 69,6% para<br />
+<code>cvm_text</code>. A inferência terminal reduziu mais 11,4% e 7,3%, respectivamente,<br />
+comparada à etapa <code>scan</code>. O pico de RSS final ficou 2,5% abaixo do baseline em<br />
+<code>cvm</code> e 0,02% acima em <code>cvm_text</code>.</p>
+<p>As três etapas produziram as mesmas contagens, fingerprints de schema, digests<br />
+lógicos e SHA-256 físicos dos Parquets em todas as nove repetições de cada<br />
+cenário. Os hashes lógicos foram <code>1ef1f6d9cd9ade4fba4551796916241ff0966620846a219b1f87be78f0e186c9</code><br />
+para <code>cvm</code> (269.181 linhas) e<br />
+<code>2f3649d866f98263ce2156bdb688733da3ae31b0fbc7c963c720675c6ae49d0b</code> para<br />
+<code>cvm_text</code> (8.000 linhas).</p>
+<p>Os relatórios completos, incluindo checksums de entrada, cada repetição e<br />
+proveniência <code>git_sha</code> / <code>worktree_sha256</code>, estão nos arquivos <a href="../benchmark-results/cvm-optimizations-20260923/cvm-opt-baseline-20260923.json">baseline</a>, <a href="../benchmark-results/cvm-optimizations-20260923/cvm-opt-scan-20260923.json">scan</a> e <a href="../benchmark-results/cvm-optimizations-20260923/cvm-opt-inference-20260923.json">scan + inferência</a>.<br />
+Meça os mesmos cenários na versão atual com o comando abaixo. Reproduzir as<br />
+etapas históricas exige as implementações e os contratos daquela medição.</p>
+<div class="highlight"><pre><span></span><code>mkdir<span class="w"> </span>-p<span class="w"> </span>.benchmarks
+uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_ingestion.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--scenario<span class="w"> </span>cvm<span class="w"> </span>--scenario<span class="w"> </span>cvm_text<span class="w"> </span>--repeats<span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>.benchmarks/cvm-optimizations.json
+</code></pre></div>
+<h3 id="62-medicao-por-fase-de-downloads-cvm">6.2. Medição por fase de downloads CVM<a class="headerlink" href="#62-medicao-por-fase-de-downloads-cvm" title="Link para esta seção">&para;</a></h3>
+<p><code>scripts/benchmark_cvm_http.py</code> mede separadamente tempo e bytes de GET,<br />
+validação do ZIP e extração Parquet. O modo local serve o mesmo ZIP determinístico<br />
+em HTTP/1.1, executa lotes de três downloads por padrão e compara chunks de 8,<br />
+64 e 256 KiB. Os bytes de GET são os transferidos; validação registra o tamanho<br />
+do ZIP lido; extração registra os bytes CSV descompactados. O relatório também<br />
+conta as construções de <code>httpx.AsyncClient</code> e mede o custo síncrono dessas<br />
+construções.</p>
+<p>O download atual valida o tamanho com o <code>Content-Length</code> do próprio GET,<br />
+quando disponível e válido, e não faz HEAD. Para preservar o schema JSON 1,<br />
+os campos da fase <code>head</code> e os contadores <code>announced_bytes</code> permanecem no<br />
+relatório com valor zero. A fração de inicialização de clientes usa somente<br />
+o tempo acumulado de GET como tempo HTTP.</p>
+<div class="highlight"><pre><span></span><code>mkdir<span class="w"> </span>-p<span class="w"> </span>.benchmarks
+uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_cvm_http.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--source<span class="w"> </span><span class="nb">local</span><span class="w"> </span>--repeats<span class="w"> </span><span class="m">3</span><span class="w"> </span>--batch-size<span class="w"> </span><span class="m">3</span><span class="w"> </span>--payload-mib<span class="w"> </span><span class="m">4</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>.benchmarks/cvm-http-local.json
+</code></pre></div>
+<p>Para poucas fontes oficiais equivalentes, use URLs explícitas:</p>
+<div class="highlight"><pre><span></span><code>mkdir<span class="w"> </span>-p<span class="w"> </span>.benchmarks
+uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_cvm_http.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--source<span class="w"> </span>official<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--official-url<span class="w"> </span>https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2022.zip<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--official-url<span class="w"> </span>https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2023.zip<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--official-url<span class="w"> </span>https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2024.zip<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--repeats<span class="w"> </span><span class="m">3</span><span class="w"> </span>--output<span class="w"> </span>.benchmarks/cvm-http-official.json
+</code></pre></div>
+<p>Em <strong>2026-09-23</strong>, a execução local terminou com <code>passed</code>: nove lotes, três<br />
+repetições por chunk e três downloads por lote. As medianas abaixo usam o tempo<br />
+total do lote; os tempos de fase somam as operações concorrentes do lote.<br />
+Essa medição histórica usava o HEAD após cada GET; a coluna HEAD e a contagem<br />
+de clientes abaixo descrevem aquela implementação.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">Chunk</th>
+<th style="text-align: right;">Lote total</th>
+<th style="text-align: right;">HEAD</th>
+<th style="text-align: right;">GET</th>
+<th style="text-align: right;">Validação</th>
+<th style="text-align: right;">Extração</th>
+<th style="text-align: right;">Inicialização de clientes HTTPX</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">8 KiB</td>
+<td style="text-align: right;">0,246 s</td>
+<td style="text-align: right;">0,049 s</td>
+<td style="text-align: right;">0,201 s</td>
+<td style="text-align: right;">0,013 s</td>
+<td style="text-align: right;">0,136 s</td>
+<td style="text-align: right;">6 clientes; 0,0369 s</td>
+</tr>
+<tr>
+<td style="text-align: right;">64 KiB</td>
+<td style="text-align: right;">0,241 s</td>
+<td style="text-align: right;">0,046 s</td>
+<td style="text-align: right;">0,151 s</td>
+<td style="text-align: right;">0,014 s</td>
+<td style="text-align: right;">0,133 s</td>
+<td style="text-align: right;">6 clientes; 0,0371 s</td>
+</tr>
+<tr>
+<td style="text-align: right;">256 KiB</td>
+<td style="text-align: right;">0,236 s</td>
+<td style="text-align: right;">0,047 s</td>
+<td style="text-align: right;">0,157 s</td>
+<td style="text-align: right;">0,013 s</td>
+<td style="text-align: right;">0,128 s</td>
+<td style="text-align: right;">6 clientes; 0,0371 s</td>
+</tr>
+</tbody>
+</table>
+<p>Cada lote transferiu 12.590.178 bytes em três GETs. HEAD anunciou o mesmo<br />
+tamanho; a validação leu os mesmos bytes; a extração processou 6.612 bytes CSV.<br />
+As nove execuções produziram três Parquets e 768 linhas, com fingerprints de<br />
+schema e SHA-256 dos artefatos idênticos. O melhor tempo mediano total ficou<br />
+4,2% abaixo do chunk de 8 KiB, com variação entre repetições e diferença pequena<br />
+entre chunks de 64 e 256 KiB. Os seis construtores <code>httpx.AsyncClient</code> somaram<br />
+cerca de 37 ms por lote, 18% do tempo acumulado de GET e HEAD. O benchmark<br />
+local sintético não comparou clientes compartilhados e encontrou uma diferença<br />
+pequena de tempo total entre chunks. Naquela medição, esses resultados<br />
+mantiveram o chunk de 8 KiB e o ciclo de construção dos clientes HTTPX.</p>
+<p>O relatório completo, com cada repetição, checksum da fixture e proveniência<br />
+<code>git_sha</code> / <code>worktree_sha256</code>, está em<br />
+<a href="../benchmark-results/cvm-http-local-20260923.json">cvm-http-local-20260923.json</a>.<br />
+O primeiro intento local dentro do sandbox falhou ao abrir o servidor de fixture<br />
+em <code>127.0.0.1</code> (<code>PermissionError: Operation not permitted</code>); a execução local<br />
+posterior passou. A medição oficial foi <code>skipped</code>: a consulta DNS por<br />
+<code>dados.cvm.gov.br</code> continua sem resolução neste ambiente.</p>
+<h3 id="63-benchmark-completo-com-fonte-cvm-real">6.3. Benchmark completo com fonte CVM real<a class="headerlink" href="#63-benchmark-completo-com-fonte-cvm-real" title="Link para esta seção">&para;</a></h3>
+<p><code>scripts/benchmark_cvm_full.py</code> executa manualmente downloads e extração CVM<br />
+de 2010 a 2026, mede tempo e pico RSS do processo e resume os Parquets gerados.<br />
+Ele acessa a CVM e produz arquivos grandes; não faz parte dos testes<br />
+determinísticos nem da CI. Forneça um diretório existente e vazio:</p>
+<div class="highlight"><pre><span></span><code>mkdir<span class="w"> </span>-p<span class="w"> </span>.benchmarks/cvm-full
+uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>scripts.benchmark_cvm_full<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-dir<span class="w"> </span>.benchmarks/cvm-full
+</code></pre></div>
 
 
 

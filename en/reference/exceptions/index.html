@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Biblioteca Python para extração e processamento de dados financeiros globais">
+        <meta name="description" content="Biblioteca Python para baixar documentos da CVM e processar cotações históricas da B3 em Parquet">
       
       
         <meta name="author" content="Jordan Estralioto">
@@ -15,8 +15,10 @@
         <link rel="canonical" href="https://jordanestralioto.github.io/Global-Data-Finance/en/reference/exceptions/">
       
       
-        <link rel="prev" href="../b3-api/">
+        <link rel="prev" href="../b3-schema-v2/">
       
+      
+        <link rel="next" href="../transactional-publication/">
       
       
         
@@ -86,7 +88,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#exception-reference" class="md-skip">
+        <a href="#exceptions-and-failure-results" class="md-skip">
           Skip to content
         </a>
       
@@ -305,7 +307,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../dev-guide/architecture/" class="md-tabs__link">
+        <a href="../../dev-guide/contributing/" class="md-tabs__link">
           
   
   
@@ -327,7 +329,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../cvm-api/" class="md-tabs__link">
+        <a href="../../dev-guide/api-reference/" class="md-tabs__link">
           
   
   
@@ -699,62 +701,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../dev-guide/architecture/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Architecture
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../dev-guide/api-reference/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    API Reference
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../dev-guide/contributing/" class="md-nav__link">
         
   
@@ -783,6 +729,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../dev-guide/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../dev-guide/testing/" class="md-nav__link">
         
   
@@ -791,6 +765,86 @@
     
   
     Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Maintenance and evidence
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Maintenance and evidence
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/release-readiness/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Acceptance
   
 
     
@@ -839,6 +893,771 @@
   
   
     <li class="md-nav__item">
+      <a href="../../dev-guide/cotahist-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    COTAHIST Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/real-data-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation with external data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cotahist-v2-supplied-corpus/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    COTAHIST Corpus Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical Decisions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Technical Decisions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/test-execution-tiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Execution Tiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/real-validation-campaign/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Auditable Real-Data Campaign
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/archive-safety-and-unc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ZIP Limits and UNC Destinations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/cvm-failure-atomic-batch-commit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Failure-Atomic CVM Batch Commit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/cvm-ingestion-ownership/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shared CVM Ingestion
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/pyarrow-ingestion-integrity-cutover/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    PyArrow and Integrity Cutover
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../decisions/shared-infrastructure-clean-cut/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shared Infrastructure Clean Cut
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Technical Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Technical Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev-guide/api-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cvm-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CVM API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../b3-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    B3 API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../b3-schema-v2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    B3 Parquet Schema v2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exceptions
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exceptions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#handling-a-public-call" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Handling a public call
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#shared-exceptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Shared exceptions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cvm-exceptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CVM exceptions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#b3-exceptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B3 exceptions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#handling-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Handling examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Handling examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cvm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CVM
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        B3
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../transactional-publication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transactional publication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_7" id="__nav_4_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration and operation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configuration and operation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../dev-guide/advanced-usage/" class="md-nav__link">
         
   
@@ -847,6 +1666,34 @@
     
   
     Advanced Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../user-guide/b3-operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    B3 Operational Practices
   
 
     
@@ -950,43 +1797,42 @@
     </li>
   
 
-    
-      
-      
+              
+            
+              
+                
+  
+  
   
   
     
-  
-  
-  
-    
     
     
     
       
-        
-        
       
-      
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_8" id="__nav_4_8_label" tabindex="">
             
   
   
   <span class="md-ellipsis">
     
   
-    Technical Reference
+    Migrations
   
 
     
@@ -997,12 +1843,12 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_4">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_8">
             <span class="md-nav__icon md-icon"></span>
             
   
-    Technical Reference
+    Migrations
   
 
           </label>
@@ -1015,14 +1861,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../cvm-api/" class="md-nav__link">
+      <a href="../../user-guide/migration-pyarrow-integrity/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    CVM API
+    Migration 0.2.0
   
 
     
@@ -1043,14 +1889,14 @@
   
   
     <li class="md-nav__item">
-      <a href="../b3-api/" class="md-nav__link">
+      <a href="../../user-guide/migration-infrastructure-clean-cut/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    B3 API
+    Infrastructure Clean Cut Migration
   
 
     
@@ -1068,44 +1914,17 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Exceptions
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../user-guide/migration-cvm-exact-text/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Exceptions
+    CVM Exact Text Migration
   
 
     
@@ -1114,252 +1933,13 @@
   
 
       </a>
-      
-        
+    </li>
+  
 
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#root-infrastructure-exceptions-macro_exceptions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Root Infrastructure Exceptions (macro_exceptions)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Root Infrastructure Exceptions (macro_exceptions)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#networkerror" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        NetworkError
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#timeouterror" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        TimeoutError
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#extractionerror" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        ExtractionError
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#emptydirectoryerror" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        EmptyDirectoryError
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#invaliddestinationpatherror" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        InvalidDestinationPathError
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#diskfullerror" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        DiskFullError
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#securityerror" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        SecurityError
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#cvm-domain-exceptions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        CVM Domain Exceptions
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="CVM Domain Exceptions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#invaliddocumentname" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        InvalidDocumentName
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#invalidfirstyear" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        InvalidFirstYear
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#invalidlastyear" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        InvalidLastYear
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#emptydocumentlisterror" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        EmptyDocumentListError
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#b3-domain-exceptions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        B3 Domain Exceptions
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="B3 Domain Exceptions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#invalidassetsname" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        InvalidAssetsName
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#emptyassetlisterror" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        EmptyAssetListError
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#exception-class-hierarchy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Exception Class Hierarchy
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#comprehensive-exception-handling-pattern" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Comprehensive Exception Handling Pattern
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#related-documentation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Related Documentation
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
+              
+            
+          </ul>
+        </nav>
       
     </li>
   
@@ -1393,167 +1973,283 @@
   
 
 
-<h1 id="exception-reference">Exception Reference<a class="headerlink" href="#exception-reference" title="Link para esta seção">&para;</a></h1>
-<p>Complete structural catalog of custom error boundaries and exception types defined in Global-Data-Finance.</p>
-<hr />
-<h2 id="root-infrastructure-exceptions-macro_exceptions">Root Infrastructure Exceptions (<code>macro_exceptions</code>)<a class="headerlink" href="#root-infrastructure-exceptions-macro_exceptions" title="Link para esta seção">&para;</a></h2>
-<h3 id="networkerror"><code>NetworkError</code><a class="headerlink" href="#networkerror" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">NetworkError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Network connection failure encountered during download operations.&quot;&quot;&quot;</span>
-</code></pre></div>
-<p><strong>Trigger Condition</strong>: HTTP connection disruptions, socket timeouts, or TLS handshakes failures.</p>
-<p><strong>Recommended Handling</strong>:</p>
-<div class="highlight"><pre><span></span><code><span class="k">try</span><span class="p">:</span>
-    <span class="n">cvm</span><span class="o">.</span><span class="n">download</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
-<span class="k">except</span> <span class="n">NetworkError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Network transport interruption: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    <span class="c1"># Assess internet routing and implement retry back-off</span>
-</code></pre></div>
-<h3 id="timeouterror"><code>TimeoutError</code><a class="headerlink" href="#timeouterror" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">TimeoutError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Request timeout exceeded during socket read operations.&quot;&quot;&quot;</span>
-</code></pre></div>
-<p><strong>Trigger Condition</strong>: Remote regulatory endpoints fail to respond within configured threshold boundaries.</p>
-<h3 id="extractionerror"><code>ExtractionError</code><a class="headerlink" href="#extractionerror" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ExtractionError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Failure encountered during ZIP decompression or tabular translation.&quot;&quot;&quot;</span>
-</code></pre></div>
-<p><strong>Trigger Condition</strong>: Archive corrupted headers or unexpected positional CSV/TXT formatting mismatches.</p>
-<h3 id="emptydirectoryerror"><code>EmptyDirectoryError</code><a class="headerlink" href="#emptydirectoryerror" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">EmptyDirectoryError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Target directory is empty or lacks compliant source files.&quot;&quot;&quot;</span>
-</code></pre></div>
-<p><strong>Trigger Condition</strong>: Target source folders do not enclose necessary input files matching naming contracts.</p>
-<h3 id="invaliddestinationpatherror"><code>InvalidDestinationPathError</code><a class="headerlink" href="#invaliddestinationpatherror" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">InvalidDestinationPathError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Target filesystem path destination is invalid or inaccessible.&quot;&quot;&quot;</span>
-</code></pre></div>
-<p><strong>Trigger Condition</strong>: Target export directory access denied or restricted by OS authorization permissions.</p>
-<h3 id="diskfullerror"><code>DiskFullError</code><a class="headerlink" href="#diskfullerror" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">DiskFullError</span><span class="p">(</span><span class="ne">OSError</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Storage volume capacity exhaustion encountered.&quot;&quot;&quot;</span>
-</code></pre></div>
-<p><strong>Trigger Condition</strong>: Available hard storage capacity depleted before file write completion.</p>
-<h3 id="securityerror"><code>SecurityError</code><a class="headerlink" href="#securityerror" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SecurityError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Path safety check failed or restricted filesystem traversal detected.&quot;&quot;&quot;</span>
-</code></pre></div>
-<p><strong>Trigger Condition</strong>: Attempted writing or directory creation aimed directly at system-level restricted POSIX routes (<code>/etc</code>, <code>/sys</code>, <code>/boot</code>, <code>/root</code>, etc.).</p>
-<hr />
-<h2 id="cvm-domain-exceptions">CVM Domain Exceptions<a class="headerlink" href="#cvm-domain-exceptions" title="Link para esta seção">&para;</a></h2>
-<h3 id="invaliddocumentname"><code>InvalidDocumentName</code><a class="headerlink" href="#invaliddocumentname" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">InvalidDocumentName</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Supplied document type acronym is unrecognized.&quot;&quot;&quot;</span>
-</code></pre></div>
-<p><strong>Trigger Condition</strong>: Document parameter keyword falls outside supported CVM filing catalog.</p>
-<p><strong>Recommended Handling</strong>:</p>
-<div class="highlight"><pre><span></span><code><span class="k">try</span><span class="p">:</span>
-    <span class="n">cvm</span><span class="o">.</span><span class="n">download</span><span class="p">(</span><span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;UNSUPPORTED_CODE&quot;</span><span class="p">])</span>
-<span class="k">except</span> <span class="n">InvalidDocumentName</span><span class="p">:</span>
-    <span class="n">docs</span> <span class="o">=</span> <span class="n">cvm</span><span class="o">.</span><span class="n">get_available_docs</span><span class="p">()</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Supported document keywords: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">docs</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</code></pre></div>
-<h3 id="invalidfirstyear"><code>InvalidFirstYear</code><a class="headerlink" href="#invalidfirstyear" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">InvalidFirstYear</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Supplied starting fiscal year falls outside valid boundaries.&quot;&quot;&quot;</span>
-</code></pre></div>
-<p><strong>Trigger Condition</strong>: Requested initial year falls below historic floor (e.g., prior to 2010) or exceeds active system year.</p>
-<h3 id="invalidlastyear"><code>InvalidLastYear</code><a class="headerlink" href="#invalidlastyear" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">InvalidLastYear</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Supplied ending fiscal year is invalid.&quot;&quot;&quot;</span>
-</code></pre></div>
-<p><strong>Trigger Condition</strong>: Ending year precedes initial starting year or exceeds current operating year.</p>
-<h3 id="emptydocumentlisterror"><code>EmptyDocumentListError</code><a class="headerlink" href="#emptydocumentlisterror" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">EmptyDocumentListError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Document filter list parameter was supplied empty.&quot;&quot;&quot;</span>
-</code></pre></div>
-<p><strong>Trigger Condition</strong>: An empty array (<code>[]</code>) was passed into <code>list_docs</code>.</p>
-<hr />
-<h2 id="b3-domain-exceptions">B3 Domain Exceptions<a class="headerlink" href="#b3-domain-exceptions" title="Link para esta seção">&para;</a></h2>
-<h3 id="invalidassetsname"><code>InvalidAssetsName</code><a class="headerlink" href="#invalidassetsname" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">InvalidAssetsName</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Supplied asset filter keyword is unrecognized.&quot;&quot;&quot;</span>
-</code></pre></div>
-<p><strong>Trigger Condition</strong>: Asset parameter falls outside whitelist classifications supported by extraction rules.</p>
-<p><strong>Recommended Handling</strong>:</p>
-<div class="highlight"><pre><span></span><code><span class="k">try</span><span class="p">:</span>
-    <span class="n">b3</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="n">assets_list</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;unsupported_asset&quot;</span><span class="p">])</span>
-<span class="k">except</span> <span class="n">InvalidAssetsName</span><span class="p">:</span>
-    <span class="n">assets</span> <span class="o">=</span> <span class="n">b3</span><span class="o">.</span><span class="n">get_available_assets</span><span class="p">()</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Supported asset filters: </span><span class="si">{</span><span class="n">assets</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</code></pre></div>
-<h3 id="emptyassetlisterror"><code>EmptyAssetListError</code><a class="headerlink" href="#emptyassetlisterror" title="Link para esta seção">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">EmptyAssetListError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Required assets filter list parameter was supplied empty.&quot;&quot;&quot;</span>
-</code></pre></div>
-<p><strong>Trigger Condition</strong>: An empty array (<code>[]</code>) was supplied into mandatory <code>assets_list</code> argument.</p>
-<hr />
-<h2 id="exception-class-hierarchy">Exception Class Hierarchy<a class="headerlink" href="#exception-class-hierarchy" title="Link para esta seção">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>Exception
-├── NetworkError
-├── TimeoutError
-├── ExtractionError
-│   └── CorruptedZipError
-├── SecurityError
-├── InvalidDocumentName
-├── InvalidFirstYear
-├── InvalidLastYear
-├── InvalidAssetsName
-├── EmptyAssetListError
-├── EmptyDocumentListError
-└── EmptyDirectoryError
-
-ValueError
-└── InvalidDestinationPathError
-
-OSError
-└── DiskFullError
-</code></pre></div>
-<hr />
-<h2 id="comprehensive-exception-handling-pattern">Comprehensive Exception Handling Pattern<a class="headerlink" href="#comprehensive-exception-handling-pattern" title="Link para esta seção">&para;</a></h2>
+<h1 id="exceptions-and-failure-results">Exceptions and failure results<a class="headerlink" href="#exceptions-and-failure-results" title="Link para esta seção">&para;</a></h1>
+<p>This reference distinguishes input errors, failures collected in results, and<br />
+lower-level exceptions. See also the <a href="../cvm-api/">CVM</a> and <a href="../b3-api/">B3</a><br />
+contracts.</p>
+<h2 id="handling-a-public-call">Handling a public call<a class="headerlink" href="#handling-a-public-call" title="Link para esta seção">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Invalid parameter or path</td>
+<td>Validation may raise an exception before the main operation</td>
+</tr>
+<tr>
+<td>A CVM download fails</td>
+<td>The result records its identifier and cause in <code>failed_downloads</code>; other downloads continue</td>
+</tr>
+<tr>
+<td>A B3 input is missing, corrupt, or invalid</td>
+<td>The facade returns <code>success=False</code>, details in <code>errors</code>, and no new <code>output_file</code></td>
+</tr>
+<tr>
+<td>An empty B3 directory</td>
+<td>Returns zero <code>total_files</code> and requested years in <code>integrity.missing_years</code></td>
+</tr>
+<tr>
+<td>Valid B3 sources with no quotations after filtering</td>
+<td>Returns success and publishes an empty Parquet with the B3 schema</td>
+</tr>
+<tr>
+<td>B3 async cancellation before the commit decision</td>
+<td>Waits for workers, cleans temporary files, and propagates <code>asyncio.CancelledError</code></td>
+</tr>
+</tbody>
+</table>
+<p>Check <code>result.has_errors()</code> for CVM and <code>result["success"]</code> for B3 before<br />
+consuming artifacts. <a href="../transactional-publication/">Transactional publication</a><br />
+describes recovery, cancellation, and visibility limits.</p>
+<h2 id="shared-exceptions">Shared exceptions<a class="headerlink" href="#shared-exceptions" title="Link para esta seção">&para;</a></h2>
+<p>Import these types from <code>globaldatafinance.macro_exceptions</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Exception</th>
+<th>Base</th>
+<th>Condition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>InvalidDestinationPathError</code></td>
+<td><code>ValueError</code></td>
+<td>Empty or whitespace-only path</td>
+</tr>
+<tr>
+<td><code>PathIsNotDirectoryError</code></td>
+<td><code>ValueError</code></td>
+<td>A required directory is missing or is a file</td>
+</tr>
+<tr>
+<td><code>PathPermissionError</code></td>
+<td><code>OSError</code></td>
+<td>No permission to create or write to the destination</td>
+</tr>
+<tr>
+<td><code>PathCreationError</code></td>
+<td><code>OSError</code></td>
+<td>Destination creation fails for another I/O reason</td>
+</tr>
+<tr>
+<td><code>FileWriteError</code></td>
+<td><code>OSError</code></td>
+<td>File write failure</td>
+</tr>
+<tr>
+<td><code>ParquetWriteError</code></td>
+<td><code>OSError</code></td>
+<td>Filesystem failure while writing or reopening Parquet</td>
+</tr>
+<tr>
+<td><code>DiskFullError</code></td>
+<td><code>OSError</code></td>
+<td>Insufficient destination storage</td>
+</tr>
+<tr>
+<td><code>ExtractionError</code></td>
+<td><code>Exception</code></td>
+<td>Extraction or content-validation failure</td>
+</tr>
+<tr>
+<td><code>CorruptedZipError</code></td>
+<td><code>ExtractionError</code></td>
+<td>Corrupt or unreadable ZIP</td>
+</tr>
+<tr>
+<td><code>SecurityError</code></td>
+<td><code>Exception</code></td>
+<td>Violation of path, file, or extraction policy</td>
+</tr>
+<tr>
+<td><code>NetworkError</code></td>
+<td><code>Exception</code></td>
+<td>Transport failure translated by the CVM adapter</td>
+</tr>
+<tr>
+<td><code>DownloadTimeoutError</code></td>
+<td><code>Exception</code></td>
+<td>CVM download timeout</td>
+</tr>
+<tr>
+<td><code>EmptyDirectoryError</code></td>
+<td><code>Exception</code></td>
+<td>Shared type representing the absence of input files</td>
+</tr>
+</tbody>
+</table>
+<p>A sensitive destination raises <code>SecurityError</code>. Type errors may raise the<br />
+built-in <code>TypeError</code>. The B3 facade reports an empty directory through its<br />
+result as described above; catching <code>EmptyDirectoryError</code> does not replace<br />
+that check.</p>
+<p>During staged CVM Parquet writes, filesystem failures other than <code>ENOSPC</code><br />
+become <code>ParquetWriteError</code> with the original cause preserved; <code>ENOSPC</code> becomes<br />
+<code>DiskFullError</code>. Download aggregation records <code>ParquetWrite: ...</code> when<br />
+applicable and retains the ZIP for diagnosis. CSV, schema, count, and integrity<br />
+failures continue to follow the extraction contract.</p>
+<p>The CVM adapter translates transport failures, applies the<br />
+<a href="../../dev-guide/retry-strategy/">retry policy</a>, and collects persistent failures<br />
+in <code>failed_downloads</code>. Catching <code>NetworkError</code> synchronously around the facade<br />
+is not how callers identify these failed downloads.</p>
+<h2 id="cvm-exceptions">CVM exceptions<a class="headerlink" href="#cvm-exceptions" title="Link para esta seção">&para;</a></h2>
+<p>These types are defined in<br />
+<code>globaldatafinance.brazil.cvm.fundamental_stocks_data.errors</code>.<br />
+<code>CvmError</code> inherits from <code>Exception</code>; every other type in this table inherits<br />
+from <code>CvmError</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Exception</th>
+<th>Condition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>InvalidDocumentName</code></td>
+<td>Unsupported CVM document code</td>
+</tr>
+<tr>
+<td><code>InvalidDocumentType</code></td>
+<td>An item in <code>list_docs</code> is not a string</td>
+</tr>
+<tr>
+<td><code>InvalidFirstYear</code></td>
+<td>Initial year is not an integer, is below 2003, or exceeds the current year</td>
+</tr>
+<tr>
+<td><code>InvalidLastYear</code></td>
+<td>Final year is not an integer, exceeds the current year, or precedes the initial year</td>
+</tr>
+<tr>
+<td><code>EmptyDocumentListError</code></td>
+<td>Internal resolution type for an empty selection</td>
+</tr>
+<tr>
+<td><code>MissingDownloadUrlError</code></td>
+<td>Internal resolution type for a document without a configured URL</td>
+</tr>
+</tbody>
+</table>
+<p>An outer <code>list_docs</code> value other than a list or <code>None</code> raises <code>TypeError</code>.<br />
+<code>None</code> and <code>[]</code> select all document types. The catalog accepts <code>DFP</code>, <code>ITR</code>,<br />
+<code>FCA</code>, <code>FRE</code>, <code>CGVN</code>, <code>VLMO</code>, and <code>IPE</code>.</p>
+<p>The global year-validation floor is 2003. Per-document first years filter the<br />
+URLs: a valid interval before DFP begins, for example, generates no DFP URLs<br />
+for those years. See the first years in the<br />
+<a href="../cvm-api/#supported-document-classifications">CVM reference</a>.</p>
+<h2 id="b3-exceptions">B3 exceptions<a class="headerlink" href="#b3-exceptions" title="Link para esta seção">&para;</a></h2>
+<p>These types are defined in<br />
+<code>globaldatafinance.brazil.b3_data.historical_quotes.errors</code>.<br />
+<code>B3Error(Exception)</code> is the base for the validation exceptions in this table:</p>
+<table>
+<thead>
+<tr>
+<th>Exception</th>
+<th>Condition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>EmptyAssetListError</code></td>
+<td><code>assets_list</code> is empty or not a list; <code>None</code> selects <code>todos</code></td>
+</tr>
+<tr>
+<td><code>InvalidAssetsName</code></td>
+<td>Non-string item or unknown alias</td>
+</tr>
+<tr>
+<td><code>InvalidFirstYear</code></td>
+<td>Initial year outside 1986 through the current year, or an invalid type</td>
+</tr>
+<tr>
+<td><code>InvalidLastYear</code></td>
+<td>Invalid final year, above the current year, or before the initial year</td>
+</tr>
+<tr>
+<td><code>InvalidProcessingMode</code></td>
+<td>Mode other than <code>fast</code> or <code>slow</code></td>
+</tr>
+<tr>
+<td><code>InvalidOutputFilename</code></td>
+<td>Invalid output name or a name that is not a basename</td>
+</tr>
+</tbody>
+</table>
+<p>Accepted aliases: <code>ações</code>, <code>etf</code>, <code>opções</code>, <code>termo</code>, <code>exercicio_opcoes</code>,<br />
+<code>forward</code>, <code>leilao</code>, <code>lote_bloco</code>, and <code>todos</code>. Validation normalizes letter<br />
+case. The output name accepts an optional <code>.parquet</code> suffix, appended when<br />
+absent. Path separators and traversal are rejected.</p>
+<p>The module also defines <code>CotahistCatalogError(ValueError)</code> and<br />
+<code>CotahistPreflightError(ExtractionError)</code> for internal resolution and preflight.<br />
+Neither inherits from <code>B3Error</code>. The facade converts these input-source<br />
+failures into unsuccessful results. Catching <code>B3Error</code> handles input validation;<br />
+processing failures require checking <code>result["success"]</code> and <code>errors</code>.</p>
+<p>The CVM and B3 <code>InvalidFirstYear</code> and <code>InvalidLastYear</code> types are distinct<br />
+classes. Source-specific exceptions are imported from their source modules;<br />
+the <code>globaldatafinance</code> root exports the facades and <code>ExtractionResultB3</code>.</p>
+<h2 id="handling-examples">Handling examples<a class="headerlink" href="#handling-examples" title="Link para esta seção">&para;</a></h2>
+<h3 id="cvm">CVM<a class="headerlink" href="#cvm" title="Link para esta seção">&para;</a></h3>
+<p>This example requires access to CVM and a writable destination.</p>
 <div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">FundamentalStocksDataCVM</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.brazil.cvm.fundamental_stocks_data.errors</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">InvalidDocumentName</span><span class="p">,</span>
-    <span class="n">InvalidFirstYear</span><span class="p">,</span>
-    <span class="n">InvalidLastYear</span><span class="p">,</span>
-<span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.macro_exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-    <span class="n">NetworkError</span><span class="p">,</span>
-    <span class="ne">TimeoutError</span><span class="p">,</span>
-    <span class="n">DiskFullError</span><span class="p">,</span>
-<span class="p">)</span>
-
-<span class="n">cvm</span> <span class="o">=</span> <span class="n">FundamentalStocksDataCVM</span><span class="p">()</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.brazil.cvm.fundamental_stocks_data.errors</span><span class="w"> </span><span class="kn">import</span> <span class="n">CvmError</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.macro_exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">SecurityError</span>
 
 <span class="k">try</span><span class="p">:</span>
-    <span class="n">cvm</span><span class="o">.</span><span class="n">download</span><span class="p">(</span>
-        <span class="n">destination_path</span><span class="o">=</span><span class="s2">&quot;/data/cvm&quot;</span><span class="p">,</span>
-        <span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;DFP&quot;</span><span class="p">],</span>
-        <span class="n">initial_year</span><span class="o">=</span><span class="mi">2022</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">FundamentalStocksDataCVM</span><span class="p">()</span><span class="o">.</span><span class="n">download</span><span class="p">(</span>
+        <span class="n">destination_path</span><span class="o">=</span><span class="s2">"./data_cvm"</span><span class="p">,</span>
+        <span class="n">list_docs</span><span class="o">=</span><span class="p">[</span><span class="s2">"DFP"</span><span class="p">],</span>
+        <span class="n">initial_year</span><span class="o">=</span><span class="mi">2023</span><span class="p">,</span>
+        <span class="n">last_year</span><span class="o">=</span><span class="mi">2023</span><span class="p">,</span>
     <span class="p">)</span>
-<span class="k">except</span> <span class="n">InvalidDocumentName</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Parameter validation fault: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="k">except</span> <span class="n">InvalidFirstYear</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Temporal parameter boundary violation: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="k">except</span> <span class="n">NetworkError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Network connection failure: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="k">except</span> <span class="ne">TimeoutError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Remote server request timeout: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="k">except</span> <span class="n">DiskFullError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Filesystem capacity exhaustion: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unexpected operational exception: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="k">except</span> <span class="p">(</span><span class="n">CvmError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="ne">OSError</span><span class="p">,</span> <span class="n">SecurityError</span><span class="p">)</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="sa">f</span><span class="s2">"CVM request failed: </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">error</span>
+
+<span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">has_errors</span><span class="p">():</span>
+    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">failed_downloads</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Downloaded: </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">success_count_downloads</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </code></pre></div>
-<blockquote>
-<p>Source-specific exception definitions reside inside <code>errors.py</code> modules within their owning domain features (e.g., <code>brazil.cvm.fundamental_stocks_data.errors</code>, <code>brazil.b3_data.historical_quotes.errors</code>).</p>
-</blockquote>
-<hr />
-<h2 id="related-documentation">Related Documentation<a class="headerlink" href="#related-documentation" title="Link para esta seção">&para;</a></h2>
-<ul>
-<li><a href="../cvm-api/">CVM API Reference</a></li>
-<li><a href="../b3-api/">B3 API Reference</a></li>
-<li><a href="../../user-guide/faq/">Frequently Asked Questions</a></li>
-</ul>
+<h3 id="b3">B3<a class="headerlink" href="#b3" title="Link para esta seção">&para;</a></h3>
+<p>Place <code>COTAHIST_A2023.ZIP</code> or <code>.TXT</code> in the input directory before running.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance</span><span class="w"> </span><span class="kn">import</span> <span class="n">HistoricalQuotesB3</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.brazil.b3_data.historical_quotes.errors</span><span class="w"> </span><span class="kn">import</span> <span class="n">B3Error</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">globaldatafinance.macro_exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">SecurityError</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">HistoricalQuotesB3</span><span class="p">()</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span>
+            <span class="n">path_of_docs</span><span class="o">=</span><span class="s2">"./cotahist_b3"</span><span class="p">,</span>
+            <span class="n">assets_list</span><span class="o">=</span><span class="p">[</span><span class="s2">"ações"</span><span class="p">,</span> <span class="s2">"opções"</span><span class="p">],</span>
+            <span class="n">initial_year</span><span class="o">=</span><span class="mi">2023</span><span class="p">,</span>
+            <span class="n">last_year</span><span class="o">=</span><span class="mi">2023</span><span class="p">,</span>
+            <span class="n">output_filename</span><span class="o">=</span><span class="s2">"quotes_2023"</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">B3Error</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="ne">OSError</span><span class="p">,</span> <span class="n">SecurityError</span><span class="p">)</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">SystemExit</span><span class="p">(</span><span class="sa">f</span><span class="s2">"B3 request failed: </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">error</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="p">[</span><span class="s2">"success"</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">"errors"</span><span class="p">]</span> <span class="ow">or</span> <span class="n">result</span><span class="p">[</span><span class="s2">"message"</span><span class="p">])</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Rows: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">'total_records'</span><span class="p">]</span><span class="si">}</span><span class="s2">; output: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">'output_file'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</code></pre></div>
 
 
 

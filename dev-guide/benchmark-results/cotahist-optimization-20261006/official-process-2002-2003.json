@@ -1,0 +1,502 @@
+{
+  "description": "Final integrated official annual 2002-2003 acceptance with coexisting identical ZIP/TXT inputs and explicit process extraction",
+  "productModuleEvidence": "final-integrated-500k.json",
+  "runtimeManifestSha256": "077dd6b8e7c6e45d292afcaa88d038bed979acc4dd6c44be1c05ba96fe6071d3",
+  "runtimeVerifiedFileCount": 323,
+  "executorBackendRequested": "process",
+  "workerLimitRequested": 4,
+  "concurrentPreflightThresholdBytes": 67108864,
+  "sourcePreparation": {
+    "sources": [
+      {
+        "year": 2002,
+        "zip": "/mnt/f4ec9d54-a0c2-4385-9e66-533d8f9307ae/Downloads/cotahist-final-process-coexisting-20261006/inputs/COTAHIST_A2002.zip",
+        "zip_bytes": 5877292,
+        "zip_sha256": "ee002b9a533d310351ed07ccb3a8cd3badd84993a4969c5b58088d738de59116",
+        "txt": "/mnt/f4ec9d54-a0c2-4385-9e66-533d8f9307ae/Downloads/cotahist-final-process-coexisting-20261006/inputs/COTAHIST_A2002.TXT",
+        "txt_bytes": 32103825,
+        "txt_sha256": "615202cfa6ce106d936bb62f9846cb482e8fad6c5317d5a826376f141e904286",
+        "content_identical": true
+      },
+      {
+        "year": 2003,
+        "zip": "/mnt/f4ec9d54-a0c2-4385-9e66-533d8f9307ae/Downloads/cotahist-final-process-coexisting-20261006/inputs/COTAHIST_A2003.zip",
+        "zip_bytes": 6901239,
+        "zip_sha256": "bcd337ebc1d92c190c4d8b77f582d2ec0890a8705fd5c10d68b28fa1eb15a2f0",
+        "txt": "/mnt/f4ec9d54-a0c2-4385-9e66-533d8f9307ae/Downloads/cotahist-final-process-coexisting-20261006/inputs/COTAHIST_A2003.TXT",
+        "txt_bytes": 36584158,
+        "txt_sha256": "7585b054889654dc27197e4de184d635065e5672c696112e1778279bd4a1603f",
+        "content_identical": true
+      }
+    ],
+    "stored_bytes": 81466514,
+    "threshold_bytes": 67108864,
+    "origin": "/mnt/f4ec9d54-a0c2-4385-9e66-533d8f9307ae/Downloads/Databases/dados_bolsa_br/COTAHIST"
+  },
+  "summary": {
+    "durationSeconds": 218.695722,
+    "processCheck": {
+      "activeProcesses": [],
+      "status": "passed"
+    },
+    "schemaVersion": 2,
+    "statusCounts": {
+      "external_failure": 0,
+      "failed": 0,
+      "not_published": 0,
+      "passed": 1,
+      "skipped": 0
+    },
+    "totalApproved": 1,
+    "totalCombinations": 1,
+    "totalExecuted": 1,
+    "totalExternalFailures": 0,
+    "totalFunctionalFailures": 0,
+    "totalNotExecuted": 0,
+    "totalNotPublished": 0,
+    "totalPublished": 1,
+    "totalSkipped": 0,
+    "unclassifiedCaseIds": []
+  },
+  "results": [
+    {
+      "artifactCount": 2,
+      "artifacts": [
+        {
+          "metadataPresent": true,
+          "mode": "fast",
+          "path": "cotahist.parquet",
+          "pyarrowReadable": true,
+          "rows": 278085,
+          "sha256": "1745d4373f99712ee5df6a71efa80880fead4abfd5b64b216f595c598b9413fb",
+          "sizeBytes": 16862023
+        },
+        {
+          "metadataPresent": true,
+          "mode": "slow",
+          "path": "cotahist.parquet",
+          "pyarrowReadable": true,
+          "rows": 278085,
+          "sha256": "1745d4373f99712ee5df6a71efa80880fead4abfd5b64b216f595c598b9413fb",
+          "sizeBytes": 16862023
+        }
+      ],
+      "caseId": "cotahist-multi-parity-2002-2003",
+      "command": [
+        "HistoricalQuotesB3.extract_async",
+        "path_of_docs=/mnt/f4ec9d54-a0c2-4385-9e66-533d8f9307ae/Downloads/cotahist-final-process-coexisting-20261006/inputs",
+        "assets_list=[todos]",
+        "initial_year=2002",
+        "last_year=2003",
+        "processing_mode=fast+slow",
+        "independent_raw_reconciliation=True",
+        "automatic_network_access=False"
+      ],
+      "comparisonMethod": "independent ordered raw-to-Parquet equality",
+      "dateRange": [
+        "2002-01-02",
+        "2003-12-30"
+      ],
+      "document": null,
+      "durationSeconds": 218.061032,
+      "inputPath": "/mnt/f4ec9d54-a0c2-4385-9e66-533d8f9307ae/Downloads/cotahist-final-process-coexisting-20261006/inputs/COTAHIST_A2002.zip",
+      "inputSha256": "ee002b9a533d310351ed07ccb3a8cd3badd84993a4969c5b58088d738de59116",
+      "inputSizeBytes": 5877292,
+      "logPath": "logs/cotahist-multi-parity-2002-2003.log",
+      "message": "COTAHIST fast/slow exact ordered parity passed",
+      "modeParity": "exact ordered rows",
+      "orderedRowsSha256": "b96d005d22d9bfa77894d879e86ef67c4966dcd802dcb5dd6b5711b653a15f13",
+      "publicResult": {
+        "fast": {
+          "assets": [
+            "todos"
+          ],
+          "elapsed_time": 38.37640929222107,
+          "error_count": 0,
+          "errors": {},
+          "integrity": {
+            "asset_classes": [
+              "todos"
+            ],
+            "complete_market_selection": true,
+            "excluded_records": 0,
+            "ignored_duplicate_sources": [
+              "/mnt/f4ec9d54-a0c2-4385-9e66-533d8f9307ae/Downloads/cotahist-final-process-coexisting-20261006/inputs/COTAHIST_A2002.TXT",
+              "/mnt/f4ec9d54-a0c2-4385-9e66-533d8f9307ae/Downloads/cotahist-final-process-coexisting-20261006/inputs/COTAHIST_A2003.TXT"
+            ],
+            "intentional_exclusions": 0,
+            "market_codes": [],
+            "missing_years": [],
+            "output_first_trading_date": "2002-01-02",
+            "output_last_trading_date": "2003-12-30",
+            "output_sha256": "1745d4373f99712ee5df6a71efa80880fead4abfd5b64b216f595c598b9413fb",
+            "raw_quotes": 278085,
+            "requested_years": [
+              2002,
+              2003
+            ],
+            "schema_version": 2,
+            "selected_quotes": 278085,
+            "selected_years": [
+              2002,
+              2003
+            ],
+            "selection_complete": true,
+            "source_complete": true,
+            "source_first_trading_date": "2002-01-02",
+            "source_last_trading_date": "2003-12-30",
+            "sources": [
+              {
+                "blank_lines": 0,
+                "content_sha256": "615202cfa6ce106d936bb62f9846cb482e8fad6c5317d5a826376f141e904286",
+                "declared_records": 129975,
+                "excluded_records": 0,
+                "expected_rows_sha256": "9409899f65c33f4292d3f5f0c99c30d978beb71fa78753a2ded6e5c155406bb2",
+                "first_trading_date": "2002-01-02",
+                "generation_date": "2004-01-05",
+                "header_base64": "MDBDT1RBSElTVC4yMDAyQk9WRVNQQSAyMDA0MDEwNSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA=",
+                "header_records": 1,
+                "intentional_exclusions": 0,
+                "last_trading_date": "2002-12-30",
+                "market_counts": {
+                  "010": 50701,
+                  "012": 477,
+                  "013": 90,
+                  "017": 116,
+                  "020": 40244,
+                  "030": 25647,
+                  "070": 11777,
+                  "080": 921
+                },
+                "member": "COTAHIST_A2002.TXT",
+                "outer_sha256": "ee002b9a533d310351ed07ccb3a8cd3badd84993a4969c5b58088d738de59116",
+                "raw_quotes": 129973,
+                "selected_quotes": 129973,
+                "source": "COTAHIST_A2002.zip",
+                "trailer_base64": "OTlDT1RBSElTVC4yMDAyQk9WRVNQQSAyMDA0MDEwNTAwMDAwMTI5OTc1ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA=",
+                "trailer_convention": "quotes_and_controls",
+                "trailer_records": 1,
+                "uncompressed_bytes": 32103825,
+                "unknown_market_counts": {},
+                "verified_rows": 129973,
+                "verified_rows_sha256": "9409899f65c33f4292d3f5f0c99c30d978beb71fa78753a2ded6e5c155406bb2",
+                "warnings": [],
+                "written_rows": 129973,
+                "year": 2002
+              },
+              {
+                "blank_lines": 0,
+                "content_sha256": "7585b054889654dc27197e4de184d635065e5672c696112e1778279bd4a1603f",
+                "declared_records": 148114,
+                "excluded_records": 0,
+                "expected_rows_sha256": "c8bee20f2774d3adf5ef859d13d3f17545850fdeef334b5decbd80a101cd2420",
+                "first_trading_date": "2003-01-02",
+                "generation_date": "2004-01-02",
+                "header_base64": "MDBDT1RBSElTVC4yMDAzQk9WRVNQQSAyMDA0MDEwMiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA=",
+                "header_records": 1,
+                "intentional_exclusions": 0,
+                "last_trading_date": "2003-12-30",
+                "market_counts": {
+                  "010": 53623,
+                  "012": 1525,
+                  "013": 42,
+                  "017": 146,
+                  "020": 44211,
+                  "030": 30031,
+                  "070": 17323,
+                  "080": 1211
+                },
+                "member": "COTAHIST_A2003.TXT",
+                "outer_sha256": "bcd337ebc1d92c190c4d8b77f582d2ec0890a8705fd5c10d68b28fa1eb15a2f0",
+                "raw_quotes": 148112,
+                "selected_quotes": 148112,
+                "source": "COTAHIST_A2003.zip",
+                "trailer_base64": "OTlDT1RBSElTVC4yMDAzQk9WRVNQQSAyMDA0MDEwMjAwMDAwMTQ4MTE0ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA=",
+                "trailer_convention": "quotes_and_controls",
+                "trailer_records": 1,
+                "uncompressed_bytes": 36584158,
+                "unknown_market_counts": {},
+                "verified_rows": 148112,
+                "verified_rows_sha256": "c8bee20f2774d3adf5ef859d13d3f17545850fdeef334b5decbd80a101cd2420",
+                "warnings": [],
+                "written_rows": 148112,
+                "year": 2003
+              }
+            ],
+            "status": "passed",
+            "unknown_market_counts": {},
+            "verification_method": "bounded full Parquet readback against preflight source digests",
+            "verified_rows": 278085,
+            "warnings": [
+              {
+                "code": "IGNORED_EQUIVALENT_TXT",
+                "count": 1,
+                "explanation": "The TXT source was fully validated and its uncompressed bytes matched the selected ZIP source.",
+                "source": "COTAHIST_A2002.TXT"
+              },
+              {
+                "code": "IGNORED_EQUIVALENT_TXT",
+                "count": 1,
+                "explanation": "The TXT source was fully validated and its uncompressed bytes matched the selected ZIP source.",
+                "source": "COTAHIST_A2003.TXT"
+              }
+            ],
+            "written_rows": 278085
+          },
+          "message": "Successfully extracted 278,085 records from 2 files. Saved to: /mnt/f4ec9d54-a0c2-4385-9e66-533d8f9307ae/Downloads/cotahist-final-process-coexisting-20261006/acceptance/work/cotahist-multi-parity-2002-2003-swm8ng51/fast/cotahist.parquet",
+          "output_file": "/mnt/f4ec9d54-a0c2-4385-9e66-533d8f9307ae/Downloads/cotahist-final-process-coexisting-20261006/acceptance/work/cotahist-multi-parity-2002-2003-swm8ng51/fast/cotahist.parquet",
+          "processing_mode": "fast",
+          "schema_version": 2,
+          "success": true,
+          "success_count": 2,
+          "total_files": 2,
+          "total_records": 278085
+        },
+        "slow": {
+          "assets": [
+            "todos"
+          ],
+          "elapsed_time": 56.40651345252991,
+          "error_count": 0,
+          "errors": {},
+          "integrity": {
+            "asset_classes": [
+              "todos"
+            ],
+            "complete_market_selection": true,
+            "excluded_records": 0,
+            "ignored_duplicate_sources": [
+              "/mnt/f4ec9d54-a0c2-4385-9e66-533d8f9307ae/Downloads/cotahist-final-process-coexisting-20261006/inputs/COTAHIST_A2002.TXT",
+              "/mnt/f4ec9d54-a0c2-4385-9e66-533d8f9307ae/Downloads/cotahist-final-process-coexisting-20261006/inputs/COTAHIST_A2003.TXT"
+            ],
+            "intentional_exclusions": 0,
+            "market_codes": [],
+            "missing_years": [],
+            "output_first_trading_date": "2002-01-02",
+            "output_last_trading_date": "2003-12-30",
+            "output_sha256": "1745d4373f99712ee5df6a71efa80880fead4abfd5b64b216f595c598b9413fb",
+            "raw_quotes": 278085,
+            "requested_years": [
+              2002,
+              2003
+            ],
+            "schema_version": 2,
+            "selected_quotes": 278085,
+            "selected_years": [
+              2002,
+              2003
+            ],
+            "selection_complete": true,
+            "source_complete": true,
+            "source_first_trading_date": "2002-01-02",
+            "source_last_trading_date": "2003-12-30",
+            "sources": [
+              {
+                "blank_lines": 0,
+                "content_sha256": "615202cfa6ce106d936bb62f9846cb482e8fad6c5317d5a826376f141e904286",
+                "declared_records": 129975,
+                "excluded_records": 0,
+                "expected_rows_sha256": "9409899f65c33f4292d3f5f0c99c30d978beb71fa78753a2ded6e5c155406bb2",
+                "first_trading_date": "2002-01-02",
+                "generation_date": "2004-01-05",
+                "header_base64": "MDBDT1RBSElTVC4yMDAyQk9WRVNQQSAyMDA0MDEwNSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA=",
+                "header_records": 1,
+                "intentional_exclusions": 0,
+                "last_trading_date": "2002-12-30",
+                "market_counts": {
+                  "010": 50701,
+                  "012": 477,
+                  "013": 90,
+                  "017": 116,
+                  "020": 40244,
+                  "030": 25647,
+                  "070": 11777,
+                  "080": 921
+                },
+                "member": "COTAHIST_A2002.TXT",
+                "outer_sha256": "ee002b9a533d310351ed07ccb3a8cd3badd84993a4969c5b58088d738de59116",
+                "raw_quotes": 129973,
+                "selected_quotes": 129973,
+                "source": "COTAHIST_A2002.zip",
+                "trailer_base64": "OTlDT1RBSElTVC4yMDAyQk9WRVNQQSAyMDA0MDEwNTAwMDAwMTI5OTc1ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA=",
+                "trailer_convention": "quotes_and_controls",
+                "trailer_records": 1,
+                "uncompressed_bytes": 32103825,
+                "unknown_market_counts": {},
+                "verified_rows": 129973,
+                "verified_rows_sha256": "9409899f65c33f4292d3f5f0c99c30d978beb71fa78753a2ded6e5c155406bb2",
+                "warnings": [],
+                "written_rows": 129973,
+                "year": 2002
+              },
+              {
+                "blank_lines": 0,
+                "content_sha256": "7585b054889654dc27197e4de184d635065e5672c696112e1778279bd4a1603f",
+                "declared_records": 148114,
+                "excluded_records": 0,
+                "expected_rows_sha256": "c8bee20f2774d3adf5ef859d13d3f17545850fdeef334b5decbd80a101cd2420",
+                "first_trading_date": "2003-01-02",
+                "generation_date": "2004-01-02",
+                "header_base64": "MDBDT1RBSElTVC4yMDAzQk9WRVNQQSAyMDA0MDEwMiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA=",
+                "header_records": 1,
+                "intentional_exclusions": 0,
+                "last_trading_date": "2003-12-30",
+                "market_counts": {
+                  "010": 53623,
+                  "012": 1525,
+                  "013": 42,
+                  "017": 146,
+                  "020": 44211,
+                  "030": 30031,
+                  "070": 17323,
+                  "080": 1211
+                },
+                "member": "COTAHIST_A2003.TXT",
+                "outer_sha256": "bcd337ebc1d92c190c4d8b77f582d2ec0890a8705fd5c10d68b28fa1eb15a2f0",
+                "raw_quotes": 148112,
+                "selected_quotes": 148112,
+                "source": "COTAHIST_A2003.zip",
+                "trailer_base64": "OTlDT1RBSElTVC4yMDAzQk9WRVNQQSAyMDA0MDEwMjAwMDAwMTQ4MTE0ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA=",
+                "trailer_convention": "quotes_and_controls",
+                "trailer_records": 1,
+                "uncompressed_bytes": 36584158,
+                "unknown_market_counts": {},
+                "verified_rows": 148112,
+                "verified_rows_sha256": "c8bee20f2774d3adf5ef859d13d3f17545850fdeef334b5decbd80a101cd2420",
+                "warnings": [],
+                "written_rows": 148112,
+                "year": 2003
+              }
+            ],
+            "status": "passed",
+            "unknown_market_counts": {},
+            "verification_method": "bounded full Parquet readback against preflight source digests",
+            "verified_rows": 278085,
+            "warnings": [
+              {
+                "code": "IGNORED_EQUIVALENT_TXT",
+                "count": 1,
+                "explanation": "The TXT source was fully validated and its uncompressed bytes matched the selected ZIP source.",
+                "source": "COTAHIST_A2002.TXT"
+              },
+              {
+                "code": "IGNORED_EQUIVALENT_TXT",
+                "count": 1,
+                "explanation": "The TXT source was fully validated and its uncompressed bytes matched the selected ZIP source.",
+                "source": "COTAHIST_A2003.TXT"
+              }
+            ],
+            "written_rows": 278085
+          },
+          "message": "Successfully extracted 278,085 records from 2 files. Saved to: /mnt/f4ec9d54-a0c2-4385-9e66-533d8f9307ae/Downloads/cotahist-final-process-coexisting-20261006/acceptance/work/cotahist-multi-parity-2002-2003-swm8ng51/slow/cotahist.parquet",
+          "output_file": "/mnt/f4ec9d54-a0c2-4385-9e66-533d8f9307ae/Downloads/cotahist-final-process-coexisting-20261006/acceptance/work/cotahist-multi-parity-2002-2003-swm8ng51/slow/cotahist.parquet",
+          "processing_mode": "slow",
+          "schema_version": 2,
+          "success": true,
+          "success_count": 2,
+          "total_files": 2,
+          "total_records": 278085
+        }
+      },
+      "published": true,
+      "rawReconciliation": {
+        "blankLines": {
+          "COTAHIST_A2002.zip": 0,
+          "COTAHIST_A2003.zip": 0
+        },
+        "blockLotDistinctTradingCodes": 0,
+        "blockLotRowsByYear": {},
+        "blockLotVolumeTotal": "0.00",
+        "firstTradingDate": "2002-01-02",
+        "intentionalExclusions": 0,
+        "lastTradingDate": "2003-12-30",
+        "marketCounts": {
+          "010": 104324,
+          "012": 2002,
+          "013": 132,
+          "017": 262,
+          "020": 84455,
+          "030": 55678,
+          "070": 29100,
+          "080": 2132
+        },
+        "missingYears": [],
+        "outputSha256": "1745d4373f99712ee5df6a71efa80880fead4abfd5b64b216f595c598b9413fb",
+        "previousSupportedRows": 278085,
+        "previousTwentyFieldsEqual": true,
+        "previousTwentyOutputSha256": "8e95eeb378f0ebfa405cbdb6401d81091dc1eec5734bcd196cde2d4d45c793f4",
+        "previousTwentySourceSha256": "8e95eeb378f0ebfa405cbdb6401d81091dc1eec5734bcd196cde2d4d45c793f4",
+        "rawQuotes": 278085,
+        "schemaVersion": 2,
+        "selectedQuotes": 278085,
+        "slowOutputSha256": "1745d4373f99712ee5df6a71efa80880fead4abfd5b64b216f595c598b9413fb",
+        "sourceChecksums": [
+          {
+            "contentSha256": "615202cfa6ce106d936bb62f9846cb482e8fad6c5317d5a826376f141e904286",
+            "outerSha256": "ee002b9a533d310351ed07ccb3a8cd3badd84993a4969c5b58088d738de59116",
+            "source": "COTAHIST_A2002.zip"
+          },
+          {
+            "contentSha256": "7585b054889654dc27197e4de184d635065e5672c696112e1778279bd4a1603f",
+            "outerSha256": "bcd337ebc1d92c190c4d8b77f582d2ec0890a8705fd5c10d68b28fa1eb15a2f0",
+            "source": "COTAHIST_A2003.zip"
+          }
+        ],
+        "sourceCount": 2,
+        "trailerConventions": {
+          "COTAHIST_A2002.zip": "quotes_and_controls",
+          "COTAHIST_A2003.zip": "quotes_and_controls"
+        },
+        "unknownMarketCounts": {},
+        "verifiedRows": 278085
+      },
+      "recordCount": 278085,
+      "schema": {
+        "ano_origem": "int64",
+        "arquivo_origem": "large_string",
+        "codigo_bdi": "large_string",
+        "codigo_isin": "large_string",
+        "data_pregao": "date32[day]",
+        "data_vencimento": "date32[day]",
+        "especificacao_papel": "large_string",
+        "fator_cotacao": "int64",
+        "id_fonte": "large_string",
+        "indicador_correcao": "large_string",
+        "linha_origem": "int64",
+        "melhor_oferta_compra": "decimal128(38, 2)",
+        "melhor_oferta_venda": "decimal128(38, 2)",
+        "membro_origem": "large_string",
+        "moeda_referencia": "large_string",
+        "nome_resumido": "large_string",
+        "numero_distribuicao": "int64",
+        "numero_negocios": "int64",
+        "prazo_termo": "large_string",
+        "preco_abertura": "decimal128(38, 2)",
+        "preco_exercicio": "decimal128(38, 2)",
+        "preco_exercicio_pontos": "decimal128(38, 6)",
+        "preco_fechamento": "decimal128(38, 2)",
+        "preco_maximo": "decimal128(38, 2)",
+        "preco_medio": "decimal128(38, 2)",
+        "preco_minimo": "decimal128(38, 2)",
+        "quantidade_total": "int64",
+        "registro_original": "fixed_size_binary[245]",
+        "ticker": "large_string",
+        "tipo_mercado": "large_string",
+        "tipo_registro": "large_string",
+        "volume_total": "decimal128(38, 2)"
+      },
+      "schemaVersion": 2,
+      "source": "cotahist",
+      "status": "passed",
+      "temporaryFiles": [],
+      "temporaryFilesAfterCleanup": [],
+      "year": 2002
+    }
+  ],
+  "limits": [
+    "ZIPs are checksum-identical copies of the supplied originals; TXT bytes are identical to their validated selected ZIP members.",
+    "The stored candidate total exceeds the process-preflight threshold. Resource admission remains enforced by the library.",
+    "This proves official raw-field equivalence and duplicate-representation handling for an eligible process request; it is not a repeated performance comparison.",
+    "The complete 2000-2026 default-thread acceptance is a separate campaign."
+  ]
+}
