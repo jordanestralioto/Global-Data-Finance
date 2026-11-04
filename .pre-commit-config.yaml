@@ -1,5 +1,43 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
+#
+# Hook stages
+# -----------
+#   pre-commit : fast local integrity and staged-diff checks
+#   commit-msg : Conventional Commits validation
+#   pre-push   : full type, test and dependency checks before publishing
+#
+# Bootstrap once with `uv sync --locked --all-extras --dev`, then install every
+# stage with: `uv run --locked --no-sync pre-commit install --install-hooks`.
+---
+minimum_pre_commit_version: "4.3.0"
+
+default_install_hook_types: [pre-commit, commit-msg, pre-push]
+# Without this, every hook that omits `stages` would also re-run on push.
+default_stages: [pre-commit]
+
+# No `default_language_version` on purpose. Pinning `python3.12` here made
+# every hook env depend on that exact interpreter being on PATH -- which the
+# CI matrix (3.12/3.13/3.14) only satisfies by accident, because the current
+# ubuntu-latest image happens to ship 3.12 as its system Python. When that
+# image moves on, the pin would break every job at once. These hooks are
+# standalone tools (ruff, yamllint, codespell, mdformat); they are not the
+# code under test, and any interpreter meeting requires-python runs them
+# identically. The project's own Python is pinned where it matters, in
+# [project] requires-python and the CI matrix.
+
+# `.agents/` is tracked so clones carry the portable validators, while the
+# central-skills project remains the only owner of generated harness content.
+# Generic file-based hooks must not format or inspect those projections.
+exclude: |
+  (?x)^(
+    \.agents/|
+    \.claude/|
+    \.codex/|
+    \.opencode/|
+    \.github/prompts/
+  )
+
 repos:
   # --------------------------------------------------------------------------
   # 0. Commit Message Validation (Conventional Commits - simplified)
@@ -8,135 +46,465 @@ repos:
     hooks:
       - id: validate-commit-msg
         name: validate-commit-msg
-        entry: .github/hooks/validate-commit-msg.sh
-        language: script
+        entry: bash .agents/scripts/validate-commit-msg.sh
+        language: system
         stages: [commit-msg]
 
-      - id: standardization-build
-        name: standardization-build
-        entry: uv run python examples/build_standardization_specs.py
+      # Supplement the shared hook's advertised length and period rules.
+      - id: validate-commit-msg-policy
+        name: validate-commit-msg-policy
+        entry: uv run --locked --no-sync python scripts/check_commit_msg.py
         language: system
-        files: ^src/domain/change_datas/.*\.json$
-        pass_filenames: false
+        stages: [commit-msg]
 
-      - id: validate-skills-metadata
-        name: validate-skills-metadata
-        entry: uv run python .agents/scripts/validate-skills.py
+      - id: check-harness-sync
+        name: check-harness-sync
+        # Generated AI-client links are not present in a clean checkout and
+        # are maintained deliberately, not as a code-commit quality gate.
+        entry: harness-sync --check
         language: system
-        files: (^|/)(SKILL\.md)$
         pass_filenames: false
+        always_run: true
+        stages: [manual]
+
+      - id: validate-agents-md
+        name: validate-agents-md
+        entry: >-
+          uv run --locked --no-sync python
+          .agents/skills/agents-md-author/scripts/validate_agents_md.py
+        language: system
+        files: ^AGENTS\.md$
+        pass_filenames: false
+        stages: [pre-commit]
+
+      - id: uv-lock-check
+        name: uv-lock-check
+        # `uv lock --check` is read-only. Do not replace it with `uv lock` or
+        # `uv sync`: those can alter tracked resolution or the environment.
+        entry: uv lock --check
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: lockfile-sync
+        name: lockfile-sync
+        entry: >-
+          uv run --locked --no-sync python
+          scripts/check_lockfile_sync.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: diff-sanity
+        name: diff-sanity
+        entry: >-
+          uv run --locked --no-sync python
+          scripts/check_diff_sanity.py
+        args:
+          - --allow-print-file
+          - scripts/check-import-cycles.py
+          - --allow-print-file
+          - scripts/check-shell-syntax.py
+          - --allow-print-file
+          - scripts/check-docs-contracts.py
+          - --allow-print-file
+          - scripts/check-ruff-policy.py
+          - --allow-print-file
+          - scripts/check_test_quality.py
+          - --allow-print-file
+          - src/globaldatafinance/application/b3_docs/extraction_result_formatter.py
+          - --allow-print-file
+          - src/globaldatafinance/application/cvm_docs/download_result_formatter.py
+          - --allow-print-file
+          - examples/01_quickstart_cvm.py
+          - --allow-print-file
+          - examples/02_quickstart_b3.py
+          - --allow-print-file
+          - examples/03_advanced_options_b3.py
+          - --allow-print-file
+          - examples/04_yearly_b3.py
+          # These benchmark CLIs intentionally emit their result reports.
+          - --allow-print-file
+          - scripts/benchmark_cvm_http.py
+          - --allow-print-file
+          - scripts/benchmark_cvm_full.py
+          # Gate CLIs intentionally print their validation results.
+          - --allow-print-file
+          - scripts/audit_locked_dependencies.py
+          - --allow-print-file
+          - scripts/check_commit_msg.py
+          - --allow-print-file
+          - scripts/check_release_evidence.py
+          - --allow-print-file
+          - scripts/check_distributions.py
+          - --allow-print-file
+          - scripts/release_acceptance.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: test-integrity
+        name: test-integrity
+        entry: >-
+          uv run --locked --no-sync python
+          scripts/check_test_integrity.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+      - id: test-quality
+        name: test-quality
+        entry: >-
+          uv run --locked --no-sync python
+          scripts/check_test_quality.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit, pre-push]
+
+      - id: shell-syntax
+        name: shell-syntax
+        entry: uv run --locked --no-sync python scripts/check-shell-syntax.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
   # --------------------------------------------------------------------------
   # 1. Basic File Checks
   # --------------------------------------------------------------------------
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v6.0.0
+    # frozen: v6.0.0
+    rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # pragma: allowlist secret
     hooks:
       - id: trailing-whitespace
+        exclude: |
+          (?x)^(
+            \.agents/|
+            \.claude/|
+            \.codex/|
+            \.opencode/|
+            \.github/prompts/
+          )
       - id: end-of-file-fixer
+        exclude: |
+          (?x)^(
+            \.agents/|
+            \.claude/|
+            \.codex/|
+            \.opencode/|
+            \.github/prompts/
+          )
       - id: mixed-line-ending
+        exclude: |
+          (?x)^(
+            \.agents/|
+            \.claude/|
+            \.codex/|
+            \.opencode/|
+            \.github/prompts/
+          )
       - id: check-yaml
       - id: check-toml
+      - id: check-json
       - id: check-merge-conflict
       - id: debug-statements
       - id: check-ast
       - id: check-added-large-files
-        args: ["--maxkb=1500"]
+        args: ["--maxkb=500"]
       - id: check-case-conflict
       - id: detect-private-key
       - id: check-executables-have-shebangs
       - id: check-shebang-scripts-are-executable
-  # --------------------------------------------------------------------------
-  # 2. Project Integrity (uv)
-  # --------------------------------------------------------------------------
-  - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.5.18
-    hooks:
-      - id: uv-lock
-
-  # Max lines per file (src + backend)
-  - repo: local
-    hooks:
-      - id: max-lines-per-file
-        name: max-lines-per-file
-        entry: bash .github/hooks/check-max-lines.sh
-        language: system
-        pass_filenames: false
-        always_run: true
+      - id: check-symlinks
+      - id: destroyed-symlinks
+      - id: forbid-submodules
+      - id: name-tests-test
+        args: ["--pytest-test-first"]
+        # Shared builders are import-only test support, not pytest modules.
+        exclude: ^tests/support/
 
   # --------------------------------------------------------------------------
   # 3. Security Checks
   # --------------------------------------------------------------------------
-  # Static Analysis for Security (Bandit)
-  - repo: https://github.com/PyCQA/bandit
-    rev: 1.9.2
-    hooks:
-      - id: bandit
-        args: ["-c", "pyproject.toml"]
-        additional_dependencies: ["bandit[toml]"]
-        exclude: ^(tests/|.agents/scripts/|.agents/skills/.*/scripts/)
+  # Static security analysis is handled by the explicit Ruff security profile
+  # below; the base configuration intentionally does not enable `S` globally.
 
-  # Dependency Vulnerabilities (pip-audit)
-  # Runs locally using the project's environment
-  - repo: local
-    hooks:
-      - id: pip-audit
-        name: pip-audit
-        # PYSEC-2026-89 (markdown): vuln transitiva via mkdocs-material;
-        # dev/docs-only, nao embarca no wheel runtime.
-        entry: uv run pip-audit . --ignore-vuln PYSEC-2026-89
-        language: system
-        pass_filenames: false
-        always_run: true
-
-  # Secret Detection (detect-secrets)
+  # Secret Detection: detect-secrets (baseline-driven, entropy + plugins)
   - repo: https://github.com/Yelp/detect-secrets
-    rev: v1.5.0
+    # frozen: v1.5.0
+    rev: 68e8b45440415753fff70a312ece8da92ba85b4a  # pragma: allowlist secret
     hooks:
       - id: detect-secrets
-        args: ["--baseline", ".secrets.baseline"]
-        exclude: ^(package\.lock|\.benchmarks/)
+        args:
+          - "--baseline"
+          - ".secrets.baseline"
+          # Audited false positives cover SHA-256 benchmark metadata, with
+          # baseline entries bound to each report file and digest.
+          # SHA-256 patch bindings are integrity metadata, not credentials.
+          - "--exclude-lines"
+          - '"diff_sha256":\s*"[0-9a-f]{64}"'
+        exclude: ^(package\.lock|\.secrets\.baseline)
 
-  # --------------------------------------------------------------------------
-  # 4. Formatting & Linting (Ruff replaces isort/flake8)
-  # --------------------------------------------------------------------------
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.6
+  # Secret Detection: gitleaks (provider-specific token patterns)
+  - repo: https://github.com/gitleaks/gitleaks
+    # frozen: v8.30.0
+    rev: 2ca41cc1372d1e939a6a879f18cdc19fc1cac1ce  # pragma: allowlist secret
     hooks:
-      - id: ruff
-        args: [--fix, --exit-non-zero-on-fix]
-      - id: ruff-format
+      - id: gitleaks
+        args: [--redact, --config=.gitleaks.toml]
+        pass_filenames: false
+        always_run: true
+
+  # CI/CD supply-chain audit of GitHub Actions workflows
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit
+    # v1.29.0
+    rev: 451b56af716f9f0d0c2b816503a3fd0cf8b036fa  # pragma: allowlist secret
+    hooks:
+      - id: zizmor
 
   # --------------------------------------------------------------------------
-  # 4.1. Unit Tests (Fast)
+  # 4. Formatting & Linting
   # --------------------------------------------------------------------------
+  # Ruff check/format enforce base rules on changed Python files.
+  # The local policy hook below owns the complete, path-scoped base, docs, and
+  # security profiles so CI and local hooks share one auditable entrypoint.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # frozen: v0.16.4
+    rev: aab412d509121cb5f7533134b7e67f9fab59c682  # pragma: allowlist secret
+    hooks:
+      - id: ruff-check
+        args: [--fix, --exit-non-zero-on-fix]
+        exclude: |
+          (?x)^(
+            \.agents/|
+            \.claude/|
+            \.codex/|
+            \.opencode/|
+            \.github/prompts/
+          )
+      - id: ruff-format
+        exclude: |
+          (?x)^(
+            \.agents/|
+            \.claude/|
+            \.codex/|
+            \.opencode/|
+            \.github/prompts/
+          )
+
   - repo: local
     hooks:
-      - id: pytest-unit
-        name: pytest-unit
-        entry: uv run pytest -q -m "not integration and not slow"
+      - id: ruff-policy
+        name: ruff-policy
+        entry: >-
+          uv run --locked --no-sync python scripts/check-ruff-policy.py
+          --profile all
         language: system
         pass_filenames: false
         always_run: true
+        stages: [pre-commit, pre-push]
+
+  - repo: https://github.com/hukkin/mdformat
+    # frozen: 1.0.0
+    rev: 2d496dbc18e31b83a1596685347ffe0b6041daf0  # pragma: allowlist secret
+    hooks:
+      - id: mdformat
+        # `--number` keeps 1./2./3. numbering instead of collapsing every
+        # ordered-list item to "1.", which reads badly in raw Markdown.
+        args: ["--number"]
+        additional_dependencies: ["mdformat-gfm==1.0.0"]
+        # docs/ is built and strictly validated by MkDocs Material; mdformat
+        # does not support Python-Markdown admonitions (!!!) and would corrupt
+        # 4-space callout indentations.
+        # Canonical source lives in the installed central distribution;
+        # .agents/ is a public, tracked projection; .claude/, .codex/,
+        # .opencode/ and .github/prompts/ are generated mirrors. The global
+        # exclusion keeps these paths out of generic hooks; this local guard
+        # prevents drift if a projection is passed to mdformat explicitly.
+        exclude: |
+          (?x)^(
+            docs/|
+            \.agents/|
+            \.claude/|
+            \.codex/|
+            \.opencode/|
+            \.github/prompts/|
+            openspec/
+          )
+
+  - repo: https://github.com/adrienverge/yamllint
+    # v1.38.0
+    rev: cba56bcde1fdd01c1deb3f945e69764c291a6530  # pragma: allowlist secret
+    hooks:
+      - id: yamllint
+        args: ["--strict"]
+
+  - repo: https://github.com/rhysd/actionlint
+    # v1.7.12
+    rev: 914e7df21a07ef503a81201c76d2b11c789d3fca  # pragma: allowlist secret
+    hooks:
+      - id: actionlint
+
+  - repo: https://github.com/codespell-project/codespell
+    # v2.4.3
+    rev: 57b21406f092110c18776e39b0bda50d37c945c8  # pragma: allowlist secret
+    hooks:
+      - id: codespell
+        args: ["--ignore-words=.codespellignore"]
+        files: ^(?:src|tests|scripts|examples)/.*\.(?:py|pyi|pyw|sh|bash)$
+        exclude: |
+          (?x)^(
+            \.agents/|
+            \.claude/|
+            \.codex/|
+            \.opencode/|
+            \.github/prompts/|
+            uv\.lock$|
+            \.secrets\.baseline$
+          )
+
+  # --------------------------------------------------------------------------
+  # 4.1. Import Graph & Documentation Contracts
+  # --------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: check-docs-contracts
+        name: check-docs-contracts
+        entry: uv run --locked --no-sync python scripts/check-docs-contracts.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit, pre-push]
+
+      - id: import-cycles
+        name: import-cycles
+        entry: uv run --locked --no-sync python scripts/check-import-cycles.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit, pre-push]
+
+      # Layer contracts live in [tool.importlinter] in pyproject.toml.
+      - id: import-linter
+        name: import-linter
+        entry: uv run --locked --no-sync lint-imports
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit, pre-push]
 
   # --------------------------------------------------------------------------
   # 5. Type Checking
   # --------------------------------------------------------------------------
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.18.2
+  # Runs inside the uv environment so mypy actually sees pydantic, pandas,
+  # pyarrow and httpx types -- a hook-isolated mypy would silently treat every
+  # third-party import as `Any`.
+  - repo: local
     hooks:
       - id: mypy
-        args: [--ignore-missing-imports, --pretty, --no-incremental]
-        additional_dependencies: [types-requests, types-toml, types-PyYAML]
-        exclude: ^examples/|^teste_site/|^\.github/|^\.agents/
+        name: mypy
+        entry: uv run --locked --no-sync mypy src
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
+      - id: mypy-supporting
+        name: mypy-supporting
+        entry: >-
+          uv run --locked --no-sync mypy src tests examples scripts
+          --disable-error-code no-untyped-def
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
 
   # --------------------------------------------------------------------------
-  # 6. Documentation
+  # 6. Full local checks (pre-push only)
   # --------------------------------------------------------------------------
-  - repo: https://github.com/PyCQA/pydocstyle
-    rev: 6.3.0
+  - repo: local
     hooks:
-      - id: pydocstyle
-        args:
-          - --convention=google
-          - --match-dir=^src
-          - --add-ignore=D100,D101,D102,D103,D104,D105,D107,D205,D212,D415,D417
+      - id: max-lines-per-file
+        name: max-lines-per-file
+        entry: >-
+          uv run --locked --no-sync python
+          .agents/scripts/check-max-lines.py
+        args: [src, tests, scripts, examples]
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit, pre-push]
+
+      # Same selection as the CI `quality` job. Bare `--cov` picks up source
+      # and the fail_under floor from [tool.coverage.*] in pyproject.toml,
+      # so the gate is defined in exactly one place.
+      - id: pytest-unit
+        name: pytest-unit
+        entry: >-
+          uv run --locked --no-sync pytest -q
+          -m "not slow and not real_data and not perf" --cov
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
+      # The product coverage gate intentionally measures only `src`. Keep the
+      # opt-in campaign executor on its own deterministic floor so its process
+      # and evidence lifecycle cannot regress unnoticed.
+      - id: real-validation-coverage
+        name: real-validation-coverage
+        entry: >-
+          uv run --locked --no-sync pytest -q
+          tests/tooling/test_cotahist_oracle.py
+          tests/tooling/test_file_digests.py
+          tests/tooling/test_cvm_archive_oracle.py
+          tests/tooling/test_cvm_catalog.py
+          tests/tooling/test_real_validation.py
+          tests/tooling/test_real_validation_b3.py
+          tests/tooling/test_real_validation_cases.py
+          tests/tooling/test_real_validation_cvm.py
+          tests/tooling/test_real_validation_cvm_integration.py
+          tests/tooling/test_real_validation_matrix.py
+          tests/tooling/test_real_validation_process.py
+          tests/tooling/test_real_validation_report.py
+          tests/tooling/test_real_validation_resume.py
+          tests/tooling/test_real_validation_runner.py
+          tests/tooling/test_real_validation_types.py
+          tests/tooling/test_real_validation_utils.py
+          --cov=scripts.cotahist_oracle
+          --cov=scripts.file_digests
+          --cov=scripts.cvm_archive_oracle
+          --cov=scripts.cvm_catalog
+          --cov=scripts.real_validation
+          --cov=scripts.real_validation_b3
+          --cov=scripts.real_validation_cases
+          --cov=scripts.real_validation_cvm
+          --cov=scripts.real_validation_matrix
+          --cov=scripts.real_validation_report
+          --cov=scripts.real_validation_resume
+          --cov=scripts.real_validation_runner
+          --cov=scripts.real_validation_types
+          --cov=scripts.real_validation_utils
+          --cov-report=term-missing
+          --cov-fail-under=85
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
+      - id: pip-audit
+        name: pip-audit
+        # Audit the uv-locked graph, including dev dependencies, without
+        # assuming the local environment has been synchronized.
+        entry: >-
+          uv run --locked --no-sync python
+          scripts/audit_locked_dependencies.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

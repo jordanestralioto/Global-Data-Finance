@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "artifactType": {
+      "const": "review-plan"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "items": {
+      "items": {
+        "properties": {
+          "checklists": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "contextFiles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "expansions": {
+            "items": {
+              "properties": {
+                "createdAt": {
+                  "type": "string"
+                },
+                "files": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "reason",
+                "files",
+                "createdAt"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "files": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "itemId": {
+            "type": "string"
+          },
+          "packId": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "integer"
+          },
+          "skills": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "in_review",
+              "completed",
+              "skipped"
+            ],
+            "type": "string"
+          },
+          "topic": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "itemId",
+          "topic",
+          "priority",
+          "packId",
+          "status",
+          "files",
+          "skills",
+          "checklists",
+          "contextFiles",
+          "expansions"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "reviewId": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "ready",
+        "in_review",
+        "completed"
+      ],
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifactType",
+    "schemaVersion",
+    "reviewId",
+    "status",
+    "createdAt",
+    "updatedAt",
+    "items"
+  ],
+  "title": "Review Plan",
+  "type": "object"
+}

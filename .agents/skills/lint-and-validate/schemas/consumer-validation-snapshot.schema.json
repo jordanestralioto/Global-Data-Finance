@@ -1,0 +1,194 @@
+{
+  "$defs": {
+    "counts": {
+      "additionalProperties": false,
+      "properties": {
+        "errors": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "items": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "passed": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "scopes": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "skipped": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "errors",
+        "failed",
+        "items",
+        "passed",
+        "scopes",
+        "skipped"
+      ],
+      "type": "object"
+    },
+    "item": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "path": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      },
+      "required": [
+        "name",
+        "path",
+        "sha256"
+      ],
+      "type": "object"
+    },
+    "relativePath": {
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*\\\\)(?!.*(?:^|/)\\.\\.?(?:/|$)).+$",
+      "type": "string"
+    },
+    "scope": {
+      "additionalProperties": false,
+      "properties": {
+        "excludedItems": {
+          "items": {
+            "$ref": "#/$defs/item"
+          },
+          "type": "array"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/item"
+          },
+          "type": "array"
+        },
+        "name": {
+          "enum": [
+            "agents",
+            "skills",
+            "workflows"
+          ]
+        },
+        "path": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "status": {
+          "enum": [
+            "passed",
+            "skipped"
+          ]
+        }
+      },
+      "required": [
+        "excludedItems",
+        "items",
+        "name",
+        "path",
+        "required",
+        "status"
+      ],
+      "type": "object"
+    },
+    "sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "validator": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "status": {
+          "const": "passed"
+        }
+      },
+      "required": [
+        "id",
+        "status"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "consumer-validation-snapshot.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "counts": {
+      "$ref": "#/$defs/counts"
+    },
+    "effectiveScopes": {
+      "items": {
+        "$ref": "#/$defs/scope"
+      },
+      "type": "array"
+    },
+    "executorVersion": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "exitCode": {
+      "const": 0
+    },
+    "profile": {
+      "const": "consumer-isolated-v1"
+    },
+    "protocolVersion": {
+      "const": "consumer-validation-v1"
+    },
+    "requestIdentity": {
+      "$ref": "#/$defs/sha256"
+    },
+    "snapshotVersion": {
+      "const": "consumer-validation-snapshot-v1"
+    },
+    "stableContentIdentity": {
+      "$ref": "#/$defs/sha256"
+    },
+    "status": {
+      "const": "passed"
+    },
+    "validators": {
+      "items": {
+        "$ref": "#/$defs/validator"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "snapshotVersion",
+    "protocolVersion",
+    "profile",
+    "executorVersion",
+    "requestIdentity",
+    "effectiveScopes",
+    "validators",
+    "counts",
+    "status",
+    "exitCode",
+    "stableContentIdentity"
+  ],
+  "title": "Consumer Validation Snapshot",
+  "type": "object"
+}

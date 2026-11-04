@@ -1,34 +1,35 @@
 # Retry Strategy
 
-Technical documentation outlining the error retry and back-off strategies enforced within Global-Data-Finance.
+Retry classification and exponential backoff used by Global-Data-Finance.
 
----
+______________________________________________________________________
 
 ## Overview
 
-The `RetryStrategy` domain class evaluates execution exceptions to determine retry eligibility and computes optimized exponential back-off delays between attempts.
+`RetryStrategy` classifies exceptions by type and message and calculates
+exponential backoff with jitter. The caller decides when to repeat an operation.
 
----
+______________________________________________________________________
 
 ## Highlights
 
-- ✅ **Transient Intelligence**: Filters failures to trigger retries strictly upon encountering transient network interruptions
-- ✅ **Exponential Back-off**: Progressively elongates rest intervals between successive unsuccessful execution attempts
-- ✅ **Configurable Thresholds**: Full support for tailoring initial delays, max ceilings, and scaling multiplier coefficients
-- ✅ **Type-Safe Hierarchy**: Evaluates errors leveraging the repository's dedicated custom exception hierarchy
+- Exception classification with a message-keyword fallback.
+- Exponential backoff with multiplicative jitter and a configurable cap.
+- Explicit exclusions for `PathPermissionError`, `DiskFullError`, and `ValueError`.
 
----
+______________________________________________________________________
 
 ## Retryable Exception Rules
 
 ### Always Retryable Exceptions
 
 - `NetworkError` - Connection drops or socket disruptions
-- `TimeoutError` - Remote server query timing failures
+- `DownloadTimeoutError` - CVM download timeout failures
 
 ### Keyword-Based Exception Matchers
 
-Standard runtime exceptions triggered by underlying transports are marked retryable if their error string matches standard connection keywords:
+For any other non-excluded exception, the strategy searches its lowercased
+message for these keywords:
 
 - `"timeout"`
 - `"connection refused"`
@@ -38,13 +39,52 @@ Standard runtime exceptions triggered by underlying transports are marked retrya
 - `"unavailable"`
 - `"try again"`
 
+This fallback also accepts a generic exception, such as
+`Exception("Operation timeout occurred")`. Its message does not prove the
+failure is transient. For manual retry, use idempotent operations or apply
+your own classification before repeating a state change.
+
 ### Never Retryable (Fail-Fast) Exceptions
 
 - `PathPermissionError` - File system authorization blocks
 - `DiskFullError` - Local volume capacity exhaustion
-- `ValueError` / `InvalidDocumentName` - Invalid API parameters or unapproved inputs
+- `ValueError` - Validation error
 
----
+### HTTP Statuses in CVM Downloads
+
+The CVM adapter classifies HTTP statuses before translating failures into
+`NetworkError`. Only `408`, `429`, `500`, `502`, `503`, and `504` allow retries.
+Other statuses, including `403`, `404`, and `410`, end the attempt without
+additional backoff. Diagnostics retain the original status. Status selection
+takes precedence over keywords in the message or URL; timeouts and connection
+failures continue to use the shared strategy.
+
+### HTTP Limits and Redirects
+
+The download byte limit requires `Accept-Encoding: identity`. Responses with
+other HTTP content encodings are rejected before reading, including redirect
+responses; internal ZIP compression remains supported and is checked against
+extraction limits. The byte counter also limits intermediate redirect bodies
+without `Content-Length`. Calls to the shared adapter without a byte limit
+retain existing HTTP content decoding.
+
+Downloads with HTTP `identity` encoding compare received bytes with the valid
+`Content-Length` from that same GET response. A mismatch rejects and removes
+only the attempt's staging file; CVM applies its transport-failure retry policy.
+Missing or invalid metadata does not bypass byte limits or complete ZIP
+validation. CVM does not issue HEAD after downloading, avoiding comparisons
+between different representations when the source republishes a file.
+
+HEAD also requests `identity` and closes bodies without reading or decoding,
+including redirect bodies. The `Content-Length` header is preserved as
+resource metadata; its value is not treated as a HEAD body size.
+
+In the shared HTTP adapter, redirects changing scheme, host, or port retain
+only `Accept`, `Accept-Encoding`, `Accept-Language`, `Connection`, `Host`, and
+`User-Agent`. Credentials and custom headers are confined to the initial
+origin. CVM header configuration supplies `User-Agent` when provided.
+
+______________________________________________________________________
 
 ## Public API
 
@@ -84,7 +124,7 @@ for retry_count in range(3):
     print(f"Attempt {retry_count + 1} scheduling delay: {backoff} seconds")
 ```
 
-**Sample Estimated Output (initial=1.0, multiplier=2.0 with Jitter [0.5, 1.5])**:
+**Sample Estimated Output (initial=1.0, multiplier=2.0 with bounded multiplicative jitter [0.5, 1.5])**:
 
 ```text
 Attempt 1 scheduling delay: ~1.0 seconds (e.g. 0.92s)
@@ -92,9 +132,12 @@ Attempt 2 scheduling delay: ~2.0 seconds (e.g. 2.15s)
 Attempt 3 scheduling delay: ~4.0 seconds (e.g. 3.80s)
 ```
 
-> Note: The `calculate_backoff` method applies randomized *Full Jitter* (`[0.5, 1.5]`) on top of the base exponential calculation to prevent thundering-herd retry collisions when multiple concurrent downloads fail in lockstep.
+> Note: The `calculate_backoff` method applies bounded multiplicative jitter
+> with a uniformly sampled factor between `0.5` and `1.5` on top of the base
+> exponential calculation. This prevents thundering-herd retry collisions when
+> multiple concurrent downloads fail in lockstep.
 
----
+______________________________________________________________________
 
 ## Practical Implementation Examples
 
@@ -113,7 +156,8 @@ strategy = RetryStrategy(
 
 max_retries = 3
 
-for attempt in range(max_retries):
+# max_retries counts additional attempts after the first execution.
+for attempt in range(max_retries + 1):
     try:
         result = download_file()
         break  # Successful execution completion
@@ -121,7 +165,7 @@ for attempt in range(max_retries):
         if not strategy.is_retryable(exc):
             raise  # Abort loop on hard system faults
 
-        if attempt < max_retries - 1:
+        if attempt < max_retries:
             backoff = strategy.calculate_backoff(attempt)
             print(f"Attempt {attempt + 1} failed. Next attempt scheduled in {backoff}s...")
             time.sleep(backoff)
@@ -129,16 +173,23 @@ for attempt in range(max_retries):
             raise  # Exhausted maximum permitted attempts
 ```
 
----
+______________________________________________________________________
 
 ## Automated Library Adapter Behavior
 
 Concrete download adapters invoke `RetryStrategy` automatically during network operations:
 
 ```python
-# AsyncDownloadAdapterCVM natively integrates automated exponential backoff loops
+from globaldatafinance import FundamentalStocksDataCVM
+
+# CvmDownloadAdapter natively integrates automated exponential backoff loops
 cvm = FundamentalStocksDataCVM()
-cvm.download(...)  # Automatic fault recovery across transient network interruptions
+result = cvm.download(
+    destination_path="/data/cvm",
+    list_docs=["DFP"],
+    initial_year=2023,
+    last_year=2023,
+)
 ```
 
 The underlying adapter execution loop operates as follows:
@@ -147,9 +198,9 @@ The underlying adapter execution loop operates as follows:
 2. If exceptions occur, evaluates if the resulting error matches retryable criteria
 3. Computes the required exponential back-off duration
 4. Yields worker threads for the duration of the computed back-off interval
-5. Repeats down-streaming steps until completion or maximum retry threshold exhaustion
+5. Repeats until the initial execution plus `max_retries` additional attempts are exhausted, or the operation succeeds
 
----
+______________________________________________________________________
 
 ## Global Environment Retry Customization
 
@@ -163,7 +214,7 @@ export DATAFINANCE_NETWORK_MAX_RETRIES=5
 export DATAFINANCE_NETWORK_RETRY_BACKOFF=2.0
 ```
 
----
+______________________________________________________________________
 
 ## Project Exception Definitions
 
@@ -172,13 +223,13 @@ The `RetryStrategy` engine evaluates symbols generated from `macro_exceptions`:
 ```python
 from globaldatafinance.macro_exceptions import (
     NetworkError,          # Transient network communication interruptions
-    TimeoutError,          # Request execution timeout events
+    DownloadTimeoutError,  # Download timeout events
     PathPermissionError,   # Filesystem write boundary lockouts
     DiskFullError          # Storage capacity exhaustion errors
 )
 ```
 
----
+______________________________________________________________________
 
 ## Related Documentation
 

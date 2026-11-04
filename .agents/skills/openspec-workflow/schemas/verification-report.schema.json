@@ -1,0 +1,200 @@
+{
+  "$defs": {
+    "finding": {
+      "additionalProperties": false,
+      "properties": {
+        "classification": {
+          "type": "string"
+        },
+        "code": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "message": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "type": "object"
+    },
+    "mappings": {
+      "items": {
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "required": [
+              "requirement"
+            ]
+          },
+          {
+            "required": [
+              "scenario"
+            ]
+          },
+          {
+            "required": [
+              "decision"
+            ]
+          }
+        ],
+        "properties": {
+          "decision": {
+            "type": "string"
+          },
+          "implementationEvidence": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "requirement": {
+            "type": "string"
+          },
+          "scenario": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "covered",
+              "followed",
+              "passed",
+              "blocked"
+            ]
+          },
+          "testEvidence": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "status",
+          "implementationEvidence",
+          "testEvidence"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "$id": "verification-report.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "artifactType": {
+      "const": "verification-report"
+    },
+    "blockers": {
+      "items": {
+        "$ref": "#/$defs/finding"
+      },
+      "type": "array"
+    },
+    "changeName": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "designDecisions": {
+      "$ref": "#/$defs/mappings"
+    },
+    "repositoryFingerprint": {
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "const": "sha256"
+        },
+        "changedFiles": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "head": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "value": {
+          "pattern": "^[0-9a-fA-F]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "algorithm",
+        "value",
+        "head",
+        "changedFiles"
+      ],
+      "type": "object"
+    },
+    "requirements": {
+      "$ref": "#/$defs/mappings"
+    },
+    "scenarios": {
+      "$ref": "#/$defs/mappings"
+    },
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "sourceDigest": {
+      "pattern": "^[0-9a-fA-F]{64}$",
+      "type": "string"
+    },
+    "verdict": {
+      "enum": [
+        "passed",
+        "blocked"
+      ]
+    },
+    "warnings": {
+      "items": {
+        "allOf": [
+          {
+            "$ref": "#/$defs/finding"
+          },
+          {
+            "properties": {
+              "classification": {
+                "const": "out-of-contract"
+              }
+            },
+            "required": [
+              "classification"
+            ]
+          }
+        ]
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "artifactType",
+    "changeName",
+    "sourceDigest",
+    "repositoryFingerprint",
+    "requirements",
+    "scenarios",
+    "designDecisions",
+    "blockers",
+    "warnings",
+    "verdict"
+  ],
+  "title": "OpenSpec semantic verification report",
+  "type": "object"
+}

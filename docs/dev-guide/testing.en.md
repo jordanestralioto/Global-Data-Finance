@@ -1,186 +1,119 @@
-# Testing Strategy
+# Testing
 
-Comprehensive guide detailing automated test organization, execution commands, and testing patterns implemented within Global-Data-Finance.
+Use the environment prepared in the [contributing guide](contributing.md).
+The default gate combines unit tests and deterministic integrations; each test
+creates its own local inputs.
 
----
-
-## Test Repository Hierarchy
-
-The test directory structure cleanly mirrors the source tree. Subdirectories inside individual source test folders serve an strictly **organizational** purpose (grouping test scripts by functional topic to enhance code legibility) rather than architectural enforcement—all testing fixtures import symbols directly from flat source modules (`from globaldatafinance.brazil.<country>.<source>.<module> import ...`).
-
-```text
-tests/
-├── application/                       # Unit tests evaluating public application facades
-│   ├── cvm_docs/
-│   └── b3_docs/
-│       └── result_formatters/
-├── brazil/
-│   ├── b3_data/
-│   │   └── historical_quotes/         # Flat layout containing 21 test_*.py scripts directly in folder
-│   └── cvm/
-│       └── fundamental_stocks_data/
-│           ├── application/use_cases/ # Orchestration use case tests (client.py)
-│           ├── domain/                # Value object and domain validator tests (core.py)
-│           ├── infra/adapters/        # Concrete I/O adapter tests (http.py, extract.py)
-│           ├── exceptions/            # Custom exception triggering suites (errors.py)
-│           └── integration/           # Integration test suites marked with @pytest.mark.integration
-├── core/
-├── macro_infra/
-└── macro_exceptions/
-```
-
----
-
-## Executing Tests
-
-### Running the Entire Suite
+## Run the default gate
 
 ```bash
-uv run pytest
+uv run --locked --no-sync pytest -m "not slow and not real_data and not perf" \
+  --cov --cov-report=xml --cov-report=term-missing
 ```
 
-### Evaluating Code Coverage
-
-The root `pytest.ini` file structurally enforces a coverage floor of `fail_under = 70` across aggregated runs.
+For a localized change, start with the affected module, for example:
 
 ```bash
-uv run pytest --cov=src --cov-report=html
+uv run --locked --no-sync pytest tests/application/b3_docs
 ```
 
-### Utilizing Pytest Markers
+`pytest.ini` defines discovery and markers; `pyproject.toml` defines coverage.
+For an HTML report, add `--cov-report=html` to the coverage command.
 
-Registered markers in `pytest.ini` include: `unit`, `integration`, `slow`, and `asyncio` (enforced via `--strict-markers` to catch undeclared custom markers immediately).
+## Classify each test
+
+Every test has **exactly one primary tier**:
+
+| Tier | Contract |
+| --- | --- |
+| `unit` | Isolated behavior with pure collaborators, fakes, or stubs. |
+| `integration` | Multiple real components and deterministic local filesystem. |
+| `perf` | Benchmarks or resource measurements; always opt-in. |
+
+Use `slow` for heavy scenarios and `asyncio` for asynchronous execution.
+`real_data` requires `integration`, uses caller-supplied COTAHIST, and is
+opt-in. These qualifiers do not replace the primary tier.
 
 ```bash
-# Execute only rapid isolated unit tests
-uv run pytest -m unit
-
-# Execute integration tests
-uv run pytest -m integration
-
-# Combine logical marker constraints
-uv run pytest -m "integration and not slow"
+uv run --locked --no-sync pytest -m unit
+uv run --locked --no-sync pytest -m "integration and not slow and not real_data"
+uv run --locked --no-sync pytest tests/perf -m perf -o addopts=''
 ```
 
----
+A command with `-m` replaces the default selection; use explicit qualifiers
+to keep external and slow scenarios outside the intended run.
 
-## Authoring Tests
+## Write useful tests
 
-### Unit Test Pattern
+- Mirror the affected boundary: `tests/application/`, the source under
+  `tests/brazil/`, or shared foundations. Subdirectories organize topics.
+- Prove behavior, limits, transitions, and regressions through observable
+  outcomes; covered line counts do not replace useful assertions.
+- Use `tmp_path` and ZIP, CSV, or Parquet inputs created by the test. Replace
+  network calls with `httpx.MockTransport` or local collaborators.
+- Parquet reading and writing also need real PyArrow proofs of schema,
+  types, content, and temporary-file cleanup. Pandas and Polars are not runtime
+  dependencies of the library.
+- Document deletions and consolidations in `.test-integrity-policy.json`.
 
-```python
-import pytest
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.core import AvailableDocsCVM
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.errors import (
-    InvalidDocumentName,
-)
-
-@pytest.mark.unit
-class TestAvailableDocs:
-    def test_validate_valid_doc(self):
-        """Verifies validation succeeds without exception on valid document code."""
-        docs = AvailableDocsCVM()
-        docs.validate_docs_name("DFP")  # Should pass silently
-
-    def test_validate_invalid_doc(self):
-        """Verifies InvalidDocumentName is raised upon supplying unverified strings."""
-        docs = AvailableDocsCVM()
-        with pytest.raises(InvalidDocumentName):
-            docs.validate_docs_name("INVALID_CODE")
-```
-
-> Types and exceptions belong within the flat modules of their owning source feature: for CVM inside `brazil.cvm.fundamental_stocks_data.core` and `brazil.cvm.fundamental_stocks_data.errors`; for B3 logical separation is segmented topically—entities in `models.py`, value objects in `years.py`/`processing.py`, path security validators in `filesystem.py`, asset services in `assets.py`, and exceptions in `errors.py`.
-
-### Mock and Dependency Substitution Strategies
-
-To decouple unit verification from live network servers or real storage file system IO, test fixtures substitute external adapters using duck-typed stubs or `monkeypatch.setattr`:
-
-```python
-class MockRepository:
-    def download_docs(self, tasks):
-        return DownloadResultCVM(
-            success_count_downloads=2,
-            error_count_downloads=0,
-            successful_downloads=["DFP_2023", "ITR_2023"],
-            failed_downloads={},
-        )
-
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.client import (
-    DownloadDocumentsUseCaseCVM,
-)
-
-use_case = DownloadDocumentsUseCaseCVM(MockRepository())
-result = use_case.execute(destination_path="/tmp/cvm")
-assert result.success_count_downloads == 2
-```
-
-### Integration Testing Pattern
-
-```python
-import pytest
-from globaldatafinance import FundamentalStocksDataCVM
-
-@pytest.mark.integration
-class TestFundamentalStocksDataIntegration:
-    def test_get_available_docs(self):
-        """Evaluates live instantiation and catalog mapping generation."""
-        cvm = FundamentalStocksDataCVM()
-        docs = cvm.get_available_docs()
-
-        assert isinstance(docs, dict)
-        assert len(docs) > 0
-        assert "DFP" in docs
-```
-
----
-
-## Standard Test Fixtures
-
-```python
-import pytest
-from pathlib import Path
-
-@pytest.fixture
-def temp_dir(tmp_path):
-    """Provides an isolated temporary directory per test execution."""
-    return tmp_path
-
-@pytest.fixture
-def sample_zip_file(tmp_path):
-    """Creates an automated mockup ZIP archive file fixture."""
-    zip_path = tmp_path / "test.zip"
-    # Construct mockup ZIP structural headers...
-    return zip_path
-```
-
----
-
-## Coverage Goals & Gates
-
-Target: **>= 70% aggregated code coverage** (automatically enforced via `fail_under = 70` within `pytest.ini`). The practical recommended target for newly introduced feature modules is `>= 80%`.
+The structural gate below checks tiers and observations in test bodies;
+it is heuristic and does not prove assertion semantics:
 
 ```bash
-# Generate terminal missing line summary report
-uv run pytest --cov=src --cov-report=term-missing
-
-# Compile interactive HTML diagnostic coverage tree
-uv run pytest --cov=src --cov-report=html
-open htmlcov/index.html
+uv run --locked --no-sync python scripts/check_test_quality.py
 ```
 
----
+## Use local COTAHIST
 
-## Continuous Integration (CI/CD)
+Official data belongs in a caller-owned directory such as
+`cotahist_b3_local/`, which Git ignores. Tests do not download these files or
+read `.env` implicitly. Supply paths and a year explicitly:
 
-Automated quality verification gates execute on GitHub Actions during:
+```bash
+COTAHIST_PATH=./cotahist_b3_local COTAHIST_TEST_YEAR=2023 \
+  uv run --locked --no-sync pytest -m "real_data and not slow"
+COTAHIST_PATH=./cotahist_b3_local COTAHIST_TEST_YEAR=2023 \
+  uv run --locked --no-sync pytest -m "real_data and slow"
+```
 
-- Commit pushes targeting `main` or `develop` branches
-- Every Pull Request opened against project target branches
-- Tagged release build packaging workflows
+The first selection does not write Parquet, but the current fixture performs
+full preflight of every catalog year, including hashes and every record.
+Even with `not slow`, this setup can read large files in full. Extraction
+proofs, including sampling, annual validation, and `fast`/`slow` parity, are
+`slow`. Full auditing uses an independent decoder.
 
----
+The fixture inspects the complete catalog before selecting a year. Without
+`COTAHIST_PATH`, the selected suite is skipped. When it is set, invalid, empty,
+unreadable, or missing-year input fails. A sole year can be inferred; with
+multiple years, `COTAHIST_TEST_YEAR` is required and must contain four digits.
+ZIP takes precedence over TXT. Internal members accept modern
+`COTAHIST_A{YYYY}.TXT` and historical `COTAHIST.A{YYYY}` and
+`COTAHIST_A{YYYY}` names, always matching the year.
 
-## Next Steps
+`cotahist_b3/` contains only the examples' versioned synthetic samples,
+generated by `scripts/generate_example_cotahist.py`. They are tested under
+`tests/examples` without `real_data`. An official annual dataset may become
+mandatory in CI only after a versioned fixture or a published artifact with
+a compatible license exists.
 
-- [Contributing Guide](contributing.md) - Workflow expectations for contributors
-- [Architecture Guide](architecture.md) - Deep structural design concepts
+## Coverage and CI
+
+The product requires **85% aggregate coverage of `src/`, including branches**.
+The real-validation executor has a separate 85% floor, also including branches.
+To run its gate without copying the module list and options:
+
+```bash
+uv run --locked --no-sync pre-commit run real-validation-coverage \
+  --hook-stage pre-push --all-files
+```
+
+The quality matrix runs on Python 3.12, 3.13, and 3.14. Canonical settings are
+`pyproject.toml`, `pytest.ini`, `.pre-commit-config.yaml`, and
+`.github/workflows/pipeline.yml`. [Release acceptance](release-readiness.md)
+adds native Windows/macOS evidence, publication fault scenarios, and packages.
+
+## Audit external data
+
+The complete CVM/COTAHIST campaign is opt-in and may take hours. Use the
+[external-data validation guide](real-data-validation.md) to run it, interpret
+reports, and resume a campaign. It is outside the deterministic local gate.

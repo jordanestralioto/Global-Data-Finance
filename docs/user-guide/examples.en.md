@@ -2,7 +2,7 @@
 
 This page provides end-to-end operational code examples illustrating how to implement Global-Data-Finance in real-world data engineering scripts and analytical workflows.
 
----
+______________________________________________________________________
 
 ## Example 1: Full DFP Regulatory Ingestion
 
@@ -15,26 +15,31 @@ from globaldatafinance import FundamentalStocksDataCVM
 cvm = FundamentalStocksDataCVM()
 
 # Trigger download with automated Parquet conversion
-cvm.download(
+cvm_result = cvm.download(
     destination_path="/home/user/financial_data/dfp",
     list_docs=["DFP"],
     initial_year=2020,
     last_year=2023,
-    automatic_extractor=True  # Automatically converts enclosed ZIP tables into Parquet
+    automatic_extractor=True  # Automatically converts downloaded tables into Parquet
 )
+if cvm_result.error_count_downloads > 0 or cvm_result.success_count_downloads == 0:
+    print(f"✗ Incomplete CVM download: {cvm_result.failed_downloads}")
+    raise SystemExit(1)
 
 print("✓ Ingestion and extraction completed successfully!")
 ```
 
----
+______________________________________________________________________
 
 ## Example 2: High-Performance Equities and ETF Extraction
 
-Extract historical exchange trading quotes for spot market equities and ETFs utilizing multi-threaded vectorization.
+Extract historical exchange trading quotes for equities and ETFs across the spot
+(010) and fractional (020) markets, utilizing multi-threaded vectorization.
 
 ```python
 from globaldatafinance import HistoricalQuotesB3
 import time
+import os
 
 # Instantiate public client
 b3 = HistoricalQuotesB3()
@@ -56,22 +61,32 @@ result = b3.extract(
 elapsed = time.time() - start_time
 
 # Display execution diagnostics
-if result['success']:
+if (
+    result['success']
+    and result['total_files'] > 0
+    and result['total_records'] > 0
+    and result['output_file']
+    and os.path.isfile(result['output_file'])
+    and os.path.getsize(result['output_file']) > 0
+):
     print(f"✓ Extraction complete in {elapsed:.2f}s")
     print(f"  Processed records: {result['total_records']:,}")
     print(f"  Average throughput: {result['total_records']/elapsed:,.0f} records/sec")
     print(f"  Consolidated artifact: {result['output_file']}")
+else:
+    print(f"✗ Incomplete extraction: {result['errors']}")
+    raise SystemExit(1)
 ```
 
----
+______________________________________________________________________
 
 ## Example 3: Unified Automated Processing Pipeline
 
 An integrated ingestion script compiling corporate fundamental disclosures from CVM alongside historical exchange quotes from B3.
 
 ```python
-from globaldatafinance import FundamentalStocksDataCVM, HistoricalQuotesB3
 import os
+from globaldatafinance import FundamentalStocksDataCVM, HistoricalQuotesB3
 
 
 # Configure target filesystem repositories
@@ -86,13 +101,16 @@ print("PHASE 1: Downloading CVM Financial Filings")
 print("=" * 60)
 
 cvm = FundamentalStocksDataCVM()
-cvm.download(
+cvm_result = cvm.download(
     destination_path=cvm_dir,
     list_docs=["DFP", "ITR"],
     initial_year=2022,
     last_year=2023,
     automatic_extractor=True
 )
+if cvm_result.error_count_downloads > 0 or cvm_result.success_count_downloads == 0:
+    print(f"✗ Incomplete CVM download: {cvm_result.failed_downloads}")
+    raise SystemExit(1)
 
 # === PHASE 2: B3 Processing ===
 print("\n" + "=" * 60)
@@ -108,6 +126,16 @@ result = b3.extract(
     destination_path=output_dir,
     output_filename="market_quotes_2022_2023"
 )
+if (
+    not result['success']
+    or result['total_files'] == 0
+    or result['total_records'] == 0
+    or not result['output_file']
+    or not os.path.isfile(result['output_file'])
+    or os.path.getsize(result['output_file']) == 0
+):
+    print(f"✗ Incomplete B3 extraction: {result['errors']}")
+    raise SystemExit(1)
 
 # === PHASE 3: Execution Summary ===
 print("\n" + "=" * 60)
@@ -118,11 +146,17 @@ print(f"✓ Corporate CVM archives deposited at: {cvm_dir}")
 print(f"✓ Consolidated B3 market quotes persisted at: {result['output_file']}")
 ```
 
----
+______________________________________________________________________
 
 ## Example 4: Analytical Exploration with Pandas
 
-Load and evaluate extracted historical exchange quotes using traditional Pandas dataframes.
+Load and evaluate extracted historical exchange quotes using traditional Pandas
+dataframes. Pandas is an optional downstream dependency and must be installed
+separately:
+
+```bash
+python -m pip install pandas
+```
 
 ```python
 import pandas as pd
@@ -134,6 +168,7 @@ result = b3.extract(
     path_of_docs="/data/cotahist",
     assets_list=["ações"],
     initial_year=2023,
+    last_year=2023,
     output_filename="stocks_2023"
 )
 
@@ -160,14 +195,15 @@ print(f"\nStatistical metrics for closing quote executions:")
 print(df['preco_fechamento'].describe())
 ```
 
----
+______________________________________________________________________
 
-## Example 5: High-Performance Analytics with Polars
+## Example 5: Bounded PyArrow Batch Processing
 
-Utilize Polars dataframe structures for blazing-fast filtering and calculations across extended historical datasets.
+Use PyArrow to process Parquet data in bounded batches.
 
 ```python
-import polars as pl
+import pyarrow.compute as pc
+import pyarrow.parquet as pq
 from globaldatafinance import HistoricalQuotesB3
 
 # Extract transaction records
@@ -179,31 +215,18 @@ result = b3.extract(
     last_year=2023
 )
 
-# Load dataset into a Polars dataframe (significantly faster than traditional alternatives)
-df = pl.read_parquet(result['output_file'])
-
-# Verify physical dimensions
-print(f"Dataframe shape: {df.shape}")
-print(f"Estimated RAM usage: {df.estimated_size('mb'):.2f} MB")
-
-# Filter exclusively for ticker PETR4
-petr4 = df.filter(pl.col('ticker') == 'PETR4')
-
-# Derive daily proportional percentage return calculations
-petr4 = petr4.with_columns([
-    ((pl.col('preco_fechamento') / pl.col('preco_fechamento').shift(1)) - 1)
-    .alias('daily_return')
-])
-
-# Display numerical performance metrics
-print(f"\nPETR4 - Analytical Statistics:")
-print(f"  Mean daily returns: {petr4['daily_return'].mean():.4%}")
-print(f"  Historical Volatility (Std Dev): {petr4['daily_return'].std():.4%}")
-print(f"  Minimum intraday price: R$ {petr4['preco_minimo'].min():.2f}")
-print(f"  Maximum intraday price: R$ {petr4['preco_maximo'].max():.2f}")
+# Project and filter without loading the entire artifact
+parquet = pq.ParquetFile(result['output_file'])
+for batch in parquet.iter_batches(
+    batch_size=200_000,
+    columns=['ticker', 'preco_minimo', 'preco_maximo'],
+):
+    petr4 = batch.filter(pc.equal(batch.column('ticker'), 'PETR4'))
+    if petr4.num_rows:
+        print(petr4)
 ```
 
----
+______________________________________________________________________
 
 ## Example 6: Command-Line Automation Script
 
@@ -238,27 +261,36 @@ def main():
         if args.source in ["cvm", "both"]:
             print("Downloading CVM corporate regulatory archives...")
             cvm = FundamentalStocksDataCVM()
-            cvm.download(
+            cvm_result = cvm.download(
                 destination_path=str(dest_path / "cvm"),
                 list_docs=["DFP", "ITR"],
                 initial_year=args.start_year,
                 last_year=args.end_year,
                 automatic_extractor=True
             )
+            if cvm_result.has_errors() or cvm_result.success_count_downloads == 0:
+                print("✗ CVM document download failed", file=sys.stderr)
+                for doc, err in cvm_result.failed_downloads.items():
+                    print(f"  • {doc}: {err}", file=sys.stderr)
+                return 1
+            print(f"✓ Downloaded {cvm_result.success_count_downloads} CVM archives")
 
         if args.source in ["b3", "both"]:
             print("Extracting B3 historical exchange quotes...")
             b3 = HistoricalQuotesB3()
-            result = b3.extract(
+            b3_result = b3.extract(
                 path_of_docs=str(dest_path / "cotahist"),
                 assets_list=["ações", "etf"],
                 initial_year=args.start_year,
                 last_year=args.end_year,
                 destination_path=str(dest_path / "quotes")
             )
-
-            if result['success']:
-                print(f"✓ Normalized and consolidated {result['total_records']:,} transaction rows")
+            if not b3_result['success'] or b3_result['total_records'] == 0:
+                print("✗ B3 quotes extraction failed", file=sys.stderr)
+                for file_name, err in b3_result['errors'].items():
+                    print(f"  • {file_name}: {err}", file=sys.stderr)
+                return 1
+            print(f"✓ Normalized and consolidated {b3_result['total_records']:,} transaction rows")
 
         print("✓ Automated batch processing script finished cleanly!")
         return 0
@@ -284,16 +316,25 @@ python harvester.py --source b3 --destination /data --start-year 2020 --end-year
 python harvester.py --source both --destination /data --verbose
 ```
 
----
+______________________________________________________________________
 
 ## Example 7: Jupyter Notebook Interactive Visualizations
 
 Harnessing Global-Data-Finance inside interactive Jupyter notebook sessions to generate financial charting analytics.
 
-```python
+!!! note "Optional Dependencies"
+
+    Pandas and the visualization libraries used in this example
+    (`matplotlib`, `seaborn`) are optional external packages:
+
+    ```bash
+    python -m pip install pandas matplotlib seaborn
+    ```
+
+```ipython
 # Cell 1: Package imports and visual configuration
 from globaldatafinance import HistoricalQuotesB3
-import polars as pl
+import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -302,15 +343,18 @@ sns.set_style("darkgrid")
 
 # Cell 2: Trigger historical quotes extraction
 b3 = HistoricalQuotesB3()
-result = b3.extract(
+result = await b3.extract_async(
     path_of_docs="/data/cotahist",
     assets_list=["ações"],
-    initial_year=2023
+    initial_year=2023,
+    last_year=2023,
 )
+if not result["success"]:
+    raise RuntimeError(result["errors"])
 
 # Cell 3: Load Parquet dataset and isolate instrument records
-df = pl.read_parquet(result['output_file'])
-petr4 = df.filter(pl.col('ticker') == 'PETR4').to_pandas()
+df = pd.read_parquet(result['output_file'])
+petr4 = df[df['ticker'] == 'PETR4']
 
 # Cell 4: Plot historical closing quote trajectories
 plt.figure(figsize=(14, 6))
@@ -332,7 +376,7 @@ plt.tight_layout()
 plt.show()
 ```
 
----
+______________________________________________________________________
 
 ## Next Steps
 

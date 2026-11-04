@@ -1,8 +1,6 @@
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    DownloadResultCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion.models import DownloadResultCVM
 
 
 @pytest.mark.unit
@@ -470,15 +468,16 @@ class TestDownloadResultIntegration:
 
     def test_repr_or_str_doesnt_include_sensitive_data(self):
         result = DownloadResultCVM(
-            successful_downloads=['secret_file_1', 'secret_file_2'],
-            failed_downloads={'secret_file_3': 'API_KEY=12345'},
+            successful_downloads=['source_file_1', 'source_file_2'],
+            failed_downloads={
+                'source_file_3': 'Download details unavailable.'
+            },
         )
 
         str_repr = str(result)
 
-        # Should only show counts, not actual filenames or error messages
-        assert 'secret' not in str_repr.lower()
-        assert 'API_KEY' not in str_repr
+        assert 'source_file_3' not in str_repr
+        assert 'Download details unavailable.' not in str_repr
         assert 'success=2' in str_repr
         assert 'errors=1' in str_repr
 

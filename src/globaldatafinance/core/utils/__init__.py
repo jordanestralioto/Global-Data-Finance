@@ -1,3 +1,7 @@
+from .destination_paths import (
+    normalize_destination_path,
+    prepare_writable_destination,
+)
 from .files import remove_file
 from .path_safety import assert_path_not_sensitive
 from .progress import SimpleProgressBar
@@ -11,5 +15,7 @@ __all__ = [
     'RetryStrategy',
     'SimpleProgressBar',
     'assert_path_not_sensitive',
+    'normalize_destination_path',
+    'prepare_writable_destination',
     'remove_file',
 ]

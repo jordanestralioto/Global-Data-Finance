@@ -16,7 +16,8 @@ class TestInvalidFirstYear:
         atual = 2025
         exception = InvalidFirstYear(minimal, atual)
         expected = (
-            f'Invalid first year. You must provide an integer value greater than or equal to '
+            'Invalid first year. You must provide an integer value greater '
+            'than or equal to '
             f'{minimal} and less than or equal to {atual}.'
         )
         assert str(exception) == expected
@@ -57,7 +58,8 @@ class TestInvalidLastYear:
         atual = 2025
         exception = InvalidLastYear(first_year, atual)
         expected = (
-            f'Invalid last year. You must provide an integer value greater than or equal to '
+            'Invalid last year. You must provide an integer value greater '
+            'than or equal to '
             f'{first_year} and less than or equal to {atual}.'
         )
         assert str(exception) == expected
@@ -101,7 +103,10 @@ class TestInvalidDocumentName:
         doc_name = 'INVALID_DOC'
         available_docs = ['DFP', 'ITR', 'FRE']
         exception = InvalidDocumentName(doc_name, available_docs)
-        expected = f'Invalid document name: {doc_name}. The document name must be a string and one of the following: {available_docs}.'
+        expected = (
+            f'Invalid document name: {doc_name}. The document name must be a '
+            f'string and one of the following: {available_docs}.'
+        )
         assert str(exception) == expected
 
     def test_is_exception_subclass(self):
@@ -167,13 +172,19 @@ class TestInvalidDocumentType:
     def test_message_format_exact_with_string_input(self):
         doc_name = '123'
         exception = InvalidDocumentType(doc_name)
-        expected = f'Invalid document type: {doc_name}. The document name must be a string.'
+        expected = (
+            f'Invalid document type: {doc_name}. The document name must be a '
+            'string.'
+        )
         assert str(exception) == expected
 
     def test_message_format_exact_with_int_input(self):
         doc_name = 123
         exception = InvalidDocumentType(doc_name)
-        expected = f'Invalid document type: {doc_name}. The document name must be a string.'
+        expected = (
+            f'Invalid document type: {doc_name}. The document name must be a '
+            'string.'
+        )
         assert str(exception) == expected
 
     def test_is_exception_subclass(self):
@@ -283,7 +294,7 @@ class TestDomainExceptionsIntegration:
             EmptyDocumentListError(),
         ]
         for exc in exceptions:
-            with pytest.raises(Exception):
+            with pytest.raises(type(exc)):
                 raise exc
 
     def test_specific_exception_catching(self):

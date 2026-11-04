@@ -1,5 +1,9 @@
+"""Adapt asynchronous HTTP requests and streamed filesystem writes."""
+
 import contextlib
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 import httpx
 
@@ -7,15 +11,24 @@ from ..macro_exceptions import (
     DiskFullError,
     FileWriteError,
     PathPermissionError,
+    SecurityError,
 )
+from .http_safety import (
+    bounded_download_headers,
+    discard_head_body,
+    download_response_hook,
+    identity_headers,
+    redirect_header_hook,
+    validate_download_response_headers,
+    validate_download_response_length,
+)
+from .temporary_files import reserve_temporary_path
 
 
 class RequestsAdapter:
-    """
-    Adapter that encapsulates the httpx library for asynchronous HTTP requests.
+    """Adapt httpx for asynchronous HTTP requests and streamed downloads.
 
-    Provides methods for making asynchronous HTTP HEAD requests and file downloads
-    with streaming support.
+    Provides asynchronous HTTP HEAD requests and streamed file downloads.
     """
 
     def __init__(
@@ -24,9 +37,10 @@ class RequestsAdapter:
         max_redirects: int = 5,
         verify: bool = True,
         http2: bool = False,
+        default_headers: Mapping[str, str] | None = None,
+        follow_redirects: bool = True,
     ):
-        """
-        Initialize the httpx adapter.
+        """Initialize the httpx adapter.
 
         Args:
             timeout: Default request timeout in seconds
@@ -37,21 +51,48 @@ class RequestsAdapter:
                 redirect-loop attacks. Override for custom transports.
             verify: Verify SSL certificates
             http2: Enable HTTP/2
+            default_headers: Optional headers merged into every request.
+                Headers explicitly supplied to a request take precedence.
+                Redirects to another origin retain only public headers.
+            follow_redirects: Whether requests may follow HTTP redirects.
         """
         self.timeout = timeout
         self.max_redirects = max_redirects
         self.verify = verify
         self.http2 = http2
+        self.follow_redirects = follow_redirects
+        self.default_headers = (
+            dict(default_headers) if default_headers is not None else None
+        )
+
+    def _merge_headers(
+        self, headers: dict[str, str] | None
+    ) -> dict[str, str] | None:
+        """Merge request headers over the adapter's default headers."""
+        if self.default_headers is None:
+            return headers
+
+        merged_headers = dict(self.default_headers)
+        if headers is None:
+            return merged_headers
+
+        for key, value in headers.items():
+            normalized_key = key.casefold()
+            for existing_key in tuple(merged_headers):
+                if existing_key.casefold() == normalized_key:
+                    del merged_headers[existing_key]
+            merged_headers[key] = value
+
+        return merged_headers
 
     async def async_head(
         self,
         url: str,
         headers: dict[str, str] | None = None,
         timeout: float | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> httpx.Response:
-        """
-        Asynchronous HEAD request to get headers without downloading body.
+        """Send a HEAD request to inspect headers without downloading a body.
 
         Useful for checking Content-Length, Content-Type, etc. before download.
 
@@ -64,14 +105,19 @@ class RequestsAdapter:
         Returns:
             httpx.Response: Request response (no body, only headers)
         """
+        request_headers = identity_headers(self._merge_headers(headers))
         async with httpx.AsyncClient(
             timeout=timeout or self.timeout,
-            follow_redirects=True,
+            follow_redirects=self.follow_redirects,
             max_redirects=self.max_redirects,
             verify=self.verify,
             http2=self.http2,
+            event_hooks={
+                'request': [redirect_header_hook(url)],
+                'response': [discard_head_body],
+            },
         ) as client:
-            return await client.head(url, headers=headers, **kwargs)
+            return await client.head(url, headers=request_headers, **kwargs)
 
     async def async_download_file(
         self,
@@ -80,9 +126,9 @@ class RequestsAdapter:
         chunk_size: int = 8192,
         headers: dict[str, str] | None = None,
         timeout: float | None = None,
+        max_bytes: int | None = None,
     ) -> None:
-        """
-        Asynchronous file download with streaming.
+        """Download a file asynchronously with streaming.
 
         Args:
             url: File URL
@@ -90,31 +136,91 @@ class RequestsAdapter:
             chunk_size: Chunk size for streaming
             headers: Custom headers
             timeout: Specific timeout for this request
+            max_bytes: Optional maximum number of response bytes to persist.
 
         Raises:
             httpx.HTTPStatusError: If HTTP status indicates error
             httpx.RequestError: If network error occurs
             OSError: If disk write fails
         """
+        staging_path = await self.async_download_to_staging_file(
+            url=url,
+            output_path=output_path,
+            chunk_size=chunk_size,
+            headers=headers,
+            timeout=timeout,
+            max_bytes=max_bytes,
+        )
         target_path = Path(output_path)
+
         try:
+            staging_path.replace(target_path)
+        except BaseException:
+            _remove_staging_file(staging_path)
+            raise
+
+    async def async_download_to_staging_file(
+        self,
+        url: str,
+        output_path: str,
+        chunk_size: int = 8192,
+        headers: dict[str, str] | None = None,
+        timeout: float | None = None,
+        max_bytes: int | None = None,
+    ) -> Path:
+        """Stream a response into a unique file beside the final target.
+
+        The returned path is owned by the caller after a successful transfer.
+        Before that handoff, every failure, including cancellation, removes
+        only the staging file created by this call.
+        """
+        _validate_download_limit(max_bytes)
+        target_path = Path(output_path)
+        request_headers = bounded_download_headers(
+            self._merge_headers(headers), max_bytes
+        )
+        staging_path: Path | None = None
+
+        try:
+            staging_path = reserve_temporary_path(target_path, suffix='.part')
+
             async with (
                 httpx.AsyncClient(
                     timeout=timeout or self.timeout,
-                    follow_redirects=True,
+                    follow_redirects=self.follow_redirects,
                     max_redirects=self.max_redirects,
                     verify=self.verify,
                     http2=self.http2,
+                    event_hooks={
+                        'request': [redirect_header_hook(url)],
+                        'response': [
+                            download_response_hook(max_bytes, output_path)
+                        ],
+                    },
                 ) as client,
-                client.stream('GET', url, headers=headers) as response,
+                client.stream('GET', url, headers=request_headers) as response,
             ):
                 response.raise_for_status()
+                validate_download_response_headers(
+                    response.headers, max_bytes, output_path
+                )
 
-                with target_path.open('wb') as file_handle:
+                with staging_path.open('wb') as file_handle:
+                    written_bytes = 0
                     async for chunk in response.aiter_bytes(
                         chunk_size=chunk_size
                     ):
                         if chunk:
+                            written_bytes += len(chunk)
+                            if (
+                                max_bytes is not None
+                                and written_bytes > max_bytes
+                            ):
+                                raise SecurityError(
+                                    'download exceeds configured byte limit '
+                                    f'({written_bytes} > {max_bytes})',
+                                    output_path,
+                                )
                             try:
                                 file_handle.write(chunk)
                             except OSError as write_err:
@@ -139,9 +245,26 @@ class RequestsAdapter:
                                     output_path, str(write_err)
                                 ) from write_err
 
-        except Exception:
-            # Clean up partial file on any error, then re-raise.
-            with contextlib.suppress(Exception):
-                target_path.unlink(missing_ok=True)
+                validate_download_response_length(
+                    response.headers, written_bytes, output_path
+                )
+
+            return staging_path
+
+        except BaseException:
+            if staging_path is not None:
+                _remove_staging_file(staging_path)
 
             raise
+
+
+def _remove_staging_file(staging_path: Path) -> None:
+    """Remove one staging path without affecting its final target."""
+    with contextlib.suppress(OSError):
+        staging_path.unlink(missing_ok=True)
+
+
+def _validate_download_limit(max_bytes: int | None) -> None:
+    """Reject invalid byte limits before any network or filesystem work."""
+    if max_bytes is not None and max_bytes < 1:
+        raise ValueError('max_bytes must be at least one when provided')

@@ -1,137 +1,333 @@
-import zipfile
+"""CVM-owned failure-atomic ZIP extraction regressions."""
 
-import pandas as pd  # type: ignore
+from __future__ import annotations
+
+import errno
+import hashlib
+import zipfile
+from pathlib import Path
+
+import pyarrow.parquet as pq
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
-    ParquetExtractorAdapterCVM,
+from globaldatafinance.brazil.cvm.ingestion import (
+    source_inventory,
+    transaction,
+)
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
+from globaldatafinance.macro_exceptions import (
+    CorruptedZipError,
+    DiskFullError,
+    ExtractionError,
+    ParquetWriteError,
+    SecurityError,
 )
 
+pytestmark = pytest.mark.integration
 
-@pytest.mark.integration
-class TestAtomicRollback:
-    def test_rollback_preserves_existing_files(self, tmp_path):
-        output_dir = tmp_path / 'output'
-        output_dir.mkdir()
 
-        existing_data = pd.DataFrame(
-            {'id': [1, 2, 3], 'important': ['DO', 'NOT', 'DELETE']}
-        )
-        existing_file = output_dir / 'existing.parquet'
-        existing_data.to_parquet(existing_file)
+def _write_archive(path: Path, members: dict[str, bytes]) -> Path:
+    """Create a ZIP whose CSV values use the production semicolon dialect."""
+    with zipfile.ZipFile(path, 'w') as archive:
+        for name, contents in members.items():
+            archive.writestr(name, contents)
+    return path
 
-        print(f'✓ Existing file: {existing_file.name}')
 
-        zip_path = tmp_path / 'mixed.zip'
+def _transaction_state(destination: Path) -> list[Path]:
+    """Find only the private files and directories a transaction may leave."""
+    return list(destination.glob('.globaldatafinance-transaction-*'))
 
-        with zipfile.ZipFile(zip_path, 'w') as z:
-            df_valid = pd.DataFrame({'col1': [1, 2], 'col2': ['a', 'b']})
-            z.writestr(
-                'new_valid.csv',
-                df_valid.to_csv(sep=';', index=False).encode('latin-1'),
-            )
 
-        corrupted_zip = tmp_path / 'corrupted.zip'
-        with open(corrupted_zip, 'wb') as f:
-            f.write(b'PK\x03\x04' + b'\x00' * 100)
+def test_corrupted_input_preserves_existing_output_and_never_stages(
+    tmp_path: Path,
+) -> None:
+    """Invalid archives cannot modify previous user-visible Parquet files."""
+    destination = tmp_path / 'output'
+    destination.mkdir()
+    sentinel = destination / 'sentinel.parquet'
+    sentinel.write_bytes(b'old bytes')
+    expected = sentinel.read_bytes()
+    source = tmp_path / 'corrupted.zip'
+    source.write_bytes(b'not a ZIP archive')
 
-        from globaldatafinance.macro_exceptions import CorruptedZipError
+    with pytest.raises(CorruptedZipError):
+        CvmParquetExtractor().extract(str(source), str(destination))
 
-        extractor = ParquetExtractorAdapterCVM()
+    assert sentinel.read_bytes() == expected
+    assert _transaction_state(destination) == []
 
-        with pytest.raises(CorruptedZipError):
-            extractor.extract(
-                source_path=str(corrupted_zip),
-                destination_path=str(output_dir),
-            )
 
-        assert existing_file.exists(), 'CRITICAL: existing file was DELETED!'
+def test_malformed_later_member_preserves_old_output_and_source_bytes(
+    tmp_path: Path,
+) -> None:
+    """Conversion is entirely staged before the first public replacement."""
+    destination = tmp_path / 'output'
+    destination.mkdir()
+    existing = destination / 'first.parquet'
+    existing.write_bytes(b'old version')
+    expected = hashlib.sha256(existing.read_bytes()).hexdigest()
+    source = _write_archive(
+        tmp_path / 'documents.zip',
+        {
+            'first.csv': b'version\nnew\n',
+            'second.csv': b'version\nnew;too-wide\n',
+        },
+    )
+    source_hash = hashlib.sha256(source.read_bytes()).hexdigest()
 
-        df_check = pd.read_parquet(existing_file)
-        assert df_check.equals(existing_data), (
-            'CRITICAL: existing file was MODIFIED!'
-        )
+    with pytest.raises(ExtractionError, match='observed_fields=2'):
+        CvmParquetExtractor().extract(str(source), str(destination))
 
-        parquet_files = list(output_dir.glob('*.parquet'))
-        assert len(parquet_files) == 1, (
-            f'Partial files were not cleaned! Found: {[f.name for f in parquet_files]}'
-        )
-        assert parquet_files[0].name == 'existing.parquet', (
-            'Incorrect file in directory'
-        )
+    assert hashlib.sha256(existing.read_bytes()).hexdigest() == expected
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == source_hash
+    assert not (destination / 'second.parquet').exists()
+    assert _transaction_state(destination) == []
 
-        print('✅ Rollback preserved existing file')
 
-    def test_partial_success_triggers_atomic_rollback(self, tmp_path):
-        zip_path = tmp_path / 'test.zip'
-        with zipfile.ZipFile(zip_path, 'w') as z:
-            df1 = pd.DataFrame({'a': [1, 2], 'b': ['x', 'y']})
-            z.writestr(
-                'file1.csv', df1.to_csv(sep=';', index=False).encode('latin-1')
-            )
-            df2 = pd.DataFrame({'c': [3, 4], 'd': ['z', 'w']})
-            z.writestr(
-                'file2.csv', df2.to_csv(sep=';', index=False).encode('latin-1')
-            )
+def test_disk_full_during_conversion_preserves_input_and_existing_output(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A writer failure only removes derived staging, never the source ZIP."""
+    destination = tmp_path / 'output'
+    destination.mkdir()
+    existing = destination / 'data.parquet'
+    existing.write_bytes(b'old version')
+    source = _write_archive(
+        tmp_path / 'documents.zip', {'data.csv': b'value\nnew\n'}
+    )
 
-        extractor = ParquetExtractorAdapterCVM()
-        extractor.extract(
-            source_path=str(zip_path), destination_path=str(tmp_path)
-        )
+    def fail_convert(self: object, **_kwargs: object) -> object:
+        _ = self
+        raise DiskFullError(str(destination))
 
-        assert (tmp_path / 'file1.parquet').exists()
-        assert (tmp_path / 'file2.parquet').exists()
+    monkeypatch.setattr(
+        transaction.CvmCsvParquetPipeline, 'convert', fail_convert
+    )
 
-        print('✅ Atomic extraction: both files created')
+    with pytest.raises(DiskFullError):
+        CvmParquetExtractor().extract(str(source), str(destination))
 
-    def test_rollback_does_not_leave_partial_parquet_files(self, tmp_path):
-        output_dir = tmp_path / 'output'
-        output_dir.mkdir()
+    assert existing.read_bytes() == b'old version'
+    assert source.exists()
+    assert _transaction_state(destination) == []
 
-        existing = output_dir / 'keep_me.parquet'
-        pd.DataFrame({'id': [1]}).to_parquet(existing)
 
-        corrupted_zip = tmp_path / 'bad.zip'
-        with zipfile.ZipFile(corrupted_zip, 'w') as z:
-            z.writestr('not_a_csv.txt', b'This is not a CSV file')
+def test_staged_filesystem_write_error_preserves_old_output_and_cause(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Non-space staged write failures use the typed Parquet boundary."""
+    destination = tmp_path / 'output'
+    destination.mkdir()
+    existing = destination / 'data.parquet'
+    existing.write_bytes(b'old version')
+    source = _write_archive(
+        tmp_path / 'documents.zip', {'data.csv': b'value\nnew\n'}
+    )
+    original = PermissionError('staged output denied')
 
-        extractor = ParquetExtractorAdapterCVM()
-        extractor.extract(
-            source_path=str(corrupted_zip), destination_path=str(output_dir)
-        )
+    def fail_writer(*_args: object, **_kwargs: object) -> object:
+        raise original
 
-        parquet_files = list(tmp_path.glob('*.parquet'))
-        assert len(parquet_files) == 0, (
-            f'Partial files found: {[f.name for f in parquet_files]}'
-        )
-        assert existing.exists(), 'Existing file was removed!'
+    monkeypatch.setattr(pq, 'ParquetWriter', fail_writer)
 
-        print('✅ No partial files left')
+    with pytest.raises(ParquetWriteError) as exc_info:
+        CvmParquetExtractor().extract(str(source), str(destination))
 
-    def test_created_files_tracking_is_accurate(self, tmp_path):
-        output_dir = tmp_path / 'output'
-        output_dir.mkdir()
+    assert exc_info.value.__cause__ is original
+    assert existing.read_bytes() == b'old version'
+    assert source.exists()
+    assert _transaction_state(destination) == []
 
-        existing = output_dir / 'skip_me.parquet'
-        pd.DataFrame({'old': [1]}).to_parquet(existing)
 
-        zip_path = tmp_path / 'test.zip'
-        with zipfile.ZipFile(zip_path, 'w') as z:
-            df2 = pd.DataFrame({'col': [3]})
-            z.writestr(
-                'new_file.csv',
-                df2.to_csv(sep=';', index=False).encode('latin-1'),
-            )
+def test_staged_enospc_remains_disk_full_and_preserves_old_output(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ENOSPC keeps its specific error boundary and rollback behavior."""
+    destination = tmp_path / 'output'
+    destination.mkdir()
+    existing = destination / 'data.parquet'
+    existing.write_bytes(b'old version')
+    source = _write_archive(
+        tmp_path / 'documents.zip', {'data.csv': b'value\nnew\n'}
+    )
+    original = OSError(errno.ENOSPC, 'no space left on device')
 
-        extractor = ParquetExtractorAdapterCVM()
-        extractor.extract(
-            source_path=str(zip_path), destination_path=str(output_dir)
-        )
+    def fail_writer(*_args: object, **_kwargs: object) -> object:
+        raise original
 
-        df_skip = pd.read_parquet(existing)
-        assert 'old' in df_skip.columns, 'Existing file was overwritten!'
+    monkeypatch.setattr(pq, 'ParquetWriter', fail_writer)
 
-        new_file = output_dir / 'new_file.parquet'
-        assert new_file.exists(), 'New file was not created'
+    with pytest.raises(DiskFullError) as exc_info:
+        CvmParquetExtractor().extract(str(source), str(destination))
 
-        print('✅ Tracking correct: skip detected, new file created')
+    assert exc_info.value.__cause__ is original
+    assert existing.read_bytes() == b'old version'
+    assert source.exists()
+    assert _transaction_state(destination) == []
+
+
+def test_staged_reopen_error_uses_parquet_write_boundary(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A filesystem reopen failure aborts before replacing an old artifact."""
+    destination = tmp_path / 'output'
+    destination.mkdir()
+    existing = destination / 'data.parquet'
+    existing.write_bytes(b'old version')
+    source = _write_archive(
+        tmp_path / 'documents.zip', {'data.csv': b'value\nnew\n'}
+    )
+    original = OSError('staged output cannot be reopened')
+
+    def fail_reopen(*_args: object, **_kwargs: object) -> object:
+        raise original
+
+    monkeypatch.setattr(pq, 'ParquetFile', fail_reopen)
+
+    with pytest.raises(ParquetWriteError) as exc_info:
+        CvmParquetExtractor().extract(str(source), str(destination))
+
+    assert exc_info.value.__cause__ is original
+    assert existing.read_bytes() == b'old version'
+    assert source.exists()
+    assert _transaction_state(destination) == []
+
+
+def test_successful_batch_replaces_conflicts_and_creates_new_outputs(
+    tmp_path: Path,
+) -> None:
+    """A complete batch publishes all source results after validation."""
+    destination = tmp_path / 'output'
+    destination.mkdir()
+    (destination / 'first.parquet').write_bytes(b'old bytes')
+    source = _write_archive(
+        tmp_path / 'documents.zip',
+        {
+            'first.csv': b'version\nnew\n',
+            'second.csv': b'version\ncreated\n',
+        },
+    )
+
+    CvmParquetExtractor().extract(str(source), str(destination))
+
+    assert pq.read_table(destination / 'first.parquet').to_pylist() == [
+        {'version': 'new'}
+    ]
+    assert pq.read_table(destination / 'second.parquet').to_pylist() == [
+        {'version': 'created'}
+    ]
+    assert _transaction_state(destination) == []
+
+
+def test_basename_collision_is_rejected_before_staging(
+    tmp_path: Path,
+) -> None:
+    """Two members mapping to one basename cannot overwrite data."""
+    source = _write_archive(
+        tmp_path / 'collision.zip',
+        {
+            'one/data.csv': b'value\none\n',
+            'two/data.csv': b'value\ntwo\n',
+        },
+    )
+
+    with pytest.raises(ExtractionError, match='collide'):
+        CvmParquetExtractor().extract(str(source), str(tmp_path))
+
+    assert not (tmp_path / 'data.parquet').exists()
+    assert _transaction_state(tmp_path) == []
+
+
+def test_reserved_unicode_member_is_rejected_before_crc_or_publication(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Win32 device aliases fail before CRC, conversion, or publication."""
+    destination = tmp_path / 'output'
+    destination.mkdir()
+    source = _write_archive(
+        tmp_path / 'reserved-device.zip',
+        {'COM¹.csv': b'code;value\n1;10\n'},
+    )
+    crc_called = False
+    derive_called = False
+    convert_called = False
+    begin_called = False
+
+    def fail_crc(*_args: object, **_kwargs: object) -> None:
+        nonlocal crc_called
+        crc_called = True
+        raise AssertionError('CRC validation must follow name validation')
+
+    def fail_derive(_member: str) -> str:
+        nonlocal derive_called
+        derive_called = True
+        raise AssertionError('Output derivation must follow name validation')
+
+    def fail_convert(_self: object, **_kwargs: object) -> None:
+        nonlocal convert_called
+        convert_called = True
+        raise AssertionError('Conversion must follow name validation')
+
+    def fail_begin(_self: object, **_kwargs: object) -> object:
+        nonlocal begin_called
+        begin_called = True
+        raise AssertionError('Publication must follow name validation')
+
+    monkeypatch.setattr(transaction, 'validate_zip_crc_with_limits', fail_crc)
+    monkeypatch.setattr(
+        source_inventory,
+        'parquet_basename',
+        fail_derive,
+    )
+    monkeypatch.setattr(
+        transaction.CvmCsvParquetPipeline, 'convert', fail_convert
+    )
+    monkeypatch.setattr(
+        transaction.TransactionalPublisher, 'begin', fail_begin
+    )
+
+    with pytest.raises(CorruptedZipError, match=r'COM¹\.csv'):
+        CvmParquetExtractor().extract(str(source), str(destination))
+
+    assert crc_called is False
+    assert derive_called is False
+    assert convert_called is False
+    assert begin_called is False
+    assert not (destination / 'COM¹.parquet').exists()
+    assert _transaction_state(destination) == []
+
+
+def test_sensitive_destination_is_rejected_before_zip_inspection(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Destination validation precedes output discovery and archive reads."""
+    source = _write_archive(
+        tmp_path / 'source.zip', {'data.csv': b'value\n1\n'}
+    )
+    build_called = False
+
+    def fail_build(self: object, zip_file: object) -> object:
+        nonlocal build_called
+        _ = (self, zip_file)
+        build_called = True
+        raise AssertionError('output discovery must not run')
+
+    monkeypatch.setattr(
+        transaction.CvmFailureAtomicBatchCommit,
+        '_build_outputs',
+        fail_build,
+    )
+
+    with zipfile.ZipFile(source) as archive, pytest.raises(SecurityError):
+        transaction.CvmFailureAtomicBatchCommit(
+            str(source), r'C:\Windows\System32'
+        ).execute(archive)
+
+    assert build_called is False

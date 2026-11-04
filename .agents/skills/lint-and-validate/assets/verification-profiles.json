@@ -1,0 +1,27 @@
+{
+  "comment": "Profiles definem apenas scope de arquivos e escalation. O que roda e definido pelo .pre-commit-config.yaml do projeto.",
+  "mode": "precommit",
+  "profiles": {
+    "high-risk": {
+      "description": "Validacao reforcada para contrato publico, store global e refactor amplo.",
+      "scope": "all-files"
+    },
+    "quick": {
+      "description": "Validacao rapida para mudancas simples de docs/config.",
+      "scope": "files"
+    },
+    "security-touch": {
+      "description": "Validacao reforcada com escalacao obrigatoria para seguranca.",
+      "scope": "all-files"
+    },
+    "standard": {
+      "description": "Caminho padrao do developer para codigo de baixo/medio risco.",
+      "scope": "files"
+    },
+    "ui-flow": {
+      "description": "Validacao para fluxos UI com browser real quando configurado.",
+      "scope": "all-files"
+    }
+  },
+  "schemaVersion": "2.0.0"
+}

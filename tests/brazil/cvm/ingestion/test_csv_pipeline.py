@@ -1,0 +1,336 @@
+"""Integration coverage for the CVM two-pass Arrow CSV pipeline."""
+
+from __future__ import annotations
+
+import zipfile
+from pathlib import Path
+
+import pyarrow as pa
+import pyarrow.parquet as pq
+import pytest
+
+from globaldatafinance.brazil.cvm.ingestion.csv_pipeline import (
+    CvmCsvParquetPipeline,
+)
+from globaldatafinance.brazil.cvm.ingestion.csv_pipeline import (
+    models as csv_models,
+)
+from globaldatafinance.macro_exceptions import ExtractionError
+
+pytestmark = pytest.mark.integration
+
+
+def _convert(
+    tmp_path: Path,
+    contents: bytes,
+    *,
+    member_name: str = 'source.csv',
+) -> tuple[Path, csv_models.CsvPipelineResult]:
+    """Write one ZIP member and run its pipeline inside private staging."""
+    archive = tmp_path / 'source.zip'
+    staging = tmp_path / 'staging'
+    output = staging / 'source.parquet'
+    staging.mkdir()
+    with zipfile.ZipFile(archive, 'w') as zip_file:
+        zip_file.writestr(member_name, contents)
+    result = CvmCsvParquetPipeline(archive, member_name).convert(
+        staged_path=output,
+        staging_dir=staging,
+    )
+    return output, result
+
+
+def test_exact_text_preserves_decimals_after_the_first_row_group(
+    tmp_path: Path,
+) -> None:
+    """Late decimals retain exact text across row-group boundaries."""
+    data_rows = [f'{index};{index}' for index in range(50_000)]
+    data_rows.append('50000;1.5')
+    output, result = _convert(
+        tmp_path,
+        ('id;value\n' + '\n'.join(data_rows) + '\n').encode(),
+    )
+
+    parquet = pq.ParquetFile(output)
+    assert result.rows == 50_001
+    assert result.row_groups == (50_000, 1)
+    assert parquet.schema_arrow == pa.schema(
+        [pa.field('id', pa.string()), pa.field('value', pa.string())]
+    )
+    assert parquet.read_row_group(1).to_pylist() == [
+        {'id': '50000', 'value': '1.5'}
+    ]
+
+
+def test_exact_text_preserves_mixed_tokens_and_short_rows(
+    tmp_path: Path,
+) -> None:
+    """Mixed scalar spellings and short rows preserve every field."""
+    output, result = _convert(
+        tmp_path,
+        b'late_text;late_unsigned;late_signed;short\n'
+        b'1;1;-9223372036854775808;10\n'
+        b'1.5;18446744073709551616;-9223372036854775809;11\n'
+        b'true;true;-1;12\n'
+        b';; ;13\n'
+        b'word;word;word;14\n'
+        b'18446744073709551616;1.5;false;15\n'
+        b'-9223372036854775809;;;16\n'
+        b'17;18\n',
+    )
+
+    parquet = pq.ParquetFile(output)
+    assert result.rows == 8
+    assert parquet.schema_arrow == pa.schema(
+        [
+            pa.field('late_text', pa.string()),
+            pa.field('late_unsigned', pa.string()),
+            pa.field('late_signed', pa.string()),
+            pa.field('short', pa.string()),
+        ]
+    )
+    assert pq.read_table(output).to_pylist() == [
+        {
+            'late_text': '1',
+            'late_unsigned': '1',
+            'late_signed': '-9223372036854775808',
+            'short': '10',
+        },
+        {
+            'late_text': '1.5',
+            'late_unsigned': '18446744073709551616',
+            'late_signed': '-9223372036854775809',
+            'short': '11',
+        },
+        {
+            'late_text': 'true',
+            'late_unsigned': 'true',
+            'late_signed': '-1',
+            'short': '12',
+        },
+        {
+            'late_text': '',
+            'late_unsigned': '',
+            'late_signed': ' ',
+            'short': '13',
+        },
+        {
+            'late_text': 'word',
+            'late_unsigned': 'word',
+            'late_signed': 'word',
+            'short': '14',
+        },
+        {
+            'late_text': '18446744073709551616',
+            'late_unsigned': '1.5',
+            'late_signed': 'false',
+            'short': '15',
+        },
+        {
+            'late_text': '-9223372036854775809',
+            'late_unsigned': '',
+            'late_signed': '',
+            'short': '16',
+        },
+        {
+            'late_text': '17',
+            'late_unsigned': '18',
+            'late_signed': '',
+            'short': '',
+        },
+    ]
+
+
+def test_header_only_csv_writes_empty_text_schema_without_pandas_metadata(
+    tmp_path: Path,
+) -> None:
+    """Header-only regulatory files remain valid, explicit empty datasets."""
+    output, result = _convert(tmp_path, b'first;second\n')
+
+    parquet = pq.ParquetFile(output)
+    assert result.rows == 0
+    assert result.row_groups == ()
+    assert parquet.metadata.num_rows == 0
+    assert parquet.metadata.num_row_groups == 0
+    assert parquet.schema_arrow == pa.schema(
+        [pa.field('first', pa.string()), pa.field('second', pa.string())]
+    )
+    assert parquet.schema_arrow.metadata[b'cvm.contract'] == b'exact-text-v1'
+
+
+def test_cp1252_is_spooled_losslessly_and_quotes_remain_literal(
+    tmp_path: Path,
+) -> None:
+    """The fixed QUOTE_NONE dialect preserves literal quote characters."""
+    output, _ = _convert(
+        tmp_path,
+        b'name;note\nJo\xe3o;\x80 \x93quoted\x94\n',
+    )
+
+    assert pq.read_table(output).to_pylist() == [
+        {'name': 'João', 'note': '€ “quoted”'}
+    ]
+
+
+def test_latin1_undefined_cp1252_bytes_are_preserved_losslessly(
+    tmp_path: Path,
+) -> None:
+    """A CP1252 undefined byte chooses Latin-1 instead of replacement text."""
+    output, _ = _convert(tmp_path, b'text\n\x81\n')
+
+    assert pq.read_table(output).to_pylist() == [{'text': '\x81'}]
+
+
+def test_boolean_spelling_preserves_all_case_variants(
+    tmp_path: Path,
+) -> None:
+    """Boolean-like text keeps its exact case without conversion."""
+    output, _ = _convert(tmp_path, b'flag\nTrUe\nfAlSe\n')
+
+    assert pq.read_table(output).to_pylist() == [
+        {'flag': 'TrUe'},
+        {'flag': 'fAlSe'},
+    ]
+
+
+def test_short_and_blank_rows_are_padded_only_at_the_tail(
+    tmp_path: Path,
+) -> None:
+    """Missing final fields become empty text and blank records survive."""
+    output, result = _convert(tmp_path, b'first;second;third\n1;2\n\n')
+
+    assert result.rows == 2
+    assert pq.read_table(output).to_pylist() == [
+        {'first': '1', 'second': '2', 'third': ''},
+        {'first': '', 'second': '', 'third': ''},
+    ]
+
+
+def test_one_column_blank_physical_row_is_preserved_as_empty_text(
+    tmp_path: Path,
+) -> None:
+    """A blank one-column record remains exact empty text."""
+    output, result = _convert(tmp_path, b'value\n\n')
+
+    assert result.rows == 1
+    assert pq.read_table(output).to_pylist() == [{'value': ''}]
+
+
+def test_excess_fields_fail_with_source_context_and_never_write_output(
+    tmp_path: Path,
+) -> None:
+    """A wider record cannot silently shift regulatory columns."""
+    archive = tmp_path / 'source.zip'
+    staging = tmp_path / 'staging'
+    output = staging / 'source.parquet'
+    staging.mkdir()
+    with zipfile.ZipFile(archive, 'w') as zip_file:
+        zip_file.writestr('source.csv', b'first;second\n1;2;3\n')
+
+    with pytest.raises(
+        ExtractionError, match='expected_fields=2; observed_fields=3'
+    ):
+        CvmCsvParquetPipeline(archive, 'source.csv').convert(
+            staged_path=output,
+            staging_dir=staging,
+        )
+
+    assert not output.exists()
+
+
+def test_integer_boundaries_keep_exact_text_without_coercion(
+    tmp_path: Path,
+) -> None:
+    """Large integers are never rounded into floating-point representation."""
+    output, _ = _convert(
+        tmp_path,
+        b'signed;unsigned;too_large\n-1;9223372036854775808;18446744073709551616\n',
+    )
+
+    assert pq.ParquetFile(output).schema_arrow == pa.schema(
+        [
+            pa.field('signed', pa.string()),
+            pa.field('unsigned', pa.string()),
+            pa.field('too_large', pa.string()),
+        ]
+    )
+    assert pq.read_table(output).to_pylist()[0]['too_large'] == (
+        '18446744073709551616'
+    )
+
+
+def test_signed_integer_boundaries_and_blank_records_remain_text(
+    tmp_path: Path,
+) -> None:
+    """Integer limits and blank fields retain source representation."""
+    output, _ = _convert(
+        tmp_path,
+        b'value\n9223372036854775807\n-9223372036854775808\n\n',
+    )
+
+    parquet = pq.ParquetFile(output)
+    assert parquet.schema_arrow == pa.schema([pa.field('value', pa.string())])
+    assert pq.read_table(output).to_pylist() == [
+        {'value': '9223372036854775807'},
+        {'value': '-9223372036854775808'},
+        {'value': ''},
+    ]
+
+
+def test_mixed_integer_and_text_is_preserved_as_text(tmp_path: Path) -> None:
+    """Incompatible scalar classes use a lossless string column."""
+    output, _ = _convert(tmp_path, b'value\n9223372036854775807\nunknown\n')
+
+    parquet = pq.ParquetFile(output)
+    assert parquet.schema_arrow == pa.schema([pa.field('value', pa.string())])
+    assert pq.read_table(output).to_pylist() == [
+        {'value': '9223372036854775807'},
+        {'value': 'unknown'},
+    ]
+
+
+def test_arbitrary_width_integer_is_preserved_as_text_without_python_int_limit(
+    tmp_path: Path,
+) -> None:
+    """An integer beyond Python's digit guard stays lossless text."""
+    oversized = '9' * 5_000
+    output, _ = _convert(tmp_path, f'value\n{oversized}\n'.encode())
+
+    parquet = pq.ParquetFile(output)
+    assert parquet.schema_arrow == pa.schema([pa.field('value', pa.string())])
+    assert pq.read_table(output).to_pylist() == [{'value': oversized}]
+
+
+def test_leading_plus_integer_like_value_is_preserved_as_string(
+    tmp_path: Path,
+) -> None:
+    """Leading plus integer-like text stays lossless string for Arrow."""
+    output, _ = _convert(tmp_path, b'ddd\n11\n+31\n21\n\n')
+
+    parquet = pq.ParquetFile(output)
+    assert parquet.schema_arrow == pa.schema([pa.field('ddd', pa.string())])
+    assert pq.read_table(output).to_pylist() == [
+        {'ddd': '11'},
+        {'ddd': '+31'},
+        {'ddd': '21'},
+        {'ddd': ''},
+    ]
+
+
+def test_signed_decimals_and_scientific_notation_remain_exact_text(
+    tmp_path: Path,
+) -> None:
+    """Decimal precision, signs, and exponents retain their source text."""
+    output, _ = _convert(
+        tmp_path,
+        b'value\n+1.5\n-2.5\n1e5\n-3.2e-2\n',
+    )
+
+    parquet = pq.ParquetFile(output)
+    assert parquet.schema_arrow == pa.schema([pa.field('value', pa.string())])
+    assert pq.read_table(output).to_pylist() == [
+        {'value': '+1.5'},
+        {'value': '-2.5'},
+        {'value': '1e5'},
+        {'value': '-3.2e-2'},
+    ]

@@ -3,12 +3,16 @@
 site_name: Global-Data-Finance
 site_author: Jordan Estralioto
 site_description: >-
-  Biblioteca Python para extração e processamento de dados financeiros globais
+  Biblioteca Python para baixar documentos da CVM e processar cotações
+  históricas da B3 em Parquet
 site_url: https://jordanestralioto.github.io/Global-Data-Finance/
 # Repository
 repo_name: jordanestralioto/Global-Data-Finance
 repo_url: https://github.com/jordanestralioto/Global-Data-Finance
 edit_uri: edit/main/docs/
+
+exclude_docs: |
+  /internal/
 
 # Copyright
 copyright: Copyright &copy; 2026 Jordan Estralioto
@@ -54,10 +58,10 @@ theme:
 extra:
   alternate:
     - name: Português
-      link: ./
+      link: /
       lang: pt
     - name: English
-      link: ./en/
+      link: /en/
       lang: en
   social:
     - icon: fontawesome/brands/github
@@ -99,22 +103,45 @@ plugins:
             Guia do Usuário: User Guide
             Guia do Desenvolvedor: Developer Guide
             Referência Técnica: Technical Reference
+            Configuração e operação: Configuration and operation
+            Manutenção e evidências: Maintenance and evidence
+            Migrações: Migrations
+            Validação com dados externos: Validation with external data
+            Publicação transacional: Transactional publication
             Instalação: Installation
             Início Rápido: Quickstart
             Documentos CVM: CVM Documents
             Cotações Históricas B3: B3 Historical Quotes
             Exemplos Práticos: Practical Examples
+            Boas práticas B3: B3 Operational Practices
+            Migração 0.2.0: Migration 0.2.0
+            Migração de infraestrutura: Infrastructure Clean Cut Migration
+            Migração CVM exata: CVM Exact Text Migration
             Arquitetura: Architecture
             Referência da API: API Reference
             Como Contribuir: Contributing
             Testes: Testing
+            Aceite de release: Release Acceptance
+            Performance COTAHIST: COTAHIST Performance
             Uso Avançado: Advanced Usage
             Sistema de Logging: Logging System
             Monitoramento de Recursos: Resource Monitoring
             Estratégia de Retry: Retry Strategy
+            Decisões Técnicas: Technical Decisions
+            Níveis de Execução de Testes: Test Execution Tiers
+            Campanha Real Auditável: Auditable Real-Data Campaign
+            Limites ZIP e Destinos UNC: ZIP Limits and UNC Destinations
+            Commit CVM Tolerante a Falhas: Failure-Atomic CVM Batch Commit
+            Ingestão compartilhada CVM: Shared CVM Ingestion
+            Cutover PyArrow e Integridade: PyArrow and Integrity Cutover
+            ? >-
+              Corte limpo da infraestrutura compartilhada
+            : Shared Infrastructure Clean Cut
             API CVM: CVM API
             API B3: B3 API
+            Schema Parquet B3 v2: B3 Parquet Schema v2
             Exceções: Exceptions
+            Auditoria do corpus COTAHIST: COTAHIST Corpus Audit
 
 # Extensions
 markdown_extensions:
@@ -159,16 +186,37 @@ nav:
       - Exemplos Práticos: user-guide/examples.md
       - FAQ: user-guide/faq.md
   - Guia do Desenvolvedor:
-      - Arquitetura: dev-guide/architecture.md
-      - Referência da API: dev-guide/api-reference.md
       - Como Contribuir: dev-guide/contributing.md
+      - Arquitetura: dev-guide/architecture.md
       - Testes: dev-guide/testing.md
-      - Benchmarks: dev-guide/benchmarks.md
-      - Uso Avançado: dev-guide/advanced-usage.md
-      - Sistema de Logging: dev-guide/logging-system.md
-      - Monitoramento de Recursos: dev-guide/resource-monitoring.md
-      - Estratégia de Retry: dev-guide/retry-strategy.md
+      - Manutenção e evidências:
+          - Aceite de release: dev-guide/release-readiness.md
+          - Benchmarks: dev-guide/benchmarks.md
+          - Performance COTAHIST: dev-guide/cotahist-performance.md
+          - Validação com dados externos: dev-guide/real-data-validation.md
+          - Auditoria do corpus COTAHIST: reference/cotahist-v2-supplied-corpus.md
+      - Decisões Técnicas:
+          - Níveis de Execução de Testes: decisions/test-execution-tiers.md
+          - Campanha Real Auditável: decisions/real-validation-campaign.md
+          - Limites ZIP e Destinos UNC: decisions/archive-safety-and-unc.md
+          - Commit CVM Tolerante a Falhas: decisions/cvm-failure-atomic-batch-commit.md
+          - Ingestão compartilhada CVM: decisions/cvm-ingestion-ownership.md
+          - Cutover PyArrow e Integridade: decisions/pyarrow-ingestion-integrity-cutover.md
+          - Corte limpo da infraestrutura compartilhada: decisions/shared-infrastructure-clean-cut.md
   - Referência Técnica:
+      - Referência da API: dev-guide/api-reference.md
       - API CVM: reference/cvm-api.md
       - API B3: reference/b3-api.md
+      - Schema Parquet B3 v2: reference/b3-schema-v2.md
       - Exceções: reference/exceptions.md
+      - Publicação transacional: reference/transactional-publication.md
+      - Configuração e operação:
+          - Uso Avançado: dev-guide/advanced-usage.md
+          - Boas práticas B3: user-guide/b3-operations.md
+          - Sistema de Logging: dev-guide/logging-system.md
+          - Monitoramento de Recursos: dev-guide/resource-monitoring.md
+          - Estratégia de Retry: dev-guide/retry-strategy.md
+      - Migrações:
+          - Migração 0.2.0: user-guide/migration-pyarrow-integrity.md
+          - Migração de infraestrutura: user-guide/migration-infrastructure-clean-cut.md
+          - Migração CVM exata: user-guide/migration-cvm-exact-text.md

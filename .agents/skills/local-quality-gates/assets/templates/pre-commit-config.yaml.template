@@ -1,0 +1,198 @@
+# Standard Stack-Agnostic Pre-commit Configuration Template
+# Managed and synthesized by local-quality-gates skill.
+# Choose the gates, tool versions, and runtimes from the project's contract.
+# This scaffold is incomplete until the pre-push command and revisions are set.
+#
+# This is a scaffold, not a release-pinned project configuration. Before use,
+# replace every `REPLACE_WITH_FROZEN_SHA` with a current 40-character commit SHA
+# and keep the release in a comment. Resolve remote hooks with:
+#   pre-commit autoupdate --freeze
+# If a hook declares `additional_dependencies`, pin a compatible group together
+# after resolving it; do not update the base package independently.
+
+default_install_hook_types: [pre-commit, pre-push]
+default_stages: [pre-commit]
+fail_fast: false
+
+repos:
+  # =========================================================================
+  # 01. REPOSITORY INTEGRITY & FAST HYGIENE
+  # =========================================================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: REPLACE_WITH_FROZEN_SHA  # <RELEASE_VERSION>
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: check-case-conflict
+      - id: check-yaml
+        args: ['--unsafe']
+      - id: check-json
+      - id: check-toml
+
+  # Optional [FILE_LINES]: use only if fixed caps and exclusions fit the project.
+  # Add "check-max-lines" to components.tools in .agents/harness.json and run
+  # harness-sync first. Requires Python 3.13+; reads eligible tracked files in
+  # the working tree. Confirm unstaged isolation before claiming staged coverage.
+  # - repo: local
+  #   hooks:
+  #     - id: check-max-lines
+  #       entry: python .agents/scripts/check-max-lines.py
+  #       language: system
+  #       pass_filenames: false
+  #       always_run: true
+
+  # Optional [DEAD_CODE]: assess every capability in dead-code-policy.md.
+  # Replace with the project's pinned, read-only analyzer and declared full
+  # project/workspace scope, including cross-package consumers. Run on deletions
+  # and entry/configuration changes. Verify index isolation, including untracked
+  # inputs; working-tree analysis alone is partial coverage. Interpret native
+  # exit codes; preserve strict profiles and dependency policy. No installation,
+  # updates, automatic exclusions, baseline expansion, or code deletion here.
+  # Measure placement; use pre-push/delegated enforcement when justified.
+  # - repo: local
+  #   hooks:
+  #     - id: dead-code
+  #       name: Dead Code Policy
+  #       entry: REPLACE_WITH_PROJECT_DEAD_CODE_COMMAND
+  #       language: system
+  #       pass_filenames: false
+  #       always_run: true
+
+  # Optional [TESTS_FAST]: select a measured fast tier and declare its scope.
+  # It does not replace the full pre-push suite or delegated CI coverage.
+  # - repo: local
+  #   hooks:
+  #     - id: project-fast-tests
+  #       entry: REPLACE_WITH_PROJECT_FAST_TEST_COMMAND
+  #       language: system
+  #       pass_filenames: false
+  #       always_run: true
+
+  # =========================================================================
+  # 02. SECRET SCANNING (STAGED DIFF ONLY)
+  # =========================================================================
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: REPLACE_WITH_FROZEN_SHA  # <RELEASE_VERSION>
+    hooks:
+      - id: gitleaks
+
+  # =========================================================================
+  # 03. PROJECT PRE-PUSH GATE (REQUIRED TO COMPLETE THIS SCAFFOLD)
+  # =========================================================================
+  # Replace the command with a pinned project-native check that covers the
+  # intended push snapshot. Include the full local test tier when selected;
+  # run this stage and prove a failing case before use.
+  - repo: local
+    hooks:
+      - id: project-pre-push
+        name: Project Pre-push Validation
+        entry: REPLACE_WITH_PROJECT_PRE_PUSH_COMMAND
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
+  # Optional [DEPENDENCY_AUDIT]: pinned, read-only scan of resolved packages.
+  # Declare advisory source, severity policy, network failure handling and
+  # whether the command reads the pushed commit or only the working tree.
+  # - repo: local
+  #   hooks:
+  #     - id: dependency-audit
+  #       entry: REPLACE_WITH_PROJECT_DEPENDENCY_AUDIT_COMMAND
+  #       language: system
+  #       pass_filenames: false
+  #       always_run: true
+  #       stages: [pre-push]
+
+  # =========================================================================
+  # 04. OPTIONAL STRICT PROFILE (PYTHON RUNTIME REQUIRED)
+  # =========================================================================
+  # Copy only the selected scripts and enable the matching hooks. The
+  # lockfile hook checks staged parity; it never installs or upgrades packages.
+  # - repo: local
+  #   hooks:
+  #     - id: diff-sanity
+  #       entry: python scripts/check_diff_sanity.py
+  #       language: system
+  #       pass_filenames: false
+  #       always_run: true
+  #     - id: test-integrity
+  #       entry: python scripts/check_test_integrity.py
+  #       language: system
+  #       pass_filenames: false
+  #       always_run: true
+  #     - id: lockfile-sync
+  #       entry: python scripts/check_lockfile_sync.py
+  #       language: system
+  #       pass_filenames: false
+  #       always_run: true
+
+  # =========================================================================
+  # 05. [CIRCULAR_DEPENDENCIES] ARCHITECTURE (WHEN REQUIRED)
+  # =========================================================================
+  # Fill this slot when the project requires an acyclic graph. New cycles
+  # fail; historical cycles require a finding-identity baseline.
+  # [PYTHON EXAMPLE]
+  # - repo: local
+  #   hooks:
+  #     - id: circular-dependencies
+  #       name: Check Circular Imports (import-linter)
+  #       entry: uv run lint-imports
+  #       language: system
+  #       pass_filenames: false
+  #       always_run: true
+  # [NODE / TS EXAMPLE]
+  # - repo: local
+  #   hooks:
+  #     - id: circular-dependencies
+  #       name: Check Circular Dependencies (dependency-cruiser)
+  #       entry: pnpm exec depcruise --config .dependency-cruiser.js src
+  #       language: system
+  #       pass_filenames: false
+  #       always_run: true
+
+  # =========================================================================
+  # 06. STACK-SPECIFIC SYNTAX, FORMATTER & LINTER
+  # (Adapted by skill based on discovered workspace tools)
+  # NOTE: Formatter changes must be reviewed and staged explicitly:
+  #   git add -- <exact-modified-files>
+  # For a selected strict [LINTER] profile, record native parser-aware coverage:
+  #   example cyclomatic <= 15; cognitive <= 15 when supported; nesting <= 4;
+  #   redundant branches after terminal statements; empty/broad handlers;
+  #   routine scope <= 50 executable statements. Use project-approved limits.
+  # Lines do not substitute for statements. Do not enforce one return per
+  # routine or add a generic regex scanner. Mark unavailable capabilities as
+  # MANUAL or UNSUPPORTED instead of claiming complete coverage.
+  # Prefer read-only diagnostics. Safe structural fixes require explicit
+  # project policy and review before staging; never enable unsafe fixes.
+  # =========================================================================
+  # [PYTHON EXAMPLE]
+  # - repo: local
+  #   hooks:
+  #     - id: ruff-format
+  #       name: Format Code (Ruff)
+  #       entry: uv run ruff format
+  #       language: system
+  #       types: [python]
+  #     - id: ruff-lint
+  #       name: Lint Code (Ruff)
+  #       entry: uv run ruff check --fix  # Only if project policy permits fixes
+  #       language: system
+  #       types: [python]
+  #
+  # [NODE / TS EXAMPLE]
+  # - repo: local
+  #   hooks:
+  #     - id: prettier
+  #       name: Format (Prettier)
+  #       entry: pnpm prettier --write --ignore-unknown
+  #       language: system
+  #       types_or: [javascript, jsx, ts, tsx, json, css, markdown]
+  #     - id: eslint
+  #       name: Lint (ESLint)
+  #       entry: pnpm eslint --fix
+  #       language: system
+  #       types_or: [javascript, jsx, ts, tsx]

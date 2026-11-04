@@ -1,27 +1,19 @@
-"""Orchestration layer for CVM fundamental_stocks_data.
+"""CVM download orchestration and caller-destination safety boundary."""
 
-Consolidates the prior `application/use_cases/` modules into one file.
-The stateless use cases are module-level functions (Phase 4.1). The
-download orchestrator and the path-traversal verifier remain full classes:
-the first holds state across calls (D3), the second preserves the R11
-security boundary bit-identically.
-"""
-
-import os
 import time
+from collections.abc import Sequence
 from pathlib import Path
 
 from ....core import get_logger
-from ....core.utils import assert_path_not_sensitive
-from ....macro_exceptions import (
-    InvalidDestinationPathError,
-    PathCreationError,
-    PathIsNotDirectoryError,
-    PathPermissionError,
+from ....core.config import PathSafetySettings
+from ....core.utils.destination_paths import (
+    normalize_destination_path,
+    prepare_writable_destination,
 )
+from ..ingestion.http import CvmDownloadAdapter
+from ..ingestion.models import DownloadResultCVM
 from . import core
 from .errors import EmptyDocumentListError, MissingDownloadUrlError
-from .http import AsyncDownloadAdapterCVM
 
 logger = get_logger(__name__)
 
@@ -57,8 +49,7 @@ def generate_range_years(
         'Generating Range Years, years=%s-%s', initial_year, last_year
     )
     range_years = core.AvailableYearsCVM().return_range_years(
-        initial_year=initial_year,
-        last_year=last_year,
+        initial_year=initial_year, last_year=last_year
     )
     logger.debug('Generated range of years: %s', list(range_years))
     return range_years
@@ -104,11 +95,16 @@ class VerifyPathsUseCasesCVM:
         destination_path: str,
         new_set_docs: set[str],
         range_years: range,
+        *,
+        allowed_unc_roots: Sequence[str] | None = None,
     ):
+        """Initialize the destination and requested document-year scope."""
         self.destination_path = destination_path
         self.new_set_docs = new_set_docs
         self.range_years = range_years
-        self.__available_years = core.AvailableYearsCVM()
+        self.allowed_unc_roots = PathSafetySettings.resolve_allowed_unc_roots(
+            allowed_unc_roots
+        )
 
         if not new_set_docs:
             raise EmptyDocumentListError()
@@ -121,6 +117,12 @@ class VerifyPathsUseCasesCVM:
 
     def execute(self) -> dict[str, dict[int, str]]:
         """Create and verify directory structure for documents and years."""
+        normalize_destination_path(
+            self.destination_path,
+            type_label='Destination path',
+            empty_message='path cannot be empty or whitespace',
+            allowed_unc_roots=self.allowed_unc_roots,
+        )
         docs_paths: dict[str, dict[int, str]] = {}
         for doc in self.new_set_docs:
             doc_path = str(Path(self.destination_path) / doc)
@@ -131,7 +133,8 @@ class VerifyPathsUseCasesCVM:
                 is_valid = self.__is_valid_year_for_doc(doc, year)
                 if not is_valid:
                     logger.debug(
-                        'Skipping folder for doc=%s, year=%s (invalid year for this document)',
+                        'Skipping folder for doc=%s, year=%s '
+                        '(invalid year for this document)',
                         doc,
                         year,
                     )
@@ -143,7 +146,8 @@ class VerifyPathsUseCasesCVM:
                 docs_paths[doc][year] = validated_year_path
 
         logger.debug(
-            'Directory structure created successfully. Documents: %d, Years per document: %s',
+            'Directory structure created successfully. Documents: %d, '
+            'Years per document: %s',
             len(docs_paths),
             [len(years) for years in docs_paths.values()],
         )
@@ -151,74 +155,33 @@ class VerifyPathsUseCasesCVM:
         return docs_paths
 
     def __is_valid_year_for_doc(self, doc: str, year: int) -> bool:
-        doc_upper = doc.upper()
-        min_itr = self.__available_years.get_minimal_itr_year()
-        min_cgvn_vlmo = self.__available_years.get_minimal_cgvn_vlmo_year()
-        min_general = self.__available_years.get_minimal_general_year()
+        return year >= core.DOCUMENT_START_YEARS[doc.upper()]
 
-        if doc_upper == 'ITR':
-            return year >= min_itr
-
-        if doc_upper in {'VLMO', 'CGVN'}:
-            return year >= min_cgvn_vlmo
-
-        return year >= min_general
-
-    @staticmethod
-    def __validate_and_create_paths(path: str) -> str:
-        if not isinstance(path, str):
-            raise TypeError(
-                f'Destination path must be a string, got {type(path).__name__}'
-            )
-
-        if not path or path.isspace():
-            raise InvalidDestinationPathError(
-                'path cannot be empty or whitespace'
-            )
-
-        normalized_path = Path(path).expanduser().resolve()
-
-        assert_path_not_sensitive(normalized_path, raw_input=path)
-
-        if normalized_path.exists():
-            if not normalized_path.is_dir():
-                raise PathIsNotDirectoryError(str(normalized_path))
-
-            if not os.access(str(normalized_path), os.W_OK):
-                raise PathPermissionError(str(normalized_path))
-
-            logger.debug(
-                'Destination directory already exists: %s', normalized_path
-            )
-        else:
-            try:
-                normalized_path.mkdir(parents=True, exist_ok=True)
-                logger.debug(
-                    'Created destination directory: %s', normalized_path
-                )
-            except PermissionError as e:
-                raise PathPermissionError(str(normalized_path)) from e
-            except OSError as e:
-                raise PathCreationError(str(normalized_path), str(e)) from e
-
-        logger.debug(
-            'Destination path validated and ready: %s', normalized_path
+    def __validate_and_create_paths(self, path: str) -> str:
+        result = prepare_writable_destination(
+            path,
+            type_label='Destination path',
+            empty_message='path cannot be empty or whitespace',
+            allowed_unc_roots=self.allowed_unc_roots,
         )
-        return str(normalized_path)
+        logger.debug('Destination path validated and ready: %s', result)
+        return str(result)
 
 
 class DownloadDocumentsUseCaseCVM:
-    """Orchestrator use case for downloading CVM documents.
+    """Orchestrate CVM document downloads through one adapter."""
 
-    Maintains collaborator references across executions. Tests inspect the
-    private mangled attributes (`_DownloadDocumentsUseCaseCVM__repository`
-    etc.), so the constructor preserves this attribute structure. Collaborators
-    interact directly via duck typing and static type checking.
-    """
-
-    def __init__(self, repository: AsyncDownloadAdapterCVM) -> None:
-        """Initialize the orchestrator with a repository-shaped collaborator."""
-        self.__repository: AsyncDownloadAdapterCVM = repository
+    def __init__(
+        self,
+        repository: CvmDownloadAdapter,
+        *,
+        allowed_unc_roots: Sequence[str] | None = None,
+    ) -> None:
+        """Initialize the orchestrator with its repository collaborator."""
+        self.__repository: CvmDownloadAdapter = repository
+        self.__allowed_unc_roots = (
+            PathSafetySettings.resolve_allowed_unc_roots(allowed_unc_roots)
+        )
 
         logger.debug(
             'DownloadDocumentsUseCaseCVM initialized with repository=%s',
@@ -233,7 +196,7 @@ class DownloadDocumentsUseCaseCVM:
         last_year: int | None = None,
         *,
         automatic_extractor: bool = False,
-    ) -> core.DownloadResultCVM:
+    ) -> DownloadResultCVM:
         """Execute the download operation (synchronous)."""
         dict_urls_zips, docs_paths = self.__prepare_inputs(
             destination_path, list_docs, initial_year, last_year
@@ -244,8 +207,7 @@ class DownloadDocumentsUseCaseCVM:
         try:
             tasks = self.__prepare_download_tasks(dict_urls_zips, docs_paths)
             result = self.__repository.download_docs(
-                tasks,
-                automatic_extractor=automatic_extractor,
+                tasks, automatic_extractor=automatic_extractor
             )
             return self.__finalize(result, start_time)
 
@@ -261,7 +223,7 @@ class DownloadDocumentsUseCaseCVM:
         last_year: int | None = None,
         *,
         automatic_extractor: bool = False,
-    ) -> core.DownloadResultCVM:
+    ) -> DownloadResultCVM:
         """Execute the download operation inside an existing event loop.
 
         Mirrors :meth:`execute` but awaits the adapter's async entrypoint
@@ -277,8 +239,7 @@ class DownloadDocumentsUseCaseCVM:
         try:
             tasks = self.__prepare_download_tasks(dict_urls_zips, docs_paths)
             result = await self.__repository.async_download_docs(
-                tasks,
-                automatic_extractor=automatic_extractor,
+                tasks, automatic_extractor=automatic_extractor
             )
             return self.__finalize(result, start_time)
 
@@ -306,29 +267,33 @@ class DownloadDocumentsUseCaseCVM:
             last_year,
         )
 
-        range_years = generate_range_years(
-            initial_year=initial_year,
-            last_year=last_year,
-        )
-
         dict_urls_zips, new_set_docs = generate_urls(
             list_docs=list_docs,
             initial_year=initial_year,
             last_year=last_year,
         )
 
+        if initial_year is None:
+            initial_year = min(
+                core.DOCUMENT_START_YEARS[doc] for doc in new_set_docs
+            )
+        range_years = generate_range_years(
+            initial_year=initial_year, last_year=last_year
+        )
+
         verify_paths = VerifyPathsUseCasesCVM(
             destination_path=destination_path,
             new_set_docs=new_set_docs,
             range_years=range_years,
+            allowed_unc_roots=self.__allowed_unc_roots,
         )
         docs_paths = verify_paths.execute()
 
         return dict_urls_zips, docs_paths
 
     def __finalize(
-        self, result: core.DownloadResultCVM, start_time: float
-    ) -> core.DownloadResultCVM:
+        self, result: DownloadResultCVM, start_time: float
+    ) -> DownloadResultCVM:
         """Stamp elapsed time on the result and emit completion logs."""
         result.elapsed_time = time.time() - start_time
 

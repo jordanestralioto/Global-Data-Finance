@@ -22,7 +22,9 @@ class TestVerifyDestinationPathsUseCaseB3:
         test_dir = tmp_path / 'test_output'
         test_dir.mkdir()
 
-        VerifyDestinationPathsUseCaseB3.execute(str(test_dir))
+        result = VerifyDestinationPathsUseCaseB3.execute(str(test_dir))
+
+        assert result == test_dir.resolve()
 
     def test_execute_creates_non_existing_directory(self, tmp_path):
         test_dir = tmp_path / 'new_output'
@@ -80,6 +82,23 @@ class TestVerifyDestinationPathsUseCaseB3:
         with pytest.raises(SecurityError):
             VerifyDestinationPathsUseCaseB3.execute(blocked_path)
 
+    @pytest.mark.parametrize(
+        'blocked_path',
+        ['/', 'D:\\', 'D:\\Windows', '\\\\server\\share\\output'],
+    )
+    def test_execute_blocks_unsafe_roots_before_directory_creation(
+        self,
+        blocked_path,
+    ):
+        """Unsafe POSIX, drive, and UNC roots never reach ``mkdir``."""
+        with (
+            patch.object(Path, 'mkdir') as mkdir,
+            pytest.raises(SecurityError),
+        ):
+            VerifyDestinationPathsUseCaseB3.execute(blocked_path)
+
+        mkdir.assert_not_called()
+
     def test_execute_raises_path_is_not_directory_for_file(self, tmp_path):
         test_file = tmp_path / 'test_file.txt'
         test_file.write_text('content')
@@ -109,9 +128,10 @@ class TestVerifyDestinationPathsUseCaseB3:
             mock_expand.return_value = tmp_path / 'expanded'
             (tmp_path / 'expanded').mkdir()
 
-            VerifyDestinationPathsUseCaseB3.execute('~/test_output')
+            result = VerifyDestinationPathsUseCaseB3.execute('~/test_output')
 
             mock_expand.assert_called()
+        assert result == tmp_path / 'expanded'
 
     def test_execute_resolves_relative_paths(self, tmp_path):
         test_dir = tmp_path / 'relative'
@@ -120,34 +140,43 @@ class TestVerifyDestinationPathsUseCaseB3:
         with patch.object(Path, 'resolve') as mock_resolve:
             mock_resolve.return_value = test_dir
 
-            VerifyDestinationPathsUseCaseB3.execute('./relative/path')
+            result = VerifyDestinationPathsUseCaseB3.execute('./relative/path')
 
             mock_resolve.assert_called()
+        assert result == test_dir
 
     def test_execute_handles_path_with_spaces(self, tmp_path):
         test_dir = tmp_path / 'path with spaces'
         test_dir.mkdir()
 
-        VerifyDestinationPathsUseCaseB3.execute(str(test_dir))
+        result = VerifyDestinationPathsUseCaseB3.execute(str(test_dir))
+
+        assert result == test_dir.resolve()
 
     def test_execute_handles_path_with_special_characters(self, tmp_path):
         test_dir = tmp_path / 'path-with_special.chars'
         test_dir.mkdir()
 
-        VerifyDestinationPathsUseCaseB3.execute(str(test_dir))
+        result = VerifyDestinationPathsUseCaseB3.execute(str(test_dir))
 
-    def test_execute_is_static_method(self, tmp_path):
+        assert result == test_dir.resolve()
+
+    def test_execute_returns_normalized_path(self, tmp_path):
         test_dir = tmp_path / 'static_test'
         test_dir.mkdir()
 
-        VerifyDestinationPathsUseCaseB3.execute(str(test_dir))
+        result = VerifyDestinationPathsUseCaseB3.execute(str(test_dir))
+
+        assert result == test_dir.resolve()
 
     def test_execute_with_existing_writable_directory(self, tmp_path):
         test_dir = tmp_path / 'writable'
         test_dir.mkdir()
         assert os.access(str(test_dir), os.W_OK)
 
-        VerifyDestinationPathsUseCaseB3.execute(str(test_dir))
+        result = VerifyDestinationPathsUseCaseB3.execute(str(test_dir))
+
+        assert result == test_dir.resolve()
 
     @patch('pathlib.Path.mkdir')
     def test_execute_raises_permission_error_on_mkdir_failure(
@@ -189,10 +218,16 @@ class TestVerifyDestinationPathsUseCaseB3:
         test_dir = tmp_path / 'absolute'
         test_dir.mkdir()
 
-        VerifyDestinationPathsUseCaseB3.execute(str(test_dir.absolute()))
+        result = VerifyDestinationPathsUseCaseB3.execute(
+            str(test_dir.absolute())
+        )
+
+        assert result == test_dir.absolute()
 
     def test_execute_normalizes_path(self, tmp_path):
         test_dir = tmp_path / 'normalize'
         test_dir.mkdir()
 
-        VerifyDestinationPathsUseCaseB3.execute(str(test_dir))
+        result = VerifyDestinationPathsUseCaseB3.execute(str(test_dir))
+
+        assert result == test_dir.resolve()

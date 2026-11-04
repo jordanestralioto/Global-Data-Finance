@@ -2,6 +2,13 @@
 name: CI - Quality & Tests
 
 on:
+  workflow_call:
+    inputs:
+      release_tag:
+        description: >-
+          Release tag whose cumulative diff must pass integrity gates.
+        required: true
+        type: string
   pull_request:
     branches: [develop, main]
   push:
@@ -16,6 +23,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  gitleaks-checkout:
+    name: Gitleaks Checkout Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      # Gitleaks v8.30.0 source tag object:
+      # 2ca41cc1372d1e939a6a879f18cdc19fc1cac1ce (the frozen local hook pin).
+      # The published OCI image is pinned by digest, not by a mutable tag.
+      - name: Scan clean checkout with Gitleaks
+        uses: >-
+          docker://ghcr.io/gitleaks/gitleaks@sha256:691af3c7c5a48b16f187ce3446d5f194838f91238f27270ed36eef6359a574d9
+        with:
+          args: >-
+            dir . --config=.gitleaks.toml --redact --no-banner
+            --log-level=error
+
   quality:
     name: Lint, format, tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
@@ -27,21 +55,64 @@ jobs:
       UV_VIRTUALENVS_IN_PROJECT: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          ref: ${{ github.sha }}
 
+      # v7
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v7
+        uses: >-
+          actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: ${{ matrix.python-version }}
 
+      # v8.3.2
       - name: Install uv
-        uses: astral-sh/setup-uv@v8.3.2
+        uses: >-
+          astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990
         with:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync --locked --all-extras --dev
+
+      - name: Select cumulative pull request change range
+        if: github.event_name == 'pull_request'
+        env:
+          QUALITY_GATE_HEAD: ${{ github.sha }}
+        run: |
+          base_tag="$(git describe --tags --abbrev=0 "${QUALITY_GATE_HEAD}^")"
+          range="${base_tag}...${QUALITY_GATE_HEAD}"
+          echo "QUALITY_GATE_RANGE=$range" >> "$GITHUB_ENV"
+
+      - name: Select cumulative push change range
+        if: >-
+          github.event_name == 'push' &&
+          github.event.before != '0000000000000000000000000000000000000000'
+        env:
+          QUALITY_GATE_HEAD: ${{ github.sha }}
+        run: |
+          base_tag="$(git describe --tags --abbrev=0 "${QUALITY_GATE_HEAD}^")"
+          range="${base_tag}...${QUALITY_GATE_HEAD}"
+          echo "QUALITY_GATE_RANGE=$range" >> "$GITHUB_ENV"
+
+      - name: Select release change range
+        if: inputs.release_tag != ''
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          QUALITY_GATE_HEAD: ${{ github.sha }}
+        run: |
+          release_sha="$(git rev-parse --verify "${RELEASE_TAG}^{commit}")"
+          if [[ "$release_sha" != "$QUALITY_GATE_HEAD" ]]; then
+            echo "Release tag does not identify the workflow SHA." >&2
+            exit 1
+          fi
+          base_tag="$(git describe --tags --abbrev=0 "${RELEASE_TAG}^")"
+          range="${base_tag}...${QUALITY_GATE_HEAD}"
+          echo "QUALITY_GATE_RANGE=$range" >> "$GITHUB_ENV"
 
       # --------------------------------------------------------------------------
       # 1. Project Integrity Checks
@@ -52,44 +123,142 @@ jobs:
       # --------------------------------------------------------------------------
       # 2. Security Checks
       # --------------------------------------------------------------------------
-      - name: Security analysis with Bandit
+      - name: Static security analysis (Ruff flake8-bandit rules)
         run: |
-          uv run bandit -c pyproject.toml -r src -ll
+          uv run --locked --no-sync python scripts/check-ruff-policy.py \
+            --profile security
           echo "✅ Security analysis passed"
 
       - name: Check for vulnerable dependencies
         run: |
-          uv run pip-audit --ignore-vuln PYSEC-2026-89
+          uv run --locked --no-sync python \
+            scripts/audit_locked_dependencies.py
           echo "✅ No vulnerable dependencies found"
 
       # --------------------------------------------------------------------------
       # 3. Code Quality & Formatting
       # --------------------------------------------------------------------------
-      - name: Run pre-commit (all hooks)
-        run: uv run pre-commit run --all-files --show-diff-on-failure
+      - name: Run Ruff policy profiles
+        run: |
+          uv run --locked --no-sync python scripts/check-ruff-policy.py \
+            --profile all
+
+      # The remote Ruff hooks apply safe fixes and formatting to changed files;
+      # the policy hook above verifies the complete path-scoped profiles.
+      - name: Run pre-commit (pre-commit stage)
+        run: >-
+          uv run --locked --no-sync pre-commit run --all-files
+          --show-diff-on-failure
+
+      # `--all-files` has no staged index, so diff-based hooks skip there.
+      # Run them against the event range instead of treating SKIP as coverage.
+      - name: Enforce changed-file integrity gates
+        run: |
+          if [[ -z "${QUALITY_GATE_RANGE:-}" ]]; then
+            echo "SKIP: this event has no comparable Git range."
+            exit 0
+          fi
+          app_dir=src/globaldatafinance/application
+          uv run --locked --no-sync python scripts/check_diff_sanity.py \
+            --range "$QUALITY_GATE_RANGE" \
+            --allow-print-file scripts/check-import-cycles.py \
+            --allow-print-file scripts/check-shell-syntax.py \
+            --allow-print-file scripts/check-docs-contracts.py \
+            --allow-print-file scripts/check-ruff-policy.py \
+            --allow-print-file scripts/check_test_quality.py \
+            --allow-print-file scripts/benchmark_cvm_http.py \
+            --allow-print-file scripts/benchmark_cvm_full.py \
+            --allow-print-file scripts/audit_locked_dependencies.py \
+            --allow-print-file scripts/check_commit_msg.py \
+            --allow-print-file scripts/check_release_evidence.py \
+            --allow-print-file scripts/check_distributions.py \
+            --allow-print-file scripts/release_acceptance.py \
+            --allow-print-file \
+            "$app_dir/b3_docs/extraction_result_formatter.py" \
+            --allow-print-file \
+            "$app_dir/cvm_docs/download_result_formatter.py" \
+            --allow-print-file examples/01_quickstart_cvm.py \
+            --allow-print-file examples/02_quickstart_b3.py \
+            --allow-print-file examples/03_advanced_options_b3.py \
+            --allow-print-file examples/04_yearly_b3.py
+          uv run --locked --no-sync python scripts/check_test_integrity.py \
+            --range "$QUALITY_GATE_RANGE"
+          uv run --locked --no-sync python scripts/check-shell-syntax.py \
+            --range "$QUALITY_GATE_RANGE"
+
+      - name: Check structural test quality
+        run: uv run --locked --no-sync python scripts/check_test_quality.py
+
+      # The heavy pre-push contracts have dedicated steps below/above so CI
+      # preserves focused type and coverage reports without duplicate runs.
+      - name: Run pre-commit (pre-push stage)
+        run: |
+          uv run --locked --no-sync pre-commit run max-lines-per-file \
+            --all-files \
+            --hook-stage pre-push --show-diff-on-failure
 
       - name: Type check with mypy
-        run: uv run mypy src --ignore-missing-imports --pretty
-
-      - name: Docstring style check
         run: |
-          uv run pydocstyle src --convention=google --match-dir=^src \
-            --add-ignore=D104,D100,D101,D102,D103,D105,D107,D205,D212,D417,D415
-          echo "✅ Docstring style check passed"
+          uv run --locked --no-sync mypy src --pretty
+          uv run --locked --no-sync mypy src tests examples scripts \
+            --disable-error-code no-untyped-def --pretty
 
       # --------------------------------------------------------------------------
       # 4. Tests
       # --------------------------------------------------------------------------
-      - name: Run tests (excluding integration and slow tests)
+      - name: Run deterministic tests (excluding slow and real-data tests)
         env:
           PYTHONPATH: .
         run: |
-          uv run pytest -m "not integration and not slow" \
-                 --cov=src --cov-report=xml --cov-report=term-missing \
-                 --cov-fail-under=70
+          mkdir -p .cache/release-coverage
+          git rev-parse HEAD > .cache/release-coverage/environment.txt
+          uv --version >> .cache/release-coverage/environment.txt
+          uv run --locked --no-sync pytest \
+            -m "not slow and not real_data and not perf" \
+            --cov --cov-report=xml --cov-report=term-missing \
+            --cov-report=json:.cache/release-coverage/product.json
 
+      - name: Run real-validation executor coverage
+        run: >-
+          uv run --locked --no-sync pytest -q
+          tests/tooling/test_cotahist_oracle.py
+          tests/tooling/test_file_digests.py
+          tests/tooling/test_cvm_archive_oracle.py
+          tests/tooling/test_cvm_catalog.py
+          tests/tooling/test_real_validation.py
+          tests/tooling/test_real_validation_b3.py
+          tests/tooling/test_real_validation_cases.py
+          tests/tooling/test_real_validation_cvm.py
+          tests/tooling/test_real_validation_cvm_integration.py
+          tests/tooling/test_real_validation_matrix.py
+          tests/tooling/test_real_validation_process.py
+          tests/tooling/test_real_validation_report.py
+          tests/tooling/test_real_validation_resume.py
+          tests/tooling/test_real_validation_runner.py
+          tests/tooling/test_real_validation_types.py
+          tests/tooling/test_real_validation_utils.py
+          --cov=scripts.cotahist_oracle
+          --cov=scripts.file_digests
+          --cov=scripts.cvm_archive_oracle
+          --cov=scripts.cvm_catalog
+          --cov=scripts.real_validation
+          --cov=scripts.real_validation_b3
+          --cov=scripts.real_validation_cases
+          --cov=scripts.real_validation_cvm
+          --cov=scripts.real_validation_matrix
+          --cov=scripts.real_validation_report
+          --cov=scripts.real_validation_resume
+          --cov=scripts.real_validation_runner
+          --cov=scripts.real_validation_types
+          --cov=scripts.real_validation_utils
+          --cov-report=term-missing
+          --cov-report=json:.cache/release-coverage/executor.json
+          --cov-fail-under=85
+
+      # v7
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v7
+        uses: >-
+          codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f
         with:
           files: ./coverage.xml
           flags: unittests
@@ -97,9 +266,166 @@ jobs:
           fail_ci_if_error: false
           verbose: false
 
+      # v7
       - name: Upload coverage report (artifact)
-        uses: actions/upload-artifact@v7
+        uses: >-
+          actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: coverage-report-py${{ matrix.python-version }}
-          path: coverage.xml
-          if-no-files-found: ignore
+          path: |
+            coverage.xml
+            .cache/release-coverage/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+  native-regressions:
+    name: Native regressions (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+        python: ["3.12", "3.13", "3.14"]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install locked dependencies
+        env:
+          NATIVE_PYTHON: ${{ matrix.python }}
+        run: uv sync --locked --all-extras --dev --python "$NATIVE_PYTHON"
+      - name: Record native environment
+        run: |
+          mkdir -p .cache/release-native
+          uv --version > .cache/release-native/environment.txt
+          git rev-parse HEAD >> .cache/release-native/environment.txt
+          uv run --locked --no-sync python -VV \
+            >> .cache/release-native/environment.txt
+      - name: Run required native behaviors
+        run: |
+          cvm_tests=tests/brazil/cvm/fundamental_stocks_data
+          b3_tests=tests/brazil/b3_data/historical_quotes
+          uv run --locked --no-sync pytest \
+            -p tests.support.release_evidence --release-native \
+            --release-evidence=.cache/release-native/results.json \
+            --junitxml=.cache/release-native/junit.xml --no-cov \
+            tests/core/test_archive_safety.py \
+            tests/core/test_logging_redaction.py \
+            tests/core/utils/test_path_safety.py \
+            tests/macro_infra/test_publication_platforms.py \
+            tests/macro_infra/test_publication_crashes.py \
+            tests/macro_infra/test_requests_adapter.py \
+            tests/macro_infra/test_http_safety.py \
+            "$cvm_tests/infra/adapters/test_http_retry.py" \
+            "$cvm_tests/integration/test_destination_io_platforms.py" \
+            "$cvm_tests/integration/test_transaction_recovery.py" \
+            "$cvm_tests/integration/test_cvm_log_redaction.py" \
+            "$b3_tests/parquet_writer/test_writer_lifecycle.py" \
+            "$b3_tests/extraction_service/test_source_result_validation.py" \
+            tests/application/b3_docs/test_release_regressions.py
+          git diff --exit-code
+      - name: Upload native evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: native-${{ matrix.os }}-py${{ matrix.python }}
+          path: .cache/release-native/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+  publication-fault-campaign:
+    name: Publication failure campaign (shard ${{ matrix.shard }})
+    if: inputs.release_tag != '' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    env:
+      GDF_PUBLICATION_SHARD: ${{ matrix.shard }}
+      GDF_PUBLICATION_SHARDS: "8"
+      GDF_PUBLICATION_REPORT_DIR: .cache/publication-campaign/reports
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Set up Python 3.13
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.13"
+      - name: Install uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install locked dependencies
+        run: uv sync --locked --all-extras --dev --python 3.13
+      - name: Record campaign environment
+        run: |
+          mkdir -p .cache/publication-campaign
+          uv --version > .cache/publication-campaign/environment.txt
+          git rev-parse HEAD >> .cache/publication-campaign/environment.txt
+      - name: Execute every assigned fault case
+        run: |
+          uv run --locked --no-sync pytest \
+            tests/macro_infra/test_publication_fault_campaign.py \
+            -m 'integration and slow' --no-cov \
+            --junitxml=.cache/publication-campaign/junit.xml
+          git diff --exit-code
+      - name: Upload campaign evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: publication-campaign-${{ matrix.shard }}
+          path: .cache/publication-campaign/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+  verify-publication-campaign:
+    name: Verify complete failure campaign
+    needs: publication-fault-campaign
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Set up Python 3.13
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.13"
+      - name: Install uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990
+      - name: Install locked dependencies
+        run: uv sync --locked --all-extras --dev --python 3.13
+      - name: Download all campaign shards
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          pattern: publication-campaign-*
+          path: .cache/campaign-evidence
+      - name: Reject missing or incomplete campaign evidence
+        run: >-
+          uv run --locked --no-sync python scripts/check_release_evidence.py
+          .cache/campaign-evidence --shards 8

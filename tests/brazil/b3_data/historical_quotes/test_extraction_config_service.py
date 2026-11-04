@@ -57,7 +57,7 @@ class TestValidateOutputFilenameRejectsTraversal:
             ExtractionConfigServiceB3.validate_output_filename('..')
 
     def test_rejects_security_audit_poc_literal(self):
-        """Regression: exact PoC value reproduced from the F1 security audit."""
+        """Regression: preserve the exact security audit PoC value."""
         with pytest.raises(InvalidOutputFilename):
             ExtractionConfigServiceB3.validate_output_filename(
                 '../../../home/jordan/.bashrc_pwn_poc.parquet'

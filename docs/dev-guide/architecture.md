@@ -1,348 +1,106 @@
 # Arquitetura
 
-Documentação completa da arquitetura do Global-Data-Finance, padrões de design e estrutura do projeto.
-
----
-
-## Visão Geral
-
-Global-Data-Finance é uma biblioteca Python distribuída via PyPI cuja API pública é deliberadamente estreita — exportando na raiz as classes `FundamentalStocksDataCVM` e `HistoricalQuotesB3`, além do contrato `ExtractionResultB3`. Internamente, cada fonte de dados é implementada em um diretório próprio com **layout plano de módulos nomeados por papel**.
-
-Esta abordagem privilegia:
-
-- ✅ **Leitura**: poucos arquivos com nomes claros (CVM: `core.py`, `client.py`, `http.py`, `extract.py`, `errors.py`; B3: módulos por papel — `client.py`, `assets.py`, `models.py`, `years.py`, `processing.py`, `filesystem.py`, `errors.py`, mais subpacotes pesados)
-- ✅ **Manutenibilidade**: estrutura limpa, concisa e orientada de forma pragmática às funcionalidades dos módulos
-- ✅ **Extensibilidade**: adicionar nova fonte = adicionar nova pasta-irmã com o mesmo conjunto plano de módulos
-- ✅ **Testabilidade**: uso de duck typing direto e injeção de dependência para isolar e testar componentes de forma simples
-
----
-
-## Estrutura do Projeto
-
-```text
-globaldatafinance/
-├── src/globaldatafinance/
-│   ├── __init__.py                  # re-exporta a API pública
-│   ├── application/                 # FACADE PÚBLICO (top-level)
-│   │   ├── b3_docs/
-│   │   │   ├── historical_quotes.py            # HistoricalQuotesB3
-│   │   │   ├── extraction_result_formatter.py
-│   │   │   └── result_formatters/
-│   │   └── cvm_docs/
-│   │       ├── fundamental_stocks_data.py      # FundamentalStocksDataCVM
-│   │       └── download_result_formatter.py
-│   ├── brazil/                      # IMPLEMENTAÇÕES POR FONTE
-│   │   ├── b3_data/
-│   │   │   └── historical_quotes/   # módulos por papel + subpacotes pesados
-│   │   │       ├── client.py                  # ExtractHistoricalQuotesUseCaseB3 + funções de orquestração
-│   │   │       ├── assets.py                  # AvailableAssetsServiceB3 (validação + TPMERC mapping)
-│   │   │       ├── models.py                  # DocsToExtractorB3 (dataclass)
-│   │   │       ├── years.py                   # YearRangeB3 (value object + validators)
-│   │   │       ├── processing.py              # ProcessingModeEnumB3, _ProcessingModeConfig
-│   │   │       ├── filesystem.py              # FileSystemServiceB3.validate_directory_path
-│   │   │       ├── errors.py                  # exceções específicas da fonte
-│   │   │       ├── zip_reader.py              # leitura de COTAHIST ZIP
-│   │   │       ├── cotahist_parser.py         # parser posicional (preservado isolado)
-│   │   │       ├── parquet_writer/            # subpacote: writer Parquet
-│   │   │       └── extraction_service/        # subpacote: orquestração streaming/threadpool
-│   │   └── cvm/
-│   │       └── fundamental_stocks_data/   # layout achatado (5 + 2 helpers)
-│   │           ├── core.py                    # AvailableDocsCVM, AvailableYearsCVM, DictZipsToDownloadCVM, DownloadResultCVM
-│   │           ├── client.py                  # DownloadDocumentsUseCaseCVM, GenerateUrlsUseCaseCVM, VerifyPathsUseCasesCVM
-│   │           ├── http.py                    # AsyncDownloadAdapterCVM (httpx async + retry + integrity)
-│   │           ├── extract.py                 # ParquetExtractorAdapterCVM
-│   │           ├── download_validation.py     # validate_downloaded_file, validate_parquet_files, find_parquet_files
-│   │           ├── download_extraction.py     # extract_downloaded_file (orquestra adapter + validation)
-│   │           └── errors.py                  # exceções específicas da fonte
-│   ├── core/                        # utilidades de infraestrutura
-│   ├── macro_infra/                 # adapters genéricos compartilhados
-│   └── macro_exceptions/            # exceções de base do projeto
-├── tests/                           # pytest, mirror por fonte
-├── docs/                            # MkDocs
-└── pyproject.toml
-```
-
-
----
-
-## Padrão de módulos por fonte
-
-Cada `brazil/<país>/<fonte>/` segue o mesmo conjunto de **papéis**. O mapeamento papel ↔ arquivo é fixo na CVM (um arquivo por papel) e mais granular na B3 (papéis "dados puros" e "validação" foram quebrados em módulos por tópico para evitar um único `core.py` gigante). Adicionar uma nova fonte pode seguir qualquer dos dois caminhos — o critério é legibilidade.
-
-| Papel                       | CVM                                            | B3                                                                                     |
-| --------------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Dados puros (types, enums)  | `core.py`                                      | `models.py` + `years.py` + `processing.py`                                             |
-| Validação / domain services | `core.py` (`AvailableDocsCVM.validate_*`)      | `assets.py` (`AvailableAssetsServiceB3`) + `filesystem.py` (`validate_directory_path`) |
-| Orquestração / use cases    | `client.py`                                    | `client.py`                                                                            |
-| HTTP / download             | `http.py` (`AsyncDownloadAdapterCVM`)          | (no `zip_reader.py` + `extraction_service/`; não há download HTTP)                     |
-| Extração / escrita Parquet  | `extract.py` (`ParquetExtractorAdapterCVM`)    | `parquet_writer/` (subpacote)                                                          |
-| Parser de formato           | —                                              | `cotahist_parser.py`                                                                   |
-| Helpers de validação        | `download_validation.py`, `download_extraction.py` | embutidos em `filesystem.py` / `client.py`                                         |
-| Exceções                    | `errors.py`                                    | `errors.py`                                                                            |
-
-Funções/classes auxiliares são internas ao módulo a menos que sejam usadas em outro arquivo — o ponto de extensibilidade real é a fonte, não o "tipo de objeto".
-
-> **Por que B3 não tem `core.py` consolidado.** O conteúdo de B3 vive em módulos por tópico (`assets.py`, `models.py`, `years.py`, `processing.py`, `filesystem.py`) em vez de um único `core.py` porque cada um já tem massa crítica (~100–300 linhas) e diferentes consumidores. Consolidar trocaria 5 arquivos médios por 1 arquivo enorme.
-
----
-
-## Camadas observáveis
-
-A arquitetura do projeto é estruturada ao redor de **duas camadas explícitas** e bem delineadas:
-
-### 1. Facade público (`application/`)
-
-**Responsabilidade**: superfície semver-relevante para usuários da biblioteca.
-
-```python
-# src/globaldatafinance/application/cvm_docs/fundamental_stocks_data.py
-from ...brazil.cvm.fundamental_stocks_data import (
-    AsyncDownloadAdapterCVM,
-    DownloadDocumentsUseCaseCVM,
-    DownloadResultCVM,
-    ParquetExtractorAdapterCVM,
-    # ...
-)
-
-class FundamentalStocksDataCVM:
-    def __init__(self):
-        self.download_adapter = AsyncDownloadAdapterCVM(...)
-        self.__download_use_case = DownloadDocumentsUseCaseCVM(self.download_adapter)
-
-    def download(self, destination_path, list_docs=None, initial_year=None, last_year=None):
-        result = self.__download_use_case.execute(
-            destination_path=destination_path,
-            list_docs=list_docs,
-            initial_year=initial_year,
-            last_year=last_year,
-        )
-        self.__result_formatter.print_result(result)
-        return result
-```
-
-O facade importa **diretamente** dos módulos planos da fonte (sem passar por re-exports intermediários em `brazil/__init__.py`).
-
-### 2. Implementação por fonte (`brazil/<país>/<fonte>/`)
-
-Cada fonte é autocontida em ~5–8 arquivos. Exemplo CVM:
-
-```python
-# src/globaldatafinance/brazil/cvm/fundamental_stocks_data/core.py
-class AvailableDocsCVM:
-    DOCS_MAPPING = {
-        'DFP': 'Demonstração Financeira Padronizada',
-        'ITR': 'Informação Trimestral',
-        # ...
-    }
-
-    def validate_docs_name(self, doc_name: str) -> None:
-        if doc_name not in self.DOCS_MAPPING:
-            raise InvalidDocumentName(f'Invalid document: {doc_name}')
-```
-
-```python
-# src/globaldatafinance/brazil/cvm/fundamental_stocks_data/client.py
-class DownloadDocumentsUseCaseCVM:
-    def __init__(self, repository: AsyncDownloadAdapterCVM) -> None:
-        self.__repository: AsyncDownloadAdapterCVM = repository
-        # ...
-
-    def execute(self, destination_path, list_docs=None, initial_year=None, last_year=None) -> DownloadResultCVM:
-        start_time = time.time()
-        # ... orquestração ...
-        result = self.__repository.download_docs(tasks)
-        result.elapsed_time = time.time() - start_time
-        return result
-```
-
-```python
-# src/globaldatafinance/brazil/cvm/fundamental_stocks_data/http.py
-class AsyncDownloadAdapterCVM:
-    def download_docs(self, tasks) -> DownloadResultCVM:
-        # implementação concreta com httpx async, retry, integrity check
-        ...
-```
-
-O orquestrador interage com `AsyncDownloadAdapterCVM` através do seu contrato observável de métodos, permitindo que os testes utilizem stubs de duck typing simples sem complexidade adicional (ver "Testes" mais abaixo).
-
----
-
-## Padrões de design
-
-### Função (ou classe leve) por operação em `client.py`
-
-A maioria das operações é modelada como função de módulo ou classe objetiva focada na sua responsabilidade específica, acionada diretamente pelo facade. Classes são utilizadas principalmente quando há **estado real reutilizável**: por exemplo, `ExtractHistoricalQuotesUseCaseB3` segura `zip_reader + parser + writer + processing_mode` entre chamadas e por isso permanece como classe.
-
-```python
-# Função simples em client.py
-def generate_range_years(initial_year: int | None, last_year: int | None) -> list[int]:
-    ...
-
-# Classe com estado real
-class ExtractHistoricalQuotesUseCaseB3:
-    def __init__(self, zip_reader, parser, writer, processing_mode):
-        ...
-    def execute(self, paths_of_docs, docs_to_extract):
-        ...
-```
-
-### Adapters concretos e diretos
-
-Os adapters responsáveis por I/O, como `AsyncDownloadAdapterCVM` e `ParquetExtractorAdapterCVM`, são importados e instanciados diretamente nos fluxos principais, garantindo rastreabilidade e simplicidade na navegação da base de código.
-
-### Result objects
-
-Operações que podem falhar parcialmente retornam um dataclass de resultado com sucessos e erros explícitos, em vez de `raise` em falhas parciais.
-
-```python
-@dataclass
-class DownloadResultCVM:
-    success_count_downloads: int
-    error_count_downloads: int
-    successful_downloads: list[str]
-    failed_downloads: dict[str, str]
-    elapsed_time: float
-
-    def has_errors(self) -> bool:
-        return self.error_count_downloads > 0
-```
-
-### Value objects
-
-Tipos imutáveis em `core.py` que encapsulam validação e construção (`DictZipsToDownloadCVM`, `DocsToExtractorB3`, etc.).
-
-### Separação de apresentação
-
-Saída de console/log de apresentação fica em módulos `*_formatter.py` dentro de `application/`. Código de `client.py` permanece I/O-free (exceto pelas chamadas a adapters concretos).
-
-### Defesa de path-traversal preservada como contrato
-
-`VerifyPathsUseCasesCVM` (CVM, em `client.py`) e o helper `FileSystemServiceB3` (B3, em `filesystem.py`) levantam `SecurityError` antes de qualquer `mkdir`, bloqueando escrita em `/etc /sys /proc /dev /boot /root`. Esses helpers fazem parte do contrato observável de `FundamentalStocksDataCVM.download(destination_path=...)` e `HistoricalQuotesB3.extract(path_of_docs=...)` — devem permanecer bit-idênticos em qualquer refactor que mova o código.
-
----
-
-## Fluxo de dados
-
-### Download de documentos CVM
+Global-Data-Finance é uma biblioteca Python consumida por aplicações. Recebe
+seleções, arquivos e caminhos do chamador; devolve resultados estruturados e
+artefatos Parquet. As fontes atuais são CVM e B3.
 
 ```mermaid
-graph TD
-    A[FundamentalStocksDataCVM] -->|1. chamar download| B[DownloadDocumentsUseCaseCVM]
-    B -->|2. validar inputs| C[AvailableDocsCVM / AvailableYearsCVM em core.py]
-    B -->|3. gerar URLs| D[GenerateUrlsUseCaseCVM em client.py]
-    B -->|4. verificar paths| E[VerifyPathsUseCasesCVM<br/>raise SecurityError em /etc, /sys, ...]
-    B -->|5. executar download| F[AsyncDownloadAdapterCVM em http.py]
-    F -->|6. HTTP requests| G[Servidor CVM]
-    F -->|7. integrity check + salvar| H[Sistema de arquivos]
-    F -->|8. retornar resultado| B
-    B -->|9. retornar resultado| A
-    A -->|10. formatar saída| I[DownloadResultFormatter]
+flowchart TD
+    Caller[Aplicação Python] --> API[Facades públicas]
+    API --> CVM[Download e extração CVM]
+    API --> B3[Extração COTAHIST B3]
+    CVM --> Shared[Configuração, segurança e I/O compartilhados]
+    B3 --> Shared
 ```
 
-### Extração de cotações B3
+## Onde começar no código
 
-```mermaid
-graph TD
-    A[HistoricalQuotesB3] -->|1. chamar extract| B[ExtractHistoricalQuotesUseCaseB3]
-    B -->|2. validar inputs| C[validators em core.py]
-    B -->|3. validar destino| D[validate_directory_path<br/>raise SecurityError em /etc, /sys, ...]
-    B -->|4. listar arquivos| E[zip_reader.py]
-    E -->|5. iterar ZIP entries| F[cotahist_parser.py]
-    F -->|6. dataframes parciais| G[extraction_service/]
-    G -->|7. orquestrar threadpool/flush| H[parquet_writer/]
-    H -->|8. escrever Parquet| I[Sistema de arquivos]
-    B -->|9. retornar resultado| A
-    A -->|10. formatar saída| J[ExtractionResultFormatter]
-```
+Os caminhos abaixo são relativos a `src/globaldatafinance/`.
 
----
+| Responsabilidade                              | Local                                                                                 |
+| --------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Exports públicos                              | `__init__.py`: `FundamentalStocksDataCVM`, `HistoricalQuotesB3`, `ExtractionResultB3` |
+| Validação e orquestração das facades          | `application/cvm_docs/` e `application/b3_docs/`                                      |
+| Seleção e políticas de companhias abertas CVM | `brazil/cvm/fundamental_stocks_data/`                                                 |
+| Download e preservação de arquivos CVM        | `brazil/cvm/ingestion/`                                                               |
+| Comportamento B3                              | `brazil/b3_data/historical_quotes/`                                                   |
+| Configuração, logging, retry e segurança      | `core/`                                                                               |
+| I/O genérico e publicação recuperável         | `macro_infra/`                                                                        |
+| Exceções-base compartilhadas                  | `macro_exceptions/`                                                                   |
 
-## Como adicionar uma nova fonte
+Na CVM, `fundamental_stocks_data/client.py` planeja os documentos e anos de
+empresas. A facade compõe diretamente `ingestion/http.py` para downloads;
+`ingestion/csv_pipeline/` preserva o CSV e `ingestion/transaction.py` coordena
+a publicação. A infraestrutura comum da CVM não depende do catálogo de empresas.
+Na B3, `catalog.py` resolve as entradas,
+`source_validation/` e `cotahist_parser/` validam e interpretam os registros,
+e `extraction_service/` e `parquet_writer/` coordenam a saída.
 
-Para uma nova fonte (ex.: SEC dos EUA), crie uma nova pasta-irmã com módulos nomeados por papel. Para fontes pequenas, o conjunto mínimo da CVM funciona bem; para fontes maiores, espelhe a granularidade de B3 e separe os tópicos antes que o `core.py` cresça demais.
+## Fluxos de dados
 
-```text
-src/globaldatafinance/usa/sec/fundamental_data/
-├── core.py        # entidades, value objects, validadores  (consolide se ≤ ~300 linhas)
-├── client.py      # use cases / orquestradores
-├── http.py        # adapter HTTP concreto
-├── extract.py     # adapter de extração concreto (se aplicável)
-└── errors.py      # exceções específicas
-```
+**CVM:** a facade valida a solicitação, resolve documento/ano e chama o adapter
+HTTP. O ZIP é validado e preservado. Quando solicitada, a extração converte os
+CSVs em staging, confere o conteúdo e publica o lote de Parquets.
 
-Em seguida:
+**B3:** a facade resolve arquivos locais `COTAHIST_A{YYYY}.ZIP` ou
+`COTAHIST_A{YYYY}.TXT`. O extrator aceita ZIP e TXT; valida cada fonte e todos
+os registros antes do filtro, processa os lotes, consolida o Parquet e verifica
+a saída antes da publicação.
 
-1. **Re-export interno**: adicione `__init__.py` na pasta da fonte (ou deixe vazio se não houver consumidores internos).
-2. **Facade público**: crie `src/globaldatafinance/application/sec_docs/fundamental_data.py` com uma classe `FundamentalDataSEC` que importa diretamente dos módulos planos:
+A apresentação pertence aos módulos `*_formatter.py` em `application/`.
+Orquestradores coordenam colaboradores; validação e transformação não devem
+incorporar I/O que pertença aos adapters.
 
-   ```python
-   from ...usa.sec.fundamental_data import (
-       DownloadAdapterSEC,
-       DownloadDocumentsUseCaseSEC,
-       # ...
-   )
-   ```
+Famílias adicionais da CVM podem consumir `ingestion/` quando compartilham o
+contrato `exact-text-v1`. Elas mantêm seleção de documentos e períodos em seus
+próprios módulos e usam os tipos canônicos de ingestão. A identidade nos metadados
+determina o inventário na extração direta e automática, inclusive com extrator
+fornecido pelo chamador. Não há adaptadores de compatibilidade ou inferência
+de ownership por nomes antigos. Outro dialeto CSV exige uma decisão própria.
 
-3. **API pública**: re-exporte a nova classe em `src/globaldatafinance/__init__.py` e `src/globaldatafinance/application/__init__.py`. Trate como adição **semver-relevante**.
-4. **Testes**: crie `tests/usa/sec/fundamental_data/` espelhando módulos por tópico (não por camada). Tests devem importar dos módulos planos.
-5. **Docs**: atualize `AGENTS.md` (Repository Map / Architecture Map) e este arquivo. Adicione referência em `docs/reference/`.
+## Contratos que uma mudança deve preservar
 
----
+- **API:** imports públicos, assinaturas, padrões, resultados e exceções.
+  CVM usa `DownloadResultCVM`; B3 usa `ExtractionResultB3`. Confira os
+  diagnósticos de falha parcial, não apenas a ausência de exceção.
+- **CVM:** ZIPs retidos e colunas Parquet `string` no contrato `exact-text-v1`.
+- **B3:** nomes anuais COTAHIST, todos os anos pedidos, seleção completa por
+  padrão e schema Parquet v2. ZIP/TXT coexistentes exigem conteúdo equivalente.
+  `fast` usa concorrência limitada; `slow` usa um worker.
+- **Segurança:** valide entradas, ZIPs, nomes e destinos antes de criar
+  diretórios ou escrever. Regras específicas permanecem na fonte.
+- **Publicação:** `macro_infra/transactional_publication/` oferece staging,
+  journal, lock, backups e recuperação; a fonte mantém parser, schema e
+  validação. A recuperação não autoriza remover arquivos do chamador nem
+  garante visibilidade simultânea do lote para leitores concorrentes.
 
-## Testes
+Os detalhes de persistência e recuperação pertencem à
+[referência técnica](api-reference.md) e ao
+[protocolo de publicação](../reference/transactional-publication.md).
 
-A árvore de testes espelha as fontes:
+## Organizar uma alteração
 
-```text
-tests/
-├── brazil/
-│   ├── cvm/fundamental_stocks_data/
-│   │   ├── application/use_cases/    # tests por tópico (organizacional, não camada)
-│   │   ├── domain/                   # tests de value objects, validators (core.py)
-│   │   ├── infra/adapters/           # tests de adapters concretos (http.py, extract.py)
-│   │   ├── exceptions/               # tests das exceções (errors.py)
-│   │   └── integration/              # tests integration-marker
-│   └── b3_data/historical_quotes/    # layout plano: 21 test_*.py diretamente na pasta
-└── application/
-    ├── cvm_docs/   # tests do facade público
-    └── b3_docs/
-        └── result_formatters/
-```
+CVM e B3 têm necessidades diferentes e podem ter organizações internas
+diferentes. Extraia uma responsabilidade para `core/`, `macro_infra/` ou
+`macro_exceptions/` quando ela for compartilhada de fato. Evite criar interfaces,
+camadas ou re-exports para uniformizar fontes sem necessidade.
 
-Os subdiretórios dentro da fonte CVM são **organizacionais** (agrupam por tópico para legibilidade), não arquiteturais — qualquer test importa dos módulos via `from globaldatafinance.brazil.cvm.fundamental_stocks_data.client import ...`.
+Uma fonte nova precisa de uma entrega completa: implementação na área da fonte,
+facade em `application/`, export público, testes espelhando o comportamento e
+documentação em português e inglês. Preserve dependências sem ciclos e
+`__init__.py` restritos a exports explícitos.
 
-### Estratégias de Mock e Stub
+Os testes espelham as fronteiras públicas, de fonte e compartilhadas. Seus
+subdiretórios organizam assuntos; não criam camadas de runtime. Consulte
+[testes](testing.md) e [como contribuir](contributing.md) para validar a mudança.
 
-Para testar orquestradores e adapters de forma limpa e isolada, os testes substituem as dependências através de:
+## Aprofundar quando necessário
 
-- **Stub duck-typed**: classes simples focadas nos métodos consumidos no teste, mantendo alta flexibilidade.
-- **`monkeypatch.setattr`**: patcheia o método do adapter real.
-- **`httpx.MockTransport`**: para tests do adapter HTTP que precisam respostas determinísticas sem rede.
-
-Exemplo (duck typing):
-
-```python
-class MockRepository:
-    def download_docs(self, tasks):
-        return DownloadResultCVM(
-            success_count_downloads=2,
-            error_count_downloads=0,
-            successful_downloads=['DFP_2023', 'ITR_2023'],
-            failed_downloads={},
-        )
-
-use_case = DownloadDocumentsUseCaseCVM(MockRepository())
-result = use_case.execute(destination_path='/tmp/cvm')
-assert result.success_count_downloads == 2
-```
-
-Coverage é validado por capability: `tests/brazil/<source>/` + `tests/application/<facade>/` cobrem cada fonte como unidade isolada.
-
----
-
-## Próximos Passos
-
-- 📖 **[Referência da API](api-reference.md)** — Documentação completa da API
-- 🤝 **[Como Contribuir](contributing.md)** — Guia para contribuidores
-- 🧪 **[Testes](testing.md)** — Como escrever e executar testes
-- 🔧 **[Uso Avançado](advanced-usage.md)** — Customização e extensões
+| Assunto                       | Referência                                                                           |
+| ----------------------------- | ------------------------------------------------------------------------------------ |
+| Campos, resultados e exceções | [API CVM](../reference/cvm-api.md) · [API B3](../reference/b3-api.md)                |
+| Persistência B3               | [Schema v2](../reference/b3-schema-v2.md)                                            |
+| Segurança de ZIP e caminhos   | [Decisão sobre limites e UNC](../decisions/archive-safety-and-unc.md)                |
+| Evolução da ingestão          | [Decisão PyArrow e integridade](../decisions/pyarrow-ingestion-integrity-cutover.md) |
+| Infraestrutura compartilhada  | [Decisão de consolidação](../decisions/shared-infrastructure-clean-cut.md)           |
+| Reúso entre famílias CVM      | [Ownership da ingestão CVM](../decisions/cvm-ingestion-ownership.md)                 |

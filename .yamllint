@@ -1,11 +1,19 @@
 ---
 extends: default
+
 rules:
-  document-start:
-    present: true
+  line-length:
+    max: 79
+    allow-non-breakable-words: true
+    allow-non-breakable-inline-mappings: true
+  document-start: disable
+  comments:
+    min-spaces-from-content: 1
   truthy:
     check-keys: false
-  line-length:
-    max: 88
-  indentation:
-    spaces: 2
+
+ignore: |
+  .agents/
+  .venv/
+  openspec/changes/
+  tests/fixtures/

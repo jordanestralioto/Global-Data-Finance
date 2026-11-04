@@ -1,38 +1,43 @@
-"""Example 03: Advanced B3 Extraction Options (Multiple Assets and Fast Mode).
+"""Extract multiple B3 markets. Edit SETTINGS, then run this file."""
 
-This example demonstrates how to filter multiple asset types (Stocks, ETFs, and FIIs)
-from local COTAHIST files, select a range of years, and use high-performance 'fast' mode.
-"""
+from typing import TYPE_CHECKING
 
-import sys
-from pathlib import Path
-
-# Ensure examples import active repository code (src/) rather than installed package
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'src'))
+if TYPE_CHECKING or __package__:
+    from examples import support
+else:
+    import support
 
 from globaldatafinance import HistoricalQuotesB3
 
+# SETTINGS: change the values here. The README explains each option.
+INITIAL_YEAR = 2022
+LAST_YEAR = 2023
+PATH_OF_DOCS = './cotahist_b3'  # Fictional samples; see README for real data.
+DESTINATION_PATH = './dados_b3'
+ASSETS = ['ações', 'opções']  # Includes ETFs; use ['todos'] for every market.
+OUTPUT_NAME = 'carteira_completa'  # Years are added automatically.
+PROCESSING_MODE = 'fast'  # Use 'slow' to reduce memory usage.
+VERBOSE = True  # Extra summary details; file progress is always shown.
+
 
 def main() -> None:
-    # 1. Initialize the B3 public facade
+    """Run the advanced B3 options example."""
     b3 = HistoricalQuotesB3()
-
-    # 2. Combined extraction with filters and 'fast' mode over local files
-    print('Starting advanced B3 extraction (Stocks, ETFs, FIIs)...')
-    resultado = b3.extract(
-        path_of_docs='./cotahist_b3',  # Folder with COTAHIST files (e.g. COTAHIST_A2022.ZIP, COTAHIST_A2023.ZIP)
-        assets_list=['ações', 'etf', 'fii'],
-        initial_year=2022,
-        last_year=2023,
-        destination_path='./dados_b3',
-        output_filename='carteira_completa_2022_2023',
-        processing_mode='fast',
+    years = support.year_label(INITIAL_YEAR, LAST_YEAR)
+    print('Starting B3 extraction...')
+    result = b3.extract(
+        path_of_docs=PATH_OF_DOCS,
+        assets_list=ASSETS,
+        initial_year=INITIAL_YEAR,
+        last_year=LAST_YEAR,
+        destination_path=DESTINATION_PATH,
+        output_filename=f'{OUTPUT_NAME}_{years}',
+        processing_mode=PROCESSING_MODE,
+        verbose=False,
     )
-
-    # 3. Display final result
-    print('✓ Advanced extraction completed successfully!')
-    print(f'  Generated Parquet file at: {resultado["output_file"]}')
+    support.print_b3_summary(result, verbose=VERBOSE)
+    support.print_b3_preview(result['output_file'])
 
 
 if __name__ == '__main__':
-    main()
+    support.run_example(main)

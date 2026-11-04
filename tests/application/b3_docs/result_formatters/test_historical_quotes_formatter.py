@@ -1,6 +1,10 @@
+import pytest
+
 from globaldatafinance.application.b3_docs.result_formatters import (
     HistoricalQuotesResultFormatter,
 )
+
+pytestmark = pytest.mark.unit
 
 
 class TestHistoricalQuotesResultFormatter:
@@ -219,19 +223,25 @@ class TestHistoricalQuotesResultFormatter:
         assert 'success' in enriched
         assert 'message' in enriched
 
-    def test_static_methods_are_static(self):
-        assert isinstance(
-            HistoricalQuotesResultFormatter.__dict__['generate_message'],
-            staticmethod,
+    def test_formatter_operations_work_from_instance_and_class(self):
+        formatter = HistoricalQuotesResultFormatter()
+        result = {
+            'error_count': 0,
+            'total_records': 2,
+            'success_count': 1,
+            'total_files': 1,
+            'output_file': '/output.parquet',
+        }
+
+        class_message = HistoricalQuotesResultFormatter.generate_message(
+            result
         )
-        assert isinstance(
-            HistoricalQuotesResultFormatter.__dict__['determine_success'],
-            staticmethod,
-        )
-        assert isinstance(
-            HistoricalQuotesResultFormatter.__dict__['enrich_result'],
-            staticmethod,
-        )
+        instance_message = formatter.generate_message(result)
+
+        assert instance_message == class_message
+        assert formatter.determine_success(result) is True
+        enriched = formatter.enrich_result(result.copy())
+        assert enriched['success'] is True
 
     def test_generate_message_includes_all_required_info(self):
         result = {

@@ -2,7 +2,7 @@
 
 Documentação completa do sistema de logging avançado do Global-Data-Finance.
 
----
+______________________________________________________________________
 
 ## Visão Geral
 
@@ -15,14 +15,72 @@ O Global-Data-Finance possui um sistema de logging centralizado e profissional q
 - ✅ **Structured logging** - Logs com dados contextuais
 - ✅ **Variáveis de ambiente** - Configuração via environment variables
 
----
+______________________________________________________________________
+
+## Estado Inicial e Isolamento
+
+Importar a biblioteca não configura o root logger da aplicação nem instala
+saídas visíveis. O logger `globaldatafinance` começa com um `NullHandler` e
+`propagate=False`, portanto eventos permanecem silenciosos até que o consumidor
+chame `setup_logging()` explicitamente. A configuração afeta somente essa
+hierarquia de loggers.
+
+`LoggingSettings` aceita apenas os campos documentados: `level`, `format`,
+`log_file` e `detailed_format`. Campos extras, como o removido
+`structured`, falham com `ValidationError`.
+
+As variáveis de ambiente suportadas são `DATAFIN_LOG_LEVEL`,
+`DATAFIN_LOG_FORMAT`, `DATAFIN_LOG_FILE` e `DATAFIN_LOG_DETAILED_FORMAT`.
+`DATAFIN_LOG_LOG_FILE` também é aceito como compatibilidade com o nome
+derivado do campo. Qualquer outra variável `DATAFIN_LOG_*`, incluindo
+`DATAFIN_LOG_STRUCTURED`, falha com `ValidationError` quando
+`LoggingSettings()` é criado.
+
+O formatter faz uma redação de melhor esforço para parâmetros comuns de URL e
+campos de contexto sensíveis, como `token`, `password`, `authorization` e
+`cookie`. Também cobre os parâmetros de URL `key`, `code` e `state`, e campos sensíveis em texto
+JSON com aspas, inclusive em exceções formatadas. Credenciais na autoridade
+da URL (`https://<userinfo>@host/`) são substituídas por `[REDACTED]@`,
+preservando host, caminho e parâmetros públicos. A mesma proteção cobre
+autoridades relativas ao protocolo (`//usuario:senha@host/`). Isso não substitui a
+responsabilidade do consumidor: segredos não devem ser enviados em mensagens,
+exceções ou contexto de logging.
+
+Nomes compostos com `_` ou `-`, como `id_token` e `auth_token`, recebem a
+mesma proteção em URLs, mensagens serializadas e campos de contexto.
+Nomes de parâmetros de URL são decodificados antes de identificar campos
+sensíveis; a grafia original do parâmetro e os valores públicos são preservados.
+
+`log_file` deve apontar para um caminho de aplicação aprovado pelo consumidor.
+Antes de criar diretórios ou o arquivo, `setup_logging()` rejeita raízes do
+sistema, diretórios protegidos e destinos UNC não confiáveis, usando a mesma
+política de segurança de caminhos das fachadas de dados. Use um diretório da
+aplicação ou, para diagnóstico local, `/tmp`.
+
+## Reconfiguração e Rollback
+
+`setup_logging()` constrói e configura todos os handlers candidatos antes de
+alterar o logger do pacote. Em uma reconfiguração bem-sucedida, somente
+handlers gerenciados pela biblioteca são substituídos; handlers externos são
+preservados. Se a criação do arquivo ou a troca falhar, os candidatos são
+fechados e o nível, a propagação e os handlers anteriores são restaurados.
+
+Isso permite que aplicações reconfigurem o logging sem perder a configuração
+que já estava ativa:
+
+```python
+from globaldatafinance.core.logging_config import LoggingSettings, setup_logging
+
+setup_logging(LoggingSettings(level="INFO"))
+setup_logging(LoggingSettings(level="DEBUG", log_file="app-debug.log"))
+```
 
 ## Arquitetura
 
 ### Componentes Principais
 
 ```
-src/core/logging_config.py
+src/globaldatafinance/core/logging_config.py
 ├── setup_logging()           # Inicialização do logging
 ├── get_logger()              # Obter logger por módulo
 ├── log_execution_time()      # Context manager para timing
@@ -32,7 +90,7 @@ src/core/logging_config.py
 └── ContextFilter             # Filtro de contexto
 ```
 
----
+______________________________________________________________________
 
 ## Uso Básico
 
@@ -41,18 +99,22 @@ src/core/logging_config.py
 Por padrão, o logging está **desabilitado**. Para habilitar:
 
 ```python
-from globaldatafinance.core import setup_logging
+from globaldatafinance.core.logging_config import LoggingSettings, setup_logging
 
 # Habilitar logging com nível INFO
-setup_logging(level="INFO")
+setup_logging(LoggingSettings(level="INFO"))
 ```
 
 ### 2. Obter Logger em um Módulo
 
-```python
-from globaldatafinance.core import get_logger
+Os exemplos usam um filho de `globaldatafinance` para receber os handlers
+configurados acima. Para loggers da sua aplicação, configure os handlers da
+aplicação separadamente.
 
-logger = get_logger(__name__)
+```python
+from globaldatafinance.core.logging_config import get_logger
+
+logger = get_logger("globaldatafinance.example")
 logger.info("Processamento iniciado")
 logger.debug("Detalhes de debug")
 logger.warning("Aviso importante")
@@ -65,7 +127,7 @@ logger.error("Erro ocorreu")
 logger.info(
     "Arquivo processado",
     extra={
-        "filename": "data.csv",
+        "file_target": "data.csv",
         "records": 1000,
         "elapsed_ms": 250
     }
@@ -75,10 +137,10 @@ logger.info(
 **Saída**:
 
 ```
-2025-11-25 17:30:00 | INFO     | meu_modulo | Arquivo processado | filename=data.csv | records=1000 | elapsed_ms=250
+2025-11-25 17:30:00 | INFO     | meu_modulo | Arquivo processado | file_target=data.csv | records=1000 | elapsed_ms=250
 ```
 
----
+______________________________________________________________________
 
 ## Configuração
 
@@ -95,21 +157,25 @@ logger.info(
 ### Configuração via Código
 
 ```python
-from globaldatafinance.core import setup_logging
+from globaldatafinance.core.logging_config import LoggingSettings, setup_logging
 
 # Configuração básica
-setup_logging(level="INFO")
+setup_logging(LoggingSettings(level="INFO"))
 
 # Com arquivo de log
 setup_logging(
-    level="DEBUG",
-    log_file="/var/log/datafin.log"
+    LoggingSettings(
+        level="DEBUG",
+        log_file="/tmp/datafin.log",
+    )
 )
 
 # Formato detalhado (com linhas e funções)
 setup_logging(
-    level="DEBUG",
-    use_detailed_format=True
+    LoggingSettings(
+        level="DEBUG",
+        detailed_format=True,
+    )
 )
 ```
 
@@ -120,23 +186,23 @@ setup_logging(
 export DATAFIN_LOG_LEVEL=DEBUG
 
 # Arquivo de log
-export DATAFIN_LOG_FILE=/var/log/datafin.log
+export DATAFIN_LOG_FILE=/tmp/datafin.log
 
 # Formato detalhado
 export DATAFIN_LOG_DETAILED_FORMAT=true
-
-# Structured logging (JSON - futuro)
-export DATAFIN_LOG_STRUCTURED=true
 ```
 
-```python
-from globaldatafinance.core import setup_logging
+Variáveis `DATAFIN_LOG_*` desconhecidas são rejeitadas; isso evita que uma
+opção removida ou digitada incorretamente pareça ter sido aplicada.
 
-# Usa configurações das variáveis de ambiente
+```python
+from globaldatafinance.core.logging_config import setup_logging
+
+# Usa configurações das variáveis de ambiente (snapshot LoggingSettings padrão)
 setup_logging()
 ```
 
----
+______________________________________________________________________
 
 ## Recursos Avançados
 
@@ -145,39 +211,40 @@ setup_logging()
 Use o context manager `log_execution_time()` para medir tempo de operações:
 
 ```python
-from globaldatafinance.core import log_execution_time, get_logger
+from globaldatafinance.core.logging_config import log_execution_time, get_logger
 
-logger = get_logger(__name__)
+logger = get_logger("globaldatafinance.example")
 
-with log_execution_time(logger, "Parse ZIP file", filename="data.zip"):
+with log_execution_time(logger, "Parse ZIP file", file_target="data.zip"):
     parse_file("data.zip")
 ```
 
 **Saída**:
 
 ```
-Starting: Parse ZIP file | operation=Parse ZIP file | filename=data.zip
-Completed: Parse ZIP file | operation=Parse ZIP file | elapsed_seconds=2.45 | filename=data.zip
+Starting: Parse ZIP file | operation=Parse ZIP file | file_target=data.zip
+Completed: Parse ZIP file | operation=Parse ZIP file | elapsed_seconds=2.45 | file_target=data.zip
 ```
 
 Se ocorrer erro:
 
 ```
-Failed: Parse ZIP file | operation=Parse ZIP file | elapsed_seconds=1.23 | error=File not found | filename=data.zip
+Failed: Parse ZIP file | operation=Parse ZIP file | elapsed_seconds=1.23 | error=File not found | file_target=data.zip
 ```
 
 ### Logging com Contexto
 
 ```python
-from globaldatafinance.core import log_with_context, get_logger
+from globaldatafinance.core.logging_config import log_with_context, get_logger
 
-logger = get_logger(__name__)
+logger = get_logger("globaldatafinance.example")
 
 log_with_context(
     logger,
     "info",
     "Download concluído",
     url="https://example.com/file.zip",
+    file_target="file.zip",
     size_mb=125.5,
     duration_seconds=45
 )
@@ -186,24 +253,30 @@ log_with_context(
 ### Verificar se Logging está Configurado
 
 ```python
-from globaldatafinance.core import is_logging_configured, setup_logging
+from globaldatafinance.core.logging_config import (
+    LoggingSettings,
+    is_logging_configured,
+    setup_logging,
+)
 
 if not is_logging_configured():
-    setup_logging(level="INFO")
+    setup_logging(LoggingSettings(level="INFO"))
 ```
 
-### Obter Configurações Atuais
+### Snapshot de Configuração
+
+`setup_logging()` retorna o snapshot `LoggingSettings` imutável aplicado à biblioteca:
 
 ```python
-from globaldatafinance.core import get_logging_settings
+from globaldatafinance.core.logging_config import LoggingSettings, setup_logging
 
-settings = get_logging_settings()
+settings = setup_logging(LoggingSettings(level="INFO"))
 print(f"Nível atual: {settings.level}")
 print(f"Arquivo de log: {settings.log_file}")
 print(f"Formato detalhado: {settings.detailed_format}")
 ```
 
----
+______________________________________________________________________
 
 ## Exemplos Práticos
 
@@ -211,12 +284,16 @@ print(f"Formato detalhado: {settings.detailed_format}")
 
 ```python
 from globaldatafinance import FundamentalStocksDataCVM
-from globaldatafinance.core import setup_logging, get_logger
+from globaldatafinance.core.logging_config import (
+    LoggingSettings,
+    get_logger,
+    setup_logging,
+)
 
 # Habilitar logging
-setup_logging(level="INFO", log_file="app.log")
+setup_logging(LoggingSettings(level="INFO", log_file="app.log"))
 
-logger = get_logger(__name__)
+logger = get_logger("globaldatafinance.example")
 logger.info("Aplicação iniciada")
 
 # Usar a biblioteca
@@ -234,13 +311,15 @@ logger.info("Aplicação finalizada")
 
 ```python
 from globaldatafinance import HistoricalQuotesB3
-from globaldatafinance.core import setup_logging
+from globaldatafinance.core.logging_config import LoggingSettings, setup_logging
 
 # Nível DEBUG para troubleshooting
 setup_logging(
-    level="DEBUG",
-    log_file="/tmp/debug.log",
-    use_detailed_format=True  # Inclui linhas e funções
+    LoggingSettings(
+        level="DEBUG",
+        log_file="/tmp/debug.log",
+        detailed_format=True,  # Inclui linhas e funções
+    )
 )
 
 b3 = HistoricalQuotesB3()
@@ -256,17 +335,18 @@ result = b3.extract(
 ```python
 # meu_script.py
 from globaldatafinance import FundamentalStocksDataCVM
-from globaldatafinance.core import (
-    setup_logging,
+from globaldatafinance.core.logging_config import (
+    LoggingSettings,
     get_logger,
-    log_execution_time
+    log_execution_time,
+    setup_logging,
 )
 
 # Configurar logging
-setup_logging(level="INFO")
+setup_logging(LoggingSettings(level="INFO"))
 
 # Criar logger para este módulo
-logger = get_logger(__name__)
+logger = get_logger("globaldatafinance.example")
 
 def processar_dados():
     logger.info("Iniciando processamento")
@@ -285,7 +365,7 @@ if __name__ == "__main__":
     processar_dados()
 ```
 
----
+______________________________________________________________________
 
 ## Formatos de Log
 
@@ -309,18 +389,19 @@ Inclui número de linha e nome da função:
 2025-11-25 17:30:00 | INFO     | módulo | Mensagem | campo1=valor1 | campo2=valor2
 ```
 
----
+______________________________________________________________________
 
 ## Boas Práticas
 
-### 1. Sempre use `get_logger(__name__)`
+### 1. Escolha um nome na hierarquia configurada
+
+Nos módulos da biblioteca, use `get_logger(__name__)`: esses nomes já começam
+com `globaldatafinance`. Em aplicações, um nome como o exemplo abaixo herda os
+handlers da biblioteca; nomes fora dessa hierarquia precisam de configuração
+própria.
 
 ```python
-# ✅ Correto - hierarquia de nomes
-logger = get_logger(__name__)
-
-# ❌ Evite - nome hardcoded
-logger = get_logger("meu_logger")
+logger = get_logger("globaldatafinance.example")
 ```
 
 ### 2. Use Níveis Apropriados
@@ -343,7 +424,7 @@ logger.error("Arquivo processado")     # Use INFO
 # ✅ Correto - dados estruturados
 logger.info(
     "Arquivo processado",
-    extra={"filename": "data.csv", "size_mb": 10.5}
+    extra={"file_target": "data.csv", "size_mb": 10.5}
 )
 
 # ❌ Evite - string interpolation
@@ -355,15 +436,15 @@ logger.info(f"Arquivo data.csv processado, tamanho: 10.5 MB")
 ```python
 # ✅ Correto - medição automática
 with log_execution_time(logger, "Download"):
-    download_files()
+    time.sleep(1)
 
 # ❌ Evite - medição manual
 start = time.time()
-download_files()
+time.sleep(1)
 logger.info(f"Levou {time.time() - start}s")
 ```
 
----
+______________________________________________________________________
 
 ## Troubleshooting
 
@@ -371,29 +452,26 @@ logger.info(f"Levou {time.time() - start}s")
 
 ```python
 # Certifique-se de chamar setup_logging()
-from globaldatafinance.core import setup_logging
-setup_logging(level="INFO")
+from globaldatafinance.core.logging_config import LoggingSettings, setup_logging
+setup_logging(LoggingSettings(level="INFO"))
 ```
 
 ### Logs duplicados
 
 ```python
-# Não chame setup_logging() múltiplas vezes
-# Se precisar reconfigurar, é seguro chamar novamente
-setup_logging(level="DEBUG")  # Reconfigura
+# Se precisar reconfigurar, é seguro chamar novamente: apenas handlers gerenciados pela biblioteca são substituídos
+setup_logging(LoggingSettings(level="DEBUG"))
 ```
 
 ### Logging em arquivo não funciona
 
 ```python
-# Verifique permissões do diretório
-setup_logging(level="INFO", log_file="/var/log/app.log")
-
-# Se não tiver permissão, use /tmp ou diretório home
-setup_logging(level="INFO", log_file="/tmp/app.log")
+# Use um diretório da aplicação ou /tmp; raízes e diretórios protegidos são
+# rejeitados antes de qualquer criação ou escrita.
+setup_logging(LoggingSettings(level="INFO", log_file="/tmp/app.log"))
 ```
 
----
+______________________________________________________________________
 
 ## Referências
 
@@ -401,7 +479,7 @@ setup_logging(level="INFO", log_file="/tmp/app.log")
 - [Logging Best Practices](https://docs.python.org/3/howto/logging.html)
 - [Structured Logging](https://www.structlog.org/)
 
----
+______________________________________________________________________
 
 Veja também:
 

@@ -1,0 +1,118 @@
+{
+  "$defs": {
+    "scope": {
+      "additionalProperties": false,
+      "properties": {
+        "exclude": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "include": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "path": {
+          "type": "string"
+        },
+        "required": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "path",
+        "required"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "profile": {
+      "const": "consumer-isolated-v1"
+    },
+    "protocolVersion": {
+      "const": "consumer-validation-v1"
+    },
+    "scopes": {
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "properties": {
+            "skills": {
+              "properties": {
+                "required": {
+                  "const": true
+                }
+              },
+              "required": [
+                "required"
+              ]
+            }
+          },
+          "required": [
+            "skills"
+          ]
+        },
+        {
+          "properties": {
+            "agents": {
+              "properties": {
+                "required": {
+                  "const": true
+                }
+              },
+              "required": [
+                "required"
+              ]
+            }
+          },
+          "required": [
+            "agents"
+          ]
+        },
+        {
+          "properties": {
+            "workflows": {
+              "properties": {
+                "required": {
+                  "const": true
+                }
+              },
+              "required": [
+                "required"
+              ]
+            }
+          },
+          "required": [
+            "workflows"
+          ]
+        }
+      ],
+      "minProperties": 1,
+      "properties": {
+        "agents": {
+          "$ref": "#/$defs/scope"
+        },
+        "skills": {
+          "$ref": "#/$defs/scope"
+        },
+        "workflows": {
+          "$ref": "#/$defs/scope"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "required": [
+    "protocolVersion",
+    "profile",
+    "scopes"
+  ],
+  "title": "Consumer Validation Request",
+  "type": "object"
+}

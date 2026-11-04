@@ -1,0 +1,231 @@
+{
+  "components": {
+    "agents/developer-engineer": {
+      "hasScripts": false,
+      "requires": [],
+      "source": "agents/developer-engineer.agent.md"
+    },
+    "agents/security-engineer": {
+      "hasScripts": false,
+      "requires": [],
+      "source": "agents/security-engineer.agent.md"
+    },
+    "runtime/review": {
+      "hasScripts": true,
+      "requires": [],
+      "source": "runtime/review"
+    },
+    "skills/agents-md-author": {
+      "hasScripts": true,
+      "requires": [],
+      "source": "skills/agents-md-author"
+    },
+    "skills/api-patterns": {
+      "hasScripts": true,
+      "requires": [],
+      "source": "skills/api-patterns"
+    },
+    "skills/architecture": {
+      "hasScripts": false,
+      "requires": [],
+      "source": "skills/architecture"
+    },
+    "skills/database-design": {
+      "hasScripts": true,
+      "requires": [],
+      "source": "skills/database-design"
+    },
+    "skills/frontend-design": {
+      "hasScripts": true,
+      "requires": [],
+      "source": "skills/frontend-design"
+    },
+    "skills/i18n-localization": {
+      "hasScripts": false,
+      "requires": [],
+      "source": "skills/i18n-localization"
+    },
+    "skills/lint-and-validate": {
+      "hasScripts": true,
+      "requires": [
+        "tools/check-max-lines"
+      ],
+      "source": "skills/lint-and-validate"
+    },
+    "skills/local-quality-gates": {
+      "hasScripts": true,
+      "requires": [],
+      "source": "skills/local-quality-gates"
+    },
+    "skills/mobile-design": {
+      "hasScripts": true,
+      "requires": [],
+      "source": "skills/mobile-design"
+    },
+    "skills/modularizar": {
+      "hasScripts": true,
+      "requires": [],
+      "source": "skills/modularizar"
+    },
+    "skills/nodejs-best-practices": {
+      "hasScripts": false,
+      "requires": [],
+      "source": "skills/nodejs-best-practices"
+    },
+    "skills/openspec-workflow": {
+      "hasScripts": false,
+      "requires": [],
+      "source": "skills/openspec-workflow"
+    },
+    "skills/performance-profiling": {
+      "hasScripts": true,
+      "requires": [],
+      "source": "skills/performance-profiling"
+    },
+    "skills/react-performance": {
+      "hasScripts": true,
+      "requires": [],
+      "source": "skills/react-performance"
+    },
+    "skills/red-team-tactics": {
+      "hasScripts": false,
+      "requires": [],
+      "source": "skills/red-team-tactics"
+    },
+    "skills/resolve-open-questions": {
+      "hasScripts": false,
+      "requires": [],
+      "source": "skills/resolve-open-questions"
+    },
+    "skills/review-workflow": {
+      "hasScripts": true,
+      "requires": [
+        "runtime/review",
+        "skills/lint-and-validate",
+        "skills/vulnerability-scanner",
+        "skills/red-team-tactics",
+        "skills/architecture",
+        "skills/structural-inspector",
+        "skills/systematic-debugging",
+        "skills/testing-patterns",
+        "skills/agents-md-author"
+      ],
+      "source": "skills/review-workflow"
+    },
+    "skills/server-management": {
+      "hasScripts": true,
+      "requires": [],
+      "source": "skills/server-management"
+    },
+    "skills/skill-governance": {
+      "hasScripts": false,
+      "requires": [],
+      "source": "skills/skill-governance"
+    },
+    "skills/structural-inspector": {
+      "hasScripts": true,
+      "requires": [],
+      "source": "skills/structural-inspector"
+    },
+    "skills/supabase": {
+      "hasScripts": false,
+      "requires": [],
+      "source": "skills/supabase"
+    },
+    "skills/systematic-debugging": {
+      "hasScripts": false,
+      "requires": [],
+      "source": "skills/systematic-debugging"
+    },
+    "skills/testing-patterns": {
+      "hasScripts": true,
+      "requires": [],
+      "source": "skills/testing-patterns"
+    },
+    "skills/ui-ux": {
+      "hasScripts": true,
+      "requires": [],
+      "source": "skills/ui-ux"
+    },
+    "skills/vulnerability-scanner": {
+      "hasScripts": true,
+      "requires": [],
+      "source": "skills/vulnerability-scanner"
+    },
+    "skills/webapp-testing": {
+      "hasScripts": true,
+      "requires": [],
+      "source": "skills/webapp-testing"
+    },
+    "tools/check-max-lines": {
+      "hasScripts": true,
+      "requires": [],
+      "source": "scripts/check-max-lines.py"
+    },
+    "tools/harness-verify": {
+      "hasScripts": true,
+      "requires": [],
+      "source": "scripts/harness_verify.py"
+    },
+    "tools/validate-commit-msg": {
+      "hasScripts": true,
+      "requires": [],
+      "source": "scripts/validate-commit-msg.sh"
+    },
+    "workflows/audit": {
+      "hasScripts": false,
+      "requires": [],
+      "source": "workflows/audit.prompt.md"
+    },
+    "workflows/opsx-apply": {
+      "hasScripts": false,
+      "requires": [],
+      "source": "workflows/opsx-apply.prompt.md"
+    },
+    "workflows/opsx-archive": {
+      "hasScripts": false,
+      "requires": [],
+      "source": "workflows/opsx-archive.prompt.md"
+    },
+    "workflows/opsx-continue": {
+      "hasScripts": false,
+      "requires": [],
+      "source": "workflows/opsx-continue.prompt.md"
+    },
+    "workflows/opsx-explore": {
+      "hasScripts": false,
+      "requires": [],
+      "source": "workflows/opsx-explore.prompt.md"
+    },
+    "workflows/opsx-ff": {
+      "hasScripts": false,
+      "requires": [],
+      "source": "workflows/opsx-ff.prompt.md"
+    },
+    "workflows/opsx-new": {
+      "hasScripts": false,
+      "requires": [],
+      "source": "workflows/opsx-new.prompt.md"
+    },
+    "workflows/opsx-review": {
+      "hasScripts": false,
+      "requires": [],
+      "source": "workflows/opsx-review.prompt.md"
+    },
+    "workflows/opsx-sync": {
+      "hasScripts": false,
+      "requires": [],
+      "source": "workflows/opsx-sync.prompt.md"
+    },
+    "workflows/opsx-verify": {
+      "hasScripts": false,
+      "requires": [],
+      "source": "workflows/opsx-verify.prompt.md"
+    },
+    "workflows/pre-commit-fix": {
+      "hasScripts": false,
+      "requires": [],
+      "source": "workflows/pre-commit-fix.prompt.md"
+    }
+  }
+}

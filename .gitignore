@@ -186,7 +186,7 @@ metrics.prom
 # Project specific - Refactor scratch artifacts (modularizar workflow inputs/outputs)
 modularizar_*.md
 .uv-cache/
-.agents/
+#.agents/
 .github/instructions/
 .github/prompts/
 .github/agents/
@@ -198,8 +198,26 @@ opencode.json
 CLAUDE.md
 kilo.jsonc
 docs/ideias/
+/docs/internal/
 openspec/
 dados_cvm/
 dados_b3/
-cotahist_b3/
+# Only the generated example inputs belong in Git.
+/cotahist_b3/*
+!/cotahist_b3/COTAHIST_A2022.ZIP
+!/cotahist_b3/COTAHIST_A2023.ZIP
+/cotahist_b3_local/
 .benchmarks/
+.agents/sessions/
+
+# Import linter & grimp caches
+.import_linter_cache/
+.grimp_cache/
+
+# Mutation testing (mutmut) artifacts
+mutants/
+.mutmut-cache
+html/
+uv.lock
+package.json
+__pycache__

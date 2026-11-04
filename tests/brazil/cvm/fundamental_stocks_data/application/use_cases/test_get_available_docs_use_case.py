@@ -57,7 +57,7 @@ class TestGetAvailableDocsUseCase:
         use_case = get_available_docs
         result = use_case()
 
-        for key, value in result.items():
+        for _key, value in result.items():
             assert len(value) > 0
 
     def test_execute_returns_copy_not_reference(self):
@@ -98,52 +98,62 @@ class TestGetAvailableDocsUseCase:
     def test_execute_raises_exception_when_available_docs_fails(self):
         use_case = get_available_docs
 
-        with patch(
-            'globaldatafinance.brazil.cvm.fundamental_stocks_data.core.get_available_docs',
-            side_effect=Exception('Database connection failed'),
+        with (
+            patch(
+                'globaldatafinance.brazil.cvm.fundamental_stocks_data.core.get_available_docs',
+                side_effect=Exception('Database connection failed'),
+            ),
+            pytest.raises(Exception, match='Database connection failed'),
         ):
-            with pytest.raises(Exception, match='Database connection failed'):
-                use_case()
+            use_case()
 
     def test_execute_raises_runtime_error(self):
         use_case = get_available_docs
 
-        with patch(
-            'globaldatafinance.brazil.cvm.fundamental_stocks_data.core.get_available_docs',
-            side_effect=RuntimeError('Runtime error'),
+        with (
+            patch(
+                'globaldatafinance.brazil.cvm.fundamental_stocks_data.core.get_available_docs',
+                side_effect=RuntimeError('Runtime error'),
+            ),
+            pytest.raises(RuntimeError),
         ):
-            with pytest.raises(RuntimeError):
-                use_case()
+            use_case()
 
     def test_execute_raises_value_error(self):
         use_case = get_available_docs
 
-        with patch(
-            'globaldatafinance.brazil.cvm.fundamental_stocks_data.core.get_available_docs',
-            side_effect=ValueError('Invalid value'),
+        with (
+            patch(
+                'globaldatafinance.brazil.cvm.fundamental_stocks_data.core.get_available_docs',
+                side_effect=ValueError('Invalid value'),
+            ),
+            pytest.raises(ValueError),
         ):
-            with pytest.raises(ValueError):
-                use_case()
+            use_case()
 
     def test_execute_raises_timeout_error(self):
         use_case = get_available_docs
 
-        with patch(
-            'globaldatafinance.brazil.cvm.fundamental_stocks_data.core.get_available_docs',
-            side_effect=TimeoutError('Request timeout'),
+        with (
+            patch(
+                'globaldatafinance.brazil.cvm.fundamental_stocks_data.core.get_available_docs',
+                side_effect=TimeoutError('Request timeout'),
+            ),
+            pytest.raises(TimeoutError),
         ):
-            with pytest.raises(TimeoutError):
-                use_case()
+            use_case()
 
     def test_execute_raises_type_error(self):
         use_case = get_available_docs
 
-        with patch(
-            'globaldatafinance.brazil.cvm.fundamental_stocks_data.core.get_available_docs',
-            side_effect=TypeError('Type error'),
+        with (
+            patch(
+                'globaldatafinance.brazil.cvm.fundamental_stocks_data.core.get_available_docs',
+                side_effect=TypeError('Type error'),
+            ),
+            pytest.raises(TypeError),
         ):
-            with pytest.raises(TypeError):
-                use_case()
+            use_case()
 
     def test_execute_returns_specific_doc_descriptions(self):
         use_case = get_available_docs
@@ -232,32 +242,38 @@ class TestGetAvailableDocsUseCase:
     def test_execute_propagates_generic_exception(self):
         use_case = get_available_docs
 
-        with patch(
-            'globaldatafinance.brazil.cvm.fundamental_stocks_data.core.get_available_docs',
-            side_effect=Exception('Generic error'),
+        with (
+            patch(
+                'globaldatafinance.brazil.cvm.fundamental_stocks_data.core.get_available_docs',
+                side_effect=Exception('Generic error'),
+            ),
+            pytest.raises(Exception, match='Generic error'),
         ):
-            with pytest.raises(Exception, match='Generic error'):
-                use_case()
+            use_case()
 
     def test_execute_propagates_attribute_error(self):
         use_case = get_available_docs
 
-        with patch(
-            'globaldatafinance.brazil.cvm.fundamental_stocks_data.core.get_available_docs',
-            side_effect=AttributeError('Attribute not found'),
+        with (
+            patch(
+                'globaldatafinance.brazil.cvm.fundamental_stocks_data.core.get_available_docs',
+                side_effect=AttributeError('Attribute not found'),
+            ),
+            pytest.raises(AttributeError, match='Attribute not found'),
         ):
-            with pytest.raises(AttributeError, match='Attribute not found'):
-                use_case()
+            use_case()
 
     def test_execute_propagates_os_error(self):
         use_case = get_available_docs
 
-        with patch(
-            'globaldatafinance.brazil.cvm.fundamental_stocks_data.core.get_available_docs',
-            side_effect=OSError('File not found'),
+        with (
+            patch(
+                'globaldatafinance.brazil.cvm.fundamental_stocks_data.core.get_available_docs',
+                side_effect=OSError('File not found'),
+            ),
+            pytest.raises(OSError, match='File not found'),
         ):
-            with pytest.raises(OSError, match='File not found'):
-                use_case()
+            use_case()
 
     def test_execute_return_type_is_dict(self):
         use_case = get_available_docs
@@ -268,7 +284,7 @@ class TestGetAvailableDocsUseCase:
         use_case = get_available_docs
         result = use_case()
 
-        for key, value in result.items():
+        for _key, value in result.items():
             assert isinstance(value, str)
 
     def test_execute_dict_keys_remain_constant(self):

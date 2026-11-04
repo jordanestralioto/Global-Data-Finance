@@ -1,0 +1,51 @@
+{
+  "components": {
+    "agents": [
+      "developer-engineer",
+      "security-engineer"
+    ],
+    "review": [
+      "review-workflow"
+    ],
+    "runtime": [
+      "review"
+    ],
+    "skills": [
+      "agents-md-author",
+      "architecture",
+      "lint-and-validate",
+      "local-quality-gates",
+      "modularizar",
+      "openspec-workflow",
+      "performance-profiling",
+      "red-team-tactics",
+      "resolve-open-questions",
+      "review-workflow",
+      "server-management",
+      "skill-governance",
+      "structural-inspector",
+      "systematic-debugging",
+      "testing-patterns",
+      "vulnerability-scanner"
+    ],
+    "tools": [
+      "check-max-lines",
+      "harness-verify",
+      "validate-commit-msg"
+    ],
+    "workflows": [
+      "audit",
+      "opsx-apply",
+      "opsx-archive",
+      "opsx-continue",
+      "opsx-explore",
+      "opsx-ff",
+      "opsx-new",
+      "opsx-review",
+      "opsx-sync",
+      "opsx-verify",
+      "pre-commit-fix"
+    ]
+  },
+  "version": "0.2.0"
+}

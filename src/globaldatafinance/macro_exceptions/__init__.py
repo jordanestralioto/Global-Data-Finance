@@ -1,6 +1,7 @@
 from .macro_exceptions import (
     CorruptedZipError,
     DiskFullError,
+    DownloadTimeoutError,
     EmptyDirectoryError,
     ExtractionError,
     FileWriteError,
@@ -11,12 +12,12 @@ from .macro_exceptions import (
     PathIsNotDirectoryError,
     PathPermissionError,
     SecurityError,
-    TimeoutError,
 )
 
 __all__ = [
     'CorruptedZipError',
     'DiskFullError',
+    'DownloadTimeoutError',
     'EmptyDirectoryError',
     'ExtractionError',
     'FileWriteError',
@@ -27,5 +28,4 @@ __all__ = [
     'PathIsNotDirectoryError',
     'PathPermissionError',
     'SecurityError',
-    'TimeoutError',
 ]

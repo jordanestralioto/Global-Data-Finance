@@ -1,0 +1,60 @@
+{
+  "migrations": [
+    {
+      "action": "remove",
+      "componentId": "skills/brainstorming",
+      "message": "skills/brainstorming was retired; gpt-5.6-luna with max reasoning effort performs this task natively"
+    },
+    {
+      "action": "remove",
+      "componentId": "skills/plan-writing",
+      "message": "skills/plan-writing was retired; gpt-5.6-luna with max reasoning effort performs this task natively"
+    },
+    {
+      "action": "remove",
+      "componentId": "skills/polars-optimization",
+      "message": "skills/polars-optimization was retired; gpt-5.6-luna with max reasoning effort performs this task natively"
+    },
+    {
+      "action": "remove",
+      "componentId": "skills/python-patterns",
+      "message": "skills/python-patterns was retired; gpt-5.6-luna with max reasoning effort performs this task natively"
+    },
+    {
+      "action": "remove",
+      "componentId": "skills/seo-fundamentals",
+      "message": "Remove seo-fundamentals from components.skills in .agents/harness.json, then run harness-sync.",
+      "source": "skills/seo-fundamentals"
+    },
+    {
+      "action": "replace",
+      "componentId": "skills/supabase-postgres-best-practices",
+      "message": "skills/supabase-postgres-best-practices was merged into skills/supabase; select skills/supabase instead",
+      "replacement": "skills/supabase"
+    },
+    {
+      "action": "remove",
+      "componentId": "skills/tailwind-patterns",
+      "message": "Remove tailwind-patterns from components.skills in .agents/harness.json, then run harness-sync.",
+      "source": "skills/tailwind-patterns"
+    },
+    {
+      "action": "remove",
+      "componentId": "skills/tdd-workflow",
+      "message": "skills/tdd-workflow was retired; gpt-5.6-luna with max reasoning effort performs this task natively"
+    },
+    {
+      "action": "remove",
+      "componentId": "tools/opsx-alignment",
+      "message": "ferramenta exclusiva da sincroniza\u00e7\u00e3o de espelhos da central; consumidores devem usar opsx validate --specs --strict e opsx-handoff.",
+      "source": "scripts/check-opsx-alignment.sh"
+    },
+    {
+      "action": "remove",
+      "componentId": "tools/validate-agent-protocols",
+      "message": "ferramenta exclusiva do protocolo de review da central; consumidores devem usar harness-validate.",
+      "source": "scripts/validate-agent-protocols.py"
+    }
+  ],
+  "schemaVersion": 1
+}

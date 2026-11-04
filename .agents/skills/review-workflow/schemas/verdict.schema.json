@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "advisories": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "artifactType": {
+      "const": "verdict"
+    },
+    "blockingReasons": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "metrics": {
+      "properties": {
+        "blockingFindings": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failedAdvisoryGates": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "failedBlockingGates": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "nitFindings": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "warningFindings": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "blockingFindings",
+        "warningFindings",
+        "nitFindings",
+        "failedBlockingGates",
+        "failedAdvisoryGates"
+      ],
+      "type": "object"
+    },
+    "reviewId": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "type": "string"
+    },
+    "securityOutcome": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "final"
+      ],
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "verdict": {
+      "enum": [
+        "APPROVED",
+        "CHANGES_REQUIRED",
+        "SECURITY_REVIEW_REQUIRED",
+        "INCOMPLETE"
+      ],
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifactType",
+    "schemaVersion",
+    "reviewId",
+    "status",
+    "verdict",
+    "summary",
+    "blockingReasons",
+    "advisories",
+    "metrics"
+  ],
+  "title": "Verdict",
+  "type": "object"
+}

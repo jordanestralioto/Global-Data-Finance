@@ -54,12 +54,14 @@ class TestGetAvailableYearsUseCase:
 
     def test_execute_propagates_underlying_failure(self):
         use_case = get_available_years
-        with patch(
-            'globaldatafinance.brazil.cvm.fundamental_stocks_data.core.AvailableYearsCVM.get_minimal_general_year',
-            side_effect=RuntimeError('boom'),
+        with (
+            patch(
+                'globaldatafinance.brazil.cvm.fundamental_stocks_data.core.AvailableYearsCVM.get_minimal_general_year',
+                side_effect=RuntimeError('boom'),
+            ),
+            pytest.raises(RuntimeError, match='boom'),
         ):
-            with pytest.raises(RuntimeError, match='boom'):
-                use_case()
+            use_case()
 
     def test_result_is_iterable_like_tuple(self):
         use_case = get_available_years

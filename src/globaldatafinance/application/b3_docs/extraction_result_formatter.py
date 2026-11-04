@@ -1,7 +1,7 @@
 """Formatter for extraction results display.
 
-This module provides formatted output for B3 historical quotes extraction results,
-making it easy for users to understand what happened during the extraction process.
+This module provides formatted output for B3 historical quotes extraction
+results, making it easy for users to understand extraction outcomes.
 """
 
 from typing import Any
@@ -53,14 +53,15 @@ class ExtractionResultFormatter:
                    - error_count (int)
                    - total_records (int)
                    - output_file (str)
-                   - errors (list, optional)
+                   - errors (dict[str, str]) - always present, possibly empty
                    - assets (list)
                    - processing_mode (str)
                    - elapsed_time (float)
         """
-        print(
-            f'\n{self._colorize("📊 B3 Historical Quotes Extraction", self.BOLD + self.CYAN)}'
+        title = self._colorize(
+            '📊 B3 Historical Quotes Extraction', self.BOLD + self.CYAN
         )
+        print(f'\n{title}')
         print(
             '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
         )
@@ -106,9 +107,10 @@ class ExtractionResultFormatter:
 
         # Output file
         if 'output_file' in result:
-            print(
-                f'\n{self._colorize("💾 Generated file:", self.BOLD + self.BLUE)}'
+            output_label = self._colorize(
+                '💾 Generated file:', self.BOLD + self.BLUE
             )
+            print(f'\n{output_label}')
             print(f'  {result["output_file"]}')
 
         # Error details

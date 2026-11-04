@@ -1,0 +1,347 @@
+{
+  "result": {
+    "artifactCount": 2,
+    "artifacts": [
+      {
+        "metadataPresent": true,
+        "mode": "fast",
+        "path": "cotahist.parquet",
+        "pyarrowReadable": true,
+        "rows": 2257424,
+        "sha256": "981fa335490c224d46f653b23e5f5f323c8000f9db71b7a7c0fc3b632539e058",
+        "sizeBytes": 133291108
+      },
+      {
+        "metadataPresent": true,
+        "mode": "slow",
+        "path": "cotahist.parquet",
+        "pyarrowReadable": true,
+        "rows": 2257424,
+        "sha256": "08755e613d3941a352ceadba9acbbc8814e165b28c823f41dd7cfca6576a6cf7",
+        "sizeBytes": 133289113
+      }
+    ],
+    "caseId": "cotahist-parity-2023",
+    "command": [
+      "HistoricalQuotesB3.extract_async",
+      "path_of_docs=/home/jordan/Programa\u00e7\u00e3o/GlobalDataFinance/cotahist_b3",
+      "assets_list=[todos]",
+      "initial_year=2023",
+      "last_year=2023",
+      "processing_mode=fast+slow",
+      "independent_raw_reconciliation=True",
+      "automatic_network_access=False"
+    ],
+    "comparisonMethod": "independent ordered raw-to-Parquet equality",
+    "dateRange": [
+      "2023-01-02",
+      "2023-12-28"
+    ],
+    "document": null,
+    "durationSeconds": 1177.385416,
+    "inputPath": "/home/jordan/Programa\u00e7\u00e3o/GlobalDataFinance/cotahist_b3/COTAHIST_A2023.ZIP",
+    "inputSha256": "ad1603788d78aaa1de806498572277f1d9443f88ae116452751b5800cb23523e",
+    "inputSizeBytes": 70216090,
+    "logPath": "logs/cotahist-parity-2023.log",
+    "message": "COTAHIST fast/slow exact ordered parity passed",
+    "modeParity": "exact ordered rows",
+    "orderedRowsSha256": "d8d092b740ccf1e53f045e78b90dfc281095a59d68d16d16a296676792ead4ba",
+    "publicResult": {
+      "fast": {
+        "assets": [
+          "todos"
+        ],
+        "elapsed_time": 219.00743961334229,
+        "error_count": 0,
+        "errors": {},
+        "integrity": {
+          "asset_classes": [
+            "todos"
+          ],
+          "complete_market_selection": true,
+          "excluded_records": 0,
+          "ignored_duplicate_sources": [],
+          "intentional_exclusions": 0,
+          "market_codes": [],
+          "missing_years": [],
+          "output_first_trading_date": "2023-01-02",
+          "output_last_trading_date": "2023-12-28",
+          "output_sha256": "981fa335490c224d46f653b23e5f5f323c8000f9db71b7a7c0fc3b632539e058",
+          "raw_quotes": 2257424,
+          "requested_years": [
+            2023
+          ],
+          "schema_version": 2,
+          "selected_quotes": 2257424,
+          "selected_years": [
+            2023
+          ],
+          "selection_complete": true,
+          "source_complete": true,
+          "source_first_trading_date": "2023-01-02",
+          "source_last_trading_date": "2023-12-28",
+          "sources": [
+            {
+              "blank_lines": 0,
+              "content_sha256": "344a50f86548a4aa664f5949bf4a5e3bafb80eb6c4486e3aefc234b7ae915ea4",
+              "declared_records": 2257426,
+              "excluded_records": 0,
+              "expected_rows_sha256": "5fb1ffa64c6626acd31c411f407115bd74ee196d8799f7590452147b71dc11bf",
+              "first_trading_date": "2023-01-02",
+              "generation_date": "2023-12-28",
+              "header_base64": "MDBDT1RBSElTVC4yMDIzQk9WRVNQQSAyMDIzMTIyOCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA=",
+              "header_records": 1,
+              "intentional_exclusions": 0,
+              "last_trading_date": "2023-12-28",
+              "market_counts": {
+                "010": 307936,
+                "012": 15186,
+                "013": 16312,
+                "017": 29,
+                "020": 103396,
+                "021": 30,
+                "030": 67950,
+                "070": 886777,
+                "080": 859808
+              },
+              "member": "COTAHIST_A2023.TXT",
+              "outer_sha256": "ad1603788d78aaa1de806498572277f1d9443f88ae116452751b5800cb23523e",
+              "raw_quotes": 2257424,
+              "selected_quotes": 2257424,
+              "source": "COTAHIST_A2023.ZIP",
+              "trailer_base64": "OTlDT1RBSElTVC4yMDIzQk9WRVNQQSAyMDIzMTIyODAwMDAyMjU3NDI2ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA=",
+              "trailer_convention": "quotes_and_controls",
+              "trailer_records": 1,
+              "uncompressed_bytes": 557584222,
+              "unknown_market_counts": {},
+              "verified_rows": 2257424,
+              "verified_rows_sha256": "5fb1ffa64c6626acd31c411f407115bd74ee196d8799f7590452147b71dc11bf",
+              "warnings": [],
+              "written_rows": 2257424,
+              "year": 2023
+            }
+          ],
+          "status": "passed",
+          "unknown_market_counts": {},
+          "verification_method": "bounded full Parquet readback against preflight source digests",
+          "verified_rows": 2257424,
+          "warnings": [],
+          "written_rows": 2257424
+        },
+        "message": "Successfully extracted 2,257,424 records from 1 files. Saved to: /tmp/gdf-b3-refactor-20261019/annual-2023/work/cotahist-parity-2023-rdm03685/fast/cotahist.parquet",
+        "output_file": "/tmp/gdf-b3-refactor-20261019/annual-2023/work/cotahist-parity-2023-rdm03685/fast/cotahist.parquet",
+        "processing_mode": "fast",
+        "schema_version": 2,
+        "success": true,
+        "success_count": 1,
+        "total_files": 1,
+        "total_records": 2257424
+      },
+      "slow": {
+        "assets": [
+          "todos"
+        ],
+        "elapsed_time": 203.19201970100403,
+        "error_count": 0,
+        "errors": {},
+        "integrity": {
+          "asset_classes": [
+            "todos"
+          ],
+          "complete_market_selection": true,
+          "excluded_records": 0,
+          "ignored_duplicate_sources": [],
+          "intentional_exclusions": 0,
+          "market_codes": [],
+          "missing_years": [],
+          "output_first_trading_date": "2023-01-02",
+          "output_last_trading_date": "2023-12-28",
+          "output_sha256": "08755e613d3941a352ceadba9acbbc8814e165b28c823f41dd7cfca6576a6cf7",
+          "raw_quotes": 2257424,
+          "requested_years": [
+            2023
+          ],
+          "schema_version": 2,
+          "selected_quotes": 2257424,
+          "selected_years": [
+            2023
+          ],
+          "selection_complete": true,
+          "source_complete": true,
+          "source_first_trading_date": "2023-01-02",
+          "source_last_trading_date": "2023-12-28",
+          "sources": [
+            {
+              "blank_lines": 0,
+              "content_sha256": "344a50f86548a4aa664f5949bf4a5e3bafb80eb6c4486e3aefc234b7ae915ea4",
+              "declared_records": 2257426,
+              "excluded_records": 0,
+              "expected_rows_sha256": "5fb1ffa64c6626acd31c411f407115bd74ee196d8799f7590452147b71dc11bf",
+              "first_trading_date": "2023-01-02",
+              "generation_date": "2023-12-28",
+              "header_base64": "MDBDT1RBSElTVC4yMDIzQk9WRVNQQSAyMDIzMTIyOCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA=",
+              "header_records": 1,
+              "intentional_exclusions": 0,
+              "last_trading_date": "2023-12-28",
+              "market_counts": {
+                "010": 307936,
+                "012": 15186,
+                "013": 16312,
+                "017": 29,
+                "020": 103396,
+                "021": 30,
+                "030": 67950,
+                "070": 886777,
+                "080": 859808
+              },
+              "member": "COTAHIST_A2023.TXT",
+              "outer_sha256": "ad1603788d78aaa1de806498572277f1d9443f88ae116452751b5800cb23523e",
+              "raw_quotes": 2257424,
+              "selected_quotes": 2257424,
+              "source": "COTAHIST_A2023.ZIP",
+              "trailer_base64": "OTlDT1RBSElTVC4yMDIzQk9WRVNQQSAyMDIzMTIyODAwMDAyMjU3NDI2ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA=",
+              "trailer_convention": "quotes_and_controls",
+              "trailer_records": 1,
+              "uncompressed_bytes": 557584222,
+              "unknown_market_counts": {},
+              "verified_rows": 2257424,
+              "verified_rows_sha256": "5fb1ffa64c6626acd31c411f407115bd74ee196d8799f7590452147b71dc11bf",
+              "warnings": [],
+              "written_rows": 2257424,
+              "year": 2023
+            }
+          ],
+          "status": "passed",
+          "unknown_market_counts": {},
+          "verification_method": "bounded full Parquet readback against preflight source digests",
+          "verified_rows": 2257424,
+          "warnings": [],
+          "written_rows": 2257424
+        },
+        "message": "Successfully extracted 2,257,424 records from 1 files. Saved to: /tmp/gdf-b3-refactor-20261019/annual-2023/work/cotahist-parity-2023-rdm03685/slow/cotahist.parquet",
+        "output_file": "/tmp/gdf-b3-refactor-20261019/annual-2023/work/cotahist-parity-2023-rdm03685/slow/cotahist.parquet",
+        "processing_mode": "slow",
+        "schema_version": 2,
+        "success": true,
+        "success_count": 1,
+        "total_files": 1,
+        "total_records": 2257424
+      }
+    },
+    "published": true,
+    "rawReconciliation": {
+      "blankLines": {
+        "COTAHIST_A2023.ZIP": 0
+      },
+      "blockLotDistinctTradingCodes": 23,
+      "blockLotRowsByYear": {
+        "2023": 30
+      },
+      "blockLotVolumeTotal": "174019718.00",
+      "firstTradingDate": "2023-01-02",
+      "intentionalExclusions": 0,
+      "lastTradingDate": "2023-12-28",
+      "marketCounts": {
+        "010": 307936,
+        "012": 15186,
+        "013": 16312,
+        "017": 29,
+        "020": 103396,
+        "021": 30,
+        "030": 67950,
+        "070": 886777,
+        "080": 859808
+      },
+      "missingYears": [],
+      "outputSha256": "981fa335490c224d46f653b23e5f5f323c8000f9db71b7a7c0fc3b632539e058",
+      "previousSupportedRows": 2257394,
+      "previousTwentyFieldsEqual": true,
+      "previousTwentyOutputSha256": "3d145dc7928c92537e432339b270fcb50ff49ca4fbdd638c24394a0b55b30cac",
+      "previousTwentySourceSha256": "3d145dc7928c92537e432339b270fcb50ff49ca4fbdd638c24394a0b55b30cac",
+      "rawQuotes": 2257424,
+      "schemaVersion": 2,
+      "selectedQuotes": 2257424,
+      "slowOutputSha256": "08755e613d3941a352ceadba9acbbc8814e165b28c823f41dd7cfca6576a6cf7",
+      "sourceChecksums": [
+        {
+          "contentSha256": "344a50f86548a4aa664f5949bf4a5e3bafb80eb6c4486e3aefc234b7ae915ea4",
+          "outerSha256": "ad1603788d78aaa1de806498572277f1d9443f88ae116452751b5800cb23523e",
+          "source": "COTAHIST_A2023.ZIP"
+        }
+      ],
+      "sourceCount": 1,
+      "trailerConventions": {
+        "COTAHIST_A2023.ZIP": "quotes_and_controls"
+      },
+      "unknownMarketCounts": {},
+      "verifiedRows": 2257424
+    },
+    "recordCount": 2257424,
+    "schema": {
+      "ano_origem": "int64",
+      "arquivo_origem": "large_string",
+      "codigo_bdi": "large_string",
+      "codigo_isin": "large_string",
+      "data_pregao": "date32[day]",
+      "data_vencimento": "date32[day]",
+      "especificacao_papel": "large_string",
+      "fator_cotacao": "int64",
+      "id_fonte": "large_string",
+      "indicador_correcao": "large_string",
+      "linha_origem": "int64",
+      "melhor_oferta_compra": "decimal128(38, 2)",
+      "melhor_oferta_venda": "decimal128(38, 2)",
+      "membro_origem": "large_string",
+      "moeda_referencia": "large_string",
+      "nome_resumido": "large_string",
+      "numero_distribuicao": "int64",
+      "numero_negocios": "int64",
+      "prazo_termo": "large_string",
+      "preco_abertura": "decimal128(38, 2)",
+      "preco_exercicio": "decimal128(38, 2)",
+      "preco_exercicio_pontos": "decimal128(38, 6)",
+      "preco_fechamento": "decimal128(38, 2)",
+      "preco_maximo": "decimal128(38, 2)",
+      "preco_medio": "decimal128(38, 2)",
+      "preco_minimo": "decimal128(38, 2)",
+      "quantidade_total": "int64",
+      "registro_original": "fixed_size_binary[245]",
+      "ticker": "large_string",
+      "tipo_mercado": "large_string",
+      "tipo_registro": "large_string",
+      "volume_total": "decimal128(38, 2)"
+    },
+    "schemaVersion": 2,
+    "source": "cotahist",
+    "status": "passed",
+    "temporaryFiles": [],
+    "temporaryFilesAfterCleanup": [],
+    "year": 2023
+  },
+  "summary": {
+    "durationSeconds": 1177.880462,
+    "processCheck": {
+      "activeProcesses": [],
+      "status": "passed"
+    },
+    "schemaVersion": 2,
+    "statusCounts": {
+      "external_failure": 0,
+      "failed": 0,
+      "not_published": 0,
+      "passed": 1,
+      "skipped": 0
+    },
+    "totalApproved": 1,
+    "totalCombinations": 1,
+    "totalExecuted": 1,
+    "totalExternalFailures": 0,
+    "totalFunctionalFailures": 0,
+    "totalNotExecuted": 0,
+    "totalNotPublished": 0,
+    "totalPublished": 1,
+    "totalSkipped": 0,
+    "unclassifiedCaseIds": []
+  },
+  "timing_scope": "Integrity campaign overlapped gates; no controlled speedup estimate"
+}

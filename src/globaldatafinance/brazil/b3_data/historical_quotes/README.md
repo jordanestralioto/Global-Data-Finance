@@ -1,125 +1,74 @@
-# Módulo de Cotações Históricas (B3)
+# Cotações históricas B3
 
-> [!NOTE]
-> Este módulo faz parte da suíte `Global-Data-Finance` e é especializado na extração de alta performance de dados históricos da B3.
+Este diretório é o proprietário da descoberta, validação e transformação de
+COTAHIST. A API pública fica na facade `HistoricalQuotesB3` em `application/`.
 
-O módulo `historical_quotes` implementa uma solução robusta para processar arquivos da série histórica (COTAHIST) da B3. Ele abstrai a complexidade do layout posicional de arquivos legados, oferecendo uma interface moderna e tipada para extração de dados financeiros. Internamente segue o **padrão de módulos planos por fonte** (sem subcamadas `domain`/`application`/`infra`).
+## Responsabilidades
 
-## 🎯 Objetivos e Valor
+| Módulo ou pacote                                                    | Responsabilidade                                                                       |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `catalog.py`                                                        | Catálogo anual compartilhado, validação integral, equivalência ZIP/TXT e anos ausentes |
+| `source_validation/`                                                | Ordem dos registros, controles, contagens e fatos imutáveis por fonte                  |
+| `layout.py`                                                         | Campos, posições e conversões do schema v2                                             |
+| `cotahist_parser/`                                                  | Conversão exata de todos os campos antes da seleção de mercados                        |
+| `assets.py`                                                         | Aliases e códigos TPMERC; `todos` preserva códigos numéricos desconhecidos             |
+| `zip_reader.py`, `member_resolver.py`                               | Leitura limitada de ZIP/TXT e resolução segura do membro anual                         |
+| `extraction_service/`                                               | Agendamento, workers, repetição transitória, merge e publicação transacional           |
+| `parquet_writer/`                                                   | Schema Arrow, escrita limitada e verificação integral do artefato privado              |
+| `source_evidence.py`, `integrity_report.py`                         | Evidências comuns ao footer e ao resultado público                                     |
+| `row_digest.py`                                                     | Digest ordenado dos valores lógicos e ocorrências selecionadas                         |
+| `client.py`, `models.py`                                            | Casos de uso e configuração preparada                                                  |
+| `filesystem.py`, `input_validation.py`, `years.py`, `processing.py` | Validação de parâmetros, caminhos, anos e modo de processamento                        |
 
-- **Abstração de Layout**: Remove a necessidade de conhecer o layout posicional (bytes/offsets) dos arquivos da B3.
-- **Performance**: Utiliza estratégias de leitura otimizada e escrita em formato colunar (Parquet).
-- **Integridade**: Validação estrita de parâmetros de entrada e tratamento de erros específico de domínio.
-- **Filtragem por Tipo de Ativo**: Capacidade de filtrar a extração por tipos de ativos (ações, ETF, opções, etc.).
+A extração padrão seleciona todos os mercados. Cada documento deve conter um
+header `00`, ao menos uma cotação `01` válida e um trailer `99` consistente.
+ZIP tem preferência somente quando ZIP e TXT do mesmo ano forem integralmente
+válidos e seus conteúdos descompactados forem idênticos. Entradas conflitantes
+falham antes da criação do destino.
 
-## 🏗️ Arquitetura
+Entradas externas usam `COTAHIST_A{YEAR}.ZIP` ou `COTAHIST_A{YEAR}.TXT`.
+`DocsToExtractorB3` é um objeto de dados e não executa validação na construção
+direta. `CreateDocsToExtractUseCaseB3` valida os parâmetros e prepara a
+configuração; `documents_to_download` contém caminhos absolutos resolvidos.
+`ações`, `etf` e `opções` são classes de ativos, selecionadas pelos aliases.
 
-Layout plano de ~7–8 módulos:
+Os modos `fast` e `slow` mantêm limites de lote e concorrência distintos e a mesma
+validação de integridade. A leitura completa do Parquet privado verifica schema,
+metadata, contagens, proveniência, bytes originais e digests antes da publicação.
+Falhas retornam contadores de saída zerados e preservam o resultado anterior.
 
-```text
-brazil/b3_data/historical_quotes/
-├── models.py              # DocsToExtractorB3 (Value Object)
-├── filesystem.py          # FileSystemServiceB3 (validação de caminhos e arquivos COTAHIST)
-├── assets.py              # AvailableAssetsServiceB3
-├── processing.py          # ExtractionConfigServiceB3, ProcessingModeEnumB3
-├── years.py               # Lógica e validação de anos
-├── client.py              # ExtractHistoricalQuotesUseCaseB3 (stateful), CreateDocsToExtractUseCaseB3, GetAvailableAssetsUseCaseB3, etc.
-├── cotahist_parser.py     # Parsing posicional COTAHIST (preservado — complexidade legítima)
-├── parquet_writer/        # Subpacote de escrita Parquet (writer, schema, streaming, disk, constants)
-├── extraction_service/    # Subpacote de orquestração (service, batch_parser, zip_processor, buffered_writer, resource_policy, temp_parquet_merge, types)
-├── zip_reader.py          # Leitura streaming de ZIP
-└── errors.py              # InvalidFirstYear, InvalidLastYear, InvalidAssetsName, EmptyAssetListError, InvalidProcessingMode, etc.
-```
+Todo worker usa a conversão canônica e confere a releitura da fonte e o digest
+ordenado, inclusive quando a fábrica retorna uma subclasse do parser. Extensões
+internas devem implementar o contrato completo de `CotahistParserB3`.
 
-`ExtractHistoricalQuotesUseCaseB3` permanece como classe (D3) porque mantém estado: `zip_reader + parser + writer + processing_mode` são reutilizados entre chamadas.
+`iter_lines()`, `read_lines_from_zip()` e `ParquetWriterB3` continuam disponíveis
+para seus consumidores existentes. A leitura textual deriva dos bytes originais;
+a escrita usa as mesmas sessões Arrow e o schema atual. Essas interfaces não
+mantêm um parser ou um engine produtivo alternativo.
 
-### Componentes Chave
+O writer avulso fecha a sessão e os leitores Parquet antes de publicar ou
+remover o temporário. Falhas de conversão, append ou publicação preservam o
+arquivo anterior e a exceção original; falhas adicionais de limpeza são
+registradas pelo logger.
 
-| Módulo                  | Componente                         | Tipo                  | Responsabilidade                                                                       |
-| ----------------------- | ---------------------------------- | --------------------- | -------------------------------------------------------------------------------------- |
-| `client.py`             | `ExtractHistoricalQuotesUseCaseB3` | Orquestrador (classe) | Conecta parser, leitor e escritor. Mantém estado entre chamadas.                       |
-| `client.py`             | `CreateDocsToExtractUseCaseB3`     | Use case              | Constrói `DocsToExtractorB3` validado a partir dos parâmetros públicos do facade.      |
-| `models.py`             | `DocsToExtractorB3`                | Value object          | Encapsula e valida parâmetros de configuração da extração (anos, assets, paths).       |
-| `filesystem.py`         | `FileSystemServiceB3`              | Service               | Valida paths (`SecurityError`/`PathPermissionError` antes de I/O) e resolve regex de arquivos oficiais. |
-| `assets.py`             | `AvailableAssetsServiceB3`         | Service               | Fornece lista de ativos disponíveis e validação de nomes de ativos (tickers).          |
-| `processing.py`         | `ExtractionConfigServiceB3`        | Service               | Valida modo de processamento (`fast`, `slow`) e sanitiza/formata `output_filename`.    |
-| `years.py`              | `YearValidationServiceB3`          | Service               | Implementa validação e lógica de limite temporal para o `range_years`.                 |
-| `cotahist_parser.py`    | `CotahistParserB3`                 | Parser concreto       | Traduz linhas de texto posicional em dicionários Python estruturados.                  |
-| `parquet_writer/`       | `ParquetWriterB3`                  | Writer concreto       | Escrita Parquet com compressão (zstd) e statistics. Subpacote (`writer`, `schema`, `streaming`, `disk`, `constants`).  |
-| `extraction_service/`   | `ExtractionServiceB3`              | Service concreto      | Streaming/threadpool/flush por memória. Subpacote (`service`, `batch_parser`, `zip_processor`, `buffered_writer`, `resource_policy`, `temp_parquet_merge`, `types`). |
+Chamadas diretas ao serviço de extração ou ao worker executam preflight
+automaticamente quando não recebem descritores validados. A facade fornece
+esses descritores para reutilizar a validação já concluída.
 
-## 🚀 Guia de Uso
+Os arquivos de entrada devem permanecer inalterados durante a execução. A
+reconferência final e a publicação executam no mesmo trabalhador, com um ponto
+de cancelamento antes da decisão de publicar. A reconferência não bloqueia
+alterações por processos externos. Os detalhes estão na referência da API.
 
-### Pré-requisitos
+## Contratos e validação
 
-Certifique-se de ter os arquivos `COTAHIST_A{ANO}.ZIP` baixados em um diretório acessível.
+- [API B3](../../../../../docs/reference/b3-api.md)
+- [Schema v2](../../../../../docs/reference/b3-schema-v2.md)
+- [Guia de migração](../../../../../docs/user-guide/migration-pyarrow-integrity.md)
+- [Testes e campanhas reais](../../../../../docs/dev-guide/testing.md)
 
-### Exemplo Completo
-
-```python
-import asyncio
-from globaldatafinance.brazil.b3_data.historical_quotes import (
-    DocsToExtractorB3,
-    ExtractHistoricalQuotesUseCaseB3,
-)
-
-async def run_extraction():
-    # 1. Configuração da Extração
-    # DocsToExtractorB3 valida automaticamente os tipos e caminhos
-    config = DocsToExtractorB3(
-        path_of_docs="/dados/brutos/b3",        # Onde estão os ZIPs
-        destination_path="/dados/processados",  # Onde salvar o Parquet
-        range_years=range(2023, 2024),          # Anos a considerar
-        set_assets={"ações", "etf"},            # Tipos de ativos (ações, etf, opções, etc.)
-        documents_to_download={"COTAHIST_A2023.ZIP"} # Arquivos específicos
-    )
-
-    # 2. Execução
-    use_case = ExtractHistoricalQuotesUseCaseB3()
-
-    try:
-        result = await use_case.execute(
-            docs_to_extract=config,
-            processing_mode="fast",  # 'fast' (memória) ou 'slow' (iterativo)
-            output_filename="b3_quotes_2023.parquet"
-        )
-
-        print(f"Sucesso! {result['total_records']} registros processados.")
-
-    except Exception as e:
-        print(f"Erro durante a extração: {e}")
-
-if __name__ == "__main__":
-    asyncio.run(run_extraction())
-```
-
-## ⚙️ Referência da API
-
-### `DocsToExtractorB3` (Configuração)
-
-| Campo                       | Tipo       | Descrição                                                                                                                                                                 |
-| --------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `path_of_docs`              | `str`      | Caminho absoluto para o diretório contendo os arquivos ZIP.                                                                                                               |
-| `destination_path`          | `str`      | Caminho absoluto onde o arquivo Parquet será salvo.                                                                                                                       |
-| `range_years`               | `range`    | Intervalo de anos para validação (ex: `range(2020, 2024)`).                                                                                                               |
-| `set_assets`                | `set[str]` | Conjunto de tipos de ativos para filtrar (ex: `{"ações", "etf", "opções"}`). Valores válidos: `ações`, `etf`, `opções`, `termo`, `exercicio_opcoes`, `forward`, `leilao`. |
-| `documents_to_download` | `set[str]` | Nomes exatos dos arquivos ZIP a serem processados.                                                                                                                        |
-
-### Tratamento de Erros
-
-O módulo expõe exceções específicas em `globaldatafinance.brazil.b3_data.historical_quotes.errors` (re-exportadas pelo `__init__.py` da fonte):
-
-- `InvalidFirstYear` / `InvalidLastYear`: erros de validação de intervalo temporal.
-- `InvalidAssetsName`: ticker fornecido não segue o padrão esperado.
-- `EmptyAssetListError`: tentativa de processamento com lista de ativos inválida.
-- `InvalidProcessingMode`: `processing_mode` fora de `{'fast', 'slow'}`.
-- `InvalidOutputFilename`: tentativa de uso de nome de arquivo de saída inválido (vazio/somente espaços).
-- `SecurityError` / `PathPermissionError` (de `macro_exceptions`): tentativa de escrita em path sensível (`/etc`, `/sys`, etc.) ou sem permissões suficientes — defesa em `FileSystemServiceB3` (`filesystem.py`).
-
-## 🔧 Troubleshooting
-
-> [!WARNING] > **Erro: Arquivo não encontrado**
-> Verifique se o nome do arquivo em `documents_to_download` corresponde exatamente ao arquivo no disco (case-sensitive no Linux).
-
-> [!TIP] > **Performance**
-> Para grandes volumes de dados (todos os ativos de vários anos), prefira processar ano a ano ou utilizar máquinas com mais memória RAM se usar o modo `fast`.
+Os testes espelham este proprietário em
+`tests/brazil/b3_data/historical_quotes/`. O oracle independente em
+`scripts/cotahist_oracle/` define suas próprias posições, conversões e tipos;
+a campanha nativa `scripts/real_validation.py` compara cada ocorrência original
+com o Parquet e verifica a paridade exata entre os modos.

@@ -2,17 +2,40 @@ from pathlib import Path
 
 import pytest
 
+from globaldatafinance.brazil.b3_data.historical_quotes.errors import (
+    CotahistCatalogError,
+)
 from globaldatafinance.brazil.b3_data.historical_quotes.filesystem import (
     FileSystemServiceB3,
 )
+from globaldatafinance.core.utils import assert_path_not_sensitive
 from globaldatafinance.macro_exceptions import (
-    EmptyDirectoryError,
     InvalidDestinationPathError,
     PathIsNotDirectoryError,
     SecurityError,
 )
+from tests.support.builders import (
+    build_cotahist_record,
+    write_cotahist_txt,
+    write_cotahist_zip,
+)
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.integration
+
+
+def _write_source(path: Path) -> None:
+    """Create a fully valid annual source under the requested test basename."""
+    year = int(path.stem[-4:])
+    writer = (
+        write_cotahist_zip
+        if path.suffix.casefold() == '.zip'
+        else write_cotahist_txt
+    )
+    source = writer(
+        path.parent, year=year, records=[build_cotahist_record(year=year)]
+    )
+    if source != path:
+        source.rename(path)
 
 
 class TestFileSystemService:
@@ -69,12 +92,13 @@ class TestFileSystemService:
         with pytest.raises(PathIsNotDirectoryError):
             service.validate_directory_path(str(file_path))
 
-    def test_validate_directory_path_empty_directory(self, service, tmp_path):
+    def test_validate_directory_path_allows_empty_source_directory(
+        self, service, tmp_path
+    ):
         empty_dir = tmp_path / 'empty'
         empty_dir.mkdir()
 
-        with pytest.raises(EmptyDirectoryError):
-            service.validate_directory_path(str(empty_dir))
+        assert service.validate_directory_path(str(empty_dir)) == empty_dir
 
     def test_validate_directory_path_with_tilde_expansion(
         self, service, tmp_path
@@ -106,67 +130,67 @@ class TestFileSystemServiceSecurityValidation:
     def service(self):
         return FileSystemServiceB3()
 
-    def test_validate_path_safety_blocks_etc(self, service):
+    def test_validate_path_safety_blocks_etc(self):
         with pytest.raises(SecurityError):
-            service._validate_path_safety(Path('/etc/passwd').resolve())
+            assert_path_not_sensitive(Path('/etc/passwd').resolve())
 
-    def test_validate_path_safety_blocks_root(self, service):
+    def test_validate_path_safety_blocks_root(self):
         with pytest.raises(SecurityError):
-            service._validate_path_safety(Path('/root/secret').resolve())
+            assert_path_not_sensitive(Path('/root/secret').resolve())
 
-    def test_validate_path_safety_blocks_sys(self, service):
+    def test_validate_path_safety_blocks_sys(self):
         with pytest.raises(SecurityError):
-            service._validate_path_safety(Path('/sys/kernel').resolve())
+            assert_path_not_sensitive(Path('/sys/kernel').resolve())
 
-    def test_validate_path_safety_blocks_proc(self, service):
+    def test_validate_path_safety_blocks_proc(self):
         with pytest.raises(SecurityError):
-            service._validate_path_safety(Path('/proc/meminfo').resolve())
+            assert_path_not_sensitive(Path('/proc/meminfo').resolve())
 
-    def test_validate_path_safety_blocks_dev(self, service):
+    def test_validate_path_safety_blocks_dev(self):
         with pytest.raises(SecurityError):
-            service._validate_path_safety(Path('/dev/null').resolve())
+            assert_path_not_sensitive(Path('/dev/null').resolve())
 
-    def test_validate_path_safety_blocks_boot(self, service):
+    def test_validate_path_safety_blocks_boot(self):
         with pytest.raises(SecurityError):
-            service._validate_path_safety(Path('/boot/grub').resolve())
+            assert_path_not_sensitive(Path('/boot/grub').resolve())
 
-    def test_validate_path_safety_blocks_usr(self, service):
+    def test_validate_path_safety_blocks_usr(self):
         with pytest.raises(SecurityError):
-            service._validate_path_safety(Path('/usr/local/bin').resolve())
+            assert_path_not_sensitive(Path('/usr/local/bin').resolve())
 
-    def test_validate_path_safety_blocks_var(self, service):
+    def test_validate_path_safety_blocks_var(self):
         with pytest.raises(SecurityError):
-            service._validate_path_safety(Path('/var/log/secret').resolve())
+            assert_path_not_sensitive(Path('/var/log/secret').resolve())
 
-    def test_validate_path_safety_blocks_lib(self, service):
+    def test_validate_path_safety_blocks_lib(self):
         with pytest.raises(SecurityError):
-            service._validate_path_safety(Path('/lib/systemd').resolve())
+            assert_path_not_sensitive(Path('/lib/systemd').resolve())
 
-    def test_validate_path_safety_blocks_user_ssh(self, service):
+    def test_validate_path_safety_blocks_user_ssh(self):
         target = Path.home() / '.ssh' / 'id_rsa'
         with pytest.raises(SecurityError):
-            service._validate_path_safety(target)
+            assert_path_not_sensitive(target)
 
-    def test_validate_path_safety_blocks_user_aws(self, service):
+    def test_validate_path_safety_blocks_user_aws(self):
         target = Path.home() / '.aws' / 'credentials'
         with pytest.raises(SecurityError):
-            service._validate_path_safety(target)
+            assert_path_not_sensitive(target)
 
-    def test_validate_path_safety_blocks_user_gnupg(self, service):
+    def test_validate_path_safety_blocks_user_gnupg(self):
         target = Path.home() / '.gnupg' / 'secring.gpg'
         with pytest.raises(SecurityError):
-            service._validate_path_safety(target)
+            assert_path_not_sensitive(target)
 
     def test_validate_path_safety_allows_user_config(
-        self, service, tmp_path, monkeypatch
+        self, tmp_path, monkeypatch
     ):
-        # ~/.config is intentionally NOT blocked: legitimate user configs use it.
+        # ~/.config is intentionally allowed for legitimate user configuration.
         fake_home = tmp_path / 'fake_home'
         fake_home.mkdir()
         config_dir = fake_home / '.config' / 'globaldatafinance' / 'cache'
         config_dir.mkdir(parents=True)
         monkeypatch.setenv('HOME', str(fake_home))
-        service._validate_path_safety(config_dir.resolve())
+        assert assert_path_not_sensitive(config_dir.resolve()) is None
 
     def test_validate_directory_path_blocks_windows_system(self, service):
         # Cross-platform: even on POSIX, a Windows system path must be
@@ -180,29 +204,25 @@ class TestFileSystemServiceSecurityValidation:
         with pytest.raises(SecurityError):
             service.validate_directory_path('C:\\Program Files\\Sensitive')
 
-    def test_validate_path_safety_does_not_false_positive_etcd(
-        self, service, tmp_path
-    ):
+    def test_validate_path_safety_does_not_false_positive_etcd(self, tmp_path):
         # Regression: the previous CVM `startswith` check would block
         # /etcd_data because the prefix /etc matches; the path-aware
         # helper must allow such directories.
         etcd_like = tmp_path / 'etcd_data'
         etcd_like.mkdir()
-        service._validate_path_safety(etcd_like.resolve())
+        assert assert_path_not_sensitive(etcd_like.resolve()) is None
 
-    def test_validate_path_safety_allows_safe_paths(self, service, tmp_path):
+    def test_validate_path_safety_allows_safe_paths(self, tmp_path):
         safe_dir = tmp_path / 'safe_directory'
         safe_dir.mkdir()
 
-        service._validate_path_safety(safe_dir.resolve())
+        assert assert_path_not_sensitive(safe_dir.resolve()) is None
 
-    def test_validate_path_safety_allows_home_directory(
-        self, service, tmp_path
-    ):
+    def test_validate_path_safety_allows_home_directory(self, tmp_path):
         home_like = tmp_path / 'home' / 'user' / 'data'
         home_like.mkdir(parents=True)
 
-        service._validate_path_safety(home_like.resolve())
+        assert assert_path_not_sensitive(home_like.resolve()) is None
 
     def test_validate_directory_with_path_traversal_attempt(
         self, service, tmp_path
@@ -213,9 +233,7 @@ class TestFileSystemServiceSecurityValidation:
 
         traversal_path = str(safe_dir / '..' / '..' / '..' / 'etc')
 
-        with pytest.raises(
-            (PathIsNotDirectoryError, SecurityError, EmptyDirectoryError)
-        ):
+        with pytest.raises((PathIsNotDirectoryError, SecurityError)):
             service.validate_directory_path(traversal_path)
 
 
@@ -228,8 +246,8 @@ class TestFileSystemServiceFindFiles:
         test_dir = tmp_path / 'data'
         test_dir.mkdir()
 
-        (test_dir / 'COTAHIST_A2023.ZIP').write_text('data')
-        (test_dir / 'COTAHIST_A2022.ZIP').write_text('data')
+        _write_source(test_dir / 'COTAHIST_A2023.ZIP')
+        _write_source(test_dir / 'COTAHIST_A2022.ZIP')
 
         years = range(2023, 2024)
         result = service.find_files_by_years(test_dir, years)
@@ -242,11 +260,11 @@ class TestFileSystemServiceFindFiles:
         test_dir = tmp_path / 'data'
         test_dir.mkdir()
 
-        (test_dir / 'COTAHIST_A2020.ZIP').write_text('data')
-        (test_dir / 'COTAHIST_A2021.ZIP').write_text('data')
-        (test_dir / 'COTAHIST_A2022.ZIP').write_text('data')
-        (test_dir / 'COTAHIST_A2023.ZIP').write_text('data')
-        (test_dir / 'COTAHIST_A2024.ZIP').write_text('data')
+        _write_source(test_dir / 'COTAHIST_A2020.ZIP')
+        _write_source(test_dir / 'COTAHIST_A2021.ZIP')
+        _write_source(test_dir / 'COTAHIST_A2022.ZIP')
+        _write_source(test_dir / 'COTAHIST_A2023.ZIP')
+        _write_source(test_dir / 'COTAHIST_A2024.ZIP')
 
         years = range(2021, 2024)
         result = service.find_files_by_years(test_dir, years)
@@ -262,8 +280,8 @@ class TestFileSystemServiceFindFiles:
         test_dir = tmp_path / 'data'
         test_dir.mkdir()
 
-        (test_dir / 'COTAHIST_A2020.ZIP').write_text('data')
-        (test_dir / 'COTAHIST_A2021.ZIP').write_text('data')
+        _write_source(test_dir / 'COTAHIST_A2020.ZIP')
+        _write_source(test_dir / 'COTAHIST_A2021.ZIP')
 
         years = range(2025, 2027)
         result = service.find_files_by_years(test_dir, years)
@@ -285,7 +303,7 @@ class TestFileSystemServiceFindFiles:
         test_dir = tmp_path / 'data'
         test_dir.mkdir()
 
-        (test_dir / 'COTAHIST_A2023.ZIP').write_text('data')
+        _write_source(test_dir / 'COTAHIST_A2023.ZIP')
         subdir = test_dir / 'COTAHIST_A2023'
         subdir.mkdir()
 
@@ -299,28 +317,89 @@ class TestFileSystemServiceFindFiles:
         test_dir = tmp_path / 'data'
         test_dir.mkdir()
 
-        (test_dir / 'COTAHIST_A2023.ZIP').write_text('data')
-        (test_dir / 'COTAHIST_A2023.TXT').write_text('data')
+        _write_source(test_dir / 'COTAHIST_A2023.ZIP')
+        _write_source(test_dir / 'COTAHIST_A2023.TXT')
         # Non-official extension must be ignored.
         (test_dir / 'COTAHIST_A2023.CSV').write_text('data')
 
         years = range(2023, 2024)
         result = service.find_files_by_years(test_dir, years)
 
-        assert len(result) == 2
-        assert not any('.CSV' in f for f in result)
+        assert result == {str(test_dir / 'COTAHIST_A2023.ZIP')}
+
+    def test_find_files_by_years_uses_txt_when_zip_is_absent(
+        self, service, tmp_path
+    ):
+        test_dir = tmp_path / 'data'
+        test_dir.mkdir()
+        txt_path = test_dir / 'COTAHIST_A2023.TXT'
+        _write_source(txt_path)
+
+        result = service.find_files_by_years(test_dir, range(2023, 2024))
+
+        assert result == {str(txt_path)}
+
+    def test_find_files_by_years_prefers_zip_for_duplicate_year(
+        self, service, tmp_path, caplog
+    ):
+        test_dir = tmp_path / 'data'
+        test_dir.mkdir()
+        zip_path = test_dir / 'COTAHIST_A2023.ZIP'
+        txt_path = test_dir / 'COTAHIST_A2023.TXT'
+        _write_source(zip_path)
+        _write_source(txt_path)
+
+        result = service.find_files_by_years(test_dir, range(2023, 2024))
+
+        assert result == {str(zip_path)}
+        assert 'ignored after complete validation' in caplog.text
+        warning = next(
+            record
+            for record in caplog.records
+            if record.levelname == 'WARNING'
+        )
+        assert warning.selected_files == [str(zip_path)]
+        assert warning.ignored_files == [str(txt_path)]
 
     def test_find_files_by_years_is_case_insensitive(self, service, tmp_path):
         test_dir = tmp_path / 'data'
         test_dir.mkdir()
 
-        (test_dir / 'cotahist_a2023.zip').write_text('data')
-        (test_dir / 'CotaHist_A2023.Zip').write_text('data')
+        lower_case_path = test_dir / 'cotahist_a2023.zip'
+        upper_case_path = test_dir / 'CotaHist_A2024.Zip'
+        _write_source(lower_case_path)
+        _write_source(upper_case_path)
 
-        years = range(2023, 2024)
+        years = range(2023, 2025)
         result = service.find_files_by_years(test_dir, years)
 
-        assert len(result) == 2
+        assert result == {str(lower_case_path), str(upper_case_path)}
+
+    def test_find_files_by_years_rejects_conflicting_duplicate_contents(
+        self, service, tmp_path
+    ):
+        """The filesystem entrypoint cannot bypass catalog conflict checks."""
+        _write_source(tmp_path / 'COTAHIST_A2023.ZIP')
+        write_cotahist_txt(
+            tmp_path,
+            year=2023,
+            records=[build_cotahist_record(year=2023, ticker='VALE3')],
+        )
+
+        with pytest.raises(
+            CotahistCatalogError, match='Conflicting ZIP and TXT'
+        ):
+            service.find_files_by_years(tmp_path, range(2023, 2024))
+
+    def test_find_files_by_years_validates_duplicate_txt_before_ignoring_it(
+        self, service, tmp_path
+    ):
+        """A valid ZIP never hides a corrupt annual TXT representation."""
+        _write_source(tmp_path / 'COTAHIST_A2023.ZIP')
+        (tmp_path / 'COTAHIST_A2023.TXT').write_bytes(b'invalid')
+
+        with pytest.raises(CotahistCatalogError, match=r'COTAHIST_A2023\.TXT'):
+            service.find_files_by_years(tmp_path, range(2023, 2024))
 
     def test_find_files_by_years_ignores_non_cotahist_files(
         self, service, tmp_path
@@ -361,7 +440,7 @@ class TestFileSystemServiceFindFiles:
         test_dir = tmp_path / 'data'
         test_dir.mkdir()
 
-        (test_dir / 'COTAHIST_A2023.ZIP').write_text('data')
+        _write_source(test_dir / 'COTAHIST_A2023.ZIP')
 
         years = range(2023, 2023)
         result = service.find_files_by_years(test_dir, years)
@@ -378,9 +457,9 @@ class TestFileSystemServiceIntegration:
         data_dir = tmp_path / 'cotahist_data'
         data_dir.mkdir()
 
-        (data_dir / 'COTAHIST_A2022.ZIP').write_text('data')
-        (data_dir / 'COTAHIST_A2023.ZIP').write_text('data')
-        (data_dir / 'COTAHIST_A2024.ZIP').write_text('data')
+        _write_source(data_dir / 'COTAHIST_A2022.ZIP')
+        _write_source(data_dir / 'COTAHIST_A2023.ZIP')
+        _write_source(data_dir / 'COTAHIST_A2024.ZIP')
 
         validated_path = service.validate_directory_path(str(data_dir))
 
@@ -424,7 +503,7 @@ class TestFileSystemServiceIntegration:
         data_dir.mkdir()
 
         for year in range(2000, 2025):
-            (data_dir / f'COTAHIST_A{year}.ZIP').write_text('data')
+            _write_source(data_dir / f'COTAHIST_A{year}.ZIP')
 
         validated_path = service.validate_directory_path(str(data_dir))
 
@@ -482,7 +561,7 @@ class TestFileSystemServiceEdgeCases:
         data_dir = tmp_path / 'data'
         data_dir.mkdir()
 
-        (data_dir / 'COTAHIST_A2023.zip').write_text('data')
+        _write_source(data_dir / 'COTAHIST_A2023.zip')
         (data_dir / 'file_2023.zip').write_text('data')
         (data_dir / 'COTAHIST_AXXXX.zip').write_text('data')
 

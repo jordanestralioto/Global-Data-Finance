@@ -1,6 +1,10 @@
+import pytest
+
 from globaldatafinance.application.b3_docs.extraction_result_formatter import (
     ExtractionResultFormatter,
 )
+
+pytestmark = pytest.mark.unit
 
 
 class TestExtractionResultFormatter:

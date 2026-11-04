@@ -1,0 +1,240 @@
+{
+  "centralVersion": "0.2.0",
+  "components": [
+    {
+      "hasScripts": false,
+      "hash": "sha256:3d3f38c7b3ecf695eda3d8e2e45105b057070f13bd1006a69583f370e0a000e5",
+      "id": "agents/developer-engineer",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": false,
+      "hash": "sha256:2e3bedeb97236ae2201c72b0eaaae150cb0246fdf6fd9ffec9e696e092dfecf3",
+      "id": "agents/security-engineer",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": true,
+      "hash": "sha256:51c133c50d39861e1f74121772a14e66aa34b912365676c04a42f54cf3854510",
+      "id": "runtime/review",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": true,
+      "hash": "sha256:b1d43423f7ac32cfcb12118fe20bfc59e3ffcfe638557aedf2aa98f7f40190e3",
+      "id": "skills/agents-md-author",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": false,
+      "hash": "sha256:6dfeae3cd3cc15bd0becc96115b5d8f4cd9882f99481b34a63d5a3dc82bc9e4b",
+      "id": "skills/architecture",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": true,
+      "hash": "sha256:3451cc98c542ecf2e468bb5a145ab6330460d632adbe2f03dcd136887a04c93e",
+      "id": "skills/lint-and-validate",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": true,
+      "hash": "sha256:569ebccfb135b9adf37bfe01dd3bf64cf9503d5c4f412452212da23f482d6cdd",
+      "id": "skills/local-quality-gates",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": true,
+      "hash": "sha256:72129cd78fc96d63ecbdc76d24c0c1384252cd0ecf249edacc6a939f3885bceb",
+      "id": "skills/modularizar",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": false,
+      "hash": "sha256:0a27f4bf5fbfae5a858076a7d1b1fdc514bf566132ad80c971ca9c6fc88c44b4",
+      "id": "skills/openspec-workflow",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": true,
+      "hash": "sha256:b8f774e455524d22535d2d5b602724b40901d7462591b2672113100e5e6a93f9",
+      "id": "skills/performance-profiling",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": false,
+      "hash": "sha256:c50b68b91d6a32fd25203b2e59df349a3d10f46f996a6c5fd78b2f5c6dfb3cf6",
+      "id": "skills/red-team-tactics",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": false,
+      "hash": "sha256:4a3f43d4a56c91506df41ec320010bf4ede173bb46330175e536f59e0c1918ef",
+      "id": "skills/resolve-open-questions",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": true,
+      "hash": "sha256:5d35f6f7b4f0f34daf8ce1cbabbaf737cd2de2488c2c920ab3933e0ad2404144",
+      "id": "skills/review-workflow",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": true,
+      "hash": "sha256:f32a9e5acb59ac97f9c123dc0092fbd8c4b45c19630e6643d306f40e199237de",
+      "id": "skills/server-management",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": false,
+      "hash": "sha256:48f065b17fd0ab6494660b6df54e76fffb4bb78aed64b1fc4261f4d82007086e",
+      "id": "skills/skill-governance",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": true,
+      "hash": "sha256:68cbdfaed876b0e959269aca4056db1f316b4b78bb7bb36ebdca0b629c89e394",
+      "id": "skills/structural-inspector",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": false,
+      "hash": "sha256:1dfb7e8ed69420dfbab92d33bc3f04f20cfbfc94c78b3e55e011701eb85ed935",
+      "id": "skills/systematic-debugging",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": true,
+      "hash": "sha256:3bbafece478a57542bdf5fdc0ebed16fc739e53eb5cbdc88d603fe9f50e2d27f",
+      "id": "skills/testing-patterns",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": true,
+      "hash": "sha256:fe6def5f2066d33551e3dded01072435f6c21a95753aa68c067bef9e7cf0435a",
+      "id": "skills/vulnerability-scanner",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": true,
+      "hash": "sha256:7125591197e7b9a634f88c3b39169b468bc0c10f6d7191cff54c0909b46a4a08",
+      "id": "tools/check-max-lines",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": true,
+      "hash": "sha256:6646d9d6101e709be5b511510648e4f9024a8787c4ff2c5ff0cf65333112204b",
+      "id": "tools/harness-verify",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": true,
+      "hash": "sha256:6ed8a07b50ec3f156d4f4e45930f8f770daeaaebd11d8c0e0d9dd17199ac1926",
+      "id": "tools/validate-commit-msg",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": false,
+      "hash": "sha256:24cb5a5986bfb93948741f226b50e2bc2c21276563906ac3068aba50eb84c8aa",
+      "id": "workflows/audit",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": false,
+      "hash": "sha256:1bc0a03578363e3537d07e530eebd663e76b8e4042ccfc0210b65f90ec53bba3",
+      "id": "workflows/opsx-apply",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": false,
+      "hash": "sha256:ba10567f3102fd671bec3b35f3392e318d52b381d0901d3b2e4e18cb8c672278",
+      "id": "workflows/opsx-archive",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": false,
+      "hash": "sha256:97c81be6128f44ef5c433999adfc857258488f2861074209c2c41be521865711",
+      "id": "workflows/opsx-continue",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": false,
+      "hash": "sha256:a4c2feb2e906ed7d883a050e33fe26995dba942995b2012803fe161b12d81e40",
+      "id": "workflows/opsx-explore",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": false,
+      "hash": "sha256:539e1446122c8b92f74a584ec844ee94fb2e4883a7f0364ae323c207f48864e1",
+      "id": "workflows/opsx-ff",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": false,
+      "hash": "sha256:8c7591020ad68dcff2f3df39baaf02a8ffd09782908aa074ec51441150903a9e",
+      "id": "workflows/opsx-new",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": false,
+      "hash": "sha256:5c158ccea08e020875ec172f424e6faab9f227517c1a43f613f1bea7261b58f3",
+      "id": "workflows/opsx-review",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": false,
+      "hash": "sha256:5f64dde5e30d302812ffac7840a2a3ab13926ec0554e084c9113b9e93765d04e",
+      "id": "workflows/opsx-sync",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": false,
+      "hash": "sha256:eca4fc23fd712a869e58ef94f4da3b7d8a0ba4dc1709447d3500a60410cfecea",
+      "id": "workflows/opsx-verify",
+      "selectedBy": "manifest"
+    },
+    {
+      "hasScripts": false,
+      "hash": "sha256:534557df2a7f06bd6c6ef149c22fbc0f30f67a12058db6f943922234a500ac81",
+      "id": "workflows/pre-commit-fix",
+      "selectedBy": "manifest"
+    }
+  ],
+  "managedPaths": [
+    ".agents/agents/developer-engineer.agent.md",
+    ".agents/agents/security-engineer.agent.md",
+    ".agents/harness",
+    ".agents/runtime/review",
+    ".agents/scripts/check-max-lines.py",
+    ".agents/scripts/harness_verify.py",
+    ".agents/scripts/validate-commit-msg.sh",
+    ".agents/skills/agents-md-author",
+    ".agents/skills/architecture",
+    ".agents/skills/lint-and-validate",
+    ".agents/skills/local-quality-gates",
+    ".agents/skills/modularizar",
+    ".agents/skills/openspec-workflow",
+    ".agents/skills/performance-profiling",
+    ".agents/skills/red-team-tactics",
+    ".agents/skills/resolve-open-questions",
+    ".agents/skills/review-workflow",
+    ".agents/skills/server-management",
+    ".agents/skills/skill-governance",
+    ".agents/skills/structural-inspector",
+    ".agents/skills/systematic-debugging",
+    ".agents/skills/testing-patterns",
+    ".agents/skills/vulnerability-scanner",
+    ".agents/workflows/audit.prompt.md",
+    ".agents/workflows/opsx-apply.prompt.md",
+    ".agents/workflows/opsx-archive.prompt.md",
+    ".agents/workflows/opsx-continue.prompt.md",
+    ".agents/workflows/opsx-explore.prompt.md",
+    ".agents/workflows/opsx-ff.prompt.md",
+    ".agents/workflows/opsx-new.prompt.md",
+    ".agents/workflows/opsx-review.prompt.md",
+    ".agents/workflows/opsx-sync.prompt.md",
+    ".agents/workflows/opsx-verify.prompt.md",
+    ".agents/workflows/pre-commit-fix.prompt.md"
+  ],
+  "replacements": []
+}

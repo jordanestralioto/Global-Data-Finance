@@ -20,32 +20,41 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
 
+      # v7
       - name: Set up Python 3.12
-        uses: actions/setup-python@v7
+        uses: >-
+          actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: "3.12"
 
+      # v8.3.2
       - name: Install uv
-        uses: astral-sh/setup-uv@v8.3.2
+        uses: >-
+          astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990
         with:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync --locked --all-extras --dev
 
+      # The local policy entrypoint owns the complete base, documentation, and
+      # security scopes; pyproject.toml contains only the base selection.
       - name: Lint with Ruff
-        run: uv run ruff check src
+        run: >-
+          uv run --locked --no-sync python scripts/check-ruff-policy.py
+          --profile all
 
       - name: Type check with Mypy
-        run: uv run mypy src --ignore-missing-imports --pretty
-
-      - name: Check docstrings with pydocstyle
         run: |
-          uv run pydocstyle src --convention=google --match-dir=^src \
-            --add-ignore=D104,D100,D101,D102,D103,D105,D107,D205,D212,D417,D415
+          uv run --locked --no-sync mypy src --pretty
+          uv run --locked --no-sync mypy src tests examples scripts \
+            --disable-error-code no-untyped-def --pretty
 
   security-gate:
     name: Security & Vulnerability Scan
@@ -53,39 +62,63 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
         with:
+          persist-credentials: false
           fetch-depth: 0
 
+      # Gitleaks v8.30.0 source tag object:
+      # 2ca41cc1372d1e939a6a879f18cdc19fc1cac1ce (the frozen local hook pin).
+      # The published OCI image is pinned by digest, not by a mutable tag.
+      - name: Scan clean checkout with Gitleaks
+        uses: >-
+          docker://ghcr.io/gitleaks/gitleaks@sha256:691af3c7c5a48b16f187ce3446d5f194838f91238f27270ed36eef6359a574d9
+        with:
+          args: >-
+            dir . --config=.gitleaks.toml --redact --no-banner
+            --log-level=error
+
+      # v7
       - name: Set up Python 3.12
-        uses: actions/setup-python@v7
+        uses: >-
+          actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: "3.12"
 
+      # v8.3.2
       - name: Install uv
-        uses: astral-sh/setup-uv@v8.3.2
+        uses: >-
+          astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990
         with:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync --locked --all-extras --dev
 
       - name: Validate uv lock file
         run: uv lock --check
 
-      - name: Run Bandit security analysis
-        run: uv run bandit -c pyproject.toml -r src -ll
+      - name: Static security analysis (Ruff flake8-bandit rules)
+        run: >-
+          uv run --locked --no-sync python scripts/check-ruff-policy.py
+          --profile security
 
       - name: Audit dependency vulnerabilities
-        run: uv run pip-audit --ignore-vuln PYSEC-2026-89
-
-      - name: Install detect-secrets
-        run: uv pip install detect-secrets==1.5.0
+        run: >-
+          uv run --locked --no-sync python
+          scripts/audit_locked_dependencies.py
 
       - name: Scan secrets with detect-secrets
         run: |
-          git ls-files -z | xargs -0 uv run detect-secrets-hook --baseline .secrets.baseline
+          git ls-files -z -- . \
+            ':(exclude).agents/**' \
+            ':(exclude).claude/**' \
+            ':(exclude).codex/**' \
+            ':(exclude).opencode/**' \
+            ':(exclude).github/prompts/**' | \
+            xargs -0 uv run --locked --no-sync \
+            detect-secrets-hook --baseline .secrets.baseline
 
   public-api-invariants:
     name: Public API Surface Invariants
@@ -93,25 +126,32 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
 
+      # v7
       - name: Set up Python 3.12
-        uses: actions/setup-python@v7
+        uses: >-
+          actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: "3.12"
 
+      # v8.3.2
       - name: Install uv
-        uses: astral-sh/setup-uv@v8.3.2
+        uses: >-
+          astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990
         with:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync --locked --all-extras --dev
 
       - name: Verify public API exports
         run: |
-          uv run python - <<'PY'
+          uv run --locked --no-sync python - <<'PY'
           import globaldatafinance as gdf
 
           required_exports = [
@@ -120,9 +160,19 @@ jobs:
               "ExtractionResultB3",
           ]
 
-          missing = [name for name in required_exports if not hasattr(gdf, name)]
+          missing = [
+              name for name in required_exports if not hasattr(gdf, name)
+          ]
           if missing:
-              raise SystemExit(f"Invariante violada! Exportações ausentes no __init__.py: {missing}")
+              msg = (
+                  "Invariante violada! "
+                  f"Exportações ausentes no __init__.py: {missing}"
+              )
+              raise SystemExit(msg)
 
-          print(f"✅ Todas as exportações públicas ({required_exports}) estão presentes no pacote root.")
+          msg = (
+              "✅ Todas as exportações públicas "
+              f"({required_exports}) estão presentes no pacote root."
+          )
+          print(msg)
           PY

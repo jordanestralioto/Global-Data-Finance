@@ -1,0 +1,104 @@
+{
+  "rules": [
+    {
+      "pattern": "src/features/auth/**",
+      "profile": "security-touch",
+      "reason": "Fluxos de autenticacao exigem escalacao de seguranca."
+    },
+    {
+      "pattern": "src/shared/api/**",
+      "profile": "security-touch",
+      "reason": "Cliente e contratos compartilhados de API exigem hardening."
+    },
+    {
+      "pattern": "src/app/store/**",
+      "profile": "high-risk",
+      "reason": "Store global alterada."
+    },
+    {
+      "pattern": "src/shared/types/**",
+      "profile": "high-risk",
+      "reason": "Tipos compartilhados alterados."
+    },
+    {
+      "pattern": "src/filters/dfp_itr/mapping/**",
+      "profile": "high-risk",
+      "reason": "Contrato de mapping DFP/ITR alterado."
+    },
+    {
+      "pattern": "openspec/changes/**",
+      "profile": "high-risk",
+      "reason": "Contrato OpenSpec ativo alterado."
+    },
+    {
+      "pattern": "src/**/*.py",
+      "profile": "standard",
+      "reason": "Codigo Python de producao alterado."
+    },
+    {
+      "pattern": "tests/**/*.py",
+      "profile": "standard",
+      "reason": "Testes Python alterados."
+    },
+    {
+      "pattern": "scripts/**/*.py",
+      "profile": "standard",
+      "reason": "Script operacional Python alterado."
+    },
+    {
+      "pattern": "tests/frontend/e2e/**",
+      "profile": "ui-flow",
+      "reason": "Fluxo E2E alterado."
+    },
+    {
+      "pattern": "playwright.config.ts",
+      "profile": "ui-flow",
+      "reason": "Configuracao Playwright alterada."
+    },
+    {
+      "pattern": "playwright.simulated.config.ts",
+      "profile": "ui-flow",
+      "reason": "Configuracao Playwright simulada alterada."
+    },
+    {
+      "pattern": "src/**/*.tsx",
+      "reason": "UI visivel alterada; teste dedicado pode ser util."
+    },
+    {
+      "pattern": ".agents/**",
+      "profile": "high-risk",
+      "reason": "Infra de agents alterada."
+    },
+    {
+      "pattern": ".github/agents/**",
+      "profile": "high-risk",
+      "reason": "Espelho local de agents alterado."
+    },
+    {
+      "pattern": ".codex/agents/**",
+      "profile": "high-risk",
+      "reason": "Espelho local de agents alterado."
+    },
+    {
+      "pattern": "opencode.json",
+      "profile": "high-risk",
+      "reason": "Runtime de agents alterado."
+    },
+    {
+      "pattern": "package.json",
+      "profile": "high-risk",
+      "reason": "Scripts oficiais de validacao alterados."
+    },
+    {
+      "pattern": "docs/**",
+      "profile": "quick",
+      "reason": "Mudanca documental."
+    },
+    {
+      "pattern": "**/*.md",
+      "profile": "quick",
+      "reason": "Mudanca documental."
+    }
+  ],
+  "schemaVersion": "1.0.0"
+}

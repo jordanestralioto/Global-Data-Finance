@@ -1,37 +1,42 @@
 # Resource Monitoring
 
-Comprehensive documentation detailing the telemetry and resource monitoring subsystem built into Global-Data-Finance.
+Resource measurements, limits, and admission helpers used by Global-Data-Finance.
 
----
+______________________________________________________________________
 
 ## Overview
 
-The `ResourceMonitor` class represents an advanced, dynamic CPU and RAM telemetry engine offering:
+`ResourceMonitor` measures CPU and memory and offers operations to its caller:
 
-- ✅ **Singleton Architecture**: Guaranteed singular telemetry instance across application lifecycles
-- ✅ **Automated Throttling**: Automatically adjusts concurrent worker limits and batch dimensions according to real-time resources
-- ✅ **Circuit Breaker Integration**: Temporarily pauses I/O processing operations whenever hardware saturation reaches critical thresholds
-- ✅ **Automated Garbage Collection**: Explicitly invokes memory garbage collection cycles during memory pressure spikes
+- A singleton constructor for shared use, or `create_isolated()` for isolation.
+- Manual helpers to size workers and batches and wait for resources.
+- States and a circuit breaker consulted by the flow using the monitor.
+- Garbage collection on warning when enabled in the limits.
 
----
+A reported state does not automatically resize an operation already running.
+
+______________________________________________________________________
 
 ## Resource Saturation States
 
-| State Definition | Operational Description          | Triggered Response Action               |
-| ---------------- | -------------------------------- | --------------------------------------- |
-| **HEALTHY**      | Normal execution resource footprint| No throttling or remediation required   |
-| **WARNING**      | Resource consumption exceeds 70-80%| Evaluates and registers GC execution    |
-| **CRITICAL**     | Consumption exceeds 85-90%       | Downscales workers/batches, forces GC   |
-| **EXHAUSTED**    | System usage surpasses 95% threshold| Activates execution circuit breaker   |
+| State         | Description                                                                                         | Action                                    |
+| ------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| **HEALTHY**   | Memory and CPU below warning thresholds                                                              | No action required                        |
+| **WARNING**   | Memory or CPU warning threshold reached                                                              | Considers GC when enabled                 |
+| **CRITICAL**  | Critical threshold reached or resource telemetry failed                                              | Caller decides how to reduce work         |
+| **EXHAUSTED** | Memory exhaustion threshold reached, insufficient free memory, or circuit breaker still active        | Activates the circuit breaker when enabled |
 
----
+Thresholds are configurable through `ResourceLimits`; the example below shows
+the defaults. High CPU alone reaches `CRITICAL`.
+
+______________________________________________________________________
 
 ## Configuration
 
 ### Configuring `ResourceLimits`
 
 ```python
-from globaldatafinance.core.utils.resource_monitor import ResourceLimits
+from globaldatafinance.core import ResourceLimits
 
 limits = ResourceLimits(
     memory_warning_threshold=70.0,      # RAM % threshold triggering WARNING state
@@ -46,26 +51,30 @@ limits = ResourceLimits(
 )
 ```
 
----
+______________________________________________________________________
 
 ## Public API
 
 ### Instantiate Singleton Monitor
 
 ```python
-from globaldatafinance.core.utils.resource_monitor import ResourceMonitor
+from globaldatafinance.core import ResourceLimits, ResourceMonitor
 
-# Request default global singleton instance
-monitor = ResourceMonitor()
-
-# Or register custom limit profiles on initial startup
+# The first initialization defines the active limits.
 limits = ResourceLimits(memory_warning_threshold=60.0)
 monitor = ResourceMonitor(limits)
+# Later calls return the same object and do not replace its limits.
+same_monitor = ResourceMonitor(ResourceLimits(memory_warning_threshold=50.0))
+assert same_monitor is monitor
+assert monitor.limits.memory_warning_threshold == 60.0
 ```
 
 ### Inspect Current Resource State
 
 ```python
+from globaldatafinance.core import ResourceMonitor
+
+monitor = ResourceMonitor()
 state = monitor.check_resources()
 print(f"Current telemetry assessment: {state}")  # Returns HEALTHY, WARNING, CRITICAL, or EXHAUSTED
 ```
@@ -89,9 +98,9 @@ print(f"Optimal adjusted batch size: {safe_batch}")
 ### Pause Until Resources Free Up
 
 ```python
-from globaldatafinance.core.utils.resource_monitor import ResourceState
+from globaldatafinance.core import ResourceMonitor, ResourceState
 
-# Pause execution thread until resource availability returns below designated thresholds
+monitor = ResourceMonitor()
 success = monitor.wait_for_resources(
     required_state=ResourceState.WARNING,
     timeout_seconds=60
@@ -106,35 +115,38 @@ else:
 ### Query Current Process RAM Footprint
 
 ```python
+from globaldatafinance.core import ResourceMonitor
+
+monitor = ResourceMonitor()
 memory_mb = monitor.get_process_memory_mb()
 print(f"Active process consuming: {memory_mb:.2f} MB")
 ```
 
----
+`get_process_memory_mb()` uses `0.0` as a sentinel when `psutil` cannot read
+telemetry; it is not a real zero-usage measurement. A known telemetry failure
+in `check_resources()` produces `ResourceState.CRITICAL`.
 
-## Automated Adapter Integration
+______________________________________________________________________
 
-The `ResourceMonitor` telemetry engine is deployed automatically inside concrete download and extraction adapters:
+## Source-Specific Policy
 
-```python
-# AsyncDownloadAdapterCVM incorporates ResourceMonitor internally to:
-# - Dynamically scale active HTTP down-stream worker queues
-# - Compress dataframe batch sizes during periods of RAM exhaustion
-# - Suspend worker queues temporarily when system resources become CRITICAL
+The CVM flow uses a static concurrency semaphore in
+`CvmDownloadAdapter`; it does not query `ResourceMonitor` to resize
+workers during downloads. The limit is set by `max_concurrent` when the
+adapter is constructed.
 
-cvm = FundamentalStocksDataCVM()
-cvm.download(...)  # Resource monitoring triggers transparently inside library routines
-```
+`ResourcePolicyB3` creates an isolated monitor, without warning GC or CPU
+utilization as a trigger. `fast` bounds workers by source count, CPU count,
+available RAM, and `GDF_B3_WORKER_LIMIT` (default 4); `slow` uses one worker.
+Admission waits under critical memory and fails on exhaustion or timeout.
+The singleton's manual helpers do not resize B3 batches.
 
----
+______________________________________________________________________
 
 ## Practical Standalone Scripting
 
 ```python
-from globaldatafinance.core.utils.resource_monitor import (
-    ResourceMonitor,
-    ResourceState
-)
+from globaldatafinance.core import ResourceMonitor, ResourceState
 
 monitor = ResourceMonitor()
 
@@ -143,7 +155,8 @@ state = monitor.check_resources()
 
 if state == ResourceState.EXHAUSTED:
     print("System entering EXHAUSTED capacity state! Awaiting cooldown...")
-    monitor.wait_for_resources(timeout_seconds=120)
+    if not monitor.wait_for_resources(timeout_seconds=120):
+        raise TimeoutError("Resources remain unavailable")
 
 # Retrieve safe concurrent worker threshold
 workers = monitor.get_safe_worker_count(max_workers=16)
@@ -154,19 +167,15 @@ memory = monitor.get_process_memory_mb()
 print(f"Final runtime consumption: {memory:.2f} MB")
 ```
 
----
+______________________________________________________________________
 
 ## External Dependencies
 
-The monitoring module requires `psutil` to query OS-level process stats:
+The monitoring module utilizes `psutil` to query OS-level process and system metrics. The `psutil` package is a mandatory core dependency of `globaldatafinance` and is installed automatically.
 
-```bash
-pip install psutil
-```
+If the installation is incomplete or the module cannot be loaded, importing the package fails explicitly. There is no degraded mode that reports `ResourceState.HEALTHY` without telemetry, because that result could admit work without the memory and CPU safety limits.
 
-If `psutil` is absent or unreadable, the monitoring engine operates silently in a fallback degraded mode (consistently returning `ResourceState.HEALTHY`).
-
----
+______________________________________________________________________
 
 ## Related Documentation
 

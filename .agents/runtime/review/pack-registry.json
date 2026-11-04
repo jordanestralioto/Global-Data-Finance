@@ -1,0 +1,78 @@
+{
+  "behavior": {
+    "checklists": [
+      "BEHAVIOR-CORRECTNESS",
+      "BEHAVIOR-STATE"
+    ],
+    "label": "Behavior And Runtime",
+    "priority": 60,
+    "skills": [
+      "architecture",
+      "systematic-debugging"
+    ],
+    "topic": "behavior:runtime"
+  },
+  "data": {
+    "checklists": [
+      "DATA-CONTRACT",
+      "DATA-QUERY",
+      "DATA-OWNERSHIP"
+    ],
+    "label": "Data Integrity",
+    "priority": 70,
+    "skills": [
+      "structural-inspector"
+    ],
+    "topic": "data:integrity"
+  },
+  "docs": {
+    "checklists": [
+      "DOCS-CONTRACT",
+      "DOCS-TRACEABILITY"
+    ],
+    "label": "Documentation And Contracts",
+    "priority": 20,
+    "skills": [
+      "agents-md-author"
+    ],
+    "topic": "docs:contract"
+  },
+  "interface": {
+    "checklists": [
+      "IFACE-CONTRACT",
+      "IFACE-COMPAT"
+    ],
+    "label": "External Interfaces",
+    "priority": 80,
+    "skills": [
+      "architecture"
+    ],
+    "topic": "interface:contract"
+  },
+  "security": {
+    "checklists": [
+      "SEC-TRUST",
+      "SEC-AUTHZ",
+      "SEC-SECRETS"
+    ],
+    "label": "Security Boundaries",
+    "priority": 100,
+    "skills": [
+      "vulnerability-scanner",
+      "red-team-tactics"
+    ],
+    "topic": "security:trust-boundary"
+  },
+  "tests": {
+    "checklists": [
+      "TEST-COVERAGE",
+      "TEST-REGRESSION"
+    ],
+    "label": "Tests And Verification",
+    "priority": 40,
+    "skills": [
+      "testing-patterns"
+    ],
+    "topic": "tests:coverage"
+  }
+}

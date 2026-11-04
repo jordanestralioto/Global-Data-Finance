@@ -1,3 +1,4 @@
+from . import extraction_service, parquet_writer
 from .assets import AvailableAssetsServiceB3
 from .client import (
     CreateDocsToExtractUseCaseB3,
@@ -7,6 +8,7 @@ from .client import (
     ExtractHistoricalQuotesUseCaseB3,
     GetAvailableAssetsUseCaseB3,
     GetAvailableYearsUseCaseB3,
+    ValidateCotahistInputUseCaseB3,
     ValidateExtractionConfigUseCaseB3,
     VerifyDestinationPathsUseCaseB3,
 )
@@ -35,9 +37,12 @@ __all__ = [
     'GetAvailableYearsUseCaseB3',
     'ParquetWriterB3',
     'ProcessingModeEnumB3',
+    'ValidateCotahistInputUseCaseB3',
     'ValidateExtractionConfigUseCaseB3',
     'VerifyDestinationPathsUseCaseB3',
     'YearRangeB3',
     'YearValidationServiceB3',
     'ZipFileReaderB3',
+    'extraction_service',
+    'parquet_writer',
 ]

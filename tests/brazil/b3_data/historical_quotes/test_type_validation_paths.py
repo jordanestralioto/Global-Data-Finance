@@ -49,7 +49,7 @@ class TestCreateDocsToExtractUseCaseB3TypeErrors:
             TypeError, match='destination_path must be a string'
         ):
             CreateDocsToExtractUseCaseB3(
-                path_of_docs='/tmp',
+                path_of_docs='test-data',
                 assets_list=['ações'],
                 initial_year=2020,
                 last_year=2021,

@@ -1,1 +1,1 @@
-"""CVM source namespace — flat per-source layout (design D6)."""
+"""CVM document families and shared archive ingestion."""

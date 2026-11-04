@@ -1,10 +1,5 @@
-"""Core domain for CVM fundamental_stocks_data.
+"""Company document catalog, annual URL planning, and year validation."""
 
-Consolidates the prior `domain/` layer (available docs/years, URL builder,
-download result) into a single module per the flat per-source layout.
-"""
-
-from dataclasses import dataclass, field
 from datetime import date
 from typing import NamedTuple
 
@@ -14,6 +9,16 @@ from .errors import (
     InvalidFirstYear,
     InvalidLastYear,
 )
+
+DOCUMENT_START_YEARS: dict[str, int] = {
+    'CGVN': 2018,
+    'FRE': 2010,
+    'FCA': 2010,
+    'DFP': 2010,
+    'ITR': 2011,
+    'IPE': 2003,
+    'VLMO': 2018,
+}
 
 
 class AvailableYearsInfoCVM(NamedTuple):
@@ -42,15 +47,62 @@ class AvailableYearsInfoCVM(NamedTuple):
     cgvn_vlmo_min_year: int
     current_year: int
 
+    @property
+    def ipe_min_year(self) -> int:
+        """Return the official IPE minimum without changing tuple fields."""
+        return DOCUMENT_START_YEARS['IPE']
+
 
 _DICT_AVAILABLE_DOCS: dict[str, str] = {
-    'CGVN': '(Governance Code Report) a periodic document that records information about adherence/compatibility with the Corporate Governance Code for publicly traded companies — governance structure, committees, policies, and relevant indicators.',
-    'FRE': '(Reference Form) an electronic document (periodic/eventual) that gathers corporate and descriptive information required by the CVM: activities, risk factors, corporate and capital structure, management, compensation policies, information about securities, auditing, and other regulatory disclosures.',
-    'FCA': "(Registration Form) an electronic form (periodic/eventual) with the company's official registration data and its updates: identification (CNPJ, corporate name), address, registration status, segment, identifier codes, and registration/contact information.",
-    'DFP': "(Standardized Financial Statements) a periodic electronic form (related to the closed fiscal year) containing the standardized financial statements required by the CVM: Balance Sheet (BPA/BPP), Income Statement (DRE), Cash Flow Statement (DFC — direct/indirect methods, as applicable), Statement of Value Added (DVA), explanatory notes, independent auditor's report, and standardized annexes.",
-    'ITR': '(Quarterly Information) a periodic electronic form with the statements and disclosures for each quarter — BPA/BPP, DRE, DFC (when applicable), and quarterly notes/disclosures required by the applicable regulation.',
-    'IPE': '(Periodic and Eventual Documents) a set of unstructured documents (minutes, material facts, announcements, reports, prospectuses, official letters, etc.) made available with metadata and a link/file; the format and content vary depending on the document type.',
-    'VLMO': '(Data on Negotiated and Held Securities) periodic reports on securities linked to the company (trades, quantities, positions, custody, and related information) provided as datasets on the CVM Open Data Portal.',
+    'CGVN': (
+        '(Governance Code Report) a periodic document that records '
+        'information '
+        'about adherence/compatibility with the Corporate Governance Code for '
+        'publicly traded companies — governance structure, committees, '
+        'policies, and relevant indicators.'
+    ),
+    'FRE': (
+        '(Reference Form) an electronic document (periodic/eventual) that '
+        'gathers corporate and descriptive information required by the CVM: '
+        'activities, risk factors, corporate and capital structure, '
+        'management, '
+        'compensation policies, information about securities, auditing, and '
+        'other regulatory disclosures.'
+    ),
+    'FCA': (
+        '(Registration Form) an electronic form (periodic/eventual) with the '
+        "company's official registration data and its updates: identification "
+        '(CNPJ, corporate name), address, registration status, segment, '
+        'identifier codes, and registration/contact information.'
+    ),
+    'DFP': (
+        '(Standardized Financial Statements) a periodic electronic form '
+        '(related to the closed fiscal year) containing the standardized '
+        'financial statements required by the CVM: Balance Sheet (BPA/BPP), '
+        'Income Statement (DRE), Cash Flow Statement (DFC — direct/indirect '
+        'methods, as applicable), Statement of Value Added (DVA), explanatory '
+        "notes, independent auditor's report, and standardized annexes."
+    ),
+    'ITR': (
+        '(Quarterly Information) a periodic electronic form with the '
+        'statements and disclosures for each quarter — BPA/BPP, DRE, DFC '
+        '(when applicable), and quarterly notes/disclosures required by the '
+        'applicable regulation.'
+    ),
+    'IPE': (
+        '(Periodic and Eventual Documents) a set of unstructured documents '
+        '(minutes, material facts, announcements, reports, prospectuses, '
+        'official letters, etc.) made available with metadata and a '
+        'link/file; '
+        'the format and content vary depending on the document type.'
+    ),
+    'VLMO': (
+        '(Data on Negotiated and Held Securities) periodic reports on '
+        'securities '
+        'linked to the company (trades, quantities, positions, custody, and '
+        'related information) provided as datasets on the CVM Open Data '
+        'Portal.'
+    ),
 }
 
 
@@ -85,8 +137,8 @@ _DICT_URL_DOCS: dict[str, str] = {
 def get_url_docs(
     list_docs: list[str] | None = None,
 ) -> tuple[dict[str, str], set[str]]:
-    """Get URLs for specified docs (or all docs if `list_docs` is None)."""
-    if list_docs and not isinstance(list_docs, list):
+    """Get URLs for specified docs or all docs when the list is empty."""
+    if list_docs is not None and not isinstance(list_docs, list):
         raise TypeError('list_docs must be a list of strings or None')
 
     dict_urls: dict[str, str] = {}
@@ -114,34 +166,34 @@ def get_url_docs(
 class AvailableYearsCVM:
     """Provides minimum allowed years and helpers for CVM documents."""
 
-    __MIN_GENERAL_YEAR: int = 2010
-    __MIN_ITR_YEAR: int = 2011
-    __MIN_CGVN_VLMO_YEAR: int = 2018
-
     def get_current_year(self) -> int:
         """Return current year (system date)."""
         return date.today().year
 
     def get_minimal_general_year(self) -> int:
         """Return minimum supported year for general documents."""
-        return self.__MIN_GENERAL_YEAR
+        return DOCUMENT_START_YEARS['DFP']
 
     def get_minimal_itr_year(self) -> int:
         """Return minimum supported year for ITR documents."""
-        return self.__MIN_ITR_YEAR
+        return DOCUMENT_START_YEARS['ITR']
 
     def get_minimal_cgvn_vlmo_year(self) -> int:
         """Return minimum supported year for CGVN/VLMO documents."""
-        return self.__MIN_CGVN_VLMO_YEAR
+        return DOCUMENT_START_YEARS['CGVN']
+
+    def get_minimal_ipe_year(self) -> int:
+        """Return the earliest official IPE metadata archive year."""
+        return DOCUMENT_START_YEARS['IPE']
 
     def __validate_years(self, initial_year: int, last_year: int) -> None:
         if (
             not isinstance(initial_year, int)
-            or initial_year < self.get_minimal_general_year()
+            or initial_year < self.get_minimal_ipe_year()
             or initial_year > self.get_current_year()
         ):
             raise InvalidFirstYear(
-                self.get_minimal_general_year(), self.get_current_year()
+                self.get_minimal_ipe_year(), self.get_current_year()
             )
 
         if (
@@ -170,7 +222,8 @@ class AvailableYearsCVM:
 class DictZipsToDownloadCVM:
     """Builds the per-doc ZIP-URL map for the requested year range."""
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """Initialize the helper used to validate requested years."""
         self._available_years = AvailableYearsCVM()
 
     def get_dict_zips_to_download(
@@ -180,54 +233,21 @@ class DictZipsToDownloadCVM:
         last_year: int | None = None,
     ) -> tuple[dict[str, list[str]], set[str]]:
         """Build a `{doc_code: [zip_url_per_year]}` map plus the doc set."""
+        dict_urls_docs, set_docs = get_url_docs(list_docs)
+
+        if initial_year is None:
+            initial_year = min(DOCUMENT_START_YEARS[doc] for doc in set_docs)
         range_years: range = self._available_years.return_range_years(
             initial_year, last_year
         )
 
-        dict_urls_docs, set_docs = get_url_docs(list_docs)
-
         dict_zips_to_download: dict[str, list[str]] = {
-            doc: [url + str(year) + '.zip' for year in range_years]
+            doc: [
+                url + str(year) + '.zip'
+                for year in range_years
+                if year >= DOCUMENT_START_YEARS[doc]
+            ]
             for doc, url in dict_urls_docs.items()
         }
 
         return dict_zips_to_download, set_docs
-
-
-@dataclass
-class DownloadResultCVM:
-    """Aggregated result of a CVM download run."""
-
-    successful_downloads: list[str] = field(default_factory=list)
-    failed_downloads: dict[str, str] = field(default_factory=dict)
-    elapsed_time: float = 0.0
-    _success_set: set[str] = field(default_factory=set, init=False, repr=False)
-
-    def __post_init__(self):
-        self._success_set = set(self.successful_downloads)
-
-    @property
-    def success_count_downloads(self) -> int:
-        return len(self.successful_downloads)
-
-    @property
-    def error_count_downloads(self) -> int:
-        return len(self.failed_downloads)
-
-    def has_errors(self) -> bool:
-        """Return ``True`` when at least one download failed."""
-        return self.error_count_downloads > 0
-
-    def add_success_downloads(self, item: str) -> None:
-        if item not in self._success_set:
-            self.successful_downloads.append(item)
-            self._success_set.add(item)
-
-    def add_error_downloads(self, item: str, error: str) -> None:
-        self.failed_downloads[item] = error
-
-    def __str__(self) -> str:
-        return (
-            f'DownloadResultCVM(success={self.success_count_downloads}, '
-            f'errors={self.error_count_downloads})'
-        )

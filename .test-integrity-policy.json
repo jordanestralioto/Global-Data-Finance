@@ -1,0 +1,65 @@
+{
+  "allowed_deletions": {
+    "tests/application/b3_docs/test_historical_quotes_result_formatter.py": "B3 extraction result formatting consolidated into test_historical_quotes.py and domain models; dedicated formatter tests are no longer standalone.",
+    "tests/application/cvm_docs/test_api_integration.py": "CVM API integration tests consolidated into test_fundamental_stocks_data.py and test_public_exports.py.",
+    "tests/brazil/b3_data/historical_quotes/test_extraction_service.py": "Consolidated into modular extraction service test suite under extraction_service/.",
+    "tests/brazil/b3_data/historical_quotes/test_integration_historical_quote.py": "Consolidated into test_historical_quotes.py and extraction_service/test_service.py.",
+    "tests/brazil/b3_data/historical_quotes/test_parquet_writer.py": "Consolidated into modular parquet writer suite under parquet_writer/.",
+    "tests/brazil/cvm/fundamental_stocks_data/integration/conftest.py": "Fixtures merged into shared test support fixtures under tests/conftest.py and tests/support/.",
+    "tests/brazil/cvm/fundamental_stocks_data/integration/test_no_overwrite.py": "Consolidated into test_overwrite_semantics.py and test_atomic_rollback.py.",
+    "tests/macro_infra/test_extractor_file.py": "The generic ExtractorAdapter public surface is intentionally removed; supported CVM and B3 source-owned extraction behavior remains covered by their owner suites.",
+    "tests/macro_infra/test_read_files_adapter.py": "The generic ReadFilesAdapter public surface is intentionally removed with its legacy Pandas dependency; supported CVM and B3 source-owned behavior remains covered by their owner suites."
+  },
+  "uncommitted_test_removals": {
+    "tests/tooling/test_release_reviews.py": "Removed before its first commit because release acceptance no longer requires versioned planning or reviewer records. Native, campaign, SHA, coverage, and distribution checks remain covered by test_release_acceptance.py, including acceptance without planning files."
+  },
+  "allowed_assertion_reductions": [
+    {
+      "path": "tests/application/cvm_docs/test_file_validation.py",
+      "diff_sha256": "fb51a8f2a83ad0945b684546a1f017600c35334142bad0552d09845cfb274f65",
+      "replacement_test_ids": [
+        "tests/application/cvm_docs/test_file_validation.py::TestCvmDownloadAdapterFileValidation::test_scenario_success_valid_zip",
+        "tests/brazil/cvm/fundamental_stocks_data/infra/adapters/test_download_metadata.py::test_completed_get_uses_only_its_own_optional_size",
+        "tests/brazil/cvm/fundamental_stocks_data/infra/adapters/test_download_metadata.py::test_get_size_mismatch_preserves_existing_zip_and_cleans_staging",
+        "tests/brazil/cvm/fundamental_stocks_data/infra/adapters/test_download_metadata.py::test_get_size_mismatch_retries_with_metadata_from_the_new_attempt"
+      ],
+      "reason": "The independent review requires removing the obsolete expected_size path after transfer-length validation moved into the streamed GET. Remove its three size-only tests and consolidate the duplicate no-size success case into the retained valid-ZIP test. GET-boundary regressions cover matching, missing and invalid lengths, both mismatch directions, retry, and preservation of existing output. Authorization is bound to the cumulative diff against v0.1.4. The user-authorized CVM clean cutover migrates the retained adapter import and test-class name to CvmDownloadAdapter; all four retained validation tests keep their behavioral assertions. The renewed hash binds the same historical size-test retirement to these canonical imports."
+    },
+    {
+      "path": "tests/brazil/b3_data/historical_quotes/test_cotahist_parser.py",
+      "diff_sha256": "e73ff35d64c6cde997de663a1d68e9797050b66124e60186fa161f0e26af71cf",
+      "replacement_test_ids": [
+        "tests/brazil/b3_data/historical_quotes/test_cotahist_parser.py::test_parser_emits_all_typed_fields_and_precise_decimals"
+      ],
+      "reason": "Monolithic parser assertions refactored into focused tests; typed decimal precision and parsing invariants remain strictly tested."
+    },
+    {
+      "path": "tests/brazil/b3_data/historical_quotes/test_extract_historical_quotes_use_case.py",
+      "diff_sha256": "ef8c34ca565d853fc086c70ebdf020e3082c5fb804daaa0064a13fde644979c2",
+      "replacement_test_ids": [
+        "tests/brazil/b3_data/historical_quotes/test_extract_historical_quotes_use_case.py::TestExecuteAsyncMethod::test_execute_returns_missing_year_failure",
+        "tests/brazil/b3_data/historical_quotes/test_extract_historical_quotes_use_case.py::TestExecuteSyncMethod::test_execute_sync_reports_missing_year_failure",
+        "tests/brazil/b3_data/historical_quotes/test_extract_historical_quotes_use_case.py::TestExtractHistoricalQuotesUseCaseInitialization::test_does_not_store_a_data_writer"
+      ],
+      "reason": "Missing-year failures replace obsolete empty-output success checks, and test_does_not_store_a_data_writer covers the removed writer ownership. Existing sync and async tests assert exact service arguments and returned results. Authorization is bound to the current diff against v0.1.4."
+    },
+    {
+      "path": "tests/brazil/b3_data/historical_quotes/test_zip_reader.py",
+      "diff_sha256": "58088e27b0b1bc949cc7f302d786d3a1a46ef1899885848e28478221040c8d21",
+      "replacement_test_ids": [
+        "tests/brazil/b3_data/historical_quotes/test_zip_reader.py::test_reader_does_not_schedule_a_coroutine_for_each_source_batch"
+      ],
+      "reason": "Reader coroutine scheduler removed in favor of streaming batches; full zip/txt processing invariants and error boundaries remain verified."
+    },
+    {
+      "path": "tests/brazil/b3_data/historical_quotes/test_processing_mode.py",
+      "diff_sha256": "be4e14101bec6e00dc5d0e213eccbf2b4980f0c4b3cab74e28707d6597fac1d3",
+      "replacement_test_ids": [
+        "tests/brazil/b3_data/historical_quotes/test_processing_mode.py::TestProcessingModeEnumB3::test_enum_has_exactly_two_members",
+        "tests/brazil/b3_data/historical_quotes/extraction_service/test_resource_policy.py::test_fast_worker_limit_is_bounded_by_cpu_memory_and_file_count",
+        "tests/brazil/b3_data/historical_quotes/extraction_service/test_resource_policy.py::test_slow_worker_limit_is_always_one"
+      ],
+      "reason": "The user explicitly authorized removal of the four unused exported enum properties and _ProcessingModeConfig on 2026-10-20. Remove their two tests of obsolete, nonoperative constants. Retained enum value/construction tests and ResourcePolicyB3 tests cover supported modes and actual admission/worker limits."
+    }
+  ]
+}

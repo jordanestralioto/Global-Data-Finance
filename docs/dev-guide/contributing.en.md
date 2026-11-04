@@ -1,163 +1,95 @@
-# Contributing Guide
+# Contributing
 
-Complete instructions and developer expectations for contributing code and feature enhancements to Global-Data-Finance.
+Use Python `>=3.12,<4.0`, Git, and uv. Create your branch from `develop` and
+open the pull request against that same branch.
 
----
-
-## Configuring Your Development Environment
-
-### 1. Fork and Clone
+## Set up the environment
 
 ```bash
-# Create a fork on GitHub, then execute:
 git clone https://github.com/jordanestralioto/Global-Data-Finance.git
 cd Global-Data-Finance
+uv sync --locked --all-extras --dev
+uv run --locked --no-sync pre-commit install --install-hooks
+git switch -c fix/cotahist-validation develop
 ```
 
-### 2. Install Dependencies
+`uv sync` prepares the environment once. Afterwards, run tools with
+`uv run --locked --no-sync` to use the already resolved dependencies.
 
-`uv` serves as the canonical project dependency manager (with the verified `uv.lock` committed directly to repository tracking). Development strictly requires **Python 3.12+**.
+## Make the change
+
+- Follow the [architecture](architecture.md): CVM and B3 behavior belongs to
+  its source; share only what is reusable.
+- Preserve public signatures, results, exceptions, and schemas. Breaking
+  changes require an explicit decision and documented migration.
+- Use English names, code, comments, and commits. Add type annotations, use
+  Google docstrings, and keep Ruff's 79-character formatting.
+- Use `_` for helpers confined to their module. A name shared between modules
+  does not thereby become part of the public API. Keep mutable state private
+  and expose operations when another module needs access.
+- Validate inputs and paths before writing. Preserve failure causes.
+- Update tests that prove the behavior and regression, and maintain product
+  documentation in Portuguese and English.
+
+Keep local drafts and working notes in `docs/internal/`. Git ignores this
+directory, and `check-docs-contracts` excludes it, including the English
+translation requirement. The MkDocs build also excludes it.
+
+## Validate before the PR
 
 ```bash
-# Synchronize environment dependencies (automatically provisions a .venv directory)
-uv sync
-
-# Execute commands within the isolated virtual workspace:
-uv run pytest
-uv run mypy src
+uv run --locked --no-sync pre-commit run --all-files --show-diff-on-failure
+uv run --locked --no-sync pytest
 ```
 
-### 3. Install Pre-commit Quality Hooks
+Default pytest selects deterministic tests. For coverage, markers,
+integrations, and local data, use the [testing guide](testing.md).
+
+| Change | Additional validation |
+| --- | --- |
+| Python code | `uv run --locked --no-sync mypy src --pretty` |
+| Documentation | `uv run --locked --no-sync mkdocs build --strict` |
+| Packaging | `uv build` and [release acceptance](release-readiness.md) |
+
+Installed hooks distribute checks by cost:
+
+| Stage | What it checks |
+| --- | --- |
+| `pre-commit` | Diff integrity, lockfile, syntax, formatting, lint, and contracts. |
+| `commit-msg` | Conventional Commits format. |
+| `pre-push` | Types, tests with coverage, and dependency auditing. |
+
+Canonical entries are in `.pre-commit-config.yaml` and `pyproject.toml`.
+To reproduce the complete push stage, run
+`uv run --locked --no-sync pre-commit run --hook-stage pre-push --all-files`.
+Diff gates inspect the index during commits; in CI, they inspect the cumulative
+range since the previous release. With no staged changes, diff-based gates
+can return `SKIP` even with `--all-files`; that is not approval of those gates.
+Local Gitleaks scans the index; CI also scans the complete checkout.
+
+## Submit the PR
+
+Review the diff and stage only the paths belonging to the change. Review
+automatic formatting before staging it.
 
 ```bash
-uv run pre-commit install
+git commit -m "fix: validate COTAHIST inputs before writing"
 ```
 
----
+Describe the problem, final behavior, validation commands, and checks skipped
+or dependent on an external environment. For test deletions or consolidations,
+record the reason in `.test-integrity-policy.json`.
 
-## Code Style & Standards
+## Dependencies and internal tooling
 
-### Style Guidelines
+Change dependencies deliberately with uv and review `pyproject.toml` and
+`uv.lock`. Do not edit the lockfile by hand. Hooks validate the resolution;
+updates and environment synchronization stay outside the commit path.
 
-- Strictly obey **PEP 8** formatting rules
-- Declare comprehensive **type hints** across all public and private signatures
-- Format module docstrings adhering to **Google Style** documentation layouts
-- Enforce a hard line length boundary of **79 characters** (evaluated via Ruff Blue-style rules)
+Agent projections in `.agents/`, `.claude/`, `.codex/`, and `.opencode/` are
+maintained by the `central-skills` repository. Change the source and regenerate
+rather than editing generated files. `harness-sync --check` is a manual
+maintainer check; ordinary contributors do not need to install that tool.
 
-### Docstring Implementation Example
-
-```python
-def download_docs(
-    self,
-    destination_path: str,
-    list_docs: list[str] | None = None,
-) -> DownloadResultCVM:
-    """Downloads official regulatory disclosures from CVM servers.
-
-    Args:
-        destination_path: Target local storage repository directory.
-        list_docs: Explicit collection of document codes to retrieve. If None, downloads all available filings.
-
-    Returns:
-        A DownloadResultCVM tracking object summarizing success metrics and failure records.
-
-    Raises:
-        InvalidDocumentName: Raised if an unsupported document string is supplied.
-        NetworkError: Raised if connection drops or HTTP transfer timeouts occur.
-    """
-    pass
-```
-
----
-
-## Automated Testing
-
-### Executing the Test Suite
-
-```bash
-# Execute complete repository test suite
-uv run pytest
-
-# Execute tests alongside coverage report calculation
-uv run pytest --cov=src
-
-# Execute strictly fast unit tests
-uv run pytest -m unit
-```
-
-Prior to submitting any Pull Request, verify quality compliance across the entire verification pipeline:
-
-```bash
-uv run pre-commit run --all-files
-uv run pytest
-```
-
-### Authoring Unit Tests
-
-```python
-import pytest
-from globaldatafinance import FundamentalStocksDataCVM
-
-@pytest.mark.unit
-class TestFundamentalStocksData:
-    def test_get_available_docs(self):
-        """Verifies successful retrieval of supported document catalog."""
-        cvm = FundamentalStocksDataCVM()
-        docs = cvm.get_available_docs()
-
-        assert isinstance(docs, dict)
-        assert "DFP" in docs
-        assert len(docs) > 0
-```
-
----
-
-## Git Workflow
-
-### Branch Organization
-
-- `main`: Production-grade stable code release history
-- `develop`: Active integration testing and current feature staging
-- `feature/feature-name`: Autonomous branch for new capability expansions
-- `fix/bug-name`: Targeted remediation branch for resolving bugs
-
-### Commit Formatting
-
-Adopt structured, semantic, and descriptive commit formatting:
-
-```bash
-# Good examples
-git commit -m "feat: implement asynchronous parallel worker pool for CVM downloads"
-git commit -m "fix: resolve socket timeout exception during multi-decade COTAHIST extractions"
-
-# Discouraged examples
-git commit -m "update code"
-git commit -m "fix bug"
-```
-
-### Pull Request Lifecycle
-
-1. Branch off directly from `develop`
-2. Implement your code changes or bug remediations
-3. Contribute accompanying automated test suites
-4. Update canonical documentation files and inline docstrings
-5. Submit your Pull Request targeting `develop`
-
----
-
-## Pull Request Checklist
-
-- [ ] Code fully complies with PEP 8 and formatting constraints
-- [ ] Explicit type annotations added to all signatures
-- [ ] Comprehensive Google-style docstrings authored
-- [ ] Test suites authored demonstrating happy/error paths
-- [ ] Entire testing verification suite passes cleanly
-- [ ] Repository documentation artifacts updated accordingly
-- [ ] Pre-commit repository verification hooks run clean without warnings
-
----
-
-## Support Contact
-
-- **GitHub Issues**: [Open an issue](https://github.com/jordanestralioto/Global-Data-Finance/issues)
-- **Direct Email**: estraliotojordan@gmail.com
+To report vulnerabilities, follow the
+[security policy](https://github.com/jordanestralioto/Global-Data-Finance/blob/develop/SECURITY.md).

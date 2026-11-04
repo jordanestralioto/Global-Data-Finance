@@ -1,11 +1,15 @@
 import time
 from unittest.mock import Mock, patch
 
+import pytest
+
 from globaldatafinance.core.utils import (
     ResourceLimits,
     ResourceMonitor,
     ResourceState,
 )
+
+pytestmark = pytest.mark.unit
 
 
 class TestResourceMonitor:
@@ -164,13 +168,61 @@ class TestResourceMonitor:
         )
         assert result is True
 
-    @patch('globaldatafinance.core.utils.resource_monitor.psutil', None)
-    def test_no_psutil_fallback(self):
+    @patch('globaldatafinance.core.utils.resource_monitor.psutil')
+    def test_wait_for_resources_timeout_when_critical(self, mock_psutil):
         ResourceMonitor._instance = None
+
+        mock_memory = Mock()
+        mock_memory.total = 8 * 1024**3
+        mock_memory.percent = 90.0
+        mock_memory.available = 200 * 1024**2
+        mock_psutil.virtual_memory.return_value = mock_memory
+        mock_psutil.cpu_percent.return_value = 50.0
+
         monitor = ResourceMonitor()
 
-        state = monitor.check_resources()
-        assert state == ResourceState.HEALTHY
+        with patch('time.sleep', return_value=None):
+            result = monitor.wait_for_resources(
+                required_state=ResourceState.WARNING, timeout_seconds=1
+            )
+        assert result is False
+
+    @patch('globaldatafinance.core.utils.resource_monitor.psutil')
+    def test_telemetry_failure_is_not_reported_as_healthy(self, mock_psutil):
+        ResourceMonitor._instance = None
+
+        mock_memory = Mock()
+        mock_memory.total = 8 * 1024**3
+        mock_memory.available = 2 * 1024**3
+        mock_memory.percent = 50.0
+        mock_psutil.virtual_memory.return_value = mock_memory
+        mock_psutil.cpu_percent.return_value = 30.0
+
+        monitor = ResourceMonitor()
+        mock_psutil.virtual_memory.side_effect = OSError(
+            'resource telemetry unavailable'
+        )
+
+        assert monitor.check_resources() == ResourceState.CRITICAL
+
+    @patch('globaldatafinance.core.utils.resource_monitor.psutil')
+    def test_check_resources_propagates_unexpected_errors(self, mock_psutil):
+        ResourceMonitor._instance = None
+
+        mock_memory = Mock()
+        mock_memory.total = 8 * 1024**3
+        mock_memory.available = 2 * 1024**3
+        mock_memory.percent = 50.0
+        mock_psutil.virtual_memory.return_value = mock_memory
+        mock_psutil.cpu_percent.return_value = 30.0
+
+        monitor = ResourceMonitor()
+        mock_psutil.virtual_memory.side_effect = RuntimeError(
+            'unexpected telemetry implementation failure'
+        )
+
+        with pytest.raises(RuntimeError, match='unexpected telemetry'):
+            monitor.check_resources()
 
     @patch('globaldatafinance.core.utils.resource_monitor.psutil')
     def test_minimum_free_memory_threshold(self, mock_psutil):
@@ -201,8 +253,66 @@ class TestResourceMonitor:
         assert isinstance(result, float)
         assert result > 0
 
-    def test_maybe_force_gc_runs_without_error(self):
+    @patch('globaldatafinance.core.utils.resource_monitor.psutil')
+    def test_get_process_memory_mb_returns_zero_for_unavailable_telemetry(
+        self, mock_psutil
+    ):
+        ResourceMonitor._instance = None
+        mock_memory = Mock()
+        mock_memory.total = 8 * 1024**3
+        mock_memory.available = 2 * 1024**3
+        mock_memory.percent = 50.0
+        mock_psutil.virtual_memory.return_value = mock_memory
+        mock_psutil.Process.side_effect = OSError('process telemetry failed')
+
+        monitor = ResourceMonitor()
+
+        assert monitor.get_process_memory_mb() == 0.0
+
+    @patch('globaldatafinance.core.utils.resource_monitor.psutil')
+    def test_get_process_memory_mb_propagates_unexpected_errors(
+        self, mock_psutil
+    ):
+        ResourceMonitor._instance = None
+        mock_memory = Mock()
+        mock_memory.total = 8 * 1024**3
+        mock_memory.available = 2 * 1024**3
+        mock_memory.percent = 50.0
+        mock_psutil.virtual_memory.return_value = mock_memory
+        mock_psutil.Process.side_effect = RuntimeError(
+            'unexpected process telemetry failure'
+        )
+
+        monitor = ResourceMonitor()
+
+        with pytest.raises(RuntimeError, match='unexpected process telemetry'):
+            monitor.get_process_memory_mb()
+
+    @patch('globaldatafinance.core.utils.resource_monitor.gc.collect')
+    @patch(
+        'globaldatafinance.core.utils.resource_monitor.time.time',
+        side_effect=[100.0, 102.0, 106.0],
+    )
+    @patch('globaldatafinance.core.utils.resource_monitor.psutil')
+    def test_warning_path_triggers_gc_after_public_cooldown(
+        self, mock_psutil, mock_time, mock_collect
+    ):
+        mock_memory = Mock()
+        mock_memory.total = 8 * 1024**3
+        mock_memory.percent = 75.0
+        mock_memory.available = 500 * 1024**2
+        mock_psutil.virtual_memory.return_value = mock_memory
+        mock_psutil.cpu_percent.return_value = 50.0
+
         ResourceMonitor._instance = None
         monitor = ResourceMonitor()
-        monitor._last_gc_time = 0
-        monitor._maybe_force_gc()
+
+        assert monitor.check_resources() == ResourceState.WARNING
+        assert mock_collect.call_count == 1
+
+        assert monitor.check_resources() == ResourceState.WARNING
+        assert mock_collect.call_count == 1
+
+        assert monitor.check_resources() == ResourceState.WARNING
+        assert mock_collect.call_count == 2
+        assert mock_time.call_count == 3

@@ -1,0 +1,51 @@
+{
+  "comment": "Define blocking vs advisory por hook-id. Hooks ausentes = blocking: true (conservador).",
+  "defaults": {
+    "blocking": true
+  },
+  "hooks": {
+    "check-executables-have-shebangs": {
+      "blocking": false
+    },
+    "check-shebang-scripts-are-executable": {
+      "blocking": false
+    },
+    "end-of-file-fixer": {
+      "blocking": false,
+      "note": "autofix"
+    },
+    "gofmt": {
+      "blocking": false,
+      "note": "autofix"
+    },
+    "mixed-line-ending": {
+      "blocking": false,
+      "note": "autofix"
+    },
+    "prettier": {
+      "blocking": false,
+      "note": "autofix"
+    },
+    "pydocstyle": {
+      "blocking": false,
+      "note": "advisory"
+    },
+    "ruff-format": {
+      "blocking": false,
+      "note": "autofix"
+    },
+    "terraform_fmt": {
+      "blocking": false,
+      "note": "autofix"
+    },
+    "trailing-whitespace": {
+      "blocking": false,
+      "note": "autofix"
+    },
+    "validate-commit-msg": {
+      "blocking": false,
+      "note": "commit-msg stage only"
+    }
+  },
+  "schemaVersion": "1.0.0"
+}

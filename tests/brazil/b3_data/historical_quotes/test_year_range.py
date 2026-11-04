@@ -1,3 +1,4 @@
+from dataclasses import FrozenInstanceError
 from datetime import date
 
 import pytest
@@ -98,17 +99,17 @@ class TestYearRangeB3Validation:
 class TestYearRangeB3Immutability:
     def test_is_frozen_dataclass(self):
         year_range = YearRangeB3(2020, 2024)
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             year_range.initial_year = 2021
 
     def test_cannot_modify_last_year(self):
         year_range = YearRangeB3(2020, 2024)
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             year_range.last_year = 2025
 
     def test_cannot_add_new_attributes(self):
         year_range = YearRangeB3(2020, 2024)
-        with pytest.raises(Exception):
+        with pytest.raises(FrozenInstanceError):
             year_range.new_attribute = 'value'
 
 

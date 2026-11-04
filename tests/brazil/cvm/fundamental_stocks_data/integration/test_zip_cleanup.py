@@ -1,177 +1,126 @@
-import zipfile
+from pathlib import Path
+from unittest.mock import Mock
 
-import pandas as pd  # type: ignore
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.extract import (
-    ParquetExtractorAdapterCVM,
+from globaldatafinance.brazil.cvm.ingestion import download_extraction
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
+from globaldatafinance.macro_exceptions import (
+    CorruptedZipError,
+    DiskFullError,
+    ExtractionError,
+    ParquetWriteError,
 )
-from globaldatafinance.brazil.cvm.fundamental_stocks_data.http import (
-    AsyncDownloadAdapterCVM,
-)
+from tests.support.builders import csv_bytes, write_zip
+
+extract_downloaded_file = download_extraction.extract_downloaded_file
+
+pytestmark = pytest.mark.integration
 
 
-@pytest.mark.integration
-class TestZipCleanup:
-    @pytest.fixture
-    def adapter(self):
-        return AsyncDownloadAdapterCVM(
-            file_extractor_repository=ParquetExtractorAdapterCVM(),
-            automatic_extractor=True,
-            max_concurrent=1,
-        )
-
-    @pytest.fixture
-    def mock_zip(self, tmp_path):
-        zip_path = tmp_path / 'test.zip'
-
-        data = pd.DataFrame({'id': [1, 2, 3], 'value': [10, 20, 30]})
-
-        with zipfile.ZipFile(zip_path, 'w') as z:
-            csv_content = data.to_csv(sep=';', index=False)
-            z.writestr('data.csv', csv_content.encode('latin-1'))
-
-        return zip_path
-
-    def test_zip_deleted_after_successful_extraction(self, tmp_path, mock_zip):
-        assert mock_zip.exists(), 'Test ZIP was not created'
-        zip_size = mock_zip.stat().st_size
-
-        print(f'✓ ZIP created: {mock_zip.name} ({zip_size} bytes)')
-
-        extractor = ParquetExtractorAdapterCVM()
-        extractor.extract(
-            source_path=str(mock_zip), destination_path=str(tmp_path)
-        )
-
-        parquet_file = tmp_path / 'data.parquet'
-        assert parquet_file.exists(), 'Parquet was not created'
-
-        from globaldatafinance.core import remove_file
-
-        parquet_files = list(tmp_path.glob('**/*.parquet'))
-        if parquet_files:
-            remove_file(str(mock_zip), log_on_error=True)
-
-        assert not mock_zip.exists(), (
-            'CRITICAL: ZIP was not deleted after successful extraction!'
-        )
-
-        print('✅ ZIP deleted after successful extraction')
-
-    def test_zip_kept_on_extraction_failure(self, tmp_path):
-        from globaldatafinance.macro_exceptions import CorruptedZipError
-
-        corrupted_zip = tmp_path / 'corrupted.zip'
-        with open(corrupted_zip, 'wb') as f:
-            f.write(b'PK\x03\x04' + b'\x00' * 50)
-
-        print(f'✓ Corrupted ZIP created: {corrupted_zip.name}')
-
-        extractor = ParquetExtractorAdapterCVM()
-        with pytest.raises(CorruptedZipError):
-            extractor.extract(
-                source_path=str(corrupted_zip), destination_path=str(tmp_path)
+def _write_valid_archive(archive_path: Path) -> None:
+    write_zip(
+        archive_path,
+        {
+            'data.csv': csv_bytes(
+                ['id;value', '1;10', '2;20', '3;30'],
+                encoding='latin-1',
             )
+        },
+    )
 
-        assert corrupted_zip.exists(), (
-            'Corrupted ZIP was deleted prematurely! It should be kept for retry or investigation.'
+
+class TestOriginalArchiveRetention:
+    def test_successful_production_flow_preserves_zip(self, tmp_path):
+        archive_path = tmp_path / 'successful_download.zip'
+        _write_valid_archive(archive_path)
+        original_bytes = archive_path.read_bytes()
+        unprocessed_archives = [
+            tmp_path / 'unprocessed_1.zip',
+            tmp_path / 'unprocessed_2.zip',
+        ]
+        for unprocessed_archive in unprocessed_archives:
+            unprocessed_archive.write_bytes(b'unprocessed')
+        error_message = extract_downloaded_file(
+            file_extractor_repository=CvmParquetExtractor(),
+            filepath=str(archive_path),
+            dest_path=str(tmp_path),
+            doc_name='DFP',
+            year='2023',
         )
 
-        print('✅ ZIP kept after extraction failure')
+        assert error_message is None
+        assert (tmp_path / 'data.parquet').exists()
+        assert archive_path.read_bytes() == original_bytes
+        assert archive_path.exists()
+        assert unprocessed_archives[0].exists()
+        assert unprocessed_archives[1].exists()
 
-    def test_zip_kept_if_no_parquet_generated(self, tmp_path):
-        zip_path = tmp_path / 'no_csv.zip'
+    @pytest.mark.parametrize(
+        ('failure_kind', 'failure'),
+        [
+            ('disk_full', DiskFullError('/output')),
+            ('corrupted_zip', CorruptedZipError('/input.zip', 'invalid')),
+            ('parquet_write', ParquetWriteError('/output.parquet', 'denied')),
+        ],
+    )
+    def test_storage_failures_update_result_and_keep_source_zip(
+        self, tmp_path, failure_kind, failure
+    ):
+        archive_path = tmp_path / f'{failure_kind}.zip'
+        _write_valid_archive(archive_path)
+        original_bytes = archive_path.read_bytes()
+        repository = Mock()
+        repository.extract.side_effect = failure
 
-        with zipfile.ZipFile(zip_path, 'w') as z:
-            z.writestr('readme.txt', b'This is not a CSV')
-            z.writestr('image.png', b'\x89PNG\r\n\x1a\n')
-
-        print(f'✓ ZIP without CSVs created: {zip_path.name}')
-
-        extractor = ParquetExtractorAdapterCVM()
-        extractor.extract(
-            source_path=str(zip_path), destination_path=str(tmp_path)
+        error_message = extract_downloaded_file(
+            file_extractor_repository=repository,
+            filepath=str(archive_path),
+            dest_path=str(tmp_path),
+            doc_name='DFP',
+            year='2023',
         )
 
-        parquet_files = list(tmp_path.glob('*.parquet'))
-        assert len(parquet_files) == 0, 'Parquets were created unexpectedly'
-
-        assert zip_path.exists(), (
-            'ZIP was deleted even though no parquets were generated!'
+        assert error_message is not None
+        expected_marker = {
+            'disk_full': 'DiskFull:',
+            'corrupted_zip': 'CorruptedZIP:',
+            'parquet_write': 'ParquetWrite:',
+        }[failure_kind]
+        assert expected_marker in error_message
+        assert str(failure) in error_message
+        assert archive_path.read_bytes() == original_bytes
+        repository.extract.assert_called_once_with(
+            str(archive_path), str(tmp_path)
         )
+        assert archive_path.exists()
 
-        print('✅ ZIP kept when no parquet is generated')
-
-    def test_integration_with_httpx_adapter(self, tmp_path):
-        output_dir = tmp_path / 'output'
-        output_dir.mkdir()
-
-        downloaded_zip = output_dir / 'downloaded.zip'
-
-        data = pd.DataFrame({'id': [1, 2], 'val': [10, 20]})
-        with zipfile.ZipFile(downloaded_zip, 'w') as z:
-            z.writestr(
-                'data.csv', data.to_csv(sep=';', index=False).encode('latin-1')
-            )
-
-        print(f"✓ ZIP 'downloaded': {downloaded_zip.name}")
-
-        extractor = ParquetExtractorAdapterCVM()
-        extractor.extract(
-            source_path=str(downloaded_zip), destination_path=str(output_dir)
-        )
-
-        parquet_files = list(output_dir.glob('**/*.parquet'))
-
-        if parquet_files:
-            print(f'✓ {len(parquet_files)} parquet(s) created')
-
-            from globaldatafinance.core import remove_file
-
-            remove_file(str(downloaded_zip), log_on_error=True)
-
-            assert not downloaded_zip.exists(), 'ZIP was not deleted'
-            print(
-                f'✅ ZIP deleted after creating {len(parquet_files)} parquet(s)'
+    @pytest.mark.parametrize('error_kind', ['extraction', 'unexpected'])
+    def test_processing_failures_keep_zip_for_investigation(
+        self, tmp_path, error_kind
+    ):
+        archive_path = tmp_path / f'{error_kind}.zip'
+        _write_valid_archive(archive_path)
+        original_bytes = archive_path.read_bytes()
+        repository = Mock()
+        if error_kind == 'extraction':
+            repository.extract.side_effect = ExtractionError(
+                str(archive_path), 'malformed CSV'
             )
         else:
-            assert downloaded_zip.exists(), (
-                'ZIP was deleted without creating parquets'
-            )
-            print('✅ ZIP kept (no parquet created)')
+            repository.extract.side_effect = RuntimeError('unexpected failure')
 
-    def test_cleanup_does_not_delete_other_zips(self, tmp_path):
-        output_dir = tmp_path / 'output'
-        output_dir.mkdir()
-
-        zip1 = output_dir / 'file1.zip'
-        zip2 = output_dir / 'file2.zip'
-        zip3 = output_dir / 'file3.zip'
-
-        for zip_path in [zip1, zip2, zip3]:
-            data = pd.DataFrame({'id': [1]})
-            with zipfile.ZipFile(zip_path, 'w') as z:
-                z.writestr(
-                    'data.csv',
-                    data.to_csv(sep=';', index=False).encode('latin-1'),
-                )
-
-        print('✓ 3 ZIPs created')
-
-        extractor = ParquetExtractorAdapterCVM()
-        extractor.extract(
-            source_path=str(zip1), destination_path=str(output_dir)
+        error_message = extract_downloaded_file(
+            file_extractor_repository=repository,
+            filepath=str(archive_path),
+            dest_path=str(tmp_path),
+            doc_name='DFP',
+            year='2023',
         )
 
-        from globaldatafinance.core import remove_file
-
-        parquet_files = list(output_dir.glob('**/*.parquet'))
-        if parquet_files:
-            remove_file(str(zip1), log_on_error=True)
-
-        assert not zip1.exists(), 'Processed ZIP was not deleted'
-        assert zip2.exists(), 'CRITICAL: Unprocessed ZIP was deleted!'
-        assert zip3.exists(), 'CRITICAL: Unprocessed ZIP was deleted!'
-
-        print('✅ Only the processed ZIP was deleted')
+        assert error_message is not None
+        assert archive_path.exists()
+        assert archive_path.read_bytes() == original_bytes
+        repository.extract.assert_called_once_with(
+            str(archive_path), str(tmp_path)
+        )

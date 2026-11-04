@@ -1,8 +1,12 @@
+import importlib
+import pickle
+
 import pytest
 
 from globaldatafinance.macro_exceptions import (
     CorruptedZipError,
     DiskFullError,
+    DownloadTimeoutError,
     EmptyDirectoryError,
     ExtractionError,
     FileWriteError,
@@ -13,8 +17,9 @@ from globaldatafinance.macro_exceptions import (
     PathIsNotDirectoryError,
     PathPermissionError,
     SecurityError,
-    TimeoutError,
 )
+
+pytestmark = pytest.mark.unit
 
 
 class TestEmptyDirectoryError:
@@ -128,6 +133,12 @@ class TestPathIsNotDirectoryError:
             == error_msg
         )
 
+    def test_message_for_missing_path(self):
+        path = '/data/missing'
+        error = PathIsNotDirectoryError(path, exists=False)
+
+        assert str(error) == f"Destination path does not exist: '{path}'."
+
     def test_with_relative_path(self):
         path = './data/file.txt'
         error = PathIsNotDirectoryError(path)
@@ -165,8 +176,8 @@ class TestPathPermissionError:
         error_msg = str(error)
 
         assert (
-            f"Permission denied: No write permission for destination path '{path}'"
-            == error_msg
+            f'Permission denied: No write permission for destination path '
+            f"'{path}'" == error_msg
         )
 
     def test_with_relative_path(self):
@@ -251,10 +262,10 @@ class TestNetworkError:
         assert isinstance(error, Exception)
 
 
-class TestTimeoutError:
+class TestDownloadTimeoutError:
     def test_initialization_with_doc_name_only(self):
         doc_name = 'COTAHIST_2023.ZIP'
-        error = TimeoutError(doc_name)
+        error = DownloadTimeoutError(doc_name)
 
         assert isinstance(error, Exception)
         assert doc_name in str(error)
@@ -263,14 +274,14 @@ class TestTimeoutError:
     def test_initialization_with_doc_name_and_timeout(self):
         doc_name = 'data.zip'
         timeout = 30.5
-        error = TimeoutError(doc_name, timeout)
+        error = DownloadTimeoutError(doc_name, timeout)
 
         assert doc_name in str(error)
         assert '30.5' in str(error)
 
     def test_message_format_without_timeout(self):
         doc_name = 'file.zip'
-        error = TimeoutError(doc_name, None)
+        error = DownloadTimeoutError(doc_name, None)
         error_msg = str(error)
 
         assert f"Timeout while downloading '{doc_name}'." == error_msg
@@ -278,7 +289,7 @@ class TestTimeoutError:
     def test_message_format_with_timeout(self):
         doc_name = 'file.zip'
         timeout = 60.0
-        error = TimeoutError(doc_name, timeout)
+        error = DownloadTimeoutError(doc_name, timeout)
         error_msg = str(error)
 
         expected = (
@@ -287,26 +298,37 @@ class TestTimeoutError:
         assert expected == error_msg
 
     def test_with_integer_timeout(self):
-        error = TimeoutError('file.zip', 30)
+        error = DownloadTimeoutError('file.zip', 30)
         assert '30' in str(error)
 
     def test_with_zero_timeout(self):
-        error = TimeoutError('file.zip', 0)
+        error = DownloadTimeoutError('file.zip', 0)
         assert 'file.zip' in str(error)
 
     def test_with_large_timeout(self):
-        error = TimeoutError('file.zip', 3600.0)
+        error = DownloadTimeoutError('file.zip', 3600.0)
         assert '3600' in str(error)
 
     def test_can_be_raised_and_caught(self):
-        with pytest.raises(TimeoutError) as exc_info:
-            raise TimeoutError('data.zip', 30.0)
+        with pytest.raises(DownloadTimeoutError) as exc_info:
+            raise DownloadTimeoutError('data.zip', 30.0)
 
         assert 'data.zip' in str(exc_info.value)
 
     def test_inheritance(self):
-        error = TimeoutError('file.zip')
+        error = DownloadTimeoutError('file.zip')
         assert isinstance(error, Exception)
+
+
+def test_removed_custom_timeout_symbol_is_not_importable() -> None:
+    """The breaking cut does not retain the old timeout import name."""
+    import globaldatafinance.macro_exceptions as module
+
+    assert not hasattr(module, 'TimeoutError')
+    with pytest.raises(ImportError):
+        importlib.import_module(
+            'globaldatafinance.macro_exceptions.TimeoutError'
+        )
 
 
 class TestExtractionError:
@@ -329,7 +351,7 @@ class TestExtractionError:
         assert f"Extraction error for '{path}': {message}" == error_msg
 
     def test_with_detailed_message(self):
-        path = '/tmp/data.zip'
+        path = 'test-data/data.zip'
         message = 'Unable to decompress: invalid header checksum'
         error = ExtractionError(path, message)
         assert 'decompress' in str(error)
@@ -351,6 +373,15 @@ class TestExtractionError:
     def test_inheritance(self):
         error = ExtractionError('/path', 'message')
         assert isinstance(error, Exception)
+
+    def test_pickle_roundtrip(self):
+        error = ExtractionError('/path/to/data.zip', 'unexpected EOF')
+        attr = 'loads'
+        loaded = getattr(pickle, attr)(pickle.dumps(error))
+        assert type(loaded) is ExtractionError
+        assert str(loaded) == str(error)
+        assert loaded.path == error.path
+        assert loaded.message == error.message
 
 
 class TestCorruptedZipError:
@@ -390,6 +421,15 @@ class TestCorruptedZipError:
 
         assert 'corrupted.zip' in str(exc_info.value)
         assert 'Bad ZIP format' in str(exc_info.value)
+
+    def test_pickle_roundtrip(self):
+        error = CorruptedZipError('/path/to/bad.zip', 'CRC check failed')
+        attr = 'loads'
+        loaded = getattr(pickle, attr)(pickle.dumps(error))
+        assert type(loaded) is CorruptedZipError
+        assert str(loaded) == str(error)
+        assert loaded.path == error.path
+        assert loaded.raw_message == error.raw_message
 
     def test_with_detailed_message(self):
         zip_path = '/data/file.zip'
@@ -504,7 +544,7 @@ class TestExceptionIntegration:
             PathIsNotDirectoryError('/file'),
             PathPermissionError('/protected'),
             NetworkError('doc'),
-            TimeoutError('doc'),
+            DownloadTimeoutError('doc'),
             ExtractionError('/path', 'msg'),
             CorruptedZipError('/zip', 'msg'),
             DiskFullError('/path'),
@@ -546,7 +586,7 @@ class TestExceptionIntegration:
         with pytest.raises(NetworkError):
             raise NetworkError('doc', 'error')
 
-        with pytest.raises(Exception):
+        with pytest.raises(NetworkError):
             raise NetworkError('doc', 'error')
 
     def test_multiple_exception_handling_workflow(self):
@@ -556,7 +596,7 @@ class TestExceptionIntegration:
             if operation_type == 'network':
                 raise NetworkError('data.zip', 'Connection failed')
             elif operation_type == 'timeout':
-                raise TimeoutError('data.zip', 30)
+                raise DownloadTimeoutError('data.zip', 30)
             elif operation_type == 'permission':
                 raise PathPermissionError('/protected')
             elif operation_type == 'disk':
@@ -580,7 +620,7 @@ class TestExceptionIntegration:
                 simulate_operation(op)
             except (
                 NetworkError,
-                TimeoutError,
+                DownloadTimeoutError,
                 PathPermissionError,
                 DiskFullError,
                 CorruptedZipError,
@@ -590,7 +630,7 @@ class TestExceptionIntegration:
 
         assert len(errors_caught) == len(operations)
         assert 'NetworkError' in errors_caught
-        assert 'TimeoutError' in errors_caught
+        assert 'DownloadTimeoutError' in errors_caught
         assert 'PathPermissionError' in errors_caught
         assert 'DiskFullError' in errors_caught
         assert 'CorruptedZipError' in errors_caught
@@ -605,14 +645,14 @@ class TestExceptionIntegration:
             'PathIsNotDirectoryError': PathIsNotDirectoryError('/file'),
             'PathPermissionError': PathPermissionError('/protected'),
             'NetworkError': NetworkError('doc', 'error'),
-            'TimeoutError': TimeoutError('doc', 30),
+            'DownloadTimeoutError': DownloadTimeoutError('doc', 30),
             'ExtractionError': ExtractionError('/path', 'error'),
             'CorruptedZipError': CorruptedZipError('/zip', 'corrupt'),
             'DiskFullError': DiskFullError('/full'),
             'SecurityError': SecurityError('security', '/path'),
         }
 
-        for name, exc in exceptions.items():
+        for _name, exc in exceptions.items():
             exc_str = str(exc)
             assert len(exc_str) > 0
             assert isinstance(exc_str, str)
@@ -629,16 +669,10 @@ class TestExceptionIntegration:
         assert exc_info.value.__cause__ is original_error
 
     def test_exception_with_context_manager(self):
-        caught = False
+        with pytest.raises(NetworkError) as exc_info:
+            raise NetworkError('file.zip', 'Failed')
 
-        try:
-            with pytest.raises(NetworkError):
-                raise NetworkError('file.zip', 'Failed')
-            caught = True
-        except Exception:
-            caught = False
-
-        assert caught
+        assert 'Failed' in str(exc_info.value)
 
 
 class TestNewOSErrorSubclasses:

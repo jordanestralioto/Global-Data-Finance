@@ -1,11 +1,13 @@
-import random
+"""Calculate retry eligibility and jittered exponential backoff."""
+
+from secrets import SystemRandom
 from typing import ClassVar
 
 from ...macro_exceptions import (
     DiskFullError,
+    DownloadTimeoutError,
     NetworkError,
     PathPermissionError,
-    TimeoutError,
 )
 
 
@@ -30,6 +32,7 @@ class RetryStrategy:
     def __init__(
         self, initial_backoff: float, max_backoff: float, multiplier: float
     ):
+        """Initialize the exponential backoff parameters."""
         self.initial_backoff = initial_backoff
         self.max_backoff = max_backoff
         self.multiplier = multiplier
@@ -38,10 +41,12 @@ class RetryStrategy:
         """Determines if an exception warrants a retry.
 
         An exception is retryable if:
-        - It is a NetworkError or TimeoutError (transient network issues)
+        - It is a NetworkError or DownloadTimeoutError (transient network
+          issues)
         - Its error message contains retryable keywords
 
-        Non-retryable exceptions: PathPermissionError, DiskFullError, ValueError
+        Non-retryable exceptions: PathPermissionError, DiskFullError, and
+        ValueError.
 
         Args:
             exception: The exception to evaluate
@@ -54,7 +59,7 @@ class RetryStrategy:
         ):
             return False
 
-        if isinstance(exception, (NetworkError, TimeoutError)):
+        if isinstance(exception, (NetworkError, DownloadTimeoutError)):
             return True
 
         # Fallback: check error message for known retryable keywords
@@ -62,7 +67,7 @@ class RetryStrategy:
         return any(kw in error_msg for kw in self._RETRYABLE_KEYWORDS)
 
     def calculate_backoff(self, retry_count: int) -> float:
-        """Calculates exponential backoff with full jitter.
+        """Calculate exponential backoff with bounded multiplicative jitter.
 
         Applies a uniform random multiplier in ``[0.5, 1.5]`` to the
         deterministic exponential value before clamping to
@@ -72,6 +77,5 @@ class RetryStrategy:
         fail in lockstep.
         """
         deterministic = self.initial_backoff * (self.multiplier**retry_count)
-        # Jitter is non-cryptographic timing perturbation; weak RNG is fine.
-        jittered = deterministic * random.uniform(0.5, 1.5)  # nosec B311 # noqa: S311
+        jittered = deterministic * SystemRandom().uniform(0.5, 1.5)
         return min(jittered, self.max_backoff)

@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "changedFiles": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "effectiveProfile": {
+      "enum": [
+        "quick",
+        "standard",
+        "high-risk",
+        "ui-flow",
+        "security-touch"
+      ],
+      "type": "string"
+    },
+    "escalations": {
+      "properties": {
+        "reasons": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "reviewRequired": {
+          "type": "boolean"
+        },
+        "securityRequired": {
+          "type": "boolean"
+        },
+        "testerRecommended": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "reviewRequired",
+        "securityRequired",
+        "testerRecommended",
+        "reasons"
+      ],
+      "type": "object"
+    },
+    "gates": {
+      "items": {
+        "properties": {
+          "blocking": {
+            "type": "boolean"
+          },
+          "classification": {
+            "enum": [
+              "code",
+              "environment",
+              "not_configured",
+              "not_applicable"
+            ],
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          },
+          "details": {
+            "type": "string"
+          },
+          "durationMs": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "exitCode": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "logPath": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "passed",
+              "failed",
+              "skipped",
+              "external_failure"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "command",
+          "blocking",
+          "status",
+          "classification",
+          "durationMs",
+          "exitCode",
+          "logPath"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "profile": {
+      "enum": [
+        "auto",
+        "quick",
+        "standard",
+        "high-risk",
+        "ui-flow",
+        "security-touch"
+      ],
+      "type": "string"
+    },
+    "profileReason": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "type": "string"
+    },
+    "sessionDir": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "status": {
+      "enum": [
+        "passed",
+        "failed",
+        "skipped",
+        "external_failure"
+      ],
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "status",
+    "profile",
+    "effectiveProfile",
+    "profileReason",
+    "changedFiles",
+    "gates",
+    "escalations",
+    "sessionDir",
+    "summary"
+  ],
+  "title": "AI Verify Result",
+  "type": "object"
+}

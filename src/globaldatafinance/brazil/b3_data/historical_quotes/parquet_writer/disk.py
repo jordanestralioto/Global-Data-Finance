@@ -1,3 +1,5 @@
+"""Disk-capacity validation used before B3 Parquet writes."""
+
 import shutil
 from pathlib import Path
 
@@ -10,6 +12,7 @@ logger = get_logger(__name__)
 def check_disk_space(
     path: Path, estimated_size_mb: float, min_free_space_mb: int
 ) -> None:
+    """Raise when the destination volume lacks the requested free space."""
     stat = shutil.disk_usage(path.parent)
     free_space_mb = stat.free / 1024 / 1024
     required_space_mb = estimated_size_mb + min_free_space_mb

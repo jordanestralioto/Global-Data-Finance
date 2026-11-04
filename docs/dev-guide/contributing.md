@@ -1,163 +1,96 @@
-# Como Contribuir
+# Como contribuir
 
-Guia para contribuir com o projeto Global-Data-Finance.
+Use Python `>=3.12,<4.0`, Git e uv. Crie a branch a partir de `develop` e
+abra o pull request para essa mesma branch.
 
----
-
-## Configurando Ambiente de Desenvolvimento
-
-### 1. Fork e Clone
+## Preparar o ambiente
 
 ```bash
-# Fork no GitHub, depois:
 git clone https://github.com/jordanestralioto/Global-Data-Finance.git
 cd Global-Data-Finance
+uv sync --locked --all-extras --dev
+uv run --locked --no-sync pre-commit install --install-hooks
+git switch -c fix/cotahist-validation develop
 ```
 
-### 2. Instalar Dependências
+`uv sync` prepara o ambiente uma vez. Depois disso, execute as ferramentas com
+`uv run --locked --no-sync` para usar as dependências já resolvidas.
 
-`uv` é o gestor canônico do projeto (`uv.lock` é commitado). Requer **Python 3.12+**.
+## Fazer a alteração
+
+- Siga a [arquitetura](architecture.md): comportamento CVM e B3 pertence à
+  respectiva fonte; compartilhe apenas o que for reutilizável.
+- Preserve assinaturas, resultados, exceções e schemas públicos. Mudanças
+  incompatíveis exigem uma decisão explícita e migração documentada.
+- Use nomes, código, comentários e commits em inglês. Anote tipos, use
+  docstrings Google e mantenha o formato Ruff de 79 caracteres.
+- Use `_` para helpers restritos ao módulo. Um nome compartilhado entre
+  módulos não se torna, por isso, parte da API pública. Mantenha estado mutável
+  privado e exponha operações quando outro módulo precisar acessá-lo.
+- Valide entradas e caminhos antes de escrever. Preserve as causas das falhas.
+- Atualize testes que comprovem o comportamento e a regressão, e mantenha as
+  páginas de produto em português e inglês.
+
+Rascunhos e registros de trabalho locais ficam em `docs/internal/`. Esse
+diretório é ignorado pelo Git e excluído do `check-docs-contracts`, incluindo
+a exigência de tradução para inglês, e do build do MkDocs.
+
+## Validar antes do PR
 
 ```bash
-# Sincronizar dependências (cria .venv automaticamente)
-uv sync
-
-# Para rodar comandos no ambiente:
-uv run pytest
-uv run mypy src
+uv run --locked --no-sync pre-commit run --all-files --show-diff-on-failure
+uv run --locked --no-sync pytest
 ```
 
-### 3. Instalar Pre-commit Hooks
+O pytest padrão seleciona testes determinísticos. Para cobertura, marcadores,
+integrações e dados locais, use o [guia de testes](testing.md).
+
+| Mudança | Validação adicional |
+| --- | --- |
+| Código Python | `uv run --locked --no-sync mypy src --pretty` |
+| Documentação | `uv run --locked --no-sync mkdocs build --strict` |
+| Empacotamento | `uv build` e [aceite de release](release-readiness.md) |
+
+Os hooks instalados distribuem as verificações por custo:
+
+| Estágio | O que verifica |
+| --- | --- |
+| `pre-commit` | Integridade do diff, lockfile, sintaxe, formatação, lint e contratos. |
+| `commit-msg` | Formato Conventional Commits. |
+| `pre-push` | Tipos, testes com cobertura e auditoria de dependências. |
+
+As entradas canônicas ficam em `.pre-commit-config.yaml` e `pyproject.toml`.
+Para reproduzir o estágio completo de push, execute
+`uv run --locked --no-sync pre-commit run --hook-stage pre-push --all-files`.
+Os gates de diff durante o commit inspecionam o índice; na CI, inspecionam o
+intervalo cumulativo desde a release anterior. Sem alterações staged, gates
+baseados em diff podem retornar `SKIP` mesmo com `--all-files`; isso não
+comprova aprovação desses gates. O Gitleaks local examina o índice; a CI também
+verifica o checkout completo.
+
+## Enviar o PR
+
+Revise o diff e adicione somente os caminhos da alteração. Formatação automática
+precisa ser revisada antes de entrar no índice.
 
 ```bash
-uv run pre-commit install
+git commit -m "fix: validate COTAHIST inputs before writing"
 ```
 
----
+Descreva o problema, o comportamento final, os comandos de validação e os checks
+pulados ou dependentes de ambiente externo. Para exclusões ou consolidações de
+testes, registre a justificativa em `.test-integrity-policy.json`.
 
-## Padrões de Código
+## Dependências e tooling interno
 
-### Style Guide
+Altere dependências deliberadamente com uv e revise `pyproject.toml` e `uv.lock`.
+Não edite o lockfile à mão. Os hooks validam a resolução; atualizações e
+sincronização do ambiente ficam fora do commit.
 
-- Seguir **PEP 8**
-- Usar **type hints** em todo código
-- Docstrings no formato **Google Style**
-- Máximo de 79 caracteres por linha (ruff, Blue-style formatting)
+As projeções de agentes em `.agents/`, `.claude/`, `.codex/` e `.opencode/`
+são mantidas pelo repositório `central-skills`. Altere a fonte e regenere em
+vez de editar os arquivos gerados. `harness-sync --check` é um check manual de
+mantenedores; colaboradores comuns não precisam instalar essa ferramenta.
 
-### Exemplo de Docstring
-
-```python
-def download_docs(
-    self,
-    destination_path: str,
-    list_docs: list[str] | None = None,
-) -> DownloadResultCVM:
-    """Baixa documentos CVM.
-
-    Args:
-        destination_path: Diretório onde salvar arquivos.
-        list_docs: Lista de tipos de documentos. Se None, baixa todos.
-
-    Returns:
-        Objeto DownloadResultCVM com resultados do download.
-
-    Raises:
-        InvalidDocumentName: Se tipo de documento for inválido.
-        NetworkError: Se houver erro de rede.
-    """
-    pass
-```
-
----
-
-## Testes
-
-### Executar Testes
-
-```bash
-# Todos os testes
-uv run pytest
-
-# Com cobertura
-uv run pytest --cov=src
-
-# Apenas unitários
-uv run pytest -m unit
-```
-
-Antes de abrir PR, rode o pipeline completo:
-
-```bash
-uv run pre-commit run --all-files
-uv run pytest
-```
-
-### Escrever Testes
-
-```python
-import pytest
-from globaldatafinance import FundamentalStocksDataCVM
-
-@pytest.mark.unit
-class TestFundamentalStocksData:
-    def test_get_available_docs(self):
-        """Testa obtenção de documentos disponíveis."""
-        cvm = FundamentalStocksDataCVM()
-        docs = cvm.get_available_docs()
-
-        assert isinstance(docs, dict)
-        assert "DFP" in docs
-        assert len(docs) > 0
-```
-
----
-
-## Workflow Git
-
-### Branches
-
-- `main`: Código estável
-- `develop`: Desenvolvimento
-- `feature/nome-feature`: Novas funcionalidades
-- `fix/nome-bug`: Correções de bugs
-
-### Commits
-
-Use mensagens descritivas:
-
-```bash
-# Bom
-git commit -m "feat: adiciona suporte a download paralelo"
-git commit -m "fix: corrige erro de timeout em downloads grandes"
-
-# Evite
-git commit -m "update"
-git commit -m "fix bug"
-```
-
-### Pull Requests
-
-1. Crie branch a partir de `develop`
-2. Faça suas alterações
-3. Adicione testes
-4. Atualize documentação
-5. Abra PR para `develop`
-
----
-
-## Checklist de PR
-
-- [ ] Código segue PEP 8
-- [ ] Type hints adicionados
-- [ ] Docstrings completas
-- [ ] Testes adicionados
-- [ ] Testes passando
-- [ ] Documentação atualizada
-- [ ] Pre-commit hooks passando
-
----
-
-## Contato
-
-- GitHub Issues: [Abrir issue](https://github.com/jordanestralioto/Global-Data-Finance/issues)
-- Email: estraliotojordan@gmail.com
+Para reportar vulnerabilidades, siga a
+[política de segurança](https://github.com/jordanestralioto/Global-Data-Finance/blob/develop/SECURITY.md).

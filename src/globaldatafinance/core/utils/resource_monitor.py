@@ -1,4 +1,7 @@
+"""Monitor process resources for extraction workloads."""
+
 import gc
+import logging
 import os
 import platform
 import threading
@@ -7,14 +10,11 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
-from ...core import get_logger
+import psutil
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
-try:
-    import psutil  # type: ignore
-except ImportError:
-    psutil = None
+_RESOURCE_TELEMETRY_ERRORS = (OSError, psutil.Error)
 
 
 class ResourceState(Enum):
@@ -26,27 +26,26 @@ class ResourceState(Enum):
     EXHAUSTED = 'exhausted'
 
 
+_STATE_SEVERITY: dict[ResourceState, int] = {
+    ResourceState.HEALTHY: 0,
+    ResourceState.WARNING: 1,
+    ResourceState.CRITICAL: 2,
+    ResourceState.EXHAUSTED: 3,
+}
+
+
 @dataclass
 class ResourceLimits:
     """Configuration for resource limits and thresholds."""
 
-    # Memory thresholds (percentage of available RAM)
-    memory_warning_threshold: float = 70.0  # Warn at 70% usage
-    memory_critical_threshold: float = 85.0  # Critical at 85% usage
-    memory_exhausted_threshold: float = 95.0  # Circuit breaker at 95%
-
-    # CPU thresholds (percentage)
-    cpu_warning_threshold: float = 80.0  # Warn at 80% usage
-    cpu_critical_threshold: float = 90.0  # Critical at 90% usage
-
-    # Minimum free memory required (MB)
-    min_free_memory_mb: int = 100  # Always keep at least 100MB free
-
-    # Automatic GC trigger
-    auto_gc_on_warning: bool = True  # Force GC when memory warning
-
-    # Circuit breaker settings
-    circuit_breaker_cooldown_seconds: int = 10  # Wait 10s after exhaustion
+    memory_warning_threshold: float = 70.0
+    memory_critical_threshold: float = 85.0
+    memory_exhausted_threshold: float = 95.0
+    cpu_warning_threshold: float = 80.0
+    cpu_critical_threshold: float = 90.0
+    min_free_memory_mb: int = 100
+    auto_gc_on_warning: bool = True
+    circuit_breaker_cooldown_seconds: int = 10
     circuit_breaker_enabled: bool = True
 
 
@@ -67,7 +66,7 @@ class ResourceMonitor:
     _instance: Optional['ResourceMonitor'] = None
     _lock = threading.Lock()
 
-    def __new__(cls, *_args, **_kwargs):
+    def __new__(cls, *_args: object, **_kwargs: object) -> 'ResourceMonitor':
         """Singleton pattern to ensure only one monitor instance."""
         if cls._instance is None:
             with cls._lock:
@@ -75,27 +74,31 @@ class ResourceMonitor:
                     cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self, limits: ResourceLimits | None = None):
+    def __init__(self, limits: ResourceLimits | None = None) -> None:
         """Initialize resource monitor.
 
         Args:
             limits: Optional custom resource limits. Uses defaults if None.
         """
-        # Skip re-initialization for singleton
-        if hasattr(self, '_initialized'):
-            return
+        if not hasattr(self, '_initialized'):
+            self._initialize(limits)
 
+    @classmethod
+    def create_isolated(
+        cls, limits: ResourceLimits | None = None
+    ) -> 'ResourceMonitor':
+        """Create local limits without changing the singleton monitor."""
+        monitor = object.__new__(cls)
+        monitor._initialize(limits)
+        return monitor
+
+    def _initialize(self, limits: ResourceLimits | None) -> None:
+        """Initialize one monitor instance, singleton-backed or isolated."""
         self.limits = limits or ResourceLimits()
         self._circuit_breaker_active = False
         self._circuit_breaker_triggered_at: float | None = None
         self._last_gc_time: float = 0
-        self._gc_cooldown_seconds: int = 5  # Minimum 5s between forced GC
-
-        if psutil is None:
-            logger.warning(
-                'psutil not installed - resource monitoring will be limited. '
-                'Install with: pip install psutil'
-            )
+        self._gc_cooldown_seconds: int = 5
 
         self._log_system_info()
         self._initialized = True
@@ -108,14 +111,9 @@ class ResourceMonitor:
             'cpu_count': os.cpu_count() or 1,
         }
 
-        if psutil:
-            memory = psutil.virtual_memory()
-            info.update(
-                {
-                    'total_ram_gb': f'{memory.total / (1024**3):.2f}',
-                    'available_ram_gb': f'{memory.available / (1024**3):.2f}',
-                }
-            )
+        memory = psutil.virtual_memory()
+        info['total_ram_gb'] = f'{memory.total / (1024**3):.2f}'
+        info['available_ram_gb'] = f'{memory.available / (1024**3):.2f}'
 
         logger.info('ResourceMonitor initialized', extra=info)
 
@@ -125,46 +123,29 @@ class ResourceMonitor:
         Returns:
             Current resource state (HEALTHY, WARNING, CRITICAL, or EXHAUSTED)
         """
-        # Check circuit breaker
         if self._circuit_breaker_active:
             if self._should_reset_circuit_breaker():
                 self._reset_circuit_breaker()
             else:
                 return ResourceState.EXHAUSTED
 
-        # If psutil not available, assume healthy (conservative)
-        if psutil is None:
-            return ResourceState.HEALTHY
-
         try:
             memory_state = self._check_memory()
             cpu_state = self._check_cpu()
 
-            # Return worst state
-            if (
-                memory_state == ResourceState.EXHAUSTED
-                or cpu_state == ResourceState.EXHAUSTED
-            ):
+            if ResourceState.EXHAUSTED in (memory_state, cpu_state):
                 self._trigger_circuit_breaker()
                 return ResourceState.EXHAUSTED
-            elif (
-                memory_state == ResourceState.CRITICAL
-                or cpu_state == ResourceState.CRITICAL
-            ):
+            if ResourceState.CRITICAL in (memory_state, cpu_state):
                 return ResourceState.CRITICAL
-            elif (
-                memory_state == ResourceState.WARNING
-                or cpu_state == ResourceState.WARNING
-            ):
+            if ResourceState.WARNING in (memory_state, cpu_state):
                 if self.limits.auto_gc_on_warning:
                     self._maybe_force_gc()
                 return ResourceState.WARNING
-            else:
-                return ResourceState.HEALTHY
+            return ResourceState.HEALTHY
 
-        except Exception as e:
-            logger.error(f'Error checking resources: {e}', exc_info=True)
-            # On error, assume critical to be safe
+        except _RESOURCE_TELEMETRY_ERRORS as error:
+            logger.error('Error checking resources: %s', error, exc_info=True)
             return ResourceState.CRITICAL
 
     def _check_memory(self) -> ResourceState:
@@ -173,14 +154,10 @@ class ResourceMonitor:
         Returns:
             Resource state based on memory usage
         """
-        if psutil is None:
-            return ResourceState.HEALTHY
-
         memory = psutil.virtual_memory()
         percent_used = memory.percent
         free_mb = memory.available / (1024**2)
 
-        # Check absolute minimum free memory
         if free_mb < self.limits.min_free_memory_mb:
             logger.error(
                 f'Memory exhausted: {free_mb:.1f}MB free '
@@ -188,18 +165,16 @@ class ResourceMonitor:
             )
             return ResourceState.EXHAUSTED
 
-        # Check percentage thresholds
         if percent_used >= self.limits.memory_exhausted_threshold:
             logger.error(f'Memory exhausted: {percent_used:.1f}% used')
             return ResourceState.EXHAUSTED
-        elif percent_used >= self.limits.memory_critical_threshold:
+        if percent_used >= self.limits.memory_critical_threshold:
             logger.warning(f'Memory critical: {percent_used:.1f}% used')
             return ResourceState.CRITICAL
-        elif percent_used >= self.limits.memory_warning_threshold:
+        if percent_used >= self.limits.memory_warning_threshold:
             logger.info(f'Memory warning: {percent_used:.1f}% used')
             return ResourceState.WARNING
-        else:
-            return ResourceState.HEALTHY
+        return ResourceState.HEALTHY
 
     def _check_cpu(self) -> ResourceState:
         """Check CPU usage state.
@@ -207,20 +182,14 @@ class ResourceMonitor:
         Returns:
             Resource state based on CPU usage
         """
-        if psutil is None:
-            return ResourceState.HEALTHY
-
-        # Get CPU usage over 1 second interval
         cpu_percent = psutil.cpu_percent(interval=0.1)
-
         if cpu_percent >= self.limits.cpu_critical_threshold:
             logger.warning(f'CPU critical: {cpu_percent:.1f}% used')
             return ResourceState.CRITICAL
-        elif cpu_percent >= self.limits.cpu_warning_threshold:
+        if cpu_percent >= self.limits.cpu_warning_threshold:
             logger.info(f'CPU warning: {cpu_percent:.1f}% used')
             return ResourceState.WARNING
-        else:
-            return ResourceState.HEALTHY
+        return ResourceState.HEALTHY
 
     def get_safe_worker_count(self, max_workers: int | None = None) -> int:
         """Calculate safe number of workers based on available resources.
@@ -233,24 +202,18 @@ class ResourceMonitor:
         """
         cpu_count = os.cpu_count() or 1
 
-        # Default to CPU count if not specified
         if max_workers is None:
             max_workers = cpu_count
 
-        # Check memory state
         memory_state = self._check_memory()
 
         if memory_state == ResourceState.EXHAUSTED:
-            # Critical: only 1 worker
             safe_count = 1
         elif memory_state == ResourceState.CRITICAL:
-            # Critical: max 2 workers
             safe_count = min(2, cpu_count)
         elif memory_state == ResourceState.WARNING:
-            # Warning: use half of requested workers
             safe_count = max(1, max_workers // 2)
         else:
-            # Healthy: use requested workers (up to CPU count)
             safe_count = min(max_workers, cpu_count)
 
         if safe_count < max_workers:
@@ -271,8 +234,7 @@ class ResourceMonitor:
             Safe batch size (at least 1000)
         """
         memory_state = self._check_memory()
-
-        min_batch_size = 1000  # Absolute minimum
+        min_batch_size = 1000
 
         if memory_state == ResourceState.EXHAUSTED:
             safe_size = min_batch_size
@@ -340,17 +302,15 @@ class ResourceMonitor:
         """Get memory used by current process in MB.
 
         Returns:
-            Memory in MB, or 0.0 if psutil is not available
+            Memory used by the current process in MB, or ``0.0`` when the
+            process telemetry is unavailable.
         """
-        if psutil is None:
-            return 0.0
-
         try:
-            process = psutil.Process()
-            result: float = process.memory_info().rss / (1024**2)
-            return result
-        except Exception as e:
-            logger.error(f'Error getting process memory: {e}', exc_info=True)
+            return float(psutil.Process().memory_info().rss / (1024**2))
+        except _RESOURCE_TELEMETRY_ERRORS as error:
+            logger.error(
+                'Error getting process memory: %s', error, exc_info=True
+            )
             return 0.0
 
     def wait_for_resources(
@@ -373,12 +333,16 @@ class ResourceMonitor:
         while time.time() - start_time < timeout_seconds:
             current_state = self.check_resources()
 
-            # Check if state is acceptable
-            if current_state.value <= required_state.value:
+            # Check if state is acceptable (lower or equal severity)
+            if (
+                _STATE_SEVERITY[current_state]
+                <= _STATE_SEVERITY[required_state]
+            ):
                 return True
 
             logger.debug(
-                f'Waiting for resources... Current state: {current_state.value}, '
+                f'Waiting for resources... Current state: '
+                f'{current_state.value}, '
                 f'Required: {required_state.value}'
             )
 

@@ -1,5 +1,7 @@
 import logging
 import os
+from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -7,6 +9,7 @@ from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
     EmptyDocumentListError,
     VerifyPathsUseCasesCVM,
 )
+from globaldatafinance.macro_exceptions import SecurityError
 
 
 @pytest.mark.unit
@@ -61,6 +64,29 @@ class TestVerifyPathsUseCasesInitialization:
 
 @pytest.mark.unit
 class TestVerifyPathsUseCasesExecute:
+    @pytest.mark.parametrize(
+        'blocked_path',
+        ['/', 'D:\\', 'D:\\Windows', '\\\\server\\share\\output'],
+    )
+    def test_execute_blocks_unsafe_destination_before_directory_creation(
+        self,
+        blocked_path,
+    ):
+        """The CVM entrypoint rejects dangerous raw destinations first."""
+        use_case = VerifyPathsUseCasesCVM(
+            destination_path=blocked_path,
+            new_set_docs={'DFP'},
+            range_years=range(2024, 2025),
+        )
+
+        with (
+            patch.object(Path, 'mkdir') as mkdir,
+            pytest.raises(SecurityError),
+        ):
+            use_case.execute()
+
+        mkdir.assert_not_called()
+
     def test_execute_creates_doc_subdirectories(self, tmp_path):
         new_set_docs = {'DFP', 'ITR'}
         range_years = range(2020, 2022)
@@ -74,9 +100,9 @@ class TestVerifyPathsUseCasesExecute:
         use_case.execute()
 
         for doc in new_set_docs:
-            doc_path = os.path.join(tmp_path, doc)
-            assert os.path.exists(doc_path)
-            assert os.path.isdir(doc_path)
+            doc_path = tmp_path / doc
+            assert doc_path.exists()
+            assert doc_path.is_dir()
 
     def test_execute_creates_year_subdirectories(self, tmp_path):
         new_set_docs = {'DFP'}
@@ -92,9 +118,9 @@ class TestVerifyPathsUseCasesExecute:
 
         for doc in new_set_docs:
             for year in range_years:
-                year_path = os.path.join(tmp_path, doc, str(year))
-                assert os.path.exists(year_path)
-                assert os.path.isdir(year_path)
+                year_path = tmp_path / doc / str(year)
+                assert year_path.exists()
+                assert year_path.is_dir()
 
     def test_execute_creates_complete_directory_structure(self, tmp_path):
         new_set_docs = {'DFP', 'ITR', 'FRE'}
@@ -110,8 +136,8 @@ class TestVerifyPathsUseCasesExecute:
 
         for doc in new_set_docs:
             for year in range_years:
-                path = os.path.join(tmp_path, doc, str(year))
-                assert os.path.exists(path)
+                path = tmp_path / doc / str(year)
+                assert path.exists()
 
     def test_execute_returns_docs_paths(self, tmp_path):
         new_set_docs = {'DFP', 'ITR'}
@@ -148,7 +174,7 @@ class TestVerifyPathsUseCasesExecute:
         for year in range_years:
             assert year in docs_paths['DFP']
             assert isinstance(docs_paths['DFP'][year], str)
-            assert os.path.isabs(docs_paths['DFP'][year])
+            assert Path(docs_paths['DFP'][year]).is_absolute()
 
     def test_execute_handles_existing_directories(self, tmp_path):
         new_set_docs = {'DFP'}
@@ -156,9 +182,7 @@ class TestVerifyPathsUseCasesExecute:
 
         for doc in new_set_docs:
             for year in range_years:
-                os.makedirs(
-                    os.path.join(tmp_path, doc, str(year)), exist_ok=True
-                )
+                (tmp_path / doc / str(year)).mkdir(parents=True, exist_ok=True)
 
         use_case = VerifyPathsUseCasesCVM(
             destination_path=str(tmp_path),
@@ -168,7 +192,7 @@ class TestVerifyPathsUseCasesExecute:
 
         use_case.execute()
 
-        assert os.path.exists(os.path.join(tmp_path, 'DFP', '2020'))
+        assert (tmp_path / 'DFP' / '2020').exists()
 
     def test_execute_logs_success_message(self, tmp_path, caplog):
         use_case = VerifyPathsUseCasesCVM(
@@ -194,7 +218,7 @@ class TestVerifyPathsUseCasesExecute:
 
         docs_paths = use_case.execute()
 
-        assert os.path.exists(os.path.join(tmp_path, 'DFP', '2023'))
+        assert (tmp_path / 'DFP' / '2023').exists()
         assert len(docs_paths) == 1
         assert len(docs_paths['DFP']) == 1
 
@@ -214,10 +238,10 @@ class TestVerifyPathsUseCasesExecute:
             1
             for doc in new_set_docs
             for year in range_years
-            if os.path.exists(os.path.join(tmp_path, doc, str(year)))
+            if (tmp_path / doc / str(year)).exists()
         )
 
-        # Expected: DFP(15) + ITR(14, starts 2011) + FRE(15) + FCA(15) + CGVN(7, starts 2018) = 66
+        # Expected: DFP(15) + ITR(14) + FRE(15) + FCA(15) + CGVN(7) = 66.
         expected_total = 66
         assert created_dirs == expected_total
         assert len(docs_paths) == len(new_set_docs)
@@ -226,30 +250,30 @@ class TestVerifyPathsUseCasesExecute:
 @pytest.mark.unit
 class TestVerifyPathsUseCasesEdgeCases:
     def test_execute_with_path_containing_spaces(self, tmp_path):
-        path_with_spaces = os.path.join(tmp_path, 'path with spaces')
+        path_with_spaces = tmp_path / 'path with spaces'
 
         use_case = VerifyPathsUseCasesCVM(
-            destination_path=path_with_spaces,
+            destination_path=str(path_with_spaces),
             new_set_docs={'DFP'},
             range_years=range(2020, 2022),
         )
 
         use_case.execute()
 
-        assert os.path.exists(path_with_spaces)
+        assert path_with_spaces.exists()
 
     def test_execute_with_unicode_path(self, tmp_path):
-        unicode_path = os.path.join(tmp_path, '路径_测试')
+        unicode_path = tmp_path / '路径_测试'
 
         use_case = VerifyPathsUseCasesCVM(
-            destination_path=unicode_path,
+            destination_path=str(unicode_path),
             new_set_docs={'DFP'},
             range_years=range(2020, 2022),
         )
 
         use_case.execute()
 
-        assert os.path.exists(unicode_path)
+        assert unicode_path.exists()
 
     def test_execute_handles_long_year_range(self, tmp_path):
         use_case = VerifyPathsUseCasesCVM(
@@ -467,7 +491,7 @@ class TestVerifyPathsUseCasesIntegration:
         for doc in new_set_docs:
             for year in range_years:
                 path = docs_paths[doc][year]
-                assert os.path.exists(path)
+                assert Path(path).exists()
                 assert os.access(path, os.W_OK)
 
     def test_verify_paths_accepts_set_from_generate_urls(self, tmp_path):

@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "artifactType": {
+      "const": "review-session"
+    },
+    "change": {
+      "properties": {
+        "baseRef": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "changeType": {
+          "type": "string"
+        },
+        "changedBy": {
+          "type": "string"
+        },
+        "headRef": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "securityTouch": {
+          "enum": [
+            "yes",
+            "no",
+            "auto"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "changeType",
+        "changedBy",
+        "securityTouch"
+      ],
+      "type": "object"
+    },
+    "changedFiles": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "reviewId": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "type": "string"
+    },
+    "statistics": {
+      "properties": {
+        "blockingFindingCount": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "completedItems": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "findingCount": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "totalItems": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "totalItems",
+        "completedItems",
+        "findingCount",
+        "blockingFindingCount"
+      ],
+      "type": "object"
+    },
+    "status": {
+      "enum": [
+        "initialized",
+        "planned",
+        "reviewing",
+        "awaiting_security",
+        "apply-ready",
+        "completed",
+        "blocked"
+      ],
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifactType",
+    "schemaVersion",
+    "reviewId",
+    "status",
+    "createdAt",
+    "updatedAt",
+    "change",
+    "changedFiles",
+    "statistics"
+  ],
+  "title": "Review Session",
+  "type": "object"
+}

@@ -1,9 +1,18 @@
+from typing import Any
 from unittest.mock import Mock, patch
 
+import pytest
+
 from globaldatafinance.application import FundamentalStocksDataCVM
+from globaldatafinance.application.cvm_docs import (
+    fundamental_stocks_data as facade_module,
+)
 from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
     AvailableYearsInfoCVM,
 )
+from globaldatafinance.core.config import NetworkSettings, Settings
+
+pytestmark = pytest.mark.unit
 
 
 class TestFundamentalStocksData:
@@ -16,6 +25,28 @@ class TestFundamentalStocksData:
         cvm = FundamentalStocksDataCVM()
         assert cvm.download_adapter is not None
         assert hasattr(cvm.download_adapter, 'automatic_extractor')
+
+    def test_initialization_propagates_network_settings(self):
+        controlled_network = NetworkSettings(
+            timeout=321,
+            max_retries=4,
+            retry_backoff=1.7,
+            user_agent='controlled-client/1.0',
+        )
+        custom_settings = Settings(network=controlled_network)
+
+        cvm = FundamentalStocksDataCVM(settings=custom_settings)
+        adapter = cvm.download_adapter
+
+        assert cvm.settings == custom_settings
+        assert adapter.requests_adapter.timeout == 321
+        assert adapter.max_retries == 4
+        assert adapter.retry_strategy.multiplier == 1.7
+        assert adapter.retry_strategy.initial_backoff == 1.0
+        assert adapter.retry_strategy.max_backoff == 120.0
+        assert adapter.requests_adapter.default_headers == {
+            'User-Agent': 'controlled-client/1.0'
+        }
 
     def test_get_available_docs(self):
         cvm = FundamentalStocksDataCVM()
@@ -203,12 +234,15 @@ class TestFundamentalStocksData:
         mock_download_instance.execute.return_value = mock_result
         mock_download_use_case.return_value = mock_download_instance
 
-        cvm = FundamentalStocksDataCVM()
         with patch.object(
-            cvm, '_FundamentalStocksDataCVM__result_formatter'
+            facade_module, 'DownloadResultFormatter'
         ) as mock_formatter:
+            cvm = FundamentalStocksDataCVM()
             cvm.download(destination_path='/data/cvm')
-            mock_formatter.print_result.assert_called_once_with(mock_result)
+
+        mock_formatter.return_value.print_result.assert_called_once_with(
+            mock_result
+        )
 
     @patch(
         'globaldatafinance.application.cvm_docs.fundamental_stocks_data.DownloadDocumentsUseCaseCVM'
@@ -229,6 +263,26 @@ class TestFundamentalStocksData:
 
         call_args = mock_download_instance.execute.call_args
         assert call_args[1]['list_docs'] is None
+
+    @pytest.mark.parametrize('list_docs', [(), '', 0, False])
+    def test_download_rejects_falsy_non_list_before_io(
+        self, tmp_path, list_docs: Any
+    ):
+        destination = tmp_path / 'cvm-output'
+        cvm = FundamentalStocksDataCVM()
+
+        with patch.object(cvm.download_adapter, 'download_docs') as download:
+            with pytest.raises(TypeError, match='list_docs must be a list'):
+                cvm.download(
+                    destination_path=str(destination),
+                    list_docs=list_docs,
+                    initial_year=2023,
+                    last_year=2023,
+                )
+
+            download.assert_not_called()
+
+        assert not destination.exists()
 
     @patch(
         'globaldatafinance.application.cvm_docs.fundamental_stocks_data.DownloadDocumentsUseCaseCVM'
@@ -264,18 +318,26 @@ class TestFundamentalStocksData:
         assert isinstance(years, AvailableYearsInfoCVM)
 
     def test_initialization_creates_use_cases(self):
-        cvm = FundamentalStocksDataCVM()
-        # The stateless docs/years use cases became module-level functions
-        # (Phase 4.1) and are no longer cached on the instance; only the
-        # stateful download orchestrator and the formatter are held.
-        assert hasattr(cvm, '_FundamentalStocksDataCVM__download_use_case')
-        assert hasattr(cvm, '_FundamentalStocksDataCVM__result_formatter')
+        with (
+            patch.object(
+                facade_module, 'DownloadDocumentsUseCaseCVM'
+            ) as mock_download_use_case,
+            patch.object(
+                facade_module, 'DownloadResultFormatter'
+            ) as mock_formatter,
+        ):
+            cvm = FundamentalStocksDataCVM()
+
+        mock_download_use_case.assert_called_once_with(
+            cvm.download_adapter, allowed_unc_roots=()
+        )
+        mock_formatter.assert_called_once_with(use_colors=True)
 
     @patch(
         'globaldatafinance.application.cvm_docs.fundamental_stocks_data.DownloadDocumentsUseCaseCVM'
     )
     def test_download_returns_download_result(self, mock_download_use_case):
-        """Test that download() returns DownloadResultCVM object (API change)."""
+        """Test that download() returns a DownloadResultCVM object."""
         mock_result = Mock()
         mock_result.success_count_downloads = 1
         mock_result.error_count_downloads = 0

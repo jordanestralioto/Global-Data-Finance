@@ -1,0 +1,137 @@
+# PyArrow ingestion and transactional-integrity cutover
+
+**Status:** Accepted
+**Date:** 2026-09-10
+**Scope:** CVM and B3 extraction, Parquet publication, and runtime imports
+**Decisions:** Q1, Q2, Q3, Q4
+
+## Context
+
+The package loaded ingestion engines during import globaldatafinance, including
+for consumers that only queried the API. The CVM path inferred types per chunk
+and could encounter a decimal after fixing a column as an integer. The B3 path
+retained large dictionary buffers, rewrote Parquet during append, and accepted
+some invalid financial fields with silent defaults.
+
+The existing CVM commit reduces the chance of a partially published batch but
+does not preserve a durable manifest or automatically recover an interruption
+between backups and replacements. That compromises financial-artifact integrity
+and recovery.
+
+## Decision
+
+### Q1 — Source-owned PyArrow pipelines
+
+Productive CVM and B3 pipelines remain independent and use PyArrow for Parquet
+reading, conversion, and writing. CVM preserves its QUOTE_NONE CSV dialect; B3
+uses a strict fixed-width parser. The sources do not share inference, parsing,
+financial schemas, or filter rules.
+
+Keeping only lazy imports around the existing pipelines was rejected because it
+does not correct local CVM inference, B3 buffering, or permissive parsing. A
+single generic framework was also rejected because the sources own different
+formats, lifecycles, and diagnostics.
+
+### Q2 — Runtime imports and dependencies
+
+Polars will be removed from runtime, the lockfile, tests, and scripts. PyArrow
+is the sole productive engine and loads only in the first operational path that
+needs it. The former `ReadFilesAdapter` was also removed by the infrastructure
+clean cut; Pandas is only an optional downstream dependency installed by the
+consumer.
+
+Public facades and __init__.py files remain lightweight. Constructing a facade,
+querying B3 assets/years, or downloading CVM without extraction must not load
+pandas, NumPy, PyArrow, or Polars. The three root exports and public signatures
+remain unchanged.
+
+### Q3 — Recoverable, failure-atomic publication
+
+The internal macro_infra/transactional_publication/ facility provides
+same-filesystem staging, durable JSON manifests, directory locks,
+hard-link-or-copy backups, rollback, and recovery on the next call. It knows
+artifacts and paths only; it does not know source fields, schemas, filters, or
+formats.
+
+The manifest records OPEN, VALIDATED, BACKUPS_READY, PUBLISHING, COMMITTED,
+CLEANUP_PENDING, ROLLING_BACK, and ROLLED_BACK. Every manifest path remains
+below the destination or staging area. A concurrent write to the same
+destination is rejected; a lock from another host or a live process is never
+removed merely because it is old.
+
+The resulting contract is recoverable, failure-atomic batch commit. It does not
+offer instantly atomic visibility to concurrent readers of multiple CVM
+Parquets because multiple names cannot be replaced by one operation.
+
+### Q4 — Per-source integrity rules
+
+The CVM inference and types in this historical decision were superseded by the [CVM exact text preservation contract](../user-guide/migration-cvm-exact-text.en.md), authorized on 2026-10-12. The other decisions remain applicable.
+
+CVM performs a global text validation/inference pass followed by a second pass
+with an explicit schema. Short rows are padded at the end only; extra rows,
+missing headers, and ambiguous structures fail without publishing. A
+header-only CSV produces an empty Parquet with null fields, header order, and
+no pandas metadata.
+
+B3 accepts only blank lines, 00/99 controls, and type-01 records that are
+exactly 245 bytes. Every quotation field is validated before TPMERC filtering;
+invalid values never become zero, an empty string, or null. Complete selection
+preserves every numeric code and reports unknown TPMERC values. The current
+persistence and verification contract is documented in the [COTAHIST complete
+preservation and verified publication decision](../dev-guide/architecture.en.md).
+
+## Review-remediation decisions
+
+The following decisions close the contracts found during the implementation
+review:
+
+- `Settings.archive` is the only canonical namespace for ZIP limits;
+  `Settings.archive_safety` is not a compatibility alias. `infos=None` means
+  that central-directory validation must run; a supplied list, including `[]`,
+  is an already validated selection and must be honored literally.
+- The `globaldatafinance` logger is isolated from the application hierarchy at
+  import time with a `NullHandler` and `propagate=False`. `setup_logging()` only
+  installs managed handlers after all candidates are prepared; a preparation or
+  swap failure restores the previous level, propagation, and handlers without
+  touching external handlers. `LoggingSettings` is strict and rejects the
+  removed `structured` field and unknown `DATAFIN_LOG_*` variables. File
+  destinations pass through the path-safety policy before any creation, and
+  the formatter redacts known sensitive
+  parameters and context fields; consumers still must not send secrets to
+  logging.
+- CVM inference keeps nullable signed integers as `int64`; a null does not by
+  itself promote the column to `float64`. The `QUOTE_NONE` dialect also keeps a
+  physical blank one-column CSV record as a logical null.
+- The B3 clean cut removes the writer from service state and leaves closing to
+  the concrete session. The session has explicit `NEW`, `OPEN`, and `CLOSED`
+  states; a close failure is terminal, and the internal null marker is never
+  accepted as literal input data.
+- `ResourceMonitor` remains a deliberate singleton, while the Arrow import
+  cache remains lazy and private to the operational path that needs it. These
+  are not compatibility shortcuts or parallel ingestion paths.
+
+## Consequences
+
+- This is release `0.2.0`: strict B3 parsing, Polars removal, and removal of
+  the internal legacy CSV path can require consumer migration.
+- CVM can reopen a source for multiple passes and create a transactional UTF-8
+  spool for CP1252 or Latin-1.
+- Publication now needs staging, manifests, backups, locks, and fsync where the
+  platform supports it.
+- Fast and slow B3 retain logical equivalence but can use different memory and
+  concurrency limits.
+- Input ZIPs and TXTs are never removed on failure; only transaction-derived
+  artifacts can be cleaned up.
+
+## Non-goals
+
+- Do not change root exports, signatures, defaults, output names, logical
+  schemas, or the Parquet format.
+- Do not add a service, queue, external process, web framework, or feature flag.
+- Do not support RFC quoted/multiline CSV alongside QUOTE_NONE in this cutover.
+- Do not retain a productive pandas/Polars fallback pipeline. This historical
+  decision is superseded by the infrastructure clean cut for the removal of
+  `ReadFilesAdapter` and the automatic Pandas dependency.
+- Do not make the annual COTAHIST corpus mandatory in CI before a licensed
+  fixture exists.
+- Do not promise serializable isolation to concurrent CVM batch readers.

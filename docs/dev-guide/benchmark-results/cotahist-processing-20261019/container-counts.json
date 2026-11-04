@@ -1,0 +1,18 @@
+{
+  "baseline": {
+    "all_archives_closed": true,
+    "explicit_crc_scans": 4,
+    "record_contexts_during_hash": 4,
+    "selected_member_decompressions": 7,
+    "success": true,
+    "verified_rows": 2
+  },
+  "candidate": {
+    "all_archives_closed": true,
+    "explicit_crc_scans": 2,
+    "record_contexts_during_hash": 0,
+    "selected_member_decompressions": 5,
+    "success": true,
+    "verified_rows": 2
+  }
+}

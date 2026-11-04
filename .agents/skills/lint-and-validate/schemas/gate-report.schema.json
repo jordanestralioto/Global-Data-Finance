@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "artifactType": {
+      "const": "gate-report"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "gates": {
+      "items": {
+        "properties": {
+          "blocking": {
+            "type": "boolean"
+          },
+          "classification": {
+            "enum": [
+              "code",
+              "environment",
+              "not_configured",
+              "not_applicable"
+            ],
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          },
+          "durationMs": {
+            "type": "integer"
+          },
+          "durationSeconds": {
+            "type": "number"
+          },
+          "exitCode": {
+            "type": "integer"
+          },
+          "finishedAt": {
+            "type": "string"
+          },
+          "gateId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "logPath": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "passed",
+              "failed",
+              "skipped",
+              "external_failure"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "gateId",
+          "label",
+          "command",
+          "blocking",
+          "status",
+          "startedAt",
+          "finishedAt",
+          "durationSeconds",
+          "exitCode",
+          "outcome"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "reviewId": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "pending",
+        "running",
+        "completed"
+      ],
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifactType",
+    "schemaVersion",
+    "reviewId",
+    "status",
+    "createdAt",
+    "updatedAt",
+    "gates"
+  ],
+  "title": "Gate Report",
+  "type": "object"
+}

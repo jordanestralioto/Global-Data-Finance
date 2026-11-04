@@ -1,0 +1,73 @@
+{
+  "reviewRequired": [
+    {
+      "profile": "high-risk",
+      "reason": "Perfil high-risk exige review obrigatorio."
+    },
+    {
+      "profile": "ui-flow",
+      "reason": "Fluxo UI critico pede review final."
+    },
+    {
+      "profile": "security-touch",
+      "reason": "Fluxo com toque de seguranca pede review final."
+    },
+    {
+      "pattern": "src/shared/types/**",
+      "reason": "Tipos compartilhados sao contrato publico."
+    },
+    {
+      "pattern": "src/app/store/**",
+      "reason": "Store global e contrato sensivel."
+    },
+    {
+      "pattern": "src/features/auth/**",
+      "reason": "Fluxo de auth alterado."
+    },
+    {
+      "pattern": "src/shared/api/**",
+      "reason": "Boundary de API alterada."
+    },
+    {
+      "pattern": ".agents/**",
+      "reason": "Harness de agents alterado."
+    }
+  ],
+  "schemaVersion": "1.0.0",
+  "securityRequired": [
+    {
+      "profile": "security-touch",
+      "reason": "Perfil security-touch exige security-engineer."
+    },
+    {
+      "pattern": "src/features/auth/**",
+      "reason": "Fluxo de autenticacao alterado."
+    },
+    {
+      "pattern": "src/shared/api/**",
+      "reason": "Boundary de autenticacao/API compartilhada alterada."
+    }
+  ],
+  "testerRecommended": [
+    {
+      "profile": "ui-flow",
+      "reason": "Fluxo UI pede validacao com browser real."
+    },
+    {
+      "pattern": "src/**/*.tsx",
+      "reason": "Componente visual alterado."
+    },
+    {
+      "pattern": "tests/frontend/e2e/**",
+      "reason": "Suite E2E alterada."
+    },
+    {
+      "pattern": "playwright.config.ts",
+      "reason": "Configuracao de browser alterada."
+    },
+    {
+      "pattern": "playwright.simulated.config.ts",
+      "reason": "Configuracao de browser alterada."
+    }
+  ]
+}

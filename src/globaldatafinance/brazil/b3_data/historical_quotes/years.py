@@ -68,7 +68,10 @@ class YearRangeB3:
 
     def __repr__(self) -> str:
         """Return a detailed string representation for debugging."""
-        return f'YearRangeB3(initial_year={self.initial_year}, last_year={self.last_year})'
+        return (
+            f'YearRangeB3(initial_year={self.initial_year}, '
+            f'last_year={self.last_year})'
+        )
 
 
 class YearValidationServiceB3:

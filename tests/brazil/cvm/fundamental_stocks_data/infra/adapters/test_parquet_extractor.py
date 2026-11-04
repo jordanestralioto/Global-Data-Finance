@@ -1,132 +1,178 @@
-import zipfile
+"""Public CVM ZIP extraction through the source-owned Arrow pipeline."""
 
+from __future__ import annotations
+
+import hashlib
+import os
+import zipfile
+from pathlib import Path
+
+import pyarrow.parquet as pq
 import pytest
 
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    ParquetExtractorAdapterCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion.extract import CvmParquetExtractor
 from globaldatafinance.macro_exceptions import (
     CorruptedZipError,
     ExtractionError,
+    PathIsNotDirectoryError,
+    PathPermissionError,
+    SecurityError,
 )
 
-
-@pytest.mark.unit
-class TestParquetExtractorInitialization:
-    def test_init_creates_extractor_adapter(self):
-        extractor = ParquetExtractorAdapterCVM()
-        assert extractor.extractor_adapter is not None
+pytestmark = pytest.mark.integration
 
 
-@pytest.mark.unit
-class TestParquetExtractorErrorHandling:
-    def test_extract_raises_error_on_nonexistent_zip(self, tmp_path):
-        extractor = ParquetExtractorAdapterCVM()
-        zip_path = tmp_path / 'nonexistent.zip'
-
-        with pytest.raises(ExtractionError):
-            extractor.extract(str(zip_path), str(tmp_path))
-
-    def test_extract_raises_corrupted_zip_error(self, tmp_path):
-        extractor = ParquetExtractorAdapterCVM()
-        zip_path = tmp_path / 'corrupted.zip'
-        zip_path.write_text('Not a ZIP')
-
-        with pytest.raises(CorruptedZipError):
-            extractor.extract(str(zip_path), str(tmp_path))
-
-    def test_extract_wraps_unexpected_exception(self, tmp_path, monkeypatch):
-        extractor = ParquetExtractorAdapterCVM()
-        zip_path = tmp_path / 'test.zip'
-
-        with zipfile.ZipFile(zip_path, 'w') as zf:
-            zf.writestr('test.csv', 'col1;col2\n1;2\n')
-
-        def mock_extract(*args):
-            raise RuntimeError('Unexpected error')
-
-        monkeypatch.setattr(
-            extractor,
-            '_ParquetExtractorAdapterCVM__extract_with_transaction',
-            mock_extract,
-        )
-
-        with pytest.raises(ExtractionError) as exc_info:
-            extractor.extract(str(zip_path), str(tmp_path))
-
-        assert 'Unexpected extraction error' in str(exc_info.value)
-        assert 'RuntimeError' in str(exc_info.value)
+def _archive(path: Path, members: dict[str, bytes | str]) -> None:
+    """Create a small CVM ZIP fixture with explicit archive member names."""
+    with zipfile.ZipFile(path, 'w') as zip_file:
+        for name, contents in members.items():
+            zip_file.writestr(name, contents)
 
 
-@pytest.mark.unit
-class TestParquetExtractorSuccessfulExtraction:
-    def test_extract_real_zip_file(self, tmp_path):
-        zip_path = tmp_path / 'test_data.zip'
+def test_public_extractor_publishes_one_or_more_arrow_outputs(
+    tmp_path: Path,
+) -> None:
+    """Normal extraction preserves basename-only names and logical values."""
+    archive = tmp_path / 'documents.zip'
+    _archive(
+        archive,
+        {
+            'nested/first.csv': b'code;value\n1;10\n',
+            'second.csv': b'code;value\n2;20\n',
+        },
+    )
 
-        csv_content = 'col1;col2;col3\n1;2;3\n4;5;6\n'
+    CvmParquetExtractor().extract(str(archive), str(tmp_path))
 
-        with zipfile.ZipFile(zip_path, 'w') as zf:
-            zf.writestr('test.csv', csv_content)
-
-        extractor = ParquetExtractorAdapterCVM()
-        extractor.extract(str(zip_path), str(tmp_path))
-
-        parquet_files = list(tmp_path.glob('*.parquet'))
-        assert len(parquet_files) == 1
-        assert parquet_files[0].name == 'test.parquet'
-
-    def test_extract_multiple_csv_files(self, tmp_path):
-        zip_path = tmp_path / 'multi_data.zip'
-
-        with zipfile.ZipFile(zip_path, 'w') as zf:
-            for i in range(3):
-                csv_content = f'col1;col2\n{i};{i + 1}\n'
-                zf.writestr(f'test_{i}.csv', csv_content)
-
-        extractor = ParquetExtractorAdapterCVM()
-        extractor.extract(str(zip_path), str(tmp_path))
-
-        parquet_files = list(tmp_path.glob('*.parquet'))
-        assert len(parquet_files) == 3
-
-    def test_extract_nonexistent_zip_raises_error(self, tmp_path):
-        extractor = ParquetExtractorAdapterCVM()
-        nonexistent_zip = tmp_path / 'nonexistent.zip'
-
-        with pytest.raises(ExtractionError):
-            extractor.extract(str(nonexistent_zip), str(tmp_path))
-
-    def test_extract_empty_zip(self, tmp_path):
-        zip_path = tmp_path / 'empty.zip'
-
-        with zipfile.ZipFile(zip_path, 'w'):
-            pass
-
-        extractor = ParquetExtractorAdapterCVM()
-        extractor.extract(str(zip_path), str(tmp_path))
-
-        parquet_files = list(tmp_path.glob('*.parquet'))
-        assert len(parquet_files) == 0
-
-    def test_extract_zip_with_non_csv_files(self, tmp_path):
-        zip_path = tmp_path / 'mixed.zip'
-
-        with zipfile.ZipFile(zip_path, 'w') as zf:
-            zf.writestr('data.csv', 'col1;col2\n1;2\n')
-            zf.writestr('readme.txt', 'This is a readme')
-            zf.writestr('image.png', b'\x89PNG\r\n')
-
-        extractor = ParquetExtractorAdapterCVM()
-        extractor.extract(str(zip_path), str(tmp_path))
-
-        parquet_files = list(tmp_path.glob('*.parquet'))
-        assert len(parquet_files) == 1
-        assert parquet_files[0].name == 'data.parquet'
+    first = tmp_path / 'first.parquet'
+    second = tmp_path / 'second.parquet'
+    assert pq.read_table(first).to_pylist() == [{'code': '1', 'value': '10'}]
+    assert pq.read_table(second).to_pylist() == [{'code': '2', 'value': '20'}]
+    assert not list(tmp_path.glob('.globaldatafinance-transaction-*'))
+    assert not (tmp_path / '.globaldatafinance-transaction.lock').exists()
 
 
-@pytest.mark.unit
-class TestParquetExtractorFileExtractorInterface:
-    def test_implements_extract_method(self):
-        extractor = ParquetExtractorAdapterCVM()
-        assert hasattr(extractor, 'extract')
-        assert callable(extractor.extract)
+def test_public_extractor_accepts_a_header_only_csv(tmp_path: Path) -> None:
+    """A header-only source is a successful empty Parquet publication."""
+    archive = tmp_path / 'documents.zip'
+    _archive(archive, {'empty.csv': b'code;value\n'})
+
+    CvmParquetExtractor().extract(str(archive), str(tmp_path))
+
+    parquet = pq.ParquetFile(tmp_path / 'empty.parquet')
+    assert parquet.metadata.num_rows == 0
+    assert parquet.schema_arrow.names == ['code', 'value']
+
+
+def test_source_failure_leaves_old_outputs_and_zip_byte_for_byte_unchanged(
+    tmp_path: Path,
+) -> None:
+    """A later malformed member cannot partially replace an existing batch."""
+    archive = tmp_path / 'documents.zip'
+    _archive(
+        archive,
+        {
+            'a_good.csv': b'code;value\n1;10\n',
+            'z_bad.csv': b'code;value\n2;20;30\n',
+        },
+    )
+    old_output = tmp_path / 'a_good.parquet'
+    old_output.write_bytes(b'old output bytes')
+    old_hash = hashlib.sha256(old_output.read_bytes()).hexdigest()
+    source_hash = hashlib.sha256(archive.read_bytes()).hexdigest()
+
+    with pytest.raises(ExtractionError, match='observed_fields=3'):
+        CvmParquetExtractor().extract(str(archive), str(tmp_path))
+
+    assert hashlib.sha256(old_output.read_bytes()).hexdigest() == old_hash
+    assert hashlib.sha256(archive.read_bytes()).hexdigest() == source_hash
+    assert not (tmp_path / 'z_bad.parquet').exists()
+    assert not list(tmp_path.glob('.globaldatafinance-transaction-*'))
+
+
+def test_corrupted_or_empty_archives_never_create_outputs(
+    tmp_path: Path,
+) -> None:
+    """Source corruption is diagnosed before a transaction opens staging."""
+    corrupted = tmp_path / 'corrupted.zip'
+    corrupted.write_text('not a ZIP', encoding='utf-8')
+    empty = tmp_path / 'empty.zip'
+    _archive(empty, {})
+
+    with pytest.raises(CorruptedZipError):
+        CvmParquetExtractor().extract(str(corrupted), str(tmp_path))
+    with pytest.raises(ExtractionError, match='does not contain any CSV'):
+        CvmParquetExtractor().extract(str(empty), str(tmp_path))
+
+    assert not list(tmp_path.glob('*.parquet'))
+
+
+def test_unsafe_destination_is_rejected_before_creating_transaction_state(
+    tmp_path: Path,
+) -> None:
+    """Caller paths outside the approved safety policy remain blocked."""
+    archive = tmp_path / 'documents.zip'
+    _archive(archive, {'source.csv': b'code;value\n1;10\n'})
+
+    with pytest.raises(SecurityError):
+        CvmParquetExtractor().extract(str(archive), '/')
+
+    assert not list(tmp_path.glob('.globaldatafinance-transaction-*'))
+
+
+@pytest.mark.parametrize(
+    ('destination_kind', 'message'),
+    [('missing', 'does not exist'), ('file', 'is a file')],
+)
+def test_public_extractor_preserves_destination_kind_error(
+    tmp_path: Path,
+    destination_kind: str,
+    message: str,
+) -> None:
+    """Missing and regular-file destinations retain distinct diagnostics."""
+    archive = tmp_path / 'documents.zip'
+    _archive(archive, {'source.csv': b'code;value\n1;10\n'})
+    destination = tmp_path / destination_kind
+    if destination_kind == 'file':
+        destination.write_text('not a directory', encoding='utf-8')
+
+    with pytest.raises(PathIsNotDirectoryError, match=message):
+        CvmParquetExtractor().extract(str(archive), str(destination))
+
+    assert not list(tmp_path.glob('.globaldatafinance-transaction-*'))
+
+
+def test_public_extractor_preserves_destination_permission_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An unwritable destination remains a typed public extraction error."""
+    archive = tmp_path / 'documents.zip'
+    _archive(archive, {'source.csv': b'code;value\n1;10\n'})
+    destination = tmp_path / 'destination'
+    destination.mkdir()
+    monkeypatch.setattr(os, 'access', lambda *_args: False)
+
+    with pytest.raises(PathPermissionError, match='Permission denied'):
+        CvmParquetExtractor().extract(str(archive), str(destination))
+
+    assert not list(destination.glob('.globaldatafinance-transaction-*'))
+
+
+def test_basename_collisions_are_rejected_before_writing_a_parquet(
+    tmp_path: Path,
+) -> None:
+    """Two archive members cannot overwrite one output by path coincidence."""
+    archive = tmp_path / 'documents.zip'
+    _archive(
+        archive,
+        {
+            'first/data.csv': b'code\n1\n',
+            'second/data.csv': b'code\n2\n',
+        },
+    )
+
+    with pytest.raises(ExtractionError, match='collide'):
+        CvmParquetExtractor().extract(str(archive), str(tmp_path))
+
+    assert not list(tmp_path.glob('*.parquet'))

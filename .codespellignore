@@ -1,0 +1,44 @@
+# Words codespell must not "correct".
+#
+# This project ships bilingual docs (pt-BR + en) and Portuguese identifiers,
+# so many valid Portuguese words collide with English typo patterns
+# (nome -> gnome, erro -> error, classe -> class, ...). Keep this list
+# alphabetical and add only real false positives.
+alternar
+anual
+argumentos
+atual
+autor
+auxiliar
+caracteres
+classe
+cliente
+comando
+comandos
+comercial
+componentes
+erro
+erros
+essencial
+excede
+extrator
+implemente
+inicial
+instale
+leve
+limite
+nome
+nomes
+oficial
+potencial
+profissional
+repete
+separe
+sequencial
+ser
+termo
+utiliza
+variante
+vai
+# Deliberate spelling in parser error messages (codespell prefers "unparsable").
+unparseable

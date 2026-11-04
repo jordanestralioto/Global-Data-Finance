@@ -4,8 +4,10 @@ This module provides senior-level formatting for download results,
 displaying successful and failed downloads in an organized manner.
 
 Example:
-    >>> from globaldatafinance.application.cvm_docs.download_result_formatter import DownloadResultFormatter
-    >>> from globaldatafinance.brazil.cvm.fundamental_stocks_data import DownloadResultCVM
+    >>> from globaldatafinance.application.cvm_docs import \
+    ...     DownloadResultFormatter
+    >>> from globaldatafinance.brazil.cvm.ingestion.models import \
+    ...     DownloadResultCVM
     >>>
     >>> result = DownloadResultCVM()
     >>> result.add_success_downloads("DFP_2023")
@@ -15,7 +17,7 @@ Example:
     >>> formatter.print_result(result)
 """
 
-from ...brazil.cvm.fundamental_stocks_data import DownloadResultCVM
+from ...brazil.cvm.ingestion.models import DownloadResultCVM
 
 
 class DownloadResultFormatter:
@@ -39,8 +41,7 @@ class DownloadResultFormatter:
     RESET = '\033[0m'
 
     def __init__(self, use_colors: bool = True) -> None:
-        """
-        Initializes the formatter.
+        """Initializes the formatter.
 
         Args:
             use_colors: Whether to use ANSI color codes in the output.
@@ -49,8 +50,7 @@ class DownloadResultFormatter:
         self.use_colors = use_colors
 
     def _colorize(self, text: str, color: str) -> str:
-        """
-        Applies color to text if colors are enabled.
+        """Applies color to text if colors are enabled.
 
         Args:
             text: The text to colorize.
@@ -64,8 +64,7 @@ class DownloadResultFormatter:
         return f'{color}{text}{self.RESET}'
 
     def format_result(self, result: DownloadResultCVM) -> str:
-        """
-        Formats the download result with a smart layout.
+        """Formats the download result with a smart layout.
 
         It shows only relevant sections:
         - If there are failures, it displays the failures section only.
@@ -154,12 +153,17 @@ class DownloadResultFormatter:
         total = result.success_count_downloads + result.error_count_downloads
         lines.append(self._colorize('📊 Summary:', self.BOLD))
         lines.append(f'  • Total files: {total}')
-        lines.append(
-            f'  • Success: {self._colorize(str(result.success_count_downloads), self.GREEN)}'
+        success_count = self._colorize(
+            str(result.success_count_downloads), self.GREEN
         )
-        lines.append(
-            f'  • Errors: {self._colorize(str(result.error_count_downloads), self.RED if result.error_count_downloads > 0 else self.RESET)}'
+        error_color = (
+            self.RED if result.error_count_downloads > 0 else self.RESET
         )
+        error_count = self._colorize(
+            str(result.error_count_downloads), error_color
+        )
+        lines.append(f'  • Success: {success_count}')
+        lines.append(f'  • Errors: {error_count}')
         lines.append(f'  • Elapsed time: {result.elapsed_time:.1f}s')
 
         lines.append('')
@@ -168,7 +172,7 @@ class DownloadResultFormatter:
         if result.successful_downloads:
             lines.append(self._colorize('📁 Downloaded files:', self.BOLD))
             for item in result.successful_downloads:
-                # Clean up item name if needed (e.g., remove full path if present, though usually it's just doc_year)
+                # Item names are usually doc_year, but may include a path.
                 display_name = item.replace('_', ' - ')
                 lines.append(
                     f'  {self._colorize("✓", self.GREEN)} {display_name}'
@@ -188,8 +192,7 @@ class DownloadResultFormatter:
         return '\n'.join(lines)
 
     def print_result(self, result: DownloadResultCVM) -> None:
-        """
-        A convenience method to directly print the formatted result.
+        """A convenience method to directly print the formatted result.
 
         Args:
             result: The DownloadResultCVM object to print.

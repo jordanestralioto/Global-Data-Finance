@@ -1,9 +1,11 @@
+import pytest
+
 from globaldatafinance.application.cvm_docs.download_result_formatter import (
     DownloadResultFormatter,
 )
-from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    DownloadResultCVM,
-)
+from globaldatafinance.brazil.cvm.ingestion.models import DownloadResultCVM
+
+pytestmark = pytest.mark.unit
 
 
 class TestDownloadResultFormatter:

@@ -1,7 +1,7 @@
 """Tests for the async download surface added in Phase 5.
 
 Covers the three layers of the async path:
-- adapter ``AsyncDownloadAdapterCVM.async_download_docs`` (+ the sync
+- adapter ``CvmDownloadAdapter.async_download_docs`` (+ the sync
   ``download_docs`` wrapper),
 - orchestrator ``DownloadDocumentsUseCaseCVM.execute_async``,
 - facade ``FundamentalStocksDataCVM.async_download``.
@@ -13,15 +13,17 @@ import pytest
 
 from globaldatafinance import FundamentalStocksDataCVM
 from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
-    AsyncDownloadAdapterCVM,
     DownloadDocumentsUseCaseCVM,
-    DownloadResultCVM,
     InvalidDocumentName,
 )
+from globaldatafinance.brazil.cvm.ingestion.http import CvmDownloadAdapter
+from globaldatafinance.brazil.cvm.ingestion.models import DownloadResultCVM
+
+pytestmark = pytest.mark.unit
 
 
-def _make_adapter() -> AsyncDownloadAdapterCVM:
-    return AsyncDownloadAdapterCVM(file_extractor_repository=MagicMock())
+def _make_adapter() -> CvmDownloadAdapter:
+    return CvmDownloadAdapter(file_extractor_repository=MagicMock())
 
 
 @pytest.mark.asyncio
@@ -39,15 +41,25 @@ class TestAsyncDownloadDocsAdapter:
         adapter = _make_adapter()
 
         async def fake_download_and_extract(
-            url, dest_path, doc_name, year, result, progress_bar, **kwargs
+            _url, _dest_path, doc_name, year, result, _progress_bar, **_kwargs
         ):
             result.add_success_downloads(f'{doc_name}_{year}')
 
         adapter._download_and_extract = fake_download_and_extract
 
         tasks = [
-            ('https://example.com/dfp_2020.zip', 'DFP', '2020', '/tmp/out'),
-            ('https://example.com/dfp_2021.zip', 'DFP', '2021', '/tmp/out'),
+            (
+                'https://example.com/dfp_2020.zip',
+                'DFP',
+                '2020',
+                'test-data/out',
+            ),
+            (
+                'https://example.com/dfp_2021.zip',
+                'DFP',
+                '2021',
+                'test-data/out',
+            ),
         ]
 
         result = await adapter.async_download_docs(tasks)
@@ -61,7 +73,7 @@ class TestAsyncDownloadDocsAdapter:
         assert adapter.automatic_extractor is False
 
         adapter._run_downloads = AsyncMock()
-        tasks = [('https://example.com/x.zip', 'DFP', '2020', '/tmp/out')]
+        tasks = [('https://example.com/x.zip', 'DFP', '2020', 'test-data/out')]
 
         await adapter.async_download_docs(tasks, automatic_extractor=True)
 
@@ -72,12 +84,12 @@ class TestAsyncDownloadDocsAdapter:
         )
 
     async def test_automatic_extractor_defaults_to_attribute(self):
-        adapter = AsyncDownloadAdapterCVM(
+        adapter = CvmDownloadAdapter(
             file_extractor_repository=MagicMock(),
             automatic_extractor=True,
         )
         adapter._run_downloads = AsyncMock()
-        tasks = [('https://example.com/x.zip', 'DFP', '2020', '/tmp/out')]
+        tasks = [('https://example.com/x.zip', 'DFP', '2020', 'test-data/out')]
 
         await adapter.async_download_docs(tasks)
 
@@ -117,6 +129,7 @@ class _FakeAsyncRepository:
     async def async_download_docs(
         self, tasks, *, automatic_extractor=False
     ) -> DownloadResultCVM:
+        _ = tasks
         self.called = True
         self.received_automatic_extractor = automatic_extractor
         return self.result
@@ -161,6 +174,7 @@ class TestExecuteAsyncOrchestrator:
             async def async_download_docs(
                 self, tasks, *, automatic_extractor=False
             ):
+                _ = tasks, automatic_extractor
                 raise RuntimeError('async download failed')
 
         use_case = DownloadDocumentsUseCaseCVM(ErrorRepository())

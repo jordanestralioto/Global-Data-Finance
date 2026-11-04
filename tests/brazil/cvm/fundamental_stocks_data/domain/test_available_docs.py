@@ -3,6 +3,7 @@ import pytest
 from globaldatafinance.brazil.cvm.fundamental_stocks_data import (
     InvalidDocumentName,
     InvalidDocumentType,
+    core,
 )
 from globaldatafinance.brazil.cvm.fundamental_stocks_data.core import (
     get_available_docs,
@@ -13,6 +14,14 @@ from globaldatafinance.brazil.cvm.fundamental_stocks_data.core import (
 
 @pytest.mark.unit
 class TestAvailableDocs:
+    def test_registered_document_without_url_fails_explicitly(
+        self, monkeypatch
+    ):
+        """An incomplete registry cannot silently drop a selected document."""
+        monkeypatch.delitem(core._DICT_URL_DOCS, 'DFP')
+        with pytest.raises(ValueError, match="No URL available for doc 'DFP'"):
+            get_url_docs(['DFP'])
+
     def test_get_available_docs_returns_dict(self):
         docs = get_available_docs()
         assert isinstance(docs, dict)
@@ -44,24 +53,20 @@ class TestAvailableDocs:
             assert key.isupper()
 
     def test_validate_docs_name_with_valid_doc_uppercase(self):
-        validate_docs_name('DFP')
-        validate_docs_name('ITR')
-        validate_docs_name('FRE')
+        for doc_name in ('DFP', 'ITR', 'FRE'):
+            assert validate_docs_name(doc_name) is None
 
     def test_validate_docs_name_with_valid_doc_lowercase(self):
-        validate_docs_name('dfp')
-        validate_docs_name('itr')
-        validate_docs_name('fre')
+        for doc_name in ('dfp', 'itr', 'fre'):
+            assert validate_docs_name(doc_name) is None
 
     def test_validate_docs_name_with_valid_doc_mixed_case(self):
-        validate_docs_name('DfP')
-        validate_docs_name('ItR')
-        validate_docs_name('FrE')
+        for doc_name in ('DfP', 'ItR', 'FrE'):
+            assert validate_docs_name(doc_name) is None
 
     def test_validate_docs_name_with_spaces(self):
-        validate_docs_name('  DFP  ')
-        validate_docs_name(' ITR ')
-        validate_docs_name('FRE   ')
+        for doc_name in ('  DFP  ', ' ITR ', 'FRE   '):
+            assert validate_docs_name(doc_name) is None
 
     def test_validate_docs_name_with_invalid_doc_name(self):
         with pytest.raises(InvalidDocumentName) as exc_info:
@@ -101,8 +106,11 @@ class TestAvailableDocs:
 
     def test_validate_all_available_docs(self):
         docs = get_available_docs()
-        for doc_name in docs:
-            validate_docs_name(doc_name)
+        validation_results = [
+            validate_docs_name(doc_name) for doc_name in docs
+        ]
+
+        assert validation_results == [None] * len(docs)
 
     def test_doc_descriptions_not_empty(self):
         docs = get_available_docs()
@@ -129,19 +137,19 @@ class TestUrlDocs:
         assert len(set_docs) == 7
 
     def test_get_url_docs_returns_list_of_strings(self):
-        urls, set_docs = get_url_docs()
+        urls, _set_docs = get_url_docs()
 
         for url in urls.values():
             assert isinstance(url, str)
 
     def test_get_url_docs_urls_start_with_https(self):
-        urls, set_docs = get_url_docs()
+        urls, _set_docs = get_url_docs()
 
         for url in urls.values():
             assert url.startswith('https://')
 
     def test_get_url_docs_urls_contain_cvm_domain(self):
-        urls, set_docs = get_url_docs()
+        urls, _set_docs = get_url_docs()
 
         for url in urls.values():
             assert 'dados.cvm.gov.br' in url
@@ -190,9 +198,10 @@ class TestUrlDocs:
         with pytest.raises(InvalidDocumentName):
             get_url_docs(['INVALID_DOC'])
 
-    def test_get_url_docs_with_non_list_parameter(self):
+    @pytest.mark.parametrize('list_docs', ['DFP', (), '', 0, False])
+    def test_get_url_docs_with_non_list_parameter(self, list_docs):
         with pytest.raises(TypeError) as exc_info:
-            get_url_docs('DFP')
+            get_url_docs(list_docs)
 
         assert 'list_docs must be a list of strings or None' in str(
             exc_info.value
@@ -211,6 +220,12 @@ class TestUrlDocs:
 
         assert isinstance(urls, dict)
         assert isinstance(set_docs, set)
+        assert len(urls) == 7
+        assert len(set_docs) == 7
+
+    def test_get_url_docs_with_none_selects_all_docs(self):
+        urls, set_docs = get_url_docs(None)
+
         assert len(urls) == 7
         assert len(set_docs) == 7
 
@@ -277,7 +292,7 @@ class TestUrlDocs:
         assert 'vlmo_cia_aberta_' in urls_vlmo['VLMO']
 
     def test_get_url_docs_urls_end_correctly(self):
-        urls, set_docs = get_url_docs(['DFP'])
+        urls, _set_docs = get_url_docs(['DFP'])
 
         assert urls['DFP'].endswith('_')
 

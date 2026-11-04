@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "affectedFiles": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "artifactType": {
+      "const": "security-handoff"
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "evidenceIds": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "gateSummary": {
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "requestedBy": {
+      "type": "string"
+    },
+    "reviewId": {
+      "type": "string"
+    },
+    "reviewSummary": {
+      "type": "string"
+    },
+    "reviewedBy": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "pending",
+        "in_review",
+        "cleared",
+        "changes_required",
+        "waived"
+      ],
+      "type": "string"
+    },
+    "targetAgent": {
+      "type": "string"
+    },
+    "updatedAt": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifactType",
+    "schemaVersion",
+    "reviewId",
+    "status",
+    "createdAt",
+    "updatedAt",
+    "targetAgent",
+    "requestedBy",
+    "reason",
+    "affectedFiles",
+    "evidenceIds",
+    "gateSummary"
+  ],
+  "title": "Security Handoff",
+  "type": "object"
+}

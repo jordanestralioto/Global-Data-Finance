@@ -1,39 +1,35 @@
-"""Example 01: Quickstart with CVM (DFP Financial Statements).
+"""Download CVM documents. Edit the SETTINGS block, then run this file."""
 
-This example demonstrates how to download and extract standardized financial
-statements (DFP) for Brazilian public companies directly into Parquet format.
-"""
+from typing import TYPE_CHECKING
 
-import sys
-from pathlib import Path
-
-# Ensure examples import active repository code (src/) rather than installed package
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'src'))
+if TYPE_CHECKING or __package__:
+    from examples import support
+else:
+    import support
 
 from globaldatafinance import FundamentalStocksDataCVM
 
+# SETTINGS: change the values here. The README explains each option.
+INITIAL_YEAR = 2010
+LAST_YEAR = 2026
+DESTINATION_PATH = './dados_cvm'
+DOCUMENTS: list[str] = []  # All types; use ['DFP'] for annual statements.
+AUTOMATIC_EXTRACTOR = True  # Set True to also convert the ZIPs to Parquet.
+
 
 def main() -> None:
-    # 1. Initialize the CVM public facade
+    """Run the CVM quickstart example."""
     cvm = FundamentalStocksDataCVM()
-
-    output_dir = './dados_cvm'
-
-    # 2. Execute download with automatic conversion to Parquet
-    print('Starting CVM DFP data download and extraction...')
-    resultado = cvm.download(
-        destination_path=output_dir,
-        list_docs=['DFP'],
-        initial_year=2023,
-        last_year=2023,
-        automatic_extractor=True,
+    print('Starting CVM download...')
+    result = cvm.download(
+        destination_path=DESTINATION_PATH,
+        list_docs=DOCUMENTS,
+        initial_year=INITIAL_YEAR,
+        last_year=LAST_YEAR,
+        automatic_extractor=AUTOMATIC_EXTRACTOR,
     )
-
-    # 3. Display final result
-    print('✓ Download completed successfully!')
-    print(f'  Parquet files directory: {output_dir}')
-    print(f'  Downloaded files count: {resultado.success_count_downloads}')
+    support.print_cvm_summary(result, destination_path=DESTINATION_PATH)
 
 
 if __name__ == '__main__':
-    main()
+    support.run_example(main)

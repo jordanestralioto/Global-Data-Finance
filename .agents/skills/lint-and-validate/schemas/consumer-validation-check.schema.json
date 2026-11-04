@@ -1,0 +1,115 @@
+{
+  "$defs": {
+    "diagnostic": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "item": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "error",
+            "warning"
+          ]
+        },
+        "validatorId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "item",
+        "validatorId",
+        "code",
+        "message",
+        "severity"
+      ],
+      "type": "object"
+    },
+    "snapshotCheck": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "diagnostics": {
+              "items": {
+                "$ref": "#/$defs/diagnostic"
+              },
+              "type": "array"
+            },
+            "exitCode": {
+              "const": 0
+            },
+            "status": {
+              "const": "current"
+            }
+          },
+          "required": [
+            "status",
+            "exitCode",
+            "diagnostics"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "diagnostics": {
+              "items": {
+                "$ref": "#/$defs/diagnostic"
+              },
+              "type": "array"
+            },
+            "exitCode": {
+              "const": 1
+            },
+            "status": {
+              "enum": [
+                "missing",
+                "invalid",
+                "stale",
+                "not-evaluated"
+              ]
+            }
+          },
+          "required": [
+            "status",
+            "exitCode",
+            "diagnostics"
+          ],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$id": "consumer-validation-check.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "mode": {
+      "const": "check-result"
+    },
+    "schemaVersion": {
+      "const": "consumer-validation-check-v1"
+    },
+    "snapshotCheck": {
+      "$ref": "#/$defs/snapshotCheck"
+    },
+    "validation": {
+      "$ref": "consumer-validation-result.schema.json"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "mode",
+    "validation",
+    "snapshotCheck"
+  ],
+  "title": "Consumer Validation Check",
+  "type": "object"
+}
