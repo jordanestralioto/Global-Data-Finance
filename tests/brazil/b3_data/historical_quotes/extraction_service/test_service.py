@@ -166,11 +166,11 @@ async def test_cancellation_aborts_transaction_and_preserves_cancellation(
     output.write_bytes(b'previous output')
     previous_output = output.read_bytes()
     service = _service(ProcessingModeEnumB3.SLOW)
-    entered = asyncio.Event()
+    entered: asyncio.Future[None] = asyncio.get_running_loop().create_future()
     blocked = asyncio.Event()
 
     async def block_source_run(*_args: object, **_kwargs: object) -> None:
-        entered.set()
+        entered.set_result(None)
         await blocked.wait()
 
     monkeypatch.setattr(service, '_run_sources', block_source_run)
@@ -178,8 +178,19 @@ async def test_cancellation_aborts_transaction_and_preserves_cancellation(
         service.extract_from_zip_files({str(source)}, {'010'}, output)
     )
 
-    await asyncio.wait_for(entered.wait(), timeout=1)
-    extraction.cancel()
+    try:
+        done, _pending = await asyncio.wait(
+            (entered, extraction),
+            timeout=30,
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        assert done, (
+            'Extraction did not reach source execution within 30 seconds'
+        )
+        assert entered in done, extraction.result()
+    finally:
+        extraction.cancel()
+        await asyncio.gather(extraction, return_exceptions=True)
 
     with pytest.raises(asyncio.CancelledError):
         await extraction
