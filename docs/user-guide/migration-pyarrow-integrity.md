@@ -54,6 +54,16 @@ publicação a partir do evento de release publicada. A versão, tag e publicaç
 devem aguardar a aprovação das evidências de aceitação; este texto não afirma
 que a release já foi publicada.
 
+**Requisitos de dependências da próxima release:**
+
+- PyArrow: `>=26.0.0,<27.0.0`.
+- psutil: `>=7.2.2,<8.0.0`.
+- pydantic-settings: `>=2.16.1,<3.0.0`.
+
+O lock de desenvolvimento também atualiza `virtualenv` para `21.14.13`,
+corrigindo o [GHSA-cx6f-vjhg-g3cc](https://github.com/advisories/GHSA-cx6f-vjhg-g3cc)
+na ativação de ambientes Bash. Essa dependência é usada pelo `pre-commit`.
+
 **Mudanças incompatíveis do contrato COTAHIST:**
 
 - A seleção padrão agora preserva todas as cotações `01`, incluindo TPMERC

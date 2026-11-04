@@ -40,7 +40,7 @@ existing outputs. A supplied extractor owns its writes and transaction; the
 later check detects violations but does not undo arbitrary side effects.
 
 Callers prepare destinations and follow the
-[inventory contract](../../../../../docs/user-guide/migration-cvm-exact-text.en.md#output-inventory)
+[inventory contract](https://jordanestralioto.github.io/Global-Data-Finance/en/user-guide/migration-cvm-exact-text/#output-inventory)
 for existing files. The company facade validates and prepares destinations for
 its operations.
 
@@ -49,4 +49,4 @@ its operations.
 `tests/brazil/cvm/ingestion/` covers shared mechanics and reuse by an independent
 synthetic family. Regressions preserve public facades and current data integrity.
 An import contract forbids this package from depending on the company family.
-See the [ownership decision](../../../../../docs/decisions/cvm-ingestion-ownership.en.md).
+See the [ownership decision](https://jordanestralioto.github.io/Global-Data-Finance/en/decisions/cvm-ingestion-ownership/).

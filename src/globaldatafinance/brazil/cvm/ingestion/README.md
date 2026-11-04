@@ -40,7 +40,7 @@ existentes. O extrator fornecido responde por suas escritas e transação; a
 verificação posterior detecta violações, mas não desfaz efeitos arbitrários.
 
 O chamador prepara os destinos e segue o
-[contrato de inventário](../../../../../docs/user-guide/migration-cvm-exact-text.md#inventario-das-saidas)
+[contrato de inventário](https://jordanestralioto.github.io/Global-Data-Finance/user-guide/migration-cvm-exact-text/#inventario-das-saidas)
 para arquivos existentes. A facade de empresas valida e prepara os destinos
 das suas operações.
 
@@ -49,4 +49,4 @@ das suas operações.
 `tests/brazil/cvm/ingestion/` cobre os mecanismos comuns e o reúso por uma família
 sintética independente. As regressões preservam as facades e a integridade
 dos dados atuais. O contrato de imports impede dependência deste pacote na família de
-empresas. Veja a [decisão de ownership](../../../../../docs/decisions/cvm-ingestion-ownership.md).
+empresas. Veja a [decisão de ownership](https://jordanestralioto.github.io/Global-Data-Finance/decisions/cvm-ingestion-ownership/).
