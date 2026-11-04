@@ -1,11 +1,14 @@
 ---
 # Keeps the supply chain current. GitHub Actions are pinned by commit SHA,
 # so Dependabot is the mechanism that moves those pins forward safely.
+# GitHub reads this file from main; promote it there to activate the targets.
+# Security updates continue to target the default branch.
 version: 2
 
 updates:
   - package-ecosystem: github-actions
     directory: /
+    target-branch: develop
     schedule:
       interval: weekly
     # Wait out the window in which a compromised release is usually caught.
@@ -20,6 +23,7 @@ updates:
 
   - package-ecosystem: uv
     directory: /
+    target-branch: develop
     schedule:
       interval: weekly
     # Wait out the window in which a compromised release is usually caught.
