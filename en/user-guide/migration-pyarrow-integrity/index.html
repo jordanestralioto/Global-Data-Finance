@@ -29,7 +29,7 @@
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
     
     
       
@@ -37,10 +37,10 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.57a0d79d.min.css">
       
         
-        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.fb2fffe2.min.css">
       
       
 
@@ -2046,6 +2046,15 @@ configuration.</p>
 existing <code>.github/workflows/publish.yml</code> runs gates and publication from the<br />
 published-release event. Version, tag, and publication must await approval of<br />
 the acceptance evidence; this draft does not claim a release was published.</p>
+<p><strong>Dependency requirements for the next release:</strong></p>
+<ul>
+<li>PyArrow: <code>&gt;=26.0.0,&lt;27.0.0</code>.</li>
+<li>psutil: <code>&gt;=7.2.2,&lt;8.0.0</code>.</li>
+<li>pydantic-settings: <code>&gt;=2.16.1,&lt;3.0.0</code>.</li>
+</ul>
+<p>The development lock also updates <code>virtualenv</code> to <code>21.14.13</code>, fixing<br />
+<a href="https://github.com/advisories/GHSA-cx6f-vjhg-g3cc">GHSA-cx6f-vjhg-g3cc</a><br />
+in Bash environment activation. This dependency is used by <code>pre-commit</code>.</p>
 <p><strong>Breaking COTAHIST contract changes:</strong></p>
 <ul>
 <li>The default selection now preserves every type-<code>01</code> quotation, including<br />
@@ -2270,10 +2279,10 @@ and write-failure migration is documented in <a href="../migration-infrastructur
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["content.code.annotate", "content.code.copy", "content.tabs.link", "header.autohide", "navigation.sections", "navigation.tabs", "navigation.top", "navigation.tracking", "search.highlight", "search.share", "search.suggest", "toc.follow", "toc.integrate"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["content.code.annotate", "content.code.copy", "content.tabs.link", "header.autohide", "navigation.sections", "navigation.tabs", "navigation.top", "navigation.tracking", "search.highlight", "search.share", "search.suggest", "toc.follow", "toc.integrate"], "search": "../../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.c21346df.min.js"></script>
       
         <script src="../../../assets/javascripts/wide-toggle.js"></script>
       
