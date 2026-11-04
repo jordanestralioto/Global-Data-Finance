@@ -44,7 +44,7 @@ The orchestrator and facade use `ingestion.http.CvmDownloadAdapter`; results are
 
 ZIPs are retained. Fields remain text under `exact-text-v1`, and Parquet names
 match CSV basenames. Replacement and preservation of existing files follow the
-[inventory contract](../../../../../docs/user-guide/migration-cvm-exact-text.en.md#output-inventory).
+[inventory contract](https://jordanestralioto.github.io/Global-Data-Finance/en/user-guide/migration-cvm-exact-text/#output-inventory).
 
 ## Extension and validation
 
@@ -56,5 +56,5 @@ or financial schema requires its own decision.
 Company behavior tests remain under `tests/brazil/cvm/fundamental_stocks_data/`
 and `tests/application/cvm_docs/`. Shared mechanics and independent-consumer
 tests live under `tests/brazil/cvm/ingestion/`. See the
-[CVM API reference](../../../../../docs/reference/cvm-api.en.md) and
-[architecture guide](../../../../../docs/dev-guide/architecture.en.md).
+[CVM API reference](https://jordanestralioto.github.io/Global-Data-Finance/en/reference/cvm-api/) and
+[architecture guide](https://jordanestralioto.github.io/Global-Data-Finance/en/dev-guide/architecture/).
