@@ -288,6 +288,8 @@ repos:
             \.github/prompts/
           )
       - id: ruff-format
+        # Ruff 0.17 also formats Markdown code blocks; keep it on Python.
+        types_or: [python, pyi, jupyter]
         exclude: |
           (?x)^(
             \.agents/|
