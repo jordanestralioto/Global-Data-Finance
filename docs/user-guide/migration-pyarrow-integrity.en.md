@@ -55,7 +55,7 @@ the acceptance evidence; this draft does not claim a release was published.
 
 - PyArrow: `>=26.0.0,<27.0.0`.
 - psutil: `>=7.2.2,<8.0.0`.
-- pydantic-settings: `>=2.16.1,<3.0.0`.
+- pydantic-settings: `>=2.16.2,<3.0.0`.
 
 The development lock also updates `virtualenv` to `21.14.13`, fixing
 [GHSA-cx6f-vjhg-g3cc](https://github.com/advisories/GHSA-cx6f-vjhg-g3cc)
