@@ -4,6 +4,7 @@
 - session_status: ${status}
 - verdict: ${verdict}
 - progress: ${planProgress}
+- scope: ${scope}
 
 ## Changed Files
 

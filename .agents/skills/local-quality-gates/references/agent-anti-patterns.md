@@ -1,21 +1,29 @@
 # AI Coding Agent Anti-Patterns and Diff Sanity Guide
 
-> Summary: Comprehensive reference of common mistakes, shortcuts, and erosion patterns introduced by AI coding agents during refactoring or feature implementation, and how to intercept them locally.
+> Summary: Candidate patterns for local checks during agent-assisted development.
 
 The scanner rules below describe an optional strict profile. Select it only
 when the project's policy accepts its bans and Python runtime requirement;
 the portable workflow does not impose these rules on every stack.
+These lexical checks detect selected patterns, not intent, semantic correctness,
+or general resistance to reward hacking. They can miss equivalent constructs
+and report legitimate code. Local hooks require installation and execution;
+essential rules also need equivalent protected remote checks.
 
 ## 1. Catalog of AI Coding Agent Traps
 
 ### 1.1 Leftover Debug and Inspection Artifacts
 
-AI agents frequently insert statements to inspect runtime states and forget to remove them:
+Temporary inspection statements can remain in a change:
 
 - **Python**: `breakpoint()`, `import pdb; pdb.set_trace()`, raw `print()` statements in library/core code.
 - **JavaScript/TypeScript**: `debugger;`, `console.log(`, `console.dir(`.
 - **Rust**: `dbg!(...)`, `println!(...)` in production crates.
 - **Go**: `fmt.Println` in internal services without logger.
+
+Python prints have no automatic script-directory exemption. For intentional CLI
+output, configure each exact repository-relative path with `--allow-print-file`;
+that exception does not authorize other files or other debug patterns.
 
 ### 1.2 Unfulfilled Stubs and Placeholders
 
@@ -28,7 +36,7 @@ When generating broad scaffolds or completing functions hurriedly, agents may le
 
 ### 1.3 Erosion of Type Safety and Lint Disables
 
-To pass validation gates without fixing underlying contract issues, agents often silence compilers:
+Compiler and linter suppressions can hide unresolved contract issues:
 
 - `@ts-ignore`, `@ts-nocheck` or `@ts-expect-error` in executable TypeScript or configuration.
 - `# type: ignore` or `# noqa` in executable Python or configuration. The diff
@@ -46,6 +54,12 @@ When a test fails following an implementation change, agents sometimes weaken or
 - Inserting `.only` (e.g. `it.only(`, `describe.only(`) to run only one test and bypass failures elsewhere.
 - Adding `@pytest.mark.skip`, `@pytest.mark.xfail`, `it.skip()`, `xit()`.
 - Removing assertions (`assert`, `expect(...)`) or replacing specific assertions with tautologies (`expect(true).toBe(true)`).
+
+The assertion-reduction justification must exist in the staged file, including
+when it is outside the changed hunk. Working-tree-only reasons do not authorize
+the index. Git read failures are `ERROR`, not approval. The scanner counts
+matching assertion lines; replacing an assertion with a tautology may preserve
+the count and still requires native lint or semantic review.
 
 ### 1.5 Unsynchronized Dependency Changes
 

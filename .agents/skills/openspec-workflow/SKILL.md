@@ -3,9 +3,9 @@ name: openspec-workflow
 description: >-
   Use para executar workflows OpenSpec/OPSX pedidos pelo usuário ou decidir se
   uma mudança exige artefatos formais. Ative com "cria uma change", "faz
-  proposal/design/tasks", "valida spec", "sincroniza specs" ou "preciso mesmo de
-  OpenSpec?". Mencionar OpenSpec sem pedir o workflow aciona apenas triagem. Sem
-  pedido explícito, escolha o workflow só para contrato duradouro compartilhado,
+  proposal/design/tasks", "revisa uma change", "valida spec", "sincroniza specs"
+  ou "preciso mesmo de OpenSpec?". Mencionar OpenSpec sem pedir o workflow aciona
+  apenas triagem. Sem pedido explícito, escolha o workflow só para contrato duradouro compartilhado,
   múltiplos consumidores ou responsáveis independentes, rollout, rollback ou
   auditoria. Não use para bugs locais, planos simples ou revisão de skills sem
   contrato compartilhado.
@@ -16,8 +16,9 @@ description: >-
 ## Contrato
 
 - Os comandos e prompts do lifecycle OPSX são a fonte canônica do fluxo. Esta skill existe para roteamento e guardrails, não para duplicar o workflow inteiro.
-- O formato ativo padrão de uma change é `openspec/changes/<name>/` com `proposal.md`, `specs/<capability>/spec.md`, `design.md`, `tasks.md` e, quando existir, `.openspec.yaml`.
-- Arquivos soltos como `openspec/changes/*.md` devem ser tratados como artefatos legados ou especiais deste repositório, não como o modelo principal do workflow ativo.
+- O formato ativo padrão de uma change é `openspec/changes/<name>/` com `.openspec.yaml`, `proposal.md`, `specs/<capability>/spec.md`, `design.md` e `tasks.md`.
+- Changes novas exigem `decision_source` confirmado no manifesto. O envelope e os relatórios mecânico e semântico estão em `references/HANDOFF_STANDARD.md`.
+- Arquivos soltos como `openspec/changes/*.md` são artefatos legados ou especiais do consumidor, não o modelo principal do workflow ativo.
 - Para validação estrutural de specs do consumidor, use sempre `opsx validate --specs --strict`.
 - Quando o schema, o próximo artefato ou a ordem de execução não estiverem óbvios, consulte `opsx status --change "<name>" --json` e `opsx instructions <artifact-or-action> --change "<name>" --json` antes de orientar o usuário.
 - O bundle e lifecycle são validados com `opsx-handoff`, apenas quando a change estiver no estágio aplicável.
@@ -53,7 +54,7 @@ substitui as autorizações próprias de `apply`, `sync` ou `archive`.
 
 ## Audiência dos artefatos
 
-Quem implementa uma change deste repositório é um desenvolvedor júnior que
+Escreva para um desenvolvedor júnior no repositório consumidor, que
 tem `AGENTS.md` e os documentos linkados a partir dele — e mais nada. Sem
 contato prévio com o código e sem conhecimento do domínio no negócio. Ele
 não infere intenção, não distingue restrição deliberada de acidente
@@ -76,11 +77,10 @@ Consequências operacionais em toda rota que escreve artefato (`new`,
 
 - O padrão de autoria completo está em `references/HANDOFF_STANDARD.md`. Abra
   antes de escrever `proposal.md`, `spec.md`, `design.md` ou `tasks.md`.
-- `openspec/config.yaml` já injeta esse contrato nos campos `context` e
-  `rules` de toda chamada `opsx instructions`. Trate o que vier em
-  `rules` como obrigatório, não como sugestão de estilo.
-- Escreva os artefatos integralmente em inglês. Essa é a exceção canônica à
-  regra geral de documentação em português.
+- Quando o consumidor configura `context` e `rules` em `openspec/config.yaml`,
+  `opsx instructions` injeta esses campos. Trate as regras retornadas como
+  obrigatórias; a ausência do arquivo não injeta o contrato automaticamente.
+- Escreva os artefatos integralmente em inglês.
 - Em `continue`, rode `opsx-handoff --mode artifact --artifact <id> <change>` sobre o único artefato criado. Em `ff` e antes de `apply`, rode
   `opsx-handoff --mode bundle <change>` sobre o bundle completo.
 
@@ -93,6 +93,7 @@ A tabela abaixo vale somente depois que a decisão de rota adota OpenSpec.
 | Criar uma nova change, iniciar OPSX, pedir `/opsx:new`                                   | `opsx-new`        | Executar preflight spec check, pedir aprovação explícita e só então criar a change, mostrar o primeiro artefato `ready` e parar antes de gerar artefatos |
 | Continuar uma change, criar `proposal.md`, `design.md`, `tasks.md` ou o próximo artefato | `opsx-continue`   | Se o nome da change não vier no pedido, selecionar explicitamente a change, pedir aprovação e só então criar um único artefato `ready`                   |
 | Fast-forward, gerar artefatos até ficar apply-ready, pedir `/opsx:ff`                    | `opsx-ff`         | Executar preflight spec check, pedir aprovação explícita e só então criar a change e avançar até satisfazer `apply.requires`                             |
+| Revisar artefatos antes da implementação, pedir `/opsx:review`                           | `opsx-review`     | Selecionar explicitamente a change, executar o gate `bundle` e revisar artefatos e fonte de decisão em modo read-only                                    |
 | Implementar tarefas de uma change, pedir `/opsx:apply`                                   | `opsx-apply`      | Exigir bundle verde, ler `status` e `instructions apply`; `apply` é a única exceção que pode inferir ou auto-selecionar a change quando isso for seguro  |
 | Verificar implementação antes de arquivar, pedir `/opsx:verify`                          | `opsx-verify`     | Selecionar explicitamente a change e comparar implementação com tarefas, specs, cenários e decisões de design                                            |
 | Sincronizar delta specs com `openspec/specs`, pedir `/opsx:sync`                         | `opsx-sync`       | Selecionar explicitamente a change e executar o owner deterministico por operacao                                                                        |
@@ -101,54 +102,38 @@ A tabela abaixo vale somente depois que a decisão de rota adota OpenSpec.
 
 ## Guardrails
 
-- Uma mera menção a OpenSpec ou OPSX não autoriza `opsx new`, uma fonte de
-  decisão, ou a escrita de artefatos. Primeiro conclua a decisão de rota.
-- Selecionar uma rota OpenSpec também não autoriza sua primeira escrita. Anuncie
-  a rota e aguarde aprovação explícita antes de `opsx new`, `opsx ff`,
-  `opsx continue` ou da criação de qualquer change, fonte de decisão ou
-  artefato formal, inclusive quando a rota veio de um comando `/opsx:*`.
-- Não promova trabalho a OpenSpec por contagem, por adjetivos como "grande" ou
-  "multifase", ou porque um plano tem mais de um passo.
 - Nunca instrua o agente a aplicar código a partir de um arquivo flat em `openspec/changes/*.md`; esse não é o modelo ativo principal.
-- Este repositório tem um único schema, `spec-driven`, e o `status` é a fonte de verdade sobre qual artefato está `ready`. Não deduza a ordem de cabeça: um artefato pode existir fora da sequência esperada.
+- O runtime instalado suporta `spec-driven`, e o `status` é a fonte de verdade sobre qual artefato está `ready`. Não deduza a ordem de cabeça: um artefato pode existir fora da sequência esperada.
 - `new` e `ff` devem sempre executar o *Preflight Spec Consistency Check* para garantir que a proposta seja desenhada contra `openspec/specs/` atualizadas e avisar sobre delta specs ativos em andamento.
-- `continue`, `sync`, `archive` e `verify` devem pedir seleção explícita da change quando o nome não vier no pedido. `apply` é a única exceção que pode inferir ou auto-selecionar quando isso for seguro, mas deve anunciar a escolha e como sobrescrevê-la.
+- Após criar a change e antes de escrever artefatos, aplicar, sincronizar ou arquivar, execute `opsx preflight --change "<name>" --json`. Qualquer finding ou exit code não zero bloqueia a operação; esse check de proveniência é distinto do preflight de consistência de specs.
+- `continue`, `review`, `sync`, `archive` e `verify` devem pedir seleção explícita da change quando o nome não vier no pedido. `apply` é a única exceção que pode inferir ou auto-selecionar quando isso for seguro, mas deve anunciar a escolha e como sobrescrevê-la.
 - `continue` cria exatamente um artefato `ready` por invocação.
-- `sync` deve ler delta spec e main spec antes da autorizacao; somente
-  `sync_specs.py` edita main specs, por operacao completa e idempotente.
+- `review` audita o bundle antes de `apply`, sem editar código ou artefatos.
+- `sync` deve ler delta spec e main spec antes da autorização; use somente
+  `opsx-sync` para editar main specs, por operação completa e idempotente.
 - Artefato escrito para leitor especialista é artefato incompleto. Use o gate
   `artifact` no `continue` e o gate `bundle` no `ff` e antes do `apply`.
 - `apply` só reporta sucesso depois de gerar evidência com o comando de
   validação declarado em `openspec/handoff.json` (`validationCommand`) e o
   gate `opsx-handoff --mode apply <change>` confirmar tarefas, paths e
-  fingerprint. Ele nao reivindica verify, sync, completion ou archive.
-- `verify` compara implementação com tasks, requisitos, cenários e design, e
-  roda `opsx-handoff --mode completion <change>`.
+  fingerprint. Ele não reivindica verify, sync, completion ou archive.
+- `verify` compara implementação com tasks, requisitos, cenários e design,
+  captura `opsx fingerprint --change "<name>" --json`, grava
+  `evidence/verification-report.json` e exige o gate
+  `opsx-handoff --mode completion <change>` verde.
 - `archive` trata completion vermelho como hard block sem confirmação
   interativa.
 - `explore` não escreve código nem artefatos.
 
 ## Procedimento
 
-1. Separe ativação da skill de adoção do lifecycle. Uma menção a OpenSpec/OPSX
-   pode exigir triagem, mas não permite escrita formal.
-2. Se o usuário deu um comando `/opsx:*` ou pediu explicitamente para criar,
-   continuar, aplicar, verificar, sincronizar ou arquivar uma change, selecione
-   a rota OpenSpec correspondente, anuncie a primeira escrita e peça aprovação
-   antes de iniciar a operação que modifica o lifecycle; preserve seus
-   guardrails.
-3. Sem pedido explícito, procure uma fronteira formal: contrato compartilhado
-   duradouro, múltiplos consumidores ou owners independentes, rollout, rollback,
-   ou lifecycle auditável. Não use tamanho, número de arquivos ou número de
-   passos como substituto dessa evidência.
-4. Sem fronteira formal, escolha execução direta, Plan Mode, ou um único plano
-   Markdown pertencente ao repositório conforme a necessidade de passos e
-   handoff. Declare a rota e o motivo; não crie `openspec/changes/<name>/`.
-5. Só na rota OpenSpec, use consultas read-only para mapear a intenção ao
-   workflow canônico de OpenSpec e resolver schema, change
-   ou próximo artefato quando não estiverem óbvios. Anuncie a primeira escrita,
-   aguarde aprovação explícita e só então execute o workflow, preservando os
-   guardrails sem misturar `continue`, `apply`, `sync`, `verify` ou `archive`.
+1. Aplique a tabela de **Decisão de rota** e anuncie a rota e o motivo.
+2. Na rota OpenSpec, use **Roteamento** para abrir o workflow canônico e
+   resolver change, schema e próximo artefato por consultas read-only.
+3. Antes de escrever, cumpra a barreira de aprovação da **Decisão de rota** e
+   as autorizações específicas do workflow selecionado.
+4. Execute somente esse workflow, observe sua condição de parada e reporte
+   os gates realmente executados. Consulte as referências conforme o artefato.
 
 ## Exemplos
 
@@ -156,6 +141,12 @@ A tabela abaixo vale somente depois que a decisão de rota adota OpenSpec.
 
 **Entrada:** "sincroniza os delta specs dessa change OpenSpec"
 **Saída esperada:** Anuncia a rota `opsx-sync`, pede aprovação explícita antes da primeira escrita, exige seleção explícita da change se o nome não vier no pedido e preserva conteúdo não tocado do main spec.
+
+### Caso positivo
+
+**Entrada:** "/opsx:review deploy"
+**Saída esperada:** Roteia para `opsx-review`, executa o gate `bundle`, revisa os
+artefatos e a fonte de decisão e apresenta achados sem editar arquivos.
 
 ### Caso positivo
 
@@ -214,6 +205,7 @@ Deve acionar o lifecycle:
 
 - "cria uma change OpenSpec"
 - "/opsx:continue deploy"
+- "revisa a change OpenSpec antes de implementar"
 - "sincroniza delta specs da minha change"
 - "verifica essa implementação antes de arquivar"
 - "quero fazer fast-forward de uma change OPSX"
@@ -234,7 +226,8 @@ Não deve acionar:
 
 ## Evals de workflow
 
-Detalhe completo em `references/EVALS.md`.
+Casos propostos em `references/EVALS.md`. Registre execução e transcrição antes
+de afirmar eficácia comportamental; os validadores estáticos não a demonstram.
 
 ### Cenário 0: menção que exige somente triagem
 
@@ -288,4 +281,8 @@ Leia apenas o arquivo necessário para o pedido atual:
 
 - `opsx validate --specs --strict`: validação estrutural e sintática de todas as especificações OpenSpec do consumidor.
 - `opsx status` e `opsx instructions`: consulta de estado e regras operacionais de artefatos.
+- `opsx new change`: cria o manifesto com os argumentos obrigatórios de proveniência descritos em `references/HANDOFF_STANDARD.md`.
+- `opsx preflight --change "<name>" --json`: valida fonte de decisão, digest, IDs, dependências e ownership.
+- `opsx fingerprint --change "<name>" --json`: captura `repositoryFingerprint` para o relatório semântico.
+- `opsx-sync --change "<name>" --json`: aplica delta specs; repita com `--check` para conferir idempotência sem escrita.
 - `opsx-handoff --mode <artifact|bundle|apply|completion>`: gate determinístico para o schema `spec-driven`. O modo `completion` aceita somente evidência estruturada atual, validada pelo verificador que o projeto declara em `openspec/handoff.json`.

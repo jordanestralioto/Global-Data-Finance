@@ -21,11 +21,6 @@
       "reason": "Tipos compartilhados alterados."
     },
     {
-      "pattern": "src/filters/dfp_itr/mapping/**",
-      "profile": "high-risk",
-      "reason": "Contrato de mapping DFP/ITR alterado."
-    },
-    {
       "pattern": "openspec/changes/**",
       "profile": "high-risk",
       "reason": "Contrato OpenSpec ativo alterado."

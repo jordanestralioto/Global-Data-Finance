@@ -102,7 +102,7 @@ linter exposes that metric. It is not required as a universal blocking rule.
 
 ## 4. Existing Hook Runner Detection
 
-For `[DEAD_CODE]`, inspect actual enabled rules before choosing tools. Follow
+When `[DEAD_CODE]` is in scope, inspect actual enabled rules before choosing tools. Follow
 [dead-code-policy.md](dead-code-policy.md#2-tool-selection) for the reuse-first
 procedure, candidate mapping, production/test scopes, and explicit setup of
 missing analyzers. Assess all seven capabilities; do not infer graph support

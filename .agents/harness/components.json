@@ -36,7 +36,7 @@
       "source": "skills/database-design"
     },
     "skills/frontend-design": {
-      "hasScripts": true,
+      "hasScripts": false,
       "requires": [],
       "source": "skills/frontend-design"
     },
@@ -58,7 +58,7 @@
       "source": "skills/local-quality-gates"
     },
     "skills/mobile-design": {
-      "hasScripts": true,
+      "hasScripts": false,
       "requires": [],
       "source": "skills/mobile-design"
     },
@@ -83,7 +83,7 @@
       "source": "skills/performance-profiling"
     },
     "skills/react-performance": {
-      "hasScripts": true,
+      "hasScripts": false,
       "requires": [],
       "source": "skills/react-performance"
     },
@@ -105,6 +105,8 @@
         "skills/vulnerability-scanner",
         "skills/red-team-tactics",
         "skills/architecture",
+        "skills/api-patterns",
+        "skills/database-design",
         "skills/structural-inspector",
         "skills/systematic-debugging",
         "skills/testing-patterns",

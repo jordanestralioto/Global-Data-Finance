@@ -19,19 +19,27 @@ Capture pelo menos estes blocos:
    Quais tecnologias, limites de equipe, janela de entrega, legado e contratos já
    existem? A arquitetura deve respeitar o repositório atual antes de propor ruptura.
 
+4. **Evidência e lacunas**
+   Quais fatos foram verificados em código, configuração, testes ou medições?
+   Registre a fonte; marque hipóteses e preferências como tais. Busque respostas no
+   projeto antes de perguntar ao usuário. Uma causa ainda não medida pede uma
+   recomendação condicionada e o sinal que validaria a hipótese.
+
 ## Atributos de qualidade
 
 Escolha os atributos que realmente decidem o caso. Nem todo cenário precisa de todos.
 
-| Atributo              | Perguntas úteis                                                            |
-| --------------------- | -------------------------------------------------------------------------- |
-| Latência              | A resposta precisa ser imediata? O usuário espera feedback síncrono?       |
-| Consistência          | Pode haver leitura defasada ou conflito eventual?                          |
-| Isolamento de falha   | Quando uma parte quebra, o resto do sistema pode continuar?                |
-| Operabilidade         | Quem observa, sobe, debuga e reconcilia essa solução?                      |
-| Facilidade de mudança | O sistema muda toda semana ou é mais estável?                              |
-| Segurança/compliance  | A decisão mexe em segredo, auditoria, permissão ou trilha regulatória?     |
-| Custo                 | A solução adiciona infraestrutura, licenças ou dependência organizacional? |
+| Atributo              | Perguntas úteis                                                                                     |
+| --------------------- | --------------------------------------------------------------------------------------------------- |
+| Latência              | A resposta precisa ser imediata? O usuário espera feedback síncrono?                                |
+| Consistência          | Pode haver leitura defasada ou conflito eventual?                                                   |
+| Isolamento de falha   | Quando uma parte quebra, o resto do sistema pode continuar?                                         |
+| Operabilidade         | Quem observa, sobe, debuga e reconcilia essa solução?                                               |
+| Facilidade de mudança | O sistema muda toda semana ou é mais estável?                                                       |
+| Verificabilidade      | Quais regras e contratos podem ser checados localmente, com entradas controladas?                   |
+| Isolamento de mudança | Quais arquivos, contratos e estados outra pessoa ou agente precisa conhecer para editar esta parte? |
+| Segurança/compliance  | A decisão mexe em segredo, auditoria, permissão ou trilha regulatória?                              |
+| Custo                 | A solução adiciona infraestrutura, licenças ou dependência organizacional?                          |
 
 ## Perguntas por sintoma
 
@@ -58,6 +66,23 @@ Escolha os atributos que realmente decidem o caso. Nem todo cenário precisa de 
 - Quem vai manter a solução em produção?
 - O time já tem tracing, fila, scheduler, alarms e runbooks para esse tipo de desenho?
 - O custo de suporte da opção complexa cabe no estágio atual do produto?
+
+### Verificabilidade e edição independente
+
+- Quais comandos nativos verificam a fronteira? Descubra-os nas instruções e na
+  configuração de build/teste, sem presumir linguagem, runner ou gerenciador.
+- É possível exercitar regras locais com entradas controladas e dependências
+  explícitas? Que falhas ainda exigem testes de integração ou ambiente externo?
+- Quanto custa obter feedback e reproduzir uma falha: tempo, infraestrutura e
+  acesso necessário? Registre custos medidos; identifique estimativas.
+- Uma mudança exige entender estado global implícito ou editar um arquivo que
+  concentra responsabilidades sem relação? Quais contratos limitam esse contexto?
+- Se o projeto usa agentes em paralelo, existem ownership e pontos de integração
+  explícitos? A divisão permite validar cada mudança e depois a integração?
+
+Escolha esses atributos quando afetarem o risco dominante. Testabilidade e edição
+independente também servem a pessoas; não exigem subagentes, nova infraestrutura
+ou divisão em serviços. Gates locais complementam os testes das dependências reais.
 
 ### Reversibilidade
 

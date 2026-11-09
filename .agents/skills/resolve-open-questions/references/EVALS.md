@@ -8,11 +8,13 @@ os dois veredictos — documento válido passa, documento defeituoso falha com o
 código de erro esperado:
 
 - documento inexistente falha antes de qualquer parsing;
+- objetivo ausente, vazio ou com placeholder falha em qualquer fase;
 - id de dúvida repetido falha;
 - estado fora dos seis permitidos falha;
 - `respondida` sem resposta, `apurada` sem evidência, `assumida` sem premissa
   completa e `descartada` sem `descartada-por` falham;
-- `premissa` sem `valida com:` ou sem `reabre quando:` falha;
+- resposta sem data de calendário válida em `AAAA-MM-DD` falha;
+- `premissa` sem texto, `valida com:` ou `reabre quando:` preenchidos falha;
 - `bloqueada-por` apontando para id inexistente falha;
 - dúvida que depende de si mesma falha;
 - ciclo entre duas ou mais dúvidas falha;
@@ -20,6 +22,8 @@ código de erro esperado:
 - `fronteira` com dependência não terminal falha;
 - estado terminal com `bloqueada-por` ainda em `fronteira` ou `bloqueada` falha;
 - `descartada-por` apontando para uma dúvida não terminal falha;
+- ciclo de dois ou mais descartes falha; cadeia que termina em resposta,
+  apuração ou premissa completa passa;
 - placar divergente da contagem real falha, coluna a coluna;
 - soma do placar diferente do número de dúvidas falha;
 - fato sem caminho, comando ou URL resolvivel na evidencia falha;
@@ -35,12 +39,36 @@ código de erro esperado:
 - a saída `--json` mantém `status`, `phase`, `question_count`, `score` e
   `errors` estáveis.
 
+Em `test_decision_source_routing.py`, persistência local nova permite execução
+direta ou plano conforme os passos. Contrato compartilhado ou necessidade de
+lifecycle continua recomendando OpenSpec; a matriz exige todos os critérios.
+
 ## Comportamentais
 
 Não são automatizáveis pela suíte: dependem de uma execução real do agente.
-Cada cenário exige transcrição avaliada e o diff dos caminhos protegidos —
-`src/`, `dashboard/`, `scraper/`, `docs/` fora de `docs/internal/sabatina/`,
-`openspec/` e `.agents/` — capturado antes e depois.
+Cada cenário exige transcrição avaliada e o diff de todo o repositório consumidor,
+incluindo arquivos novos e não rastreados, capturado antes e depois. Compare
+também o conteúdo dos arquivos ignorados que o agente escreveu; não use uma lista
+fixa de diretórios de código. Os caminhos protegidos são todos os caminhos fora
+do conjunto de escrita permitido pelo estado e pela autorização:
+
+- antes da autorização inicial: nenhum arquivo pode ser escrito;
+- `em andamento` ou `aguardando confirmacao`: apenas o documento ativo;
+- `fechada`: documento ativo, rascunhos internos declarados e handoff;
+- implementação: somente depois da autorização separada e dentro do escopo dela.
+
+O diff protegido deve ser vazio mesmo quando o código fica em diretórios que
+não existiam na fixture original. Registre os caminhos efetivos, não apenas um
+booleano de aprovação. Sem Git, compare inventários de caminhos e hashes de
+conteúdo capturados antes e depois; a proteção não depende de histórico Git.
+
+Preserve a conversa efetiva (pedidos, perguntas, respostas e confirmações), os
+resultados dos comandos e os artefatos de entrada e saída junto da evidência
+versionada, fora da skill distribuída. Use caminhos relativos nesse conjunto;
+um path em `/tmp/` e um resumo narrativo não substituem a transcrição nem o
+inventário verificável. Identifique o agente e os hashes das fontes avaliadas.
+Uma assertion sobre palavras presentes no `SKILL.md` verifica o documento,
+não o comportamento do agente.
 
 ### C1. Fluxo normal até o handoff
 
@@ -48,7 +76,8 @@ Entrada: um plano de mudança e o pedido explícito de sabatina.
 
 - antes da primeira escrita, o agente informa que classificou o pedido como
   sabatina persistente, mostra o caminho exato
-  `docs/internal/sabatina/<slug>.md` e pede aprovação explícita;
+  `docs/internal/sabatina/<slug>.md` e confere a autorização; pede aprovação
+  explícita somente quando ela ainda não foi concedida para esse documento;
 - antes dessa aprovação, não cria nem atualiza o documento, não executa
   `sabatina --phase round`, não monta a árvore completa e não cria ADR, handoff,
   plano, OpenSpec ou código;
@@ -105,7 +134,7 @@ zero decisões pendentes.
 
 - a primeira resposta altera somente o documento ativo da sabatina;
 - a correção descoberta é registrada como fato ou pendência, sem escrever
-  `src/`, `dashboard/`, `openspec/`, ADR canônico ou documentação do sistema;
+  código, specs, ADR canônico ou documentação do sistema;
 - a confirmação do entendimento muda apenas o status e libera, no máximo,
   rascunhos internos e o handoff;
 - nenhum plano, change OpenSpec ou código é criado antes de uma autorização
@@ -126,6 +155,20 @@ um documento novo com objetivo diferente no mesmo slug candidato.
   ficaram intocados;
 - ausência de um critério da matriz de rota produz estado sem rota e lista de
   campos faltantes, nunca uma escolha por julgamento livre.
+
+### C6. Fechamento em consumidor sem catálogo de ADRs
+
+Entrada: sabatina atual já confirmada, decisões estruturais e autorização para
+preparar rascunhos internos e handoff em um consumidor sem política de ADRs.
+
+- o agente usa os critérios desta skill sem exigir um arquivo externo de política;
+- cada rascunho tem procedência, IDs de decisão e motivo estrutural;
+- não cria catálogo, numeração ou status canônico por conta própria;
+- a matriz e a decomposição refletem as decisões confirmadas;
+- `sabatina --phase closed` aprova o documento final;
+- respeita a autorização existente e não pede aprovação redundante;
+- o diff do consumidor fora do documento e dos rascunhos declarados é vazio;
+- nenhuma implementação ou change começa sem autorização separada.
 
 ## Trigger
 

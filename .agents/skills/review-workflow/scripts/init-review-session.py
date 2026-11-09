@@ -7,11 +7,13 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 sys.path.append(
     str(Path(__file__).resolve().parents[3] / 'runtime' / 'review')
 )
 
+from review_scope import git_commit, scoped_files
 from runtime_support import (
     CURRENT_SCHEMA_VERSION,
     build_default_verdict,
@@ -42,6 +44,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument('--base-ref', default=None)
     parser.add_argument('--head-ref', default=None)
+    parser.add_argument('--scope', choices=['worktree', 'staged', 'refs'])
+    parser.add_argument('--path', action='append', default=[])
     parser.add_argument('--changed-file', action='append', default=[])
     return parser.parse_args()
 
@@ -58,11 +62,8 @@ def main() -> int:
     )
     if session_dir.exists() and any(session_dir.iterdir()):
         raise SystemExit('session already exists; use --resume to reopen it')
-    ensure_session_layout(session_dir)
-
-    changed_files = normalize_paths(args.changed_file)
     stamp = now_iso()
-    session = {
+    session: dict[str, Any] = {
         'artifactType': 'review-session',
         'schemaVersion': CURRENT_SCHEMA_VERSION,
         'reviewId': review_id,
@@ -76,7 +77,12 @@ def main() -> int:
             'baseRef': args.base_ref,
             'headRef': args.head_ref,
         },
-        'changedFiles': changed_files,
+        'scope': {
+            'mode': args.scope
+            or ('refs' if args.base_ref or args.head_ref else 'worktree'),
+            'paths': normalize_paths(args.path),
+        },
+        'changedFiles': [],
         'statistics': {
             'totalItems': 0,
             'completedItems': 0,
@@ -84,7 +90,23 @@ def main() -> int:
             'blockingFindingCount': 0,
         },
     }
+    if session['scope']['mode'] == 'refs':
+        if not args.base_ref or not args.head_ref:
+            raise SystemExit(
+                'Review diff requires both --base-ref and --head-ref.'
+            )
+        session['scope'].update(
+            {
+                'baseCommit': git_commit(args.base_ref),
+                'headCommit': git_commit(args.head_ref),
+            }
+        )
+    changed_files = normalize_paths(
+        [*scoped_files(session, session_dir), *args.changed_file]
+    )
+    session['changedFiles'] = changed_files
 
+    ensure_session_layout(session_dir)
     save_artifact(session_dir, session)
     save_artifact(session_dir, build_empty_plan(review_id))
     save_artifact(session_dir, build_empty_gate_report(review_id))
@@ -115,6 +137,8 @@ def resume_session(args: argparse.Namespace) -> int:
             args.security_touch,
             args.base_ref,
             args.head_ref,
+            args.scope,
+            args.path,
             args.changed_file,
         )
     ):

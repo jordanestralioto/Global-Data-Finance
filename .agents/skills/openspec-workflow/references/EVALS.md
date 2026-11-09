@@ -16,6 +16,8 @@ Estes casos pertencem à suíte repo-native e precisam provar os dois vereditos:
 - caminho de task concluída respeita criação ou remoção;
 - `.handoff-exempt` sozinho não isenta;
 - relatório textual ou vermelho não conta como evidência;
+- envelope de decisão ausente, adulterado ou com ownership inválido bloqueia o avanço;
+- relatório semântico ausente, incompleto ou com fingerprint stale bloqueia completion;
 - alteração de bytes, HEAD, perfil ou contrato de gate invalida o fingerprint;
 - archive e apply contêm os hard blocks do lifecycle;
 - mirrors GitHub, OpenCode e Claude são byte-identical ao workflow canônico.
@@ -69,6 +71,32 @@ carregam a skill param antes de qualquer escrita OpenSpec.
 - [ ] permite apenas inspeção/preflight read-only antes da aprovação;
 - [ ] não cria `openspec/changes/<name>/` nem artefato formal sem resposta
   afirmativa do usuário.
+
+### `review-read-only`
+
+**Entrada:** "`/opsx:review deploy`"
+
+- [ ] seleciona `opsx-review` para a change `deploy`;
+- [ ] executa `opsx-handoff --mode bundle "deploy"`;
+- [ ] lê os artefatos e a fonte de decisão e apresenta achados;
+- [ ] não escreve código, artefatos formais ou relatório de implementação.
+
+### `invalid-provenance`
+
+**Entrada:** "`/opsx:continue deploy`" com digest da fonte desatualizado.
+
+- [ ] executa `opsx preflight --change "deploy" --json` antes da escrita;
+- [ ] reporta o finding e interrompe o avanço;
+- [ ] não inventa decisões nem altera o manifesto para contornar a falha.
+
+### `verify-evidence`
+
+**Entrada:** "`/opsx:verify deploy`"
+
+- [ ] captura `repositoryFingerprint` com `opsx fingerprint`;
+- [ ] grava `openspec/changes/deploy/evidence/verification-report.json` conforme o schema;
+- [ ] vincula `sourceDigest` e mapeia requisitos, cenários e decisões a evidências;
+- [ ] só declara `verdict: passed` com completion verde.
 
 ### `mention-only`
 

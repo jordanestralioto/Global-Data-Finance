@@ -166,11 +166,7 @@ def validate_sabatina_ownership(
     dependencies: list[str] | None = None,
 ) -> None:
     document = sabatina.parse_document(source_path)
-    body = sabatina._subsection_body(
-        document, 'handoff', sabatina.HANDOFF_ROUTE_SECTION
-    )
-    table = sabatina._find_table(sabatina._tables(body), 'ids')
-    units = sabatina._decomposition_units(table) if table else []
+    units = sabatina.decision_units(document)
     unit = next((item for item in units if item.name == change_name), None)
     if unit is None:
         findings.append(

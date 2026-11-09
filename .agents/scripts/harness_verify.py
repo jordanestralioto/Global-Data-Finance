@@ -1,4 +1,4 @@
-"""Produce and re-verify the per-change gate evidence of this harness.
+"""Produce and re-verify change or review-session gate evidence.
 
 A change is complete only when a current, structured report proves every
 blocking gate passed against the working tree as it stands. The gate
@@ -38,11 +38,12 @@ EVIDENCE_ARTIFACT_TYPE = 'gate-report'
 EFFECTIVE_PROFILE = 'harness'
 
 EVIDENCE_PATH_RE = re.compile(
-    r'^openspec/changes/[^/]+/evidence/gate-report\.json$'
+    r'^(?:openspec/changes|\.agents/sessions)/[^/]+/evidence/gate-report\.json$'
 )
 EVIDENCE_REPORT_RE = re.compile(
     r'^openspec/changes/[^/]+/evidence/'
-    r'(?:gate-report|verification-report)\.json$'
+    r'(?:gate-report|verification-report)\.json$|'
+    r'^\.agents/sessions/[^/]+/evidence/gate-report\.json$'
 )
 # Parse the simple hook roster without third-party dependencies.
 HOOK_ID_RE = re.compile(r'^\s*-\s+id:\s*([A-Za-z0-9._-]+)\s*$')
@@ -111,21 +112,21 @@ def normalize_repo_path(raw_path: str) -> str:
 
 def resolve_evidence_path(raw_path: str) -> tuple[Path, str]:
     candidate = Path(raw_path)
-    resolved = (
-        candidate.resolve()
-        if candidate.is_absolute()
-        else (REPO_ROOT / candidate).resolve()
-    )
+    requested = candidate if candidate.is_absolute() else REPO_ROOT / candidate
+    resolved = requested.resolve()
     try:
         relative = resolved.relative_to(REPO_ROOT).as_posix()
     except ValueError as exc:
         raise EvidenceError(
             'evidence path must stay inside the repository'
         ) from exc
+    if Path(os.path.abspath(requested)) != resolved:
+        raise EvidenceError('evidence path must not redirect through symlinks')
     if not EVIDENCE_PATH_RE.match(relative):
         raise EvidenceError(
             'evidence path must be '
-            'openspec/changes/<name>/evidence/gate-report.json'
+            'openspec/changes/<name>/evidence/gate-report.json or '
+            '.agents/sessions/<review>/evidence/gate-report.json'
         )
     return resolved, relative
 
@@ -297,14 +298,14 @@ def build_report(
         item for item in detect_changed_files() if item not in set(excluded)
     ]
     now = datetime.now(UTC).isoformat()
-    change_name = Path(evidence_relative_path).parts[2]
+    evidence_owner = Path(evidence_relative_path).parts[2]
     blocking_failed = any(
         gate['blocking'] and gate['status'] != 'passed' for gate in gates
     )
     return {
         'artifactType': EVIDENCE_ARTIFACT_TYPE,
         'schemaVersion': EVIDENCE_SCHEMA_VERSION,
-        'reviewId': f'{change_name}-{git_head()[:12]}',
+        'reviewId': f'{evidence_owner}-{git_head()[:12]}',
         'status': 'completed',
         'resultStatus': 'failed' if blocking_failed else 'passed',
         'createdAt': now,
@@ -486,7 +487,7 @@ def produce_precomposition_evidence(
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description='Produce and verify per-change gate evidence.'
+        description='Produce and verify change or review-session evidence.'
     )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(

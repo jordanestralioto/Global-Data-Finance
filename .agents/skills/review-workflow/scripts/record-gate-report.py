@@ -136,7 +136,7 @@ def main() -> int:
         raise SystemExit('gate report belongs to a different review')
 
     try:
-        contract = declared_contract(args.change)
+        contract = declared_contract(args.change, session_dir)
     except ArtifactError as exc:
         raise SystemExit(str(exc)) from exc
 
@@ -200,13 +200,17 @@ def main() -> int:
     report['updatedAt'] = now_iso()
     report['gates'] = gates
     report['reviewedFiles'] = session['changedFiles']
+    report['reviewScope'] = session.get('scope')
     report['validationMode'] = contract['mode']
+    if 'contractSha256' in contract:
+        report['validationContractSha256'] = contract['contractSha256']
     report['stateFingerprint'] = after_state
     if source is not None and evidence_path is not None:
         report['sourceEvidencePath'] = contract['evidence']
         report['sourceEvidenceSha256'] = source_digest
         report['effectiveProfile'] = source.get('effectiveProfile', '')
-        report['change'] = contract['change']
+        if contract['change'] is not None:
+            report['change'] = contract['change']
     save_artifact(session_dir, report)
     passed = all(
         gate['status'] == 'passed' and gate['exitCode'] == 0

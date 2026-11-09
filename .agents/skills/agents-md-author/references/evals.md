@@ -2,9 +2,43 @@
 
 ## Estado de execução
 
-**Luna Max:** not run. Esta entrega define os cenários e suas assertions; não
-houve uma sessão real com Luna Max. Validações de Markdown ou pytest não contam
-como execução desses evals.
+**Luna Max:** not run. Não houve uma sessão real com Luna Max. Validações de
+Markdown ou pytest não contam como execução desses evals.
+
+**Agentes independentes, 2026-11-06:** execução em fixtures sintéticos de Go,
+Rust e TypeScript, usando o modelo herdado da sessão, sem override. A revisão
+dos documentos foi separada da validação estrutural:
+
+| Cenário e variante    | Resultado observado após iteração                                                       |
+| --------------------- | --------------------------------------------------------------------------------------- |
+| A, serviço Go         | Objetivo, `cmd/reports/main.go`, `make test` e próximo guia confirmados                 |
+| B, workspace Rust     | Override contém somente navegação e teste locais; contexto da sessão fica na devolutiva |
+| C, serviço TypeScript | README, manifest e CI oculto aparecem no conflito sem comando oficial inventado         |
+
+A execução revelou duas falhas de workflow: metadados da sessão entraram no
+override e uma busca sem `--hidden` omitiu CI. A orientação foi corrigida e os
+casos foram reavaliados em contextos limpos. A CLI também detectou headings
+incorretos, corrigidos pelos próprios agentes antes da entrega. Os três
+documentos finais passaram na estrutura; as ferramentas do projeto não foram
+executadas. Esses casos não medem ganho estatístico de acerto, custo ou eficácia
+em projetos reais e não substituem a execução com Luna Max.
+
+## Variações de linguagem
+
+Repita o Eval A trocando as fontes e as assertions de tooling pela variante
+selecionada. A linguagem do projeto não muda o procedimento de autoria:
+
+| Variante | Fonte de tooling      | Primeiro caminho      | Comando confirmado |
+| -------- | --------------------- | --------------------- | ------------------ |
+| Python   | `pyproject.toml`      | `src/main.py`         | `uv run pytest -q` |
+| Go       | `go.mod` e `Makefile` | `cmd/reports/main.go` | `go test ./...`    |
+| Rust     | `Cargo.toml` e CI     | `src/main.rs`         | `cargo test`       |
+
+Use cada comando somente se as fontes do fixture o confirmarem. Execute os
+helpers da skill com Python em qualquer variante, sem gravar essa dependência
+como requisito do projeto. A avaliação deve verificar o documento e a sequência
+de ações; um script portátil ou um teste de conteúdo não prova a execução do
+workflow por um modelo.
 
 ## Eval A — Projeto simples
 
@@ -48,16 +82,18 @@ arquivo local.”
 
 **Assertions:**
 
-- [ ] Registra o diretório inicial `packages/worker` e a raiz do projeto.
+- [ ] Registra na devolutiva o diretório inicial `packages/worker` e a raiz do projeto.
 - [ ] Distingue o root `AGENTS.md` do override local e só considera
   `packages/TEAM_GUIDE.md` conforme a configuração mostrada.
 - [ ] Aponta `packages/worker/src/worker.py` como primeiro caminho de código e
   `packages/worker/README.md` como próximo documento.
 - [ ] Registra `uv run pytest -q tests/worker` do override e mantém a política comum
   somente no root.
-- [ ] Explica o limite configurado sem afirmar que toda instrução descoberta
+- [ ] Explica na devolutiva o limite configurado sem afirmar que toda instrução descoberta
   coube na cadeia carregada.
 - [ ] Não copia para o override regras compartilhadas sem diferença local.
+- [ ] Não grava o diretório da sessão, seus fallbacks ou seu orçamento no override
+  como política do projeto sem uma fonte compartilhada que os adote.
 
 ## Eval C — Fontes conflitantes
 

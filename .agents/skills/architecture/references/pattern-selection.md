@@ -15,6 +15,10 @@ Suba um degrau por vez:
 
 Se um degrau menor já resolve o risco dominante, prefira o menor.
 
+Uma fronteira de edição ou teste pode ser um módulo no mesmo processo. Dividir
+contexto entre pessoas ou agentes não exige dividir deploys. Compare contratos
+internos e dependências explícitas antes de acrescentar rede e operação distribuída.
+
 ## Sintoma para direção provável
 
 | Sintoma dominante                                                 | Direções prováveis                                   | Só escolha se...                                                             | Sinal de overengineering                              |
@@ -58,9 +62,13 @@ Sem isso, o "assíncrono" vira bug difícil de explicar.
 
 ### Quando CQRS ou event-driven se justificam
 
-Use CQRS ou eventos quando a divergência de leitura e escrita é estrutural, não
-cosmética. O ganho precisa pagar o custo de versionar eventos, observar pipelines,
-reprocessar projeções e lidar com ordem, duplicidade e atraso.
+Use CQRS quando a divergência de leitura e escrita for estrutural, não cosmética.
+Avalie como atualizar e reconstruir projeções; consistência eventual é um custo
+quando essa atualização for assíncrona.
+
+Use eventos para desacoplar produtores e consumidores que toleram atraso. Isso não
+exige CQRS. O ganho precisa pagar o custo de versionamento, observabilidade,
+reprocessamento, ordem e duplicidade.
 
 ## Perguntas de corte
 
@@ -68,3 +76,5 @@ reprocessar projeções e lidar com ordem, duplicidade e atraso.
 - O custo de operação da opção complexa cabe na maturidade atual do time?
 - A decisão melhora o atributo dominante ou só muda o formato do código?
 - Existe plano de migração incremental ou a troca exige big bang?
+- É possível verificar regras locais e depois a integração com os comandos do projeto?
+- A mudança reduz estado global e conflitos de edição sem criar uma fronteira operacional desnecessária?

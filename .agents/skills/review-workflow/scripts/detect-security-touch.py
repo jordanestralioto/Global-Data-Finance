@@ -5,20 +5,13 @@ from __future__ import annotations
 
 import json
 import sys
+from pathlib import Path
 
-SENSITIVE_TOKENS = (
-    'auth',
-    'permission',
-    'policy',
-    'rls',
-    'token',
-    'secret',
-    'middleware',
-    'upload',
-    'session',
-    'dangerous',
-    'innerhtml',
+sys.path.append(
+    str(Path(__file__).resolve().parents[3] / 'runtime' / 'review')
 )
+
+from runtime_support import detect_packs
 
 
 def main() -> int:
@@ -29,7 +22,7 @@ def main() -> int:
     matched_files = [
         file_path
         for file_path in changed_files
-        if any(token in file_path.lower() for token in SENSITIVE_TOKENS)
+        if 'security' in detect_packs([file_path], 'auto')
     ]
     credible_findings = [
         finding['findingId']

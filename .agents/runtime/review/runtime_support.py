@@ -13,6 +13,8 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from path_hints import detect_path_hints
+
 from harness.paths import repo_root
 from harness.selection import load_review_owner
 
@@ -271,6 +273,9 @@ def render_human_view(artifact: dict[str, Any]) -> str:
                 'changeType': artifact['change']['changeType'],
                 'changedBy': artifact['change']['changedBy'],
                 'securityTouch': artifact['change']['securityTouch'],
+                'scope': json.dumps(
+                    artifact.get('scope', {'mode': 'inferred'})
+                ),
                 'changedFiles': [
                     f'- {item}' for item in artifact['changedFiles']
                 ],
@@ -737,87 +742,34 @@ def detect_packs(changed_files: list[str], security_touch: str) -> list[str]:
         return []
     matched = set()
     for file_path in changed_files:
-        lower = file_path.lower()
-        file_packs = set()
-        if security_touch == 'yes' or any(
-            token in lower
-            for token in (
-                'auth',
-                'credential',
-                'permission',
-                'policy',
-                'secret',
-                'session',
-                'token',
-                'upload',
-            )
-        ):
-            file_packs.add('security')
-        if any(
-            token in lower
-            for token in (
-                'api',
-                'cli',
-                'contract',
-                'controller',
-                'endpoint',
-                'handler',
-                'interface',
-                'route',
-                'schema',
-            )
-        ):
-            file_packs.add('interface')
-        if any(
-            token in lower
-            for token in (
-                'data',
-                'db',
-                'migration',
-                'model',
-                'parquet',
-                'query',
-                'repository',
-                'schema',
-                'sql',
-            )
-        ):
-            file_packs.add('data')
-        if any(
-            token in lower
-            for token in (
-                'scripts/',
-                'src/',
-                'service',
-                'core',
-                'domain',
-                'runtime',
-                'worker',
-                'lock',
-            )
-        ):
-            file_packs.add('behavior')
-        if '/tests/' in lower or lower.startswith('tests/'):
-            file_packs.add('tests')
-        if lower.endswith(('.md', '.rst', '.txt')) or '/docs/' in lower:
-            file_packs.add('docs')
-        matched.update(file_packs or {'behavior'})
+        matched.update(detect_path_hints(file_path, security_touch))
     return sorted(matched, key=lambda name: -PACK_REGISTRY[name]['priority'])
 
 
 def build_plan_items(
-    changed_files: list[str], security_touch: str
+    changed_files: list[str],
+    security_touch: str,
+    extra_packs: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     normalized_files = normalize_paths(changed_files)
+    if not PACK_REGISTRY:
+        return []
+    requested = set(extra_packs or [])
+    unknown = requested - PACK_REGISTRY.keys()
+    if unknown:
+        raise ArtifactError(f'Unknown risk packs: {sorted(unknown)}')
+    packs = set(detect_packs(normalized_files, security_touch)) | requested
     items = []
     for index, pack_id in enumerate(
-        detect_packs(normalized_files, security_touch), start=1
+        sorted(packs, key=lambda name: -PACK_REGISTRY[name]['priority']),
+        start=1,
     ):
         pack = PACK_REGISTRY[pack_id]
         item_files = [
             file_path
             for file_path in normalized_files
-            if pack_id in detect_packs([file_path], security_touch)
+            if pack_id in requested
+            or pack_id in detect_packs([file_path], security_touch)
         ]
         items.append(
             {

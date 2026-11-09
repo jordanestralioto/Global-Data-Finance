@@ -188,15 +188,11 @@ def _evaluate_file_assertions(
                 'To authorize, pass --allow-deleted-tests or stage a policy entry in .test-deletions.json.'
             )
     elif removed_assertions > added_assertions and not has_reduction_allow:
-        root = repo_root or Path.cwd()
-        target_path = root / file_path
-        if target_path.is_file():
-            try:
-                file_text = target_path.read_text(encoding='utf-8')
-                if ALLOW_ASSERTION_REDUCTION_RE.search(file_text):
-                    has_reduction_allow = True
-            except OSError:
-                pass
+        file_text = read_staged_git_file(file_path, repo_root)
+        if file_text is not None:
+            has_reduction_allow = bool(
+                ALLOW_ASSERTION_REDUCTION_RE.search(file_text)
+            )
         if not has_reduction_allow:
             errors.append(
                 f'{file_path}: [TEST_INTEGRITY] Net reduction of test assertions detected '

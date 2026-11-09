@@ -1,11 +1,11 @@
 ---
 name: review-workflow
 description: >-
-  Use para conduzir revisões estruturadas de changes e PRs. Ative quando a
+  Use para revisar diffs, changes e PRs, com leitura leve ou parecer estruturado. Ative quando a
   solicitação envolver "abrir sessão de revisão", "montar plano por risco",
   "registrar apontamento", "gerar parecer", "fechar revisão", "ler gate-report",
   "preparar encaminhamento de segurança", "rodar revisão isolada", "review de
-  PR", "revisa esse diff" ou "segunda leitura", ou revisar uma mudança antes de
+  PR", "review rápido", "revisa esse diff" ou "segunda leitura", ou revisar uma mudança antes de
   encerrá-la. Não use para validação mecânica isolada de comandos; prefira
   `lint-and-validate`. Não use para auditoria de segurança no terminal;
   encaminhe para `security-engineer`.
@@ -13,247 +13,138 @@ description: >-
 
 # Review Workflow
 
-## Contexto
+## Profundidade
 
-Esta skill define um protocolo de revisão estruturada.
+Use leitura leve para alteração pequena e local de texto ou apresentação, sem
+mudança em contratos, segurança, dados, dependências, CI ou validação. Leia o diff
+e contexto, relate achados acionáveis e informe o que foi validado. Dispense os
+artefatos e não emita `APPROVED` formal nesse modo. Tamanho sozinho não prova
+baixo risco; uma mudança curta de autorização ou de asserção exige mais contexto.
 
-Classifique cada item
-por tipo de risco, não por framework:
-
-- `security`: segurança e limites de confiança.
-- `interface`: APIs, contratos públicos e entradas/saídas.
-- `data`: integridade, persistência, consultas e migrações.
-- `behavior`: comportamento de runtime e regras de negócio.
-- `tests`: cobertura, regressão e evidência de validação.
-- `docs`: documentação, rastreabilidade e contratos escritos.
-
-Use estes nomes técnicos apenas como identificadores estáveis de arquivo:
-
-- `finding`: apontamento de revisão.
-- `verdict`: parecer final.
-- `gate-report`: relatório de validação automatizada.
-- `security-handoff`: encaminhamento para revisão de segurança.
+Use o protocolo completo quando houver risco material, OpenSpec, necessidade de
+rastreabilidade ou pedido de aprovação/parecer formal. O script calcula o parecer
+pelos artefatos e gates; não prova que toda falha foi encontrada nem autentica o
+revisor. Revisão isolada é um controle separado.
 
 ## Procedimento
 
-1. Crie a sessão com `scripts/init-review-session.py`, ou retome uma sessão
-   existente com `--resume`. Nunca repita a criação sobre uma sessão existente.
-2. Se o plano ainda estiver em `draft`, gere-o com
-   `scripts/build-review-plan.py`; caso contrário, continue o plano existente.
-   Confira que cada arquivo alterado aparece em pelo menos um item. Arquivos
-   sem categoria específica entram no item `behavior`.
-3. Avalie se deve executar a seção `Revisão Isolada`.
-4. Leia o diff e contexto adjacente de cada item planejado.
-5. Registre apenas apontamentos acionáveis com `scripts/append-finding.py`.
-   Evite comentários de estilo que uma validação mecânica resolveria.
-6. Execute a validação repo-native por `scripts/record-gate-report.py`. O
-   script seleciona o comando de `openspec/handoff.json` (com `--change`) ou,
-   na ausência dele, `pre-commit run --all-files` quando há hooks declarados
-   sem estágios adicionais. Hooks com estágios explícitos exigem contrato
-   estruturado para evitar aprovação sem executar parte dos gates.
-   Inspecione o entrypoint de scripts locais antes de executá-los. O relatório
-   registra falhas, rejeita alterações no código durante a validação e vincula
-   o resultado ao estado do repositório; o fechamento confere esse vínculo
-   novamente. Sem contrato declarado, preserve
-   `INCOMPLETE` e informe o comando ausente.
-7. Crie `security-handoff` com `scripts/create-security-handoff.py` para todo
-   apontamento de segurança não descartado com severidade `blocker` ou
-   `warning` e confiança `high` ou `medium`. Encaminhe-o a
-   `security-engineer`. Só registre `cleared` ou `waived` depois de receber e
-   conferir a análise independente; inclua `--reviewed-by security-engineer`
-   e `--review-summary`. O CLI registra a declaração, mas não autentica quem
-   executou a revisão.
-8. Marque itens concluídos e consolide o parecer final com
-   `scripts/consolidate-verdict.py`.
-9. Exporte o resumo legível com `scripts/export-review-summary.py`.
-
-## Comandos Mínimos
-
-Use os scripts como interface canônica. Estes exemplos reduzem inferência sobre
-argumentos e payloads sem substituir a leitura do diff.
+1. Leia `AGENTS.md`, o estado de Git, o diff e contexto suficiente para delimitar
+   a revisão. Escolha `worktree` (staged, unstaged e não rastreados), `staged` ou
+   refs. Use `--path` para restringir a arquivos ou subárvores; informe esse limite
+   no resultado. A sessão deriva os arquivos do Git e o fechamento confere o mesmo
+   escopo. `--changed-file` acrescenta contexto, sem ocultar arquivos desse escopo.
+2. Crie a sessão ou retome com `--resume --session-dir <sessão>`. Não recrie uma
+   sessão existente. Se o plano estiver em `draft`, gere-o após a leitura inicial
+   do diff. Os packs sugeridos por caminhos são pistas; use `--risk` para incluir
+   riscos encontrados no conteúdo. Cada arquivo deve aparecer em um item.
+3. Revise cada item com a seção `Como revisar` e avalie `Revisão isolada`.
+   Registre apenas achados acionáveis com `scripts/append-finding.py`.
+   Expanda contexto adjacente com `scripts/expand-review-item-context.py` quando
+   faltar evidência; não salve suspeita como fato.
+4. Execute `scripts/record-gate-report.py` com o contrato declarado pelo projeto.
+   Leia [validação e comandos](references/validation.md) para formatos, exemplos
+   de findings e encaminhamento. Inspecione entrypoints locais antes de executar.
+   Use `--change` somente para uma change OpenSpec existente; evidência de revisão
+   comum fica na sessão. Não crie uma change apenas para armazenar relatório.
+5. Encaminhe findings materiais de segurança, conclua os itens com
+   `scripts/mark-review-item-done.py`, consolide com
+   `scripts/consolidate-verdict.py` e exporte com
+   `scripts/export-review-summary.py`. Se os arquivos do escopo mudaram depois do
+   planejamento concluído, abra uma nova sessão; se só o conteúdo mudou, revise
+   novamente o item afetado antes de reexecutar a validação.
 
 ```bash
 python3 .agents/skills/review-workflow/scripts/init-review-session.py \
-  --change-type bug-fix \
-  --changed-by codex \
-  --changed-file src/example.py
-```
-
-Para retomar, use `--resume --session-dir .agents/sessions/review-<id>`.
-O comando preserva os artefatos e recusa opções de criação.
-Em revisão de PR, informe também `--base-ref` e `--head-ref` e os arquivos do
-diff; o fechamento compara a lista com `git diff base...head`. Em revisão do
-working tree, confira a lista contra o diff e o estado de Git antes de abrir
-a sessão, pois não há refs que delimitem automaticamente a mudança.
-
-```bash
+  --change-type bug-fix --changed-by codex --scope worktree --path src
 python3 .agents/skills/review-workflow/scripts/build-review-plan.py \
-  --session-dir .agents/sessions/review-<id>
-```
-
-Execute o contrato de validação do repositório e grave os gates:
-
-```bash
+  --session-dir .agents/sessions/<review> --risk interface
 python3 .agents/skills/review-workflow/scripts/record-gate-report.py \
-  --session-dir .agents/sessions/review-<id>
+  --session-dir .agents/sessions/<review>
 ```
 
-Se houver `openspec/handoff.json`, acrescente `--change <nome-da-change>`.
-O script deriva o comando, o caminho da evidência e o verificador desse
-contrato, exige relatório recém-gerado e importa os gates individuais. Não
-substitua o verificador por um comando escolhido na revisão. Se o código mudar
-depois da validação, execute o script novamente antes de consolidar o parecer.
+Para PR, informe `--base-ref <base> --head-ref <head>`; o escopo `refs` é inferido.
+O diff usa `base...head`. Sem refs, o padrão é `worktree`. Caminhos são relativos
+à raiz do repositório e `--path` pode ser repetido. Sessões anteriores sem escopo
+explícito são conferidas por refs, quando presentes, ou pelo working tree inteiro.
+Para refs, execute a validação em checkout limpo no `headRef`, usando outro
+worktree quando necessário. Arquivos de contexto sem mudanças Git não bastam
+para aprovação formal.
+Para staged, reconcilie alterações unstaged e arquivos não rastreados de todo o
+repositório antes de fechar: dependências fora do diff também afetam os gates.
+Sessões por refs fixam os commits da base e do head no plano e nos gates; refs
+movidas ou sessões antigas sem esses commits exigem uma nova sessão.
 
-Para encaminhar segurança, crie primeiro o handoff em `pending`:
+## Como revisar
 
-```bash
-python3 .agents/skills/review-workflow/scripts/create-security-handoff.py \
-  --session-dir .agents/sessions/review-<id> \
-  --reason "Review the authorization finding."
-```
+Classifique por risco: `security` para limites de confiança; `interface` para
+contratos e entradas/saídas; `data` para integridade e persistência; `behavior`
+para runtime; `tests` para regressão/evidência; `docs` para contratos escritos.
+Nomes de arquivos não substituem a leitura. `scripts/detect-security-touch.py`
+compartilha as pistas do planejador e pode ajudar na triagem; não determina se
+uma vulnerabilidade existe ou se a revisão está completa.
 
-Depois da resposta do especialista, registre o resultado com `--status cleared` ou `--status changes_required`, `--reviewed-by security-engineer` e
-`--review-summary "<resultado concreto>"`. Confira a resposta recebida antes
-de executar o comando: o arquivo local registra a procedência declarada, mas
-não prova a identidade do revisor.
+- Compare objetivo e diff: identifique mudanças fora do escopo, chamadas afetadas,
+  dependências e contratos. Confira que imports, pacotes e APIs novos existem na
+  versão/configuração do projeto; não aceite dependência presumida pelo agente.
+- Procure um caso concreto que quebre: limites, entradas inválidas, transições de
+  estado, falha externa, ownership e compatibilidade com consumidores adjacentes.
+  Abra código suficiente para demonstrar impacto, sem transformar toda revisão
+  em auditoria geral.
+- Leia mudanças nos testes: asserção removida, expectativa relaxada, teste
+  desativado ou mock que substitui justamente o comportamento alterado pode
+  esconder regressão. Verifique se o teste falharia com o defeito original.
+- Confira evidência e integração: arquivo importado novo deve estar incluído no
+  commit; sucesso de lint não demonstra semântica; gates antigos não validam o
+  estado atual. Considere exclusões e caminhos não rastreados.
+- Para cada achado, registre arquivo/linha, evidência mínima, impacto e ação
+  concreta. Separe `blocker`, `warning` e `nit`, com confiança `high`, `medium` ou
+  `low`. Descarte opinião de estilo coberta por ferramenta e candidato sem prova.
 
-Para registrar `finding`, envie JSON pelo stdin para manter o artefato
-validável pelo schema:
+## Revisão isolada
 
-```bash
-python3 .agents/skills/review-workflow/scripts/append-finding.py \
-  --session-dir .agents/sessions/review-<id> <<'JSON'
-{
-  "topic": "behavior:runtime",
-  "severity": "blocker",
-  "confidence": "high",
-  "summary": "Short actionable summary.",
-  "impact": "Concrete runtime or contract impact.",
-  "recommendedAction": "Specific change required before approval.",
-  "evidence": {
-    "file": "src/example.py",
-    "line": 42,
-    "snippet": "minimal relevant snippet"
-  }
-}
-JSON
-```
+Use um agente neutro ou contexto limpo quando a mesma IA implementou e revisa,
+houver pedido de segunda leitura, ou a mudança tocar risco material/comportamento
+central. A ausência dessa capacidade não bloqueia a revisão principal; informe a
+limitação. Dispense-a em mudança trivial ou validação apenas mecânica.
 
-## Revisão Isolada
+Envie somente objetivo, arquivos e escopo, sessão, plano e gates disponíveis.
+Peça leitura sem edições ou alterações de artefatos, sem parecer final, retornando
+apenas candidatos com item relacionado, severidade, confiança, arquivo/linha,
+evidência, impacto e ação. Valide cada candidato antes de registrá-lo. Se não
+houver problema material, aceite "sem apontamentos materiais".
 
-Esta etapa é recomendada, mas não obrigatória. Use quando a plataforma permitir
-subagente, chamada isolada ou nova conversa com contexto limpo.
+Não use `developer-engineer` como revisor neutro padrão. Se só esse papel estiver
+disponível, dispense a etapa e declare a limitação. Reserve `security-engineer`
+para encaminhamento de risco material de segurança.
 
-Execute revisão isolada quando pelo menos uma condição for verdadeira:
+## Segurança e fechamento
 
-- a mesma IA implementou a mudança e também vai revisar;
-- o usuário pediu revisão extra, segunda leitura ou parecer final;
-- a mudança toca `security`, `interface`, `data` ou comportamento central;
-- a mudança altera vários arquivos ou tem diff difícil de ler;
-- `gate-report` tem gate falho, indisponível ou ainda ausente;
-- existe dúvida real sobre regressão, contrato, dado ou segurança.
+Todo finding `security:` não descartado, com severidade `blocker` ou `warning` e
+confiança `high` ou `medium`, exige `scripts/create-security-handoff.py` e análise
+do `security-engineer`, mesmo sem pack de segurança no plano. Só registre
+`cleared` ou `waived` após conferir a resposta independente, com
+`--reviewed-by security-engineer` e `--review-summary`. O CLI registra a declaração,
+sem autenticar a identidade do especialista.
 
-Não execute revisão isolada quando:
+Gere os artefatos canônicos pelos scripts, sem editar JSON manualmente. O parecer
+preserva `CHANGES_REQUIRED` para gate bloqueante falho e `SECURITY_REVIEW_REQUIRED`
+para segurança pendente. Evidência ausente/incompatível, arquivo omitido ou estado
+alterado exige `INCOMPLETE`. Execute novamente a validação depois de mudanças;
+o hash vincula a evidência ao estado, sem assinatura ou garantia de cobertura
+semântica. Não substitua o contrato por um comando conveniente escolhido na hora.
 
-- a plataforma não oferece subagente nem contexto limpo;
-- o pedido é apenas rodar validação mecânica;
-- a mudança é trivial e só altera texto ou documentação sem contrato;
-
-Preferir uma IA neutra, sem papel de implementação. Não escolha
-`developer-engineer` como revisor isolado padrão: esse papel é otimizado para
-implementar e remediar. Se a plataforma só oferecer `developer-engineer` como
-subagente disponível, dispense a revisão isolada e registre essa limitação. Use
-`security-engineer` apenas para risco material de segurança, via
-`security-handoff`.
-
-Envie para a revisão isolada somente:
-
-- objetivo da mudança;
-- arquivos alterados;
-- diretório da sessão;
-- plano de revisão;
-- `gate-report`, se existir;
-- instrução para retornar apenas apontamentos candidatos com evidência.
-
-Use esta instrução curta para o subagente ou IA isolada:
-
-```text
-Revise esta mudança em contexto limpo.
-Não edite arquivos.
-Não altere artefatos.
-Não gere parecer final.
-Retorne apenas apontamentos candidatos.
-
-Para cada apontamento, informe:
-- item do plano relacionado;
-- severidade: blocker, warning ou nit;
-- confiança: high, medium ou low;
-- arquivo e linha;
-- evidência;
-- impacto;
-- ação recomendada.
-
-Se não houver problema material, responda: "sem apontamentos materiais".
-```
-
-A IA que executa esta skill deve validar cada apontamento candidato antes de
-registrar. Ignore candidato sem evidência clara. Registre os válidos com
-`scripts/append-finding.py`. Se a revisão isolada não foi executada, informe o
-motivo na saída final.
-
-## Scripts
-
-- `scripts/init-review-session.py`: cria os artefatos iniciais.
-- `scripts/build-review-plan.py`: cria o plano por tipo de risco.
-- `scripts/append-finding.py`: registra um apontamento estruturado.
-- `scripts/record-gate-report.py`: executa gates e grava a evidência da sessão.
-- `scripts/expand-review-item-context.py`: adiciona contexto relacionado.
-- `scripts/mark-review-item-done.py`: conclui item do plano.
-- `scripts/detect-security-touch.py`: detecta sinais de superfície sensível.
-- `scripts/create-security-handoff.py`: cria ou atualiza encaminhamento de segurança.
-- `scripts/consolidate-verdict.py`: consolida apontamentos, gates e segurança.
-- `scripts/export-review-summary.py`: gera resumo legível e reproduzível.
-
-## Se Algo Falhar
-
-- Se sessão, plano ou gates estiverem ausentes, use o script correspondente.
-  Nunca escreva o artefato JSON manualmente.
-- Se `gate-report` estiver pendente, vazio ou contiver gate bloqueante não
-  executado, preserve `INCOMPLETE` até a validação ser concluída. Uma gate
-  bloqueante que já falhou produz `CHANGES_REQUIRED` e mantém as lacunas
-  restantes em `blockingReasons`.
-- Se a evidência estruturada mudar ou a reverificação nativa falhar, preserve
-  `INCOMPLETE` e execute novamente o contrato de validação.
-- Se o contexto factual não sustentar um apontamento, registre a incerteza ou
-  expanda contexto antes de salvar o apontamento.
-- Se segurança estiver pendente, preserve `SECURITY_REVIEW_REQUIRED` até o
-  encaminhamento de segurança ficar em estado terminal.
-
-## Condições de Saída
-
-- Sessão, plano, `gate-report` e `verdict` existem como JSON canônico; todo
-  arquivo alterado tem item de revisão e toda gate bloqueante foi executada.
-- Todo apontamento tem severidade, confiança, impacto, ação recomendada e
-  evidência.
-- O resumo legível reflete os artefatos atuais.
-- O próximo estado está claro: aprovado, mudanças necessárias, revisão de
-  segurança necessária, bloqueado ou incompleto.
-- A saída informa se a revisão isolada foi executada, dispensada ou indisponível.
-
-## Saída Esperada
-
-Informe o parecer final, bloqueios, observações, gates relevantes, status de
-segurança, arquivos revisados, status da revisão isolada e limitações. Se a
-revisão foi feita pela mesma IA que implementou a mudança, declare essa
-limitação.
+Informe parecer, achados/bloqueios, escopo e arquivos revisados, gates executados,
+segurança, revisão isolada e limitações. Declare quando a mesma IA implementou e
+revisou. Exporte o resumo após consolidar o parecer.
 
 ## Exemplos
 
 ### Caso positivo
 
 **Entrada:** "fecha a revisão desse diff e gera o parecer depois da validação"
-**Saída esperada:** criar ou retomar sessão, ler `gate-report`, revisar por
-risco, consolidar `verdict` e exportar resumo.
+**Saída esperada:** derivar escopo de Git, planejar por risco, revisar, executar o
+contrato declarado, consolidar e exportar. Para uma leitura pequena de copy sem
+parecer formal, entregar a revisão leve sem artefatos.
 
 ### Caso negativo
 
@@ -262,124 +153,7 @@ risco, consolidar `verdict` e exportar resumo.
 
 ## Evals de trigger
 
-Deve acionar:
-
-- "fecha a revisão com parecer"
-- "monta plano de revisão por risco"
-- "registra esse apontamento"
-- "prepara encaminhamento para segurança"
-- "revisa antes de encerrar"
-- "faz uma segunda leitura em contexto limpo"
-- "review de PR antes de mergear"
-- "revisa esse diff e me diz se aprova"
-
-Não deve acionar:
-
-- "roda validação dos gates"
-- "explora esse possível IDOR"
-- "corrige o bug diretamente"
-- "define uma estratégia de testes ampla"
-
-## Evals de workflow
-
-### Cenário 1 - Gate bloqueante falhou
-
-Entrada: sessão planejada com `gate-report` contendo gate bloqueante `failed`.
-
-Assertions:
-
-- [ ] consolida `verdict` como `CHANGES_REQUIRED`.
-- [ ] inclui o gate bloqueante em `blockingReasons`.
-- [ ] não declara aprovação parcial como sucesso.
-
-### Cenário 2 - Segurança pendente
-
-Entrada: sessão com `security-handoff` em `pending` ou `in_review`.
-
-Assertions:
-
-- [ ] consolida `verdict` como `SECURITY_REVIEW_REQUIRED`.
-- [ ] preserva o status de segurança como pendente.
-- [ ] não aprova risco material sem revisão própria de segurança.
-
-### Cenário 3 - Revisão com findings não bloqueantes
-
-Entrada: sessão com apenas findings não relacionados à segurança, `warning` ou
-`nit`, abertos e gates bloqueantes aprovados.
-
-Assertions:
-
-- [ ] consolida `verdict` como `APPROVED`.
-- [ ] lista warnings e nits como `advisories`.
-- [ ] não transforma advisory em bloqueio sem evidência adicional.
-
-### Cenário 4 - Revisão isolada indisponível
-
-Entrada: mudança não trivial, mas a plataforma não oferece subagente nem
-contexto limpo.
-
-Assertions:
-
-- [ ] executa a revisão principal mesmo sem revisão isolada.
-- [ ] informa a ausência de revisão isolada como limitação.
-- [ ] não trata essa ausência como falha automática.
-
-### Cenário 5 - Artefatos canônicos
-
-Entrada: pedido para registrar um apontamento ou encerrar parecer.
-
-Assertions:
-
-- [ ] cria artefatos por scripts, não por JSON manual.
-- [ ] grava `gate-report` com `record-gate-report.py`.
-- [ ] registra finding com severidade, confiança, impacto, ação e evidência.
-- [ ] exporta resumo legível depois de consolidar o `verdict`.
-
-### Cenário 6 - Evidência incompleta
-
-Entrada: relatório pendente, vazio ou com gate bloqueante não executado.
-
-Assertions:
-
-- [ ] consolida `verdict` como `INCOMPLETE`.
-- [ ] explica a evidência ausente em `blockingReasons`.
-- [ ] não emite `APPROVED`.
-
-### Cenário 7 - Arquivo sem categoria e retomada
-
-Entrada: mudança em `pkg/selection.py` e sessão já iniciada.
-
-Assertions:
-
-- [ ] o arquivo entra em um item `behavior`.
-- [ ] `--resume` mantém plano, apontamentos, gates e parecer existentes.
-- [ ] repetir a criação falha sem sobrescrever a sessão.
-
-### Cenário 8 - Segurança material sem handoff
-
-Entrada: finding `security:` aberto, `warning/high`, sem `security-handoff`.
-
-Assertions:
-
-- [ ] consolida `verdict` como `SECURITY_REVIEW_REQUIRED`.
-- [ ] informa que o handoff precisa ser criado.
-- [ ] não aprova o risco como advisory comum.
-
-### Cenário 9 - Evidência adulterada ou estado alterado
-
-Entrada: gate aprovado, seguido de alteração no código ou no relatório nativo.
-
-Assertions:
-
-- [ ] reverifica o contrato e o estado no fechamento.
-- [ ] consolida `INCOMPLETE` e pede nova validação.
-
-### Cenário 10 - Resultado de segurança sem análise registrada
-
-Entrada: handoff pendente e tentativa de marcar `cleared` sem o resultado do
-`security-engineer`.
-
-Assertions:
-
-- [ ] recusa o fechamento do handoff.
-- [ ] mantém `SECURITY_REVIEW_REQUIRED`.
+Deve acionar: "review rápido desse diff", "fecha a revisão com parecer", "faz uma
+segunda leitura". Não deve acionar: "só roda os gates", "corrige esse bug" ou
+"explora esse possível IDOR". Casos completos e assertions verificáveis ficam em
+[references/evals.md](references/evals.md); leia ao avaliar ou alterar o workflow.

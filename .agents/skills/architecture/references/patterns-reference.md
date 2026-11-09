@@ -1,67 +1,60 @@
 # Patterns Reference
 
-Use esta referência como consulta rápida. Cada padrão abaixo inclui o problema que
-ele resolve, sinais de uso, custos, disqualifiers, alternativa mais simples e
-pré-requisitos para adoção segura.
+Use esta referência para eliminar opções inadequadas e tornar custos explícitos.
+Os sinais resumem o problema; compare o custo e a alternativa menor antes de
+adotar o padrão. Os critérios independem de linguagem ou framework.
 
 ## Modular Monolith
 
-- **Problema que resolve:** separar domínio, ownership e mudança sem pagar custo de rede.
-- **Sinais de uso:** deploy único ainda funciona, mas módulos brigam entre si e a base cresce sem fronteira.
-- **Custos operacionais:** disciplina de boundary, contratos internos, revisão de acoplamento.
+- **Sinais:** deploy único funciona, mas domínio, ownership e mudanças precisam de fronteiras internas.
+- **Custos operacionais:** controlar imports, contratos internos e acoplamento ao longo das mudanças.
 - **Disqualifiers:** partes exigem deploy independente frequente ou isolamento forte de falha.
 - **Alternativa mais simples:** reorganizar módulos e contratos sem refator estrutural grande.
 - **Pré-requisitos:** fronteiras nomeadas, imports controlados e ownership claro.
 
 ## Worker Isolado / Job Assíncrono
 
-- **Problema que resolve:** trabalho lento, frágil ou com retry próprio sem travar o request principal.
-- **Sinais de uso:** provider externo lento, export/import, reconciliação, processamento em lote.
-- **Custos operacionais:** fila ou scheduler, idempotência, retries, observabilidade, reconciliação.
+- **Sinais:** integração lenta, lote ou trabalho com retry próprio prejudica o request principal.
+- **Custos operacionais:** fila ou scheduler, idempotência, retries, observabilidade e reconciliação.
 - **Disqualifiers:** resposta precisa ser imediata ou o domínio não tolera estado intermediário.
 - **Alternativa mais simples:** job interno controlado no mesmo deploy.
 - **Pré-requisitos:** contrato de job, estratégia de retry e operação monitorável.
 
 ## Microservice
 
-- **Problema que resolve:** boundary forte de deploy, escala, falha e ownership.
-- **Sinais de uso:** partes com ritmo de mudança distinto, contratos estáveis e benefício real de autonomia.
-- **Custos operacionais:** rede, tracing, versionamento, compatibilidade, deploy, incidentes distribuídos.
+- **Sinais:** contratos estáveis e ganho demonstrado de autonomia de deploy, escala, falha ou ownership.
+- **Custos operacionais:** falhas de rede, tracing, compatibilidade, deploys e incidentes distribuídos.
 - **Disqualifiers:** fronteira ainda confusa, domínio em descoberta ou ausência de capacidade operacional.
 - **Alternativa mais simples:** monólito modular ou worker isolado.
 - **Pré-requisitos:** contrato explícito, observabilidade mínima e plano de migração incremental.
 
 ## Event-Driven Integration
 
-- **Problema que resolve:** desacoplar produtores e consumidores com processamento reativo.
-- **Sinais de uso:** múltiplos consumidores, integração assíncrona e tolerância a atraso.
-- **Custos operacionais:** ordem, duplicidade, reprocessamento, versionamento de eventos, debugging.
+- **Sinais:** produtores e consumidores precisam evoluir separados e toleram processamento assíncrono.
+- **Custos operacionais:** ordem, duplicidade, retenção, reprocessamento e versionamento de eventos.
 - **Disqualifiers:** necessidade forte de resposta síncrona ou de consistência imediata.
 - **Alternativa mais simples:** chamada síncrona ou job com polling previsível.
 - **Pré-requisitos:** contrato de evento, idempotência, DLQ/retry e monitoramento.
 
 ## CQRS Seletivo
 
-- **Problema que resolve:** leitura e escrita com modelos estruturalmente diferentes.
-- **Sinais de uso:** consultas pesadas, projeções especializadas, escrita com invariantes densas.
-- **Custos operacionais:** duplicação de modelo, rebuild de projeção, consistência eventual, manutenção extra.
+- **Sinais:** leitura e escrita exigem modelos distintos, com projeções especializadas e invariantes de escrita.
+- **Custos operacionais:** modelos duplicados, rebuild e atualização de projeções; atraso se forem assíncronas.
 - **Disqualifiers:** CRUD comum ou divergência apenas estética de payload.
 - **Alternativa mais simples:** query otimizada, cache, materialized view ou read model local.
 - **Pré-requisitos:** motivo claro para separar modelos e estratégia de atualização das projeções.
 
 ## Ports & Adapters / Hexagonal
 
-- **Problema que resolve:** reduzir acoplamento com infraestrutura e integrações mutáveis.
-- **Sinais de uso:** múltiplos providers, testes de regra de domínio independentes, integração com legado hostil.
+- **Sinais:** regras precisam de testes independentes de infraestrutura ou de isolamento de integrações mutáveis.
 - **Custos operacionais:** mais camadas, abstração extra, risco de interface vazia por hábito.
-- **Disqualifiers:** sistema pequeno com um único adapter estável e baixa chance de troca.
+- **Disqualifiers:** abstrações não isolam regra, falha ou variação real e só aumentam indireção.
 - **Alternativa mais simples:** integração concreta com seams pontuais.
 - **Pré-requisitos:** boundary clara entre domínio e infraestrutura e adapters com responsabilidade real.
 
 ## Domain Model / DDD-Lite
 
-- **Problema que resolve:** concentrar invariantes e evitar regra de negócio espalhada.
-- **Sinais de uso:** múltiplas regras dependentes, vocabulário de domínio importante e conflitos frequentes de consistência.
+- **Sinais:** invariantes densas, regras dependentes e vocabulário de domínio pedem concentração da lógica.
 - **Custos operacionais:** curva de modelagem, disciplina conceitual e objetos mais ricos.
 - **Disqualifiers:** fluxo essencialmente procedural ou CRUD com pouca regra.
 - **Alternativa mais simples:** transaction script bem organizado.

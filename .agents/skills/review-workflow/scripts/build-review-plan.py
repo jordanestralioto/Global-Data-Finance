@@ -12,8 +12,10 @@ sys.path.append(
     str(Path(__file__).resolve().parents[3] / 'runtime' / 'review')
 )
 
+from review_scope import scoped_files
 from runtime_support import (
     CURRENT_SCHEMA_VERSION,
+    PACK_REGISTRY,
     assert_transition,
     build_plan_items,
     load_or_migrate_artifact,
@@ -31,6 +33,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument('--session-dir', required=True)
     parser.add_argument('--changed-file', action='append', default=[])
+    parser.add_argument(
+        '--risk', action='append', choices=sorted(PACK_REGISTRY), default=[]
+    )
     return parser.parse_args()
 
 
@@ -41,9 +46,14 @@ def main() -> int:
     plan = load_or_migrate_artifact(session_dir, 'review-plan')
 
     changed_files = normalize_paths(
-        args.changed_file or session['changedFiles']
+        [
+            *scoped_files(session, session_dir),
+            *(args.changed_file or session['changedFiles']),
+        ]
     )
-    items = build_plan_items(changed_files, session['change']['securityTouch'])
+    items = build_plan_items(
+        changed_files, session['change']['securityTouch'], args.risk
+    )
 
     assert_transition('review-plan', plan['status'], 'ready')
     plan.update(
@@ -52,6 +62,7 @@ def main() -> int:
             'status': 'ready',
             'updatedAt': now_iso(),
             'items': items,
+            'scope': session.get('scope'),
         },
     )
     save_artifact(session_dir, plan)

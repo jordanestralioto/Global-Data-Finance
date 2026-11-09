@@ -24,7 +24,9 @@ pre-commit:
     # check-max-lines:
     #   run: python .agents/scripts/check-max-lines.py
 
-    # Optional [DEAD_CODE]: assess every capability in dead-code-policy.md.
+    # Optional [DEAD_CODE]: assess all capabilities for full setups/audits or
+    # unused-code requests. Unrelated targeted maintenance may leave it outside
+    # scope while preserving existing gates. Follow dead-code-policy.md.
     # Replace with the project's pinned, read-only analyzer and declared full
     # project/workspace scope, including cross-package consumers. Run on deletions
     # and entry/configuration changes. Verify index isolation, including untracked
@@ -49,6 +51,9 @@ pre-commit:
     # =========================================================================
     # Copy and enable only selected scripts. The lockfile hook validates
     # staged parity and never installs or upgrades packages.
+    # Prints are blocked in script directories too; use --allow-print-file PATH
+    # for each intentional CLI output file. No directory-wide exemption applies.
+    # Test-integrity reasons and deletion policies must exist in the Git index.
     # diff-sanity:
     #   run: python scripts/check_diff_sanity.py
     # test-integrity:

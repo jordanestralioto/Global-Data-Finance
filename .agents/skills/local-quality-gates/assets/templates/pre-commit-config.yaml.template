@@ -44,7 +44,9 @@ repos:
   #       pass_filenames: false
   #       always_run: true
 
-  # Optional [DEAD_CODE]: assess every capability in dead-code-policy.md.
+  # Optional [DEAD_CODE]: assess all capabilities for full setups/audits or
+  # unused-code requests. Unrelated targeted maintenance may leave it outside
+  # scope while preserving existing gates. Follow dead-code-policy.md.
   # Replace with the project's pinned, read-only analyzer and declared full
   # project/workspace scope, including cross-package consumers. Run on deletions
   # and entry/configuration changes. Verify index isolation, including untracked
@@ -112,6 +114,9 @@ repos:
   # =========================================================================
   # Copy only the selected scripts and enable the matching hooks. The
   # lockfile hook checks staged parity; it never installs or upgrades packages.
+  # Prints are blocked in script directories too; use --allow-print-file PATH
+  # for each intentional CLI output file. No directory-wide exemption applies.
+  # Test-integrity reasons and deletion policies must exist in the Git index.
   # - repo: local
   #   hooks:
   #     - id: diff-sanity

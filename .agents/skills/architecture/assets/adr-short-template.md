@@ -9,6 +9,7 @@ Proposed | Accepted
 - problema:
 - constraints:
 - atributos dominantes:
+- evidência e premissas:
 
 ## Decisão
 
@@ -17,8 +18,8 @@ Proposed | Accepted
 
 ## Alternativas consideradas
 
-- opção A:
-- opção B:
+- opções comparadas e motivos de descarte:
+- restrição e evidência de caminho único, se aplicável:
 
 ## Consequências
 

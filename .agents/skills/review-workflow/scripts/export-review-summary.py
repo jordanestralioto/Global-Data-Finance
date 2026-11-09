@@ -44,6 +44,7 @@ def main() -> int:
             'reviewId': session['reviewId'],
             'status': session['status'],
             'verdict': verdict['verdict'],
+            'scope': json.dumps(session.get('scope', {'mode': 'inferred'})),
             'planProgress': (
                 f'{session["statistics"]["completedItems"]}/'
                 f'{session["statistics"]["totalItems"]}'
