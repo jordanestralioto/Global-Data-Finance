@@ -123,8 +123,11 @@ estimates staging and publication needs and can substantially exceed the
 final Parquet size.
 
 **Restart after a crash:** new transaction locks also record the process
-start time, distinguishing a reused PID from the original writer. Older
-locks with live PIDs and locks from another host still require inspection.
+start time for diagnostics. This timestamp can change with clock adjustments,
+so a live PID with a different start time cannot authorize recovery.
+Automatic recovery requires the recorded PID to no longer exist on the same
+host and process namespace; live PIDs, including reused ones, and locks from
+another host require inspection.
 Follow the [manual CVM/B3 recovery procedure](../reference/transactional-publication.en.md#manual-recovery-and-containers).
 
 ## B3

@@ -1,4 +1,4 @@
-"""Recovery distinguishes a transaction owner from a reused process ID."""
+"""Recovery preserves ownership when process identity is ambiguous."""
 
 from __future__ import annotations
 
@@ -14,13 +14,16 @@ from globaldatafinance.macro_exceptions import ExtractionError
 from globaldatafinance.macro_infra.transactional_publication import (
     TransactionalPublisher,
 )
+from globaldatafinance.macro_infra.transactional_publication.ownership import (
+    RECOVERY_GUIDE_URL,
+)
 
 
 @pytest.mark.integration
-def test_reused_pid_recovers_the_previous_complete_output(
+def test_live_pid_start_mismatch_preserves_interrupted_publication(
     tmp_path: Path,
 ) -> None:
-    """PID reuse must still restore an interrupted publication's backup."""
+    """A different start time cannot authorize rollback with a live PID."""
     final = tmp_path / 'quotes.parquet'
     final.write_bytes(b'previous complete output')
     caller_file = tmp_path / 'caller.txt'
@@ -49,11 +52,71 @@ def test_reused_pid_recovers_the_previous_complete_output(
     )
     owner_path.write_text(json.dumps(record), encoding='utf-8')
 
-    resumed = TransactionalPublisher(tmp_path, owner='test').begin()
-    resumed.abort()
+    before = {
+        path.relative_to(tmp_path): path.read_bytes()
+        for path in tmp_path.rglob('*')
+        if path.is_file()
+    }
+    try:
+        with pytest.raises(
+            ExtractionError, match='PID reused or system clock changed'
+        ) as failure:
+            TransactionalPublisher(tmp_path, owner='test').begin()
+
+        assert RECOVERY_GUIDE_URL in str(failure.value)
+        assert {
+            path.relative_to(tmp_path): path.read_bytes()
+            for path in tmp_path.rglob('*')
+            if path.is_file()
+        } == before
+        assert final.read_bytes() == b'new complete output'
+    finally:
+        if interrupted.manifest.staging_dir.exists():
+            with pytest.raises(
+                ExtractionError, match='all modified outputs were restored'
+            ):
+                interrupted.abort()
 
     assert final.read_bytes() == b'previous complete output'
     assert caller_file.read_bytes() == b'caller data'
+    assert not publisher.lock_dir.exists()
+    assert not list(tmp_path.glob('.globaldatafinance-transaction-*'))
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize('clock_shift', [-1.0, 1.0])
+def test_clock_change_cannot_reclaim_a_live_writers_staging(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, clock_shift: float
+) -> None:
+    """Wall-clock changes preserve the live writer's files and ownership."""
+    final = tmp_path / 'quotes.parquet'
+    final.write_bytes(b'previous complete output')
+    publisher = TransactionalPublisher(tmp_path, owner='test')
+    publication = publisher.begin()
+    staged = publication.stage_path(final.name)
+    staged.write_bytes(b'in-progress output')
+    owner_path = publisher.lock_dir / 'owner.json'
+    owner_before = owner_path.read_bytes()
+    manifest_before = publication.manifest_path.read_bytes()
+    started_at = psutil.Process(os.getpid()).create_time()
+    monkeypatch.setattr(
+        psutil.Process, 'create_time', lambda _self: started_at + clock_shift
+    )
+    try:
+        with pytest.raises(
+            ExtractionError, match='PID reused or system clock changed'
+        ) as failure:
+            TransactionalPublisher(tmp_path, owner='contender').begin()
+
+        assert RECOVERY_GUIDE_URL in str(failure.value)
+        assert owner_path.read_bytes() == owner_before
+        assert publication.manifest_path.read_bytes() == manifest_before
+        assert staged.read_bytes() == b'in-progress output'
+        assert final.read_bytes() == b'previous complete output'
+    finally:
+        if publication.manifest.staging_dir.exists():
+            publication.abort()
+
     assert not publisher.lock_dir.exists()
     assert not list(tmp_path.glob('.globaldatafinance-transaction-*'))
 
@@ -113,16 +176,20 @@ def test_invalid_owner_start_time_cannot_authorize_recovery(
 def test_process_query_compares_the_recorded_start_time(
     monkeypatch: pytest.MonkeyPatch, same_process: bool
 ) -> None:
-    """An existing PID is insufficient evidence of the previous owner."""
+    """A live PID stays locked even when the recorded start time differs."""
     process = Mock()
     process.is_running.return_value = True
     process.create_time.return_value = 100 if same_process else 200
     monkeypatch.setattr(psutil, 'Process', Mock(return_value=process))
 
-    assert (
-        TransactionalPublisher._pid_is_alive(1234, started_at=100)
-        is same_process
-    )
+    if same_process:
+        assert TransactionalPublisher._pid_is_alive(1234, started_at=100)
+    else:
+        with pytest.raises(
+            ExtractionError, match='PID reused or system clock changed'
+        ) as failure:
+            TransactionalPublisher._pid_is_alive(1234, started_at=100)
+        assert RECOVERY_GUIDE_URL in str(failure.value)
 
 
 @pytest.mark.unit

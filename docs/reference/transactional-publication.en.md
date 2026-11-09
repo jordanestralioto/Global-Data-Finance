@@ -21,12 +21,14 @@ terminates:
 The guard protects the window before `owner.json` is persisted and serializes
 recovery attempts. After initialization, the record identifies hostname, PID,
 and `process_started_at`, the process start returned by
-`psutil.Process.create_time()`. A live PID with a different start time belongs
-to another process instance and permits recovery of the interrupted
-transaction. The same PID and start time, permission failures, invalid
-identities, and locks from another host still block recovery. A private lock
-without an owner is recovered
-automatically only when empty or containing private `owner.json` temporaries.
+`psutil.Process.create_time()`. This timestamp can change with system clock
+adjustments. A live PID with a different start time may indicate PID reuse
+or a clock change; this difference cannot authorize recovery. Any live PID,
+permission failures, invalid identities, and locks from another host block
+recovery. A lock with an identified owner is recovered automatically only
+when its PID no longer exists on the same host and process namespace.
+A private lock without an owner is recovered automatically only when empty
+or containing private `owner.json` temporaries.
 Unrecognized contents, aliases, and unsafe permissions are preserved with an
 explicit error.
 
@@ -58,12 +60,13 @@ To resume after an interruption:
    contents, links, or unknown ownership require inspection; do not delete
    the tree recursively.
 4. On the same host and namespace, run the facade again in the same
-   destination. Transaction locks from dead processes or reused PIDs recover
-   automatically; journals determine rollback or completion before the new
-   publication starts. Preserve logs if recovery fails.
-5. For a transaction lock from another host, an older lock with a live PID,
-   or an unverifiable identity, regenerate into a new directory using the
-   preserved sources and check the result before switching consumers. This
+   destination. A transaction lock is recovered automatically only when its
+   recorded PID no longer exists; journals determine rollback or completion
+   before the new publication starts. A live PID still blocks recovery even
+   with a different start time. Preserve logs if recovery fails.
+5. For a transaction lock from another host, any still-live PID (including
+   a reused PID), or an unverifiable identity, regenerate into a new directory
+   using the preserved sources and check the result before switching consumers. This
    version provides neither automatic cross-host takeover nor a forced
    recovery command.
 

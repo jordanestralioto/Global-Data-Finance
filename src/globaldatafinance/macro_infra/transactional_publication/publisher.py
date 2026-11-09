@@ -234,7 +234,14 @@ class TransactionalPublisher:
             process = psutil.Process(pid)
             if not process.is_running():
                 return False
-            return started_at is None or process.create_time() == started_at
+            if started_at is not None and process.create_time() != started_at:
+                raise ExtractionError(
+                    str(pid),
+                    f'Process start time differs for live PID {pid}: '
+                    'PID reused or system clock changed. '
+                    f'See the manual recovery procedure: {RECOVERY_GUIDE_URL}',
+                )
+            return True
         except psutil.NoSuchProcess:
             return False
         except psutil.AccessDenied as error:

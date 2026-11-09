@@ -126,9 +126,11 @@ estimativa conservadora para staging e publicação, e pode superar bastante
 o tamanho do Parquet final.
 
 **Retomada após queda:** novas travas transacionais registram também o início
-do processo, permitindo distinguir um PID reutilizado do escritor original.
-Travas antigas com PID vivo e travas de outro host continuam exigindo
-inspeção. Consulte o procedimento de
+do processo para diagnóstico. Esse horário pode mudar com ajustes do relógio,
+portanto um PID vivo com início diferente não autoriza recuperar a transação.
+A retomada automática exige que o PID registrado não exista mais no mesmo
+host e namespace; PIDs vivos, inclusive reutilizados, e travas de outro host
+exigem inspeção. Consulte o procedimento de
 [recuperação manual de CVM/B3](../reference/transactional-publication.md#recuperacao-manual-e-conteineres).
 
 ## B3

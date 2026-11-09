@@ -7,6 +7,7 @@ import textwrap
 from concurrent.futures.process import BrokenProcessPool
 from pathlib import Path
 
+import psutil
 import pytest
 
 from globaldatafinance import HistoricalQuotesB3
@@ -14,6 +15,15 @@ from scripts.process_runner import run_process
 from tests.support.builders import build_cotahist_record, write_cotahist_txt
 
 pytestmark = pytest.mark.integration
+
+
+@pytest.fixture(autouse=True)
+def _healthy_memory(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep spawn behavior independent of the host's current memory load."""
+    memory = psutil.virtual_memory()._replace(
+        percent=20.0, available=2 * 1024**3
+    )
+    monkeypatch.setattr(psutil, 'virtual_memory', lambda: memory)
 
 
 def _caller_script(
@@ -42,12 +52,17 @@ def _caller_script(
             import json
             import os
             from pathlib import Path
+            import psutil
             from globaldatafinance import HistoricalQuotesB3
             from globaldatafinance.brazil.b3_data.historical_quotes import (
                 preflight,
             )
 
             root = Path({str(root)!r})
+            memory = psutil.virtual_memory()._replace(
+                percent=20.0, available=2 * 1024**3
+            )
+            psutil.virtual_memory = lambda: memory
             os.environ['GDF_B3_EXECUTOR_BACKEND'] = {backend!r}
             os.environ['GDF_B3_WORKER_LIMIT'] = '2'
             preflight.ResourcePolicyB3.worker_limit = lambda self, count: 2
@@ -190,6 +205,11 @@ def test_failed_pool_submission_preserves_output_and_explains_guard(
     )
 
     assert result['success'] is False
+    assert result['errors']['executor'].startswith('worker startup failed ')
+    assert (
+        'If the calling script lacks a main guard'
+        in result['errors']['executor']
+    )
     assert "if __name__ == '__main__':" in result['errors']['executor']
     assert 'GDF_B3_EXECUTOR_BACKEND=thread' in result['errors']['executor']
     assert shutdowns == [(True, False)]

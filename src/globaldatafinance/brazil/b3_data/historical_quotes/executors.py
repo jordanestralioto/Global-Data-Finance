@@ -37,8 +37,11 @@ def require_safe_spawn_entrypoint() -> None:
 
 
 def process_pool_failure_message(error: BrokenProcessPool) -> str:
-    """Keep the pool failure and explain the main-script migration path."""
-    return f'{error} {SPAWN_ENTRYPOINT_GUIDANCE}'
+    """Preserve the pool error and offer conditional main-script guidance."""
+    return (
+        f'{error} If the calling script lacks a main guard: '
+        + SPAWN_ENTRYPOINT_GUIDANCE
+    )
 
 
 def _spawn_incompatibility_reason() -> str | None:
