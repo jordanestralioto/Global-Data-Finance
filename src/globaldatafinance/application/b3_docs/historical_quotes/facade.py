@@ -21,6 +21,9 @@ from ....brazil.b3_data.historical_quotes import (
     GetAvailableAssetsUseCaseB3,
     GetAvailableYearsUseCaseB3,
 )
+from ....brazil.b3_data.historical_quotes.executors import (
+    require_safe_spawn_entrypoint,
+)
 from ....core.archive_safety import ArchiveSafetyLimits
 from ....core.config import Settings
 from ....core.logging_config import get_logger
@@ -155,6 +158,8 @@ class HistoricalQuotesB3:
             InvalidLastYear: If last_year is outside range or < initial_year.
             ValueError: If path_of_docs is invalid.
             OSError: If directories cannot be created or accessed.
+            RuntimeError: If called while a spawned child imports the script;
+                protect its entrypoint or select the thread backend.
 
         Example:
             >>> b3 = HistoricalQuotesB3()
@@ -168,6 +173,7 @@ class HistoricalQuotesB3:
             >>> result['success']
             True
         """
+        require_safe_spawn_entrypoint()
         return asyncio.run(
             self.extract_async(
                 path_of_docs=path_of_docs,
@@ -199,6 +205,7 @@ class HistoricalQuotesB3:
         raise ``RuntimeError``. Arguments and return value are identical to
         :meth:`extract`; see that method for full documentation.
         """
+        require_safe_spawn_entrypoint()
         return await self._extraction_flow.execute(
             path_of_docs=path_of_docs,
             assets_list=assets_list,

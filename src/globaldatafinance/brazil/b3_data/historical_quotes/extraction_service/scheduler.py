@@ -7,12 +7,13 @@ from concurrent.futures import (
     Executor,
     Future,
 )
+from concurrent.futures.process import BrokenProcessPool
 from pathlib import Path
 from typing import Any, Protocol
 
 from .....core import SimpleProgressBar, get_logger
 from ..async_execution import run_blocking_phase
-from ..executors import create_b3_executor
+from ..executors import create_b3_executor, process_pool_failure_message
 from ..models import ValidatedCotahistSource
 from ..processing import ProcessingModeEnumB3
 from ..zip_reader import ZipFileReaderB3
@@ -146,8 +147,13 @@ class ExtractionSchedulerB3:
                 raise
             except Exception as error:
                 logger.exception('B3 source failed: %s', source)
+                detail = (
+                    process_pool_failure_message(error)
+                    if isinstance(error, BrokenProcessPool)
+                    else str(error)
+                )
                 state.errors[Path(source).name] = (
-                    f'{type(error).__name__}: {error}'
+                    f'{type(error).__name__}: {detail}'
                 )
                 admission_stopped = True
             progress_bar.update()
@@ -279,6 +285,9 @@ class ExtractionSchedulerB3:
                         active, state, progress_bar
                     ):
                         admission_stopped = True
+            except BrokenProcessPool as error:
+                logger.exception('B3 worker pool failed during submission')
+                state.errors['executor'] = process_pool_failure_message(error)
             except (asyncio.CancelledError, ProcessingCancelled):
                 await self._shutdown_executor(
                     executor,

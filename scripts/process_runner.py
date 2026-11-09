@@ -65,6 +65,7 @@ def run_process(
     capture_output: bool = True,
     env: Mapping[str, str] | None = None,
     encoding_errors: str = 'strict',
+    timeout: float | None = None,
 ) -> ProcessResult:
     """Run an allowlisted command without invoking a shell.
 
@@ -75,6 +76,7 @@ def run_process(
         capture_output: Capture standard output and standard error when true.
         env: Optional environment variables for the child process.
         encoding_errors: UTF-8 error handler used to decode captured output.
+        timeout: Optional deadline in seconds for the child process.
 
     Returns:
         The completed process result, including its return code and output.
@@ -102,6 +104,7 @@ def run_process(
             errors=encoding_errors,
             shell=False,
             text=True,
+            timeout=timeout,
         )
     except subprocess.CalledProcessError as err:
         details = (err.stderr or err.stdout or str(err)).strip()

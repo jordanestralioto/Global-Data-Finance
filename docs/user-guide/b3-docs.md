@@ -121,6 +121,18 @@ em português, inclusive quando o restante do programa usa outro idioma.
 Os dois modos aplicam as mesmas regras de dados e integridade. Para ajustar
 workers e recursos, consulte [uso avançado](../dev-guide/advanced-usage.md).
 
+### Espaço livre antes da extração
+
+Após validar as fontes e antes de abrir o staging, a B3 exige no filesystem
+de destino a soma, em bytes, de `2 * uncompressed_bytes + 256 * selected_quotes`
+para cada fonte selecionada. O tamanho descompactado considera o arquivo
+anual completo; a contagem de cotações respeita a seleção de mercados.
+Essa é uma estimativa conservadora para arquivos privados por fonte e a saída
+consolidada, não uma medição do pico de disco nem do Parquet comprimido final.
+Ao substituir saídas existentes, o publicador também confere espaço para
+seus backups completos, pois um hard link pode exigir fallback para cópia.
+Espaço insuficiente produz `DiskFullError` e preserva a saída anterior.
+
 ## Conferir e consumir o resultado
 
 O `ExtractionResultB3` contém os campos principais abaixo. A lista completa e
@@ -129,6 +141,12 @@ Em um event loop já ativo, use `await b3.extract_async(...)`; os argumentos e
 o resultado são os mesmos. Em scripts que processam várias fontes com
 processos, proteja a chamada com `if __name__ == '__main__':`, conforme o
 [exemplo de processamento paralelo](../dev-guide/advanced-usage.md).
+O padrão elegível de `fast` usa processos. Uma chamada feita enquanto um
+filho `spawn` importa o script levanta `RuntimeError` antes de ler as fontes;
+o processo principal retorna a orientação em `errors` se o pool encerrar.
+Defina `GDF_B3_EXECUTOR_BACKEND=thread` antes de construir `HistoricalQuotesB3`
+para optar por threads. Downloads e outros efeitos no topo do script também
+precisam ficar dentro da proteção `__main__`.
 
 | Campo | Como usar |
 | --- | --- |

@@ -1,0 +1,42 @@
+{
+  "campaign": {
+    "cotahistFrozenBaseline": false,
+    "cotahistPath": "/tmp/gdf-v020-readiness-20261109/inputs",
+    "cvmOutput": null,
+    "document": null,
+    "initialYear": 2025,
+    "lastYear": 2026,
+    "source": "cotahist",
+    "timeoutSeconds": 3600.0
+  },
+  "cases": [
+    {
+      "caseId": "cotahist-multi-parity-2025-2026",
+      "document": null,
+      "frozenBaseline": false,
+      "initialYear": 2025,
+      "inputFiles": [
+        {
+          "path": "/tmp/gdf-v020-readiness-20261109/inputs/COTAHIST_A2025.ZIP",
+          "sha256": "6cc0ad851c8f605ca30418acac48be81f1767f6ed05b4f563772d06ae448047d",
+          "sizeBytes": 89056788
+        },
+        {
+          "path": "/tmp/gdf-v020-readiness-20261109/inputs/COTAHIST_A2026.TXT",
+          "sha256": "44ee9ffb6bc33d1d205d17966d6e7d5108c4b014b55b5290cff43ee63dfe5be6",
+          "sizeBytes": 847130466
+        }
+      ],
+      "inputPath": "/tmp/gdf-v020-readiness-20261109/inputs/COTAHIST_A2025.ZIP",
+      "inputSha256": "6cc0ad851c8f605ca30418acac48be81f1767f6ed05b4f563772d06ae448047d",
+      "inputSizeBytes": 89056788,
+      "lastYear": 2026,
+      "mode": "multi_parity",
+      "outputRoot": "",
+      "source": "cotahist",
+      "url": null,
+      "year": 2025
+    }
+  ],
+  "schemaVersion": 2
+}

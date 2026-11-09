@@ -2,9 +2,13 @@
 
 This breaking change belongs to the `0.x` line and is planned for `v0.2.0`, not
 for the patch release `v0.1.5`. Obsolete generic APIs and the automatic Pandas
-dependency have been removed. The root facades, public CVM/B3 signatures,
-output names, Parquet schemas, and transactional publication semantics remain
-unchanged. The cut is deliberately incompatible: no alias, warning, shim, or
+dependency have been removed. This infrastructure cut preserves the root
+facades, public CVM/B3 signatures, output names, and transactional publication
+guarantees. In the same release, persisted contracts change: CVM uses
+`exact-text-v1` string columns, and B3 uses the 32-column v2 schema. Regenerate
+files following the [CVM migration](migration-cvm-exact-text.en.md) and the
+[B3 migration](migration-pyarrow-integrity.en.md). The cut is deliberately
+incompatible: no alias, warning, shim, or
 fallback is retained for removed names.
 
 ## Version removed from the package root

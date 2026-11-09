@@ -100,6 +100,8 @@ antes da recuperação: confirme que não existe escritor ativo, preserve a
 evidência e recupere o estado derivado da transação. A biblioteca nunca toma
 automaticamente um lock sem verificar sua autoridade. Falhas permanecem no
 resultado; não interprete apenas a existência de um Parquet como sucesso.
+Siga o [procedimento de recuperação manual](../reference/transactional-publication.md#recuperacao-manual-e-conteineres),
+que distingue a trava externa CVM da recuperação transacional dos Parquets.
 
 IPE inclui 2003 em diante. `get_available_years().ipe_min_year`
 informa esse limite como propriedade; os quatro campos da tupla continuam

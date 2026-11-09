@@ -11,6 +11,11 @@ from typing import Any
 
 from ...macro_exceptions import ExtractionError
 
+RECOVERY_GUIDE_URL = (
+    'https://jordanestralioto.github.io/Global-Data-Finance/'
+    'reference/transactional-publication/'
+)
+
 
 def require_private_entry(
     path: Path, *, directory: bool = False

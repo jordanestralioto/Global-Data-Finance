@@ -100,6 +100,8 @@ before recovery: confirm no active writer exists, preserve evidence, and
 recover derived transaction state. The library never automatically takes
 an unverifiable lock. Failures remain in the result; a Parquet's existence
 alone does not establish success.
+Follow the [manual recovery procedure](../reference/transactional-publication.en.md#manual-recovery-and-containers),
+which distinguishes CVM's outer lock from Parquet transaction recovery.
 
 IPE includes 2003 onward. `get_available_years().ipe_min_year` exposes that
 minimum as a property; the four tuple fields continue to describe general

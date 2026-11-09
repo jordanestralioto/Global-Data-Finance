@@ -19,8 +19,12 @@ processo termina:
   bloquear o mesmo arquivo.
 
 A guarda protege a janela anterior à persistência de `owner.json` e serializa
-tentativas de recuperação. Depois da inicialização, o registro continua
-rejeitando PIDs vivos e locks de outro host. Um lock privado sem dono só é
+tentativas de recuperação. Depois da inicialização, o registro identifica
+hostname, PID e `process_started_at`, o início do processo retornado por
+`psutil.Process.create_time()`. Um PID vivo com início diferente pertence a
+outra instância e permite recuperar a transação interrompida. O mesmo PID e
+início, falhas de permissão, identidades inválidas e locks de outro host
+continuam bloqueando a retomada. Um lock privado sem dono só é
 recuperado automaticamente quando está vazio ou contém apenas temporários
 privados de `owner.json`. Conteúdo não reconhecido, aliases e permissões
 inseguras são preservados com erro explícito.
@@ -28,6 +32,44 @@ inseguras são preservados com erro explícito.
 A consulta de PID usa `psutil.Process.is_running()`, sem emitir sinais ou
 eventos de console no Windows. Falhas de permissão na consulta impedem a
 retomada e preservam a causa do diagnóstico.
+
+### Recuperação manual e contêineres
+
+Uma trava antiga sem `process_started_at` continua recuperável quando o PID
+não existe; com PID vivo, a biblioteca preserva o comportamento conservador.
+PIDs de contêineres diferentes não identificam o mesmo processo. Não trate
+ausência de um PID no contêiner atual, idade do arquivo ou mudança de hostname
+como prova de que o escritor anterior terminou. Destinos compartilhados
+exigem hosts identificáveis e escritores no mesmo namespace de processos
+quando usam o mesmo hostname.
+
+Para retomar após interrupção:
+
+1. Pare downloads, extrações e outros escritores do destino, inclusive em
+   outros hosts ou contêineres. Confirme no ambiente de origem que o processo
+   dono terminou; se isso não for possível, mantenha o destino intacto e use
+   um diretório novo.
+2. Preserve uma cópia completa do destino, incluindo ZIPs, Parquets,
+   `.cvm-write-lock`, `.globaldatafinance-transaction.lock`, manifestos e
+   staging. Examine os `owner.json` sem alterar PID, hostname ou timestamps.
+3. No fluxo CVM, `.cvm-write-lock` é uma trava externa separada, que exige
+   liberação manual após essa confirmação. Se contém somente `owner.json`
+   regular e privado, remova apenas esse arquivo e o diretório então vazio.
+   Conteúdo adicional, links ou ownership desconhecido exigem inspeção;
+   não remova recursivamente a árvore.
+4. No mesmo host e namespace, execute novamente a fachada no mesmo destino.
+   A trava transacional de processo morto ou PID reutilizado é recuperada
+   automaticamente; os journals determinam rollback ou conclusão antes de
+   começar a nova publicação. Preserve logs se houver erro de recuperação.
+5. Se a trava transacional pertence a outro host, é antiga com PID vivo ou
+   não permite verificar a identidade, regenere em um destino novo a partir
+   das fontes preservadas e confira o resultado antes de trocar consumidores.
+   Esta versão não oferece tomada automática nem comando de recuperação
+   forçada entre hosts.
+
+Não apague journals, backups, staging ou o arquivo de guarda Windows para
+desbloquear uma publicação; isso pode eliminar a autoridade necessária para
+recuperar o lote. A verificação do resultado da fachada continua obrigatória.
 
 ## Staging e manifestos
 

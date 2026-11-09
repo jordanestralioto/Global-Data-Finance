@@ -11,6 +11,7 @@ from concurrent.futures import (
     ProcessPoolExecutor,
     ThreadPoolExecutor,
 )
+from concurrent.futures.process import BrokenProcessPool
 from pathlib import Path
 from threading import Event
 from typing import Any
@@ -19,6 +20,25 @@ from ....core import get_logger
 from .processing import ProcessingModeEnumB3
 
 logger = get_logger(__name__)
+
+SPAWN_ENTRYPOINT_GUIDANCE = (
+    "Protect script execution with if __name__ == '__main__':, or set "
+    'GDF_B3_EXECUTOR_BACKEND=thread before constructing HistoricalQuotesB3.'
+)
+
+
+def require_safe_spawn_entrypoint() -> None:
+    """Reject extraction while CPython imports a spawned child's script."""
+    if getattr(mp.current_process(), '_inheriting', False):
+        raise RuntimeError(
+            'B3 extraction cannot run during spawn bootstrap. '
+            + SPAWN_ENTRYPOINT_GUIDANCE
+        )
+
+
+def process_pool_failure_message(error: BrokenProcessPool) -> str:
+    """Keep the pool failure and explain the main-script migration path."""
+    return f'{error} {SPAWN_ENTRYPOINT_GUIDANCE}'
 
 
 def _spawn_incompatibility_reason() -> str | None:

@@ -3,8 +3,12 @@
 Esta quebra de compatibilidade pertence à linha `0.x` e deve ser publicada como
 `v0.2.0`, não como uma versão patch `v0.1.5`. APIs genéricas obsoletas e a
 dependência automática de Pandas foram removidas. As fachadas raiz, as
-assinaturas públicas de CVM/B3, os nomes de saída, os schemas Parquet e a
-publicação transacional continuam iguais. A mudança é intencionalmente
+assinaturas públicas de CVM/B3, os nomes de saída e as garantias de publicação
+transacional são preservados por este corte de infraestrutura. Na mesma
+release, os contratos persistidos mudam: a CVM passa para colunas textuais
+`exact-text-v1`, e a B3 para o schema v2 de 32 colunas. Regenere os arquivos
+conforme a [migração CVM](migration-cvm-exact-text.md) e a
+[migração B3](migration-pyarrow-integrity.md). A mudança é intencionalmente
 incompatível: não há alias, warning, shim ou fallback para os nomes removidos.
 
 ## Versão removida da raiz

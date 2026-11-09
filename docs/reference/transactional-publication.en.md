@@ -19,8 +19,13 @@ terminates:
   file.
 
 The guard protects the window before `owner.json` is persisted and serializes
-recovery attempts. After initialization, the record still rejects live PIDs
-and locks from another host. A private lock without an owner is recovered
+recovery attempts. After initialization, the record identifies hostname, PID,
+and `process_started_at`, the process start returned by
+`psutil.Process.create_time()`. A live PID with a different start time belongs
+to another process instance and permits recovery of the interrupted
+transaction. The same PID and start time, permission failures, invalid
+identities, and locks from another host still block recovery. A private lock
+without an owner is recovered
 automatically only when empty or containing private `owner.json` temporaries.
 Unrecognized contents, aliases, and unsafe permissions are preserved with an
 explicit error.
@@ -28,6 +33,43 @@ explicit error.
 PID queries use `psutil.Process.is_running()`, without sending signals or
 Windows console events. Permission failures during the query prevent recovery
 and preserve their diagnostic cause.
+
+### Manual recovery and containers
+
+An older lock without `process_started_at` remains recoverable when its PID
+does not exist; a live PID retains the conservative behavior. PIDs from
+different containers do not identify the same process. A PID absent in the
+current container, file age, or a changed hostname cannot prove that the
+previous writer exited. Shared destinations require identifiable hosts and
+writers in the same process namespace when they use the same hostname.
+
+To resume after an interruption:
+
+1. Stop downloads, extractions, and other destination writers, including on
+   other hosts or containers. Confirm in the original environment that the
+   owning process exited; otherwise preserve the destination and use a new
+   directory.
+2. Preserve a complete destination copy, including ZIPs, Parquets,
+   `.cvm-write-lock`, `.globaldatafinance-transaction.lock`, manifests, and
+   staging. Inspect `owner.json` without changing PID, hostname, or timestamps.
+3. CVM's `.cvm-write-lock` is a separate outer lock requiring manual release
+   after this confirmation. If it contains only a private, regular
+   `owner.json`, remove that file and then the empty directory. Additional
+   contents, links, or unknown ownership require inspection; do not delete
+   the tree recursively.
+4. On the same host and namespace, run the facade again in the same
+   destination. Transaction locks from dead processes or reused PIDs recover
+   automatically; journals determine rollback or completion before the new
+   publication starts. Preserve logs if recovery fails.
+5. For a transaction lock from another host, an older lock with a live PID,
+   or an unverifiable identity, regenerate into a new directory using the
+   preserved sources and check the result before switching consumers. This
+   version provides neither automatic cross-host takeover nor a forced
+   recovery command.
+
+Do not delete journals, backups, staging, or the Windows guard file to
+unblock publication: doing so can remove the authority required to recover
+the batch. Checking the facade result remains mandatory.
 
 ## Staging and manifests
 

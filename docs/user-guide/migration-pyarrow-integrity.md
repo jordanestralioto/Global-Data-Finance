@@ -44,15 +44,41 @@ chamada explícita a `setup_logging()`, o namespace `globaldatafinance` usa
 `NullHandler` e permanece silencioso; uma falha ao reconfigurar handlers
 preserva a configuração anterior.
 
-## B3
-
-### Notas para a release 0.2.0
+## Notas para a release 0.2.0
 
 O texto abaixo é o corpo preparado para a release 0.2.0 no GitHub.
 O workflow existente `.github/workflows/publish.yml` executa os gates e a
 publicação a partir do evento de release publicada. A versão, tag e publicação
 devem aguardar a aprovação das evidências de aceitação; este texto não afirma
 que a release já foi publicada.
+
+**Quebras de compatibilidade para quem atualiza de 0.1.4:**
+
+- **CVM:** todas as colunas Parquet passam a Arrow `string`, com campos vazios
+  como `""` e preservação de zeros iniciais e valores decimais. Regenere os
+  arquivos a partir dos ZIPs; conversões numéricas passam a ser explícitas no
+  consumidor. Consulte a [migração textual CVM](migration-cvm-exact-text.md).
+- **Dependências:** Pandas e Polars deixam de ser instalados e importados pelo
+  runtime. Instale-os explicitamente se sua aplicação usa DataFrames.
+- **Imports removidos:** `globaldatafinance.__version__`,
+  `ExtractorAdapter`, `ReadFilesAdapter` e os módulos genéricos
+  `macro_infra.extractor_file`/`macro_infra.read_files` deixam de existir.
+  Consulte a versão com `importlib.metadata.version("globaldatafinance")`
+  e migre os adapters para os componentes da fonte.
+- **Timeout:** substitua o import da exceção de domínio `TimeoutError` por
+  `DownloadTimeoutError`; a exceção nativa do Python é distinta. Esses cortes
+  e as mudanças de erros de escrita estão no
+  [guia de infraestrutura](migration-infrastructure-clean-cut.md).
+- **B3 `fast`:** processos `spawn` passam a ser o padrão elegível para várias
+  fontes. Proteja a execução do script com `if __name__ == '__main__':` ou
+  defina `GDF_B3_EXECUTOR_BACKEND=thread` antes de construir a fachada para
+  manter threads como na 0.1.4. Chamadas durante a inicialização de um filho
+  agora falham antes de revalidar fontes; o erro do pool orienta a correção.
+  Coloque também downloads CVM e outros efeitos da aplicação dentro da
+  proteção: a biblioteca não impede código executado antes da chamada B3.
+- **B3 persistido:** migre a seleção de mercados e regenere os Parquets no
+  schema v2 conforme os detalhes abaixo. Os guias desta release devem ser
+  lidos em conjunto antes de atualizar os consumidores.
 
 **Requisitos de dependências da próxima release:**
 
@@ -85,6 +111,27 @@ O corpus local de aceitação cobre 2000–2026 e seu snapshot termina em
 2026-09-02. A release deve anexar as evidências finais do corpus congelado e os
 manifestos de checksums; esses limites não são uma confirmação externa de
 completude da bolsa ou de disponibilidade de todos os anos históricos.
+Uma [aceitação complementar de 2025–2026](../reference/cotahist-v2-supplied-corpus.md#aceitacao-complementar-de-20252026-em-09112026)
+conferiu 6.604.374 cotações até 06/11/2026, com igualdade integral entre
+`fast` e `slow`, usando a cópia Latin-1 explicitamente registrada abaixo.
+
+**Fonte oficial 2026 e espaço em disco:** uma versão de
+`COTAHIST_A2026.ZIP` publicada em novembro contém um registro UTF-8 com 246
+bytes, em vez dos 245 bytes exigidos. A validação estrita rejeita esse arquivo
+e preserva a saída anterior. Preserve o original e siga a
+[conversão explícita para uma cópia Latin-1](b3-docs.md#diagnosticar-texto-utf-8-em-registros-com-largura-invalida);
+os hashes e `registro_original` dessa extração identificam a cópia convertida.
+A [regra de espaço livre](b3-docs.md#espaco-livre-antes-da-extracao) é uma
+estimativa conservadora para staging e publicação, e pode superar bastante
+o tamanho do Parquet final.
+
+**Retomada após queda:** novas travas transacionais registram também o início
+do processo, permitindo distinguir um PID reutilizado do escritor original.
+Travas antigas com PID vivo e travas de outro host continuam exigindo
+inspeção. Consulte o procedimento de
+[recuperação manual de CVM/B3](../reference/transactional-publication.md#recuperacao-manual-e-conteineres).
+
+## B3
 
 Todas as linhas `01` são validadas e convertidas antes da seleção de mercados.
 Linhas vazias e controles `00`/`99` são contados, e qualquer outro identificador

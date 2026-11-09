@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Generator, Iterable, Iterator
 from concurrent.futures import Future, TimeoutError
+from concurrent.futures.process import BrokenProcessPool
 from contextlib import closing
 from dataclasses import dataclass
 from functools import partial
@@ -12,6 +13,7 @@ from typing import Any, NoReturn
 
 from ....core.archive_safety import ArchiveSafetyLimits
 from ....core.utils import SimpleProgressBar
+from ....macro_exceptions import ExtractionError
 from .async_execution import (
     check_phase_cancellation,
     set_phase_cancellation,
@@ -24,7 +26,11 @@ from .catalog import (
     resolve_catalog_sources,
 )
 from .errors import CotahistCatalogError
-from .executors import can_use_b3_processes, create_b3_executor
+from .executors import (
+    can_use_b3_processes,
+    create_b3_executor,
+    process_pool_failure_message,
+)
 from .extraction_service.resource_policy import ResourcePolicyB3
 from .models import CotahistCatalogResolution
 from .processing import ProcessingModeEnumB3
@@ -226,6 +232,10 @@ def _iter_preflight_results(
                 )
                 next_index += 1
             yield await_preflight(active.pop(index))
+    except BrokenProcessPool as error:
+        raise ExtractionError(
+            str(selection.directory), process_pool_failure_message(error)
+        ) from error
     finally:
         stop.set()
         executor.shutdown(wait=True, cancel_futures=True)

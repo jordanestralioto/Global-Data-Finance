@@ -83,6 +83,14 @@ every native environment, the complete campaign, coverage, and matching
 downloaded artifact digests. A failed prerequisite produces a pending report
 and blocks publication. Dry-run performs these checks without uploading to PyPI.
 
+Before creating the tag, dispatch `pipeline.yml` manually at the candidate
+commit: `workflow_dispatch` also runs all eight campaign shards and their
+aggregate verification. The `publish.yml` dry run requires an existing stable
+tag; after validating and pushing that tag, dispatch the workflow at the same
+tag with `release_tag=v0.2.0` and `dry_run=true`. Creating a tag alone does not
+publish to PyPI. Publishing the GitHub release triggers publication and must
+wait for dry-run acceptance.
+
 ## Evidence and limitations
 
 Acceptance and test artifacts remain available in the CI run for at least

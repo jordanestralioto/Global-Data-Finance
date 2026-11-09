@@ -163,3 +163,24 @@ def test_run_process_can_preserve_non_utf8_output(tmp_path: Path) -> None:
     assert (
         result.stdout.encode('utf-8', errors='surrogateescape') == b'\xb6\xff'
     )
+
+
+def test_run_process_bounds_execution_and_preserves_timeout_cause(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The deadline reaches subprocess and a timeout remains diagnosable."""
+    failure = process_runner.subprocess.TimeoutExpired('python', 30)
+    observed: dict[str, object] = {}
+
+    def timeout_run(*_args: object, **kwargs: object) -> None:
+        observed.update(kwargs)
+        raise failure
+
+    monkeypatch.setattr(process_runner.subprocess, 'run', timeout_run)
+    with pytest.raises(process_runner.ProcessRunnerError) as caught:
+        process_runner.run_process(
+            ['python', '-c', 'pass'], cwd=tmp_path, timeout=30
+        )
+
+    assert observed['timeout'] == 30
+    assert caught.value.__cause__ is failure

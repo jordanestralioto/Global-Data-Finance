@@ -49,6 +49,17 @@ uv add globaldatafinance
 Consulte o [guia de instalação](https://jordanestralioto.github.io/Global-Data-Finance/user-guide/installation/)
 para criar o ambiente e conferir a instalação.
 
+## Migração para 0.2.0
+
+Ao atualizar de `0.1.4`, regenere os Parquets CVM e B3 antes de trocar os
+consumidores: a CVM preserva todas as colunas como texto, e a B3 usa o schema
+v2. Pandas e Polars deixam de ser dependências automáticas. Revise também os
+imports removidos, a exceção de timeout e a proteção de scripts B3 que usam
+processos. Os procedimentos estão no
+[guia de migração 0.2.0](https://jordanestralioto.github.io/Global-Data-Finance/user-guide/migration-pyarrow-integrity/),
+na [migração textual da CVM](https://jordanestralioto.github.io/Global-Data-Finance/user-guide/migration-cvm-exact-text/)
+e no [corte de infraestrutura](https://jordanestralioto.github.io/Global-Data-Finance/user-guide/migration-infrastructure-clean-cut/).
+
 ## Uso rápido
 
 Os exemplos usam apenas 2023 para manter o escopo da primeira execução
