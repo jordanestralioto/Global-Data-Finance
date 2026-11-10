@@ -3,6 +3,7 @@ import pytest
 from globaldatafinance.application.b3_docs.extraction_result_formatter import (
     ExtractionResultFormatter,
 )
+from tests.support.console import legacy_code_page_stdout
 
 pytestmark = pytest.mark.unit
 
@@ -232,3 +233,25 @@ class TestExtractionResultFormatter:
         assert hasattr(formatter, 'CYAN')
         assert hasattr(formatter, 'BOLD')
         assert hasattr(formatter, 'RESET')
+
+    def test_print_result_survives_legacy_code_page(self) -> None:
+        """Unsupported symbols degrade so the summary still prints."""
+        result = {
+            'success': True,
+            'success_count': 1,
+            'error_count': 0,
+            'total_records': 2,
+            'output_file': 'quotes.parquet',
+            'assets': ['ações'],
+            'processing_mode': 'fast',
+            'elapsed_time': 1.0,
+        }
+
+        with legacy_code_page_stdout() as written:
+            ExtractionResultFormatter(use_colors=False).print_result(result)
+
+        output = written()
+        assert '? B3 Historical Quotes Extraction' in output
+        assert '? Extraction completed successfully!' in output
+        assert 'Asset classes: ações' in output
+        assert 'quotes.parquet' in output

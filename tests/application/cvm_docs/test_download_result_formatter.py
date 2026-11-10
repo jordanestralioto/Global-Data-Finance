@@ -4,6 +4,7 @@ from globaldatafinance.application.cvm_docs.download_result_formatter import (
     DownloadResultFormatter,
 )
 from globaldatafinance.brazil.cvm.ingestion.models import DownloadResultCVM
+from tests.support.console import legacy_code_page_stdout
 
 pytestmark = pytest.mark.unit
 
@@ -180,3 +181,18 @@ class TestDownloadResultFormatter:
         result.add_error_downloads('file.zip', 'Test error')
         output = formatter.format_result(result)
         assert '•' in output
+
+    def test_print_result_survives_legacy_code_page(self) -> None:
+        """A finished download summary cannot fail after the work is done."""
+        result = DownloadResultCVM()
+        result.add_success_downloads('DFP_2023.zip')
+        result.add_error_downloads('ITR_2023.zip', 'Connection timeout')
+
+        with legacy_code_page_stdout() as written:
+            DownloadResultFormatter(use_colors=False).print_result(result)
+
+        output = written()
+        assert 'Download completed with some errors.' in output
+        assert 'ITR - 2023.zip' in output
+        assert 'Connection timeout' in output
+        assert 'Success: 1' in output

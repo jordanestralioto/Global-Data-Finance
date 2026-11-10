@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 
 from globaldatafinance.core.utils import SimpleProgressBar
+from tests.support.console import legacy_code_page_stdout
 
 pytestmark = pytest.mark.unit
 
@@ -360,3 +361,18 @@ class TestSimpleProgressBar:
 
             assert filled_count == 0
             assert empty_count == 10
+
+    def test_legacy_code_page_renders_ascii_bar_without_failing(
+        self,
+    ) -> None:
+        """Redirected Windows output keeps progress instead of aborting."""
+        with (
+            legacy_code_page_stdout() as written,
+            SimpleProgressBar(total=2, desc='B3', width=4) as bar,
+        ):
+            bar.update(1)
+
+        output = written()
+        assert '[----] 0/2 (0%)' in output
+        assert '[##--] 1/2 (50%)' in output
+        assert '█' not in output

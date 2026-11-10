@@ -130,6 +130,12 @@ host and process namespace; live PIDs, including reused ones, and locks from
 another host require inspection.
 Follow the [manual CVM/B3 recovery procedure](../reference/transactional-publication.en.md#manual-recovery-and-containers).
 
+**Windows console:** redirected Windows output, such as `> log.txt`,
+scheduled tasks, or subprocesses, commonly uses a legacy code page. CVM and B3
+progress and summaries no longer abort with `UnicodeEncodeError` there: bars
+use `#` and `-`, and unsupported symbols become `?`. The 0.1.4 release had
+this failure.
+
 ## B3
 
 Every `01` record is validated and converted before market selection. Blank

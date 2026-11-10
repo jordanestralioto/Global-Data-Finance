@@ -133,6 +133,12 @@ host e namespace; PIDs vivos, inclusive reutilizados, e travas de outro host
 exigem inspeção. Consulte o procedimento de
 [recuperação manual de CVM/B3](../reference/transactional-publication.md#recuperacao-manual-e-conteineres).
 
+**Console no Windows:** a saída redirecionada no Windows, como `> log.txt`,
+tarefas agendadas ou subprocessos, costuma usar uma página de código legada.
+O progresso e os resumos de CVM e B3 deixam de abortar com
+`UnicodeEncodeError` nesse caso: as barras usam `#` e `-`, e símbolos sem
+suporte viram `?`. A versão 0.1.4 tinha essa falha.
+
 ## B3
 
 Todas as linhas `01` são validadas e convertidas antes da seleção de mercados.

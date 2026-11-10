@@ -117,7 +117,11 @@ def test_unguarded_spawn_call_fails_before_child_source_validation(
     )
 
     completed = run_process(
-        ['python', str(script)], cwd=tmp_path, check=False, timeout=30
+        ['python', str(script)],
+        cwd=tmp_path,
+        check=False,
+        timeout=30,
+        encoding_errors='replace',
     )
 
     assert completed.returncode == 0, completed.stderr
@@ -157,7 +161,11 @@ def test_safe_script_publishes_without_reexecuting_its_entrypoint(
     )
 
     completed = run_process(
-        ['python', str(script)], cwd=tmp_path, check=False, timeout=30
+        ['python', str(script)],
+        cwd=tmp_path,
+        check=False,
+        timeout=30,
+        encoding_errors='replace',
     )
 
     assert completed.returncode == 0, completed.stderr
