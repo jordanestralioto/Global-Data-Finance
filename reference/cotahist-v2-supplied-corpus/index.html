@@ -1051,6 +1051,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#aceitacao-complementar-de-20252026-em-09112026" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Aceitação complementar de 2025–2026 em 09/11/2026
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2232,6 +2243,77 @@ linhas, além dos 27 checksums do manifesto; veja a<br />
 Esses resultados são históricos. Uma nova campanha precisa reconferir os<br />
 hashes e reconciliar os dados antes de usar estes números como critério de<br />
 aceitação.</p>
+<h2 id="aceitacao-complementar-de-20252026-em-09112026">Aceitação complementar de 2025–2026 em 09/11/2026<a class="headerlink" href="#aceitacao-complementar-de-20252026-em-09112026" title="Link para esta seção">&para;</a></h2>
+<p>Uma nova campanha reconcilia os arquivos oficiais atuais de 2025 e 2026,<br />
+incluindo o pregão de 06/11/2026. Ela complementa a linha de base acima,<br />
+sem substituir seus hashes ou atribuir-lhe dados posteriores a setembro.</p>
+<table>
+<thead>
+<tr>
+<th>Medida</th>
+<th style="text-align: right;">Resultado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cotações de 2025</td>
+<td style="text-align: right;">3.174.698</td>
+</tr>
+<tr>
+<td>Cotações de 2026</td>
+<td style="text-align: right;">3.429.676</td>
+</tr>
+<tr>
+<td>Total conferido em cada modo</td>
+<td style="text-align: right;">6.604.374</td>
+</tr>
+<tr>
+<td>Intervalo observado</td>
+<td style="text-align: right;">2025-01-02 a 2026-11-06</td>
+</tr>
+<tr>
+<td>Paridade <code>fast</code>/<code>slow</code></td>
+<td style="text-align: right;">Igualdade integral dos registros e da ordem</td>
+</tr>
+<tr>
+<td>Verificação</td>
+<td style="text-align: right;">Oracle independente de fonte para Parquet, schema v2</td>
+</tr>
+<tr>
+<td>Tempo total, com releitura e reconciliação dos dois modos</td>
+<td style="text-align: right;">2.936,14 s</td>
+</tr>
+<tr>
+<td>Processos ativos ou temporários após limpeza</td>
+<td style="text-align: right;">Nenhum</td>
+</tr>
+</tbody>
+</table>
+<p>O ZIP oficial de 2026 tem SHA-256<br />
+<code>26f2a0c96e37f2cfdca02e467f472d764a91e1c908a38edc0002c2c8ef913021</code>.<br />
+Sua linha física 2.072.135, de 22/10/2026, ticker <code>FR0T5L</code>, tem 246 bytes em<br />
+UTF-8. A <a href="../../dev-guide/benchmark-results/cotahist-release-20261109/official-2026-rejection.json">rejeição do original</a><br />
+é esperada e preserva a saída: o contrato continua exigindo 245 bytes.<br />
+A campanha usou uma cópia TXT convertida estritamente de UTF-8 para Latin-1,<br />
+alterando somente essa linha; o original foi preservado. A cópia tem SHA-256<br />
+<code>44ee9ffb6bc33d1d205d17966d6e7d5108c4b014b55b5290cff43ee63dfe5be6</code>.</p>
+<p>Os artefatos gerados pelo executor ficam separados: <a href="../../dev-guide/benchmark-results/cotahist-release-20261109/manifest.json">manifesto</a>,<br />
+<a href="../../dev-guide/benchmark-results/cotahist-release-20261109/results.jsonl">resultado completo</a>,<br />
+<a href="../../dev-guide/benchmark-results/cotahist-release-20261109/summary.json">resumo</a><br />
+e <a href="../../dev-guide/benchmark-results/cotahist-release-20261109/source-normalization.json">proveniência da conversão</a>.<br />
+A reconciliação também compara os 20 campos anteriores e as 2.671 cotações<br />
+<code>021</code>. O digest lógico ordenado é<br />
+<code>19f73a7a8471d38c2c592ea50d904c53dbacf2b036b4d5291dda63b1dbf7835d</code>.<br />
+Essa execução local em Linux não substitui o aceite do commit final no CI.</p>
+<p>Para reproduzir, preserve os hashes e prepare a cópia conforme o<br />
+<a href="../../user-guide/b3-docs/#diagnosticar-texto-utf-8-em-registros-com-largura-invalida">guia de encoding</a>,<br />
+deixando apenas o ZIP 2025 e o TXT convertido 2026 na pasta selecionada:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>python<span class="w"> </span>scripts/real_validation.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--source<span class="w"> </span>cotahist<span class="w"> </span>--cotahist-path<span class="w"> </span>/external/path/inputs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--initial-year<span class="w"> </span><span class="m">2025</span><span class="w"> </span>--last-year<span class="w"> </span><span class="m">2026</span><span class="w"> </span>--cotahist-mode<span class="w"> </span>all<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--case<span class="w"> </span>cotahist-multi-parity-2025-2026<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--report<span class="w"> </span>/external/path/report<span class="w"> </span>--timeout<span class="w"> </span><span class="m">3600</span><span class="w"> </span>--progress
+</code></pre></div>
 <p>Formato e offsets oficiais: <a href="https://www.b3.com.br/data/files/33/67/B9/50/D84057102C784E47AC094EA8/SeriesHistoricas_Layout.pdf">layout de séries históricas da B3</a>.</p>
 
 

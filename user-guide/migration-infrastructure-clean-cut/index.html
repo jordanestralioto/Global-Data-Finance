@@ -1973,8 +1973,12 @@
 <p>Esta quebra de compatibilidade pertence à linha <code>0.x</code> e deve ser publicada como<br />
 <code>v0.2.0</code>, não como uma versão patch <code>v0.1.5</code>. APIs genéricas obsoletas e a<br />
 dependência automática de Pandas foram removidas. As fachadas raiz, as<br />
-assinaturas públicas de CVM/B3, os nomes de saída, os schemas Parquet e a<br />
-publicação transacional continuam iguais. A mudança é intencionalmente<br />
+assinaturas públicas de CVM/B3, os nomes de saída e as garantias de publicação<br />
+transacional são preservados por este corte de infraestrutura. Na mesma<br />
+release, os contratos persistidos mudam: a CVM passa para colunas textuais<br />
+<code>exact-text-v1</code>, e a B3 para o schema v2 de 32 colunas. Regenere os arquivos<br />
+conforme a <a href="../migration-cvm-exact-text/">migração CVM</a> e a<br />
+<a href="../migration-pyarrow-integrity/">migração B3</a>. A mudança é intencionalmente<br />
 incompatível: não há alias, warning, shim ou fallback para os nomes removidos.</p>
 <h2 id="versao-removida-da-raiz">Versão removida da raiz<a class="headerlink" href="#versao-removida-da-raiz" title="Link para esta seção">&para;</a></h2>
 <p><code>globaldatafinance.__version__</code> não é mais exportado. Consulte os metadados da<br />

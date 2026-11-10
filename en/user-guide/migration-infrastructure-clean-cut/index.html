@@ -1972,9 +1972,13 @@
 <h1 id="migration-infrastructure-clean-cut">Migration: infrastructure clean cut<a class="headerlink" href="#migration-infrastructure-clean-cut" title="Link para esta seção">&para;</a></h1>
 <p>This breaking change belongs to the <code>0.x</code> line and is planned for <code>v0.2.0</code>, not<br />
 for the patch release <code>v0.1.5</code>. Obsolete generic APIs and the automatic Pandas<br />
-dependency have been removed. The root facades, public CVM/B3 signatures,<br />
-output names, Parquet schemas, and transactional publication semantics remain<br />
-unchanged. The cut is deliberately incompatible: no alias, warning, shim, or<br />
+dependency have been removed. This infrastructure cut preserves the root<br />
+facades, public CVM/B3 signatures, output names, and transactional publication<br />
+guarantees. In the same release, persisted contracts change: CVM uses<br />
+<code>exact-text-v1</code> string columns, and B3 uses the 32-column v2 schema. Regenerate<br />
+files following the <a href="../migration-cvm-exact-text/">CVM migration</a> and the<br />
+<a href="../migration-pyarrow-integrity/">B3 migration</a>. The cut is deliberately<br />
+incompatible: no alias, warning, shim, or<br />
 fallback is retained for removed names.</p>
 <h2 id="version-removed-from-the-package-root">Version removed from the package root<a class="headerlink" href="#version-removed-from-the-package-root" title="Link para esta seção">&para;</a></h2>
 <p><code>globaldatafinance.__version__</code> is no longer exported. Read the installed<br />

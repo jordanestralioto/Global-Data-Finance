@@ -2018,6 +2018,13 @@ exports, local CVM extraction, and ZIP/TXT B3 extraction in fast/slow modes.</p>
 every native environment, the complete campaign, coverage, and matching<br />
 downloaded artifact digests. A failed prerequisite produces a pending report<br />
 and blocks publication. Dry-run performs these checks without uploading to PyPI.</p>
+<p>Before creating the tag, dispatch <code>pipeline.yml</code> manually at the candidate<br />
+commit: <code>workflow_dispatch</code> also runs all eight campaign shards and their<br />
+aggregate verification. The <code>publish.yml</code> dry run requires an existing stable<br />
+tag; after validating and pushing that tag, dispatch the workflow at the same<br />
+tag with <code>release_tag=v0.2.0</code> and <code>dry_run=true</code>. Creating a tag alone does not<br />
+publish to PyPI. Publishing the GitHub release triggers publication and must<br />
+wait for dry-run acceptance.</p>
 <h2 id="evidence-and-limitations">Evidence and limitations<a class="headerlink" href="#evidence-and-limitations" title="Link para esta seção">&para;</a></h2>
 <p>Acceptance and test artifacts remain available in the CI run for at least<br />
 30 days. Reports identify SHA, version, hashes, and execution URL, separating<br />

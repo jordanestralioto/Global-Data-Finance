@@ -2062,7 +2062,9 @@ terminação abrupta, a biblioteca conserva esse lock e exige inspeção explíc
 antes da recuperação: confirme que não existe escritor ativo, preserve a<br />
 evidência e recupere o estado derivado da transação. A biblioteca nunca toma<br />
 automaticamente um lock sem verificar sua autoridade. Falhas permanecem no<br />
-resultado; não interprete apenas a existência de um Parquet como sucesso.</p>
+resultado; não interprete apenas a existência de um Parquet como sucesso.<br />
+Siga o <a href="../../reference/transactional-publication/#recuperacao-manual-e-conteineres">procedimento de recuperação manual</a>,<br />
+que distingue a trava externa CVM da recuperação transacional dos Parquets.</p>
 <p>IPE inclui 2003 em diante. <code>get_available_years().ipe_min_year</code><br />
 informa esse limite como propriedade; os quatro campos da tupla continuam<br />
 representando documentos gerais, ITR, CGVN/VLMO e ano corrente.</p>

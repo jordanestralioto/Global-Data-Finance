@@ -681,6 +681,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Choose a mode and destination">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#free-space-before-extraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Free space before extraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2108,13 +2125,29 @@ Portuguese, including when the rest of the program uses another language.</p>
 </table>
 <p>Both modes apply the same data and integrity rules. For worker and resource<br />
 settings, see <a href="../../dev-guide/advanced-usage/">advanced usage</a>.</p>
+<h3 id="free-space-before-extraction">Free space before extraction<a class="headerlink" href="#free-space-before-extraction" title="Link para esta seção">&para;</a></h3>
+<p>After validating sources and before opening staging, B3 requires the sum, in<br />
+bytes, of <code>2 * uncompressed_bytes + 256 * selected_quotes</code> for every selected<br />
+source on the destination filesystem. Uncompressed size covers the entire<br />
+annual file; quotation counts reflect market selection. This conservative<br />
+estimate allows for private per-source files and the consolidated output; it<br />
+does not measure peak disk use or the final compressed Parquet size. When<br />
+replacing existing outputs, the publisher also checks space for their full<br />
+backups because hard links may require a copy fallback. Insufficient space<br />
+produces <code>DiskFullError</code> and preserves the previous output.</p>
 <h2 id="check-and-consume-the-result">Check and consume the result<a class="headerlink" href="#check-and-consume-the-result" title="Link para esta seção">&para;</a></h2>
 <p>The main <code>ExtractionResultB3</code> fields are below. The complete list and exceptions<br />
 are in the <a href="../../reference/b3-api/">B3 reference</a>.<br />
 Inside an active event loop, use <code>await b3.extract_async(...)</code>; arguments and<br />
 results are identical. In scripts processing several sources with processes,<br />
 protect the call with <code>if __name__ == '__main__':</code>, as shown in the<br />
-<a href="../../dev-guide/advanced-usage/">parallel processing example</a>.</p>
+<a href="../../dev-guide/advanced-usage/">parallel processing example</a>.<br />
+Eligible <code>fast</code> runs default to processes. A call made while a spawned child<br />
+imports the script raises <code>RuntimeError</code> before reading sources; the parent<br />
+includes the correction in <code>errors</code> if the pool terminates. Set<br />
+<code>GDF_B3_EXECUTOR_BACKEND=thread</code> before constructing <code>HistoricalQuotesB3</code> to<br />
+select threads. Downloads and other top-level script side effects must also<br />
+be inside the <code>__main__</code> guard.</p>
 <table>
 <thead>
 <tr>

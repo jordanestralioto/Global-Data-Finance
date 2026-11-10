@@ -1513,6 +1513,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Lock acquisition and recovery">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#manual-recovery-and-containers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual recovery and containers
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1941,14 +1958,56 @@ terminates:</p>
   file.</li>
 </ul>
 <p>The guard protects the window before <code>owner.json</code> is persisted and serializes<br />
-recovery attempts. After initialization, the record still rejects live PIDs<br />
-and locks from another host. A private lock without an owner is recovered<br />
-automatically only when empty or containing private <code>owner.json</code> temporaries.<br />
+recovery attempts. After initialization, the record identifies hostname, PID,<br />
+and <code>process_started_at</code>, the process start returned by<br />
+<code>psutil.Process.create_time()</code>. This timestamp can change with system clock<br />
+adjustments. A live PID with a different start time may indicate PID reuse<br />
+or a clock change; this difference cannot authorize recovery. Any live PID,<br />
+permission failures, invalid identities, and locks from another host block<br />
+recovery. A lock with an identified owner is recovered automatically only<br />
+when its PID no longer exists on the same host and process namespace.<br />
+A private lock without an owner is recovered automatically only when empty<br />
+or containing private <code>owner.json</code> temporaries.<br />
 Unrecognized contents, aliases, and unsafe permissions are preserved with an<br />
 explicit error.</p>
 <p>PID queries use <code>psutil.Process.is_running()</code>, without sending signals or<br />
 Windows console events. Permission failures during the query prevent recovery<br />
 and preserve their diagnostic cause.</p>
+<h3 id="manual-recovery-and-containers">Manual recovery and containers<a class="headerlink" href="#manual-recovery-and-containers" title="Link para esta seção">&para;</a></h3>
+<p>An older lock without <code>process_started_at</code> remains recoverable when its PID<br />
+does not exist; a live PID retains the conservative behavior. PIDs from<br />
+different containers do not identify the same process. A PID absent in the<br />
+current container, file age, or a changed hostname cannot prove that the<br />
+previous writer exited. Shared destinations require identifiable hosts and<br />
+writers in the same process namespace when they use the same hostname.</p>
+<p>To resume after an interruption:</p>
+<ol>
+<li>Stop downloads, extractions, and other destination writers, including on<br />
+   other hosts or containers. Confirm in the original environment that the<br />
+   owning process exited; otherwise preserve the destination and use a new<br />
+   directory.</li>
+<li>Preserve a complete destination copy, including ZIPs, Parquets,<br />
+<code>.cvm-write-lock</code>, <code>.globaldatafinance-transaction.lock</code>, manifests, and<br />
+   staging. Inspect <code>owner.json</code> without changing PID, hostname, or timestamps.</li>
+<li>CVM&rsquo;s <code>.cvm-write-lock</code> is a separate outer lock requiring manual release<br />
+   after this confirmation. If it contains only a private, regular<br />
+<code>owner.json</code>, remove that file and then the empty directory. Additional<br />
+   contents, links, or unknown ownership require inspection; do not delete<br />
+   the tree recursively.</li>
+<li>On the same host and namespace, run the facade again in the same<br />
+   destination. A transaction lock is recovered automatically only when its<br />
+   recorded PID no longer exists; journals determine rollback or completion<br />
+   before the new publication starts. A live PID still blocks recovery even<br />
+   with a different start time. Preserve logs if recovery fails.</li>
+<li>For a transaction lock from another host, any still-live PID (including<br />
+   a reused PID), or an unverifiable identity, regenerate into a new directory<br />
+   using the preserved sources and check the result before switching consumers. This<br />
+   version provides neither automatic cross-host takeover nor a forced<br />
+   recovery command.</li>
+</ol>
+<p>Do not delete journals, backups, staging, or the Windows guard file to<br />
+unblock publication: doing so can remove the authority required to recover<br />
+the batch. Checking the facade result remains mandatory.</p>
 <h2 id="staging-and-manifests">Staging and manifests<a class="headerlink" href="#staging-and-manifests" title="Link para esta seção">&para;</a></h2>
 <p>New transactions create staging inside the private lock, on the same<br />
 filesystem as outputs. Manifest temporaries stay inside staging. Crashes<br />

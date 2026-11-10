@@ -2020,6 +2020,13 @@ local CVM e B3 em ZIP/TXT com modos <code>fast</code>/<code>slow</code>.</p>
 todos os ambientes nativos, campanha completa, coberturas e digests dos<br />
 artefatos baixados. Uma falha produz um relatório pendente e bloqueia o job<br />
 de publicação. Um dry-run realiza essas verificações sem enviar ao PyPI.</p>
+<p>Antes de criar a tag, dispare manualmente <code>pipeline.yml</code> no commit candidato:<br />
+<code>workflow_dispatch</code> executa também os oito shards da campanha e sua agregação.<br />
+O dry-run de <code>publish.yml</code> exige uma tag estável já existente; depois de<br />
+validar e enviar a tag, dispare esse workflow na mesma tag com<br />
+<code>release_tag=v0.2.0</code> e <code>dry_run=true</code>. Criar a tag, por si só, não dispara<br />
+publicação no PyPI. Publicar a release no GitHub dispara o fluxo de publicação<br />
+e deve aguardar o aceite do dry-run.</p>
 <h2 id="evidencia-e-limites">Evidência e limites<a class="headerlink" href="#evidencia-e-limites" title="Link para esta seção">&para;</a></h2>
 <p>Os artefatos de aceite e testes ficam disponíveis por pelo menos 30 dias na<br />
 execução da CI. O relatório identifica o SHA, a versão, os hashes e o link da<br />

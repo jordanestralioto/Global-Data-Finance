@@ -1051,6 +1051,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#supplementary-20252026-acceptance-on-2026-11-09" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supplementary 2025–2026 acceptance on 2026-11-09
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2231,6 +2242,77 @@ the 27 manifest checksums; see the<br />
 <a href="../../dev-guide/cotahist-performance/#complete-20002026-acceptance">2000–2026 acceptance</a>.<br />
 These results are historical. A new campaign must recheck input hashes and<br />
 reconcile the data before using these numbers as acceptance criteria.</p>
+<h2 id="supplementary-20252026-acceptance-on-2026-11-09">Supplementary 2025–2026 acceptance on 2026-11-09<a class="headerlink" href="#supplementary-20252026-acceptance-on-2026-11-09" title="Link para esta seção">&para;</a></h2>
+<p>A new campaign reconciles the current official 2025 and 2026 sources through<br />
+the 2026-11-06 trading session. It supplements the baseline above without<br />
+replacing its hashes or attributing later records to its September snapshot.</p>
+<table>
+<thead>
+<tr>
+<th>Measure</th>
+<th style="text-align: right;">Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2025 quotations</td>
+<td style="text-align: right;">3,174,698</td>
+</tr>
+<tr>
+<td>2026 quotations</td>
+<td style="text-align: right;">3,429,676</td>
+</tr>
+<tr>
+<td>Rows verified in each mode</td>
+<td style="text-align: right;">6,604,374</td>
+</tr>
+<tr>
+<td>Observed date range</td>
+<td style="text-align: right;">2025-01-02 to 2026-11-06</td>
+</tr>
+<tr>
+<td><code>fast</code>/<code>slow</code> parity</td>
+<td style="text-align: right;">Exact equality of every record and its order</td>
+</tr>
+<tr>
+<td>Verification</td>
+<td style="text-align: right;">Independent raw-to-Parquet oracle, schema v2</td>
+</tr>
+<tr>
+<td>Total time, including readback and reconciliation of both modes</td>
+<td style="text-align: right;">2,936.14 s</td>
+</tr>
+<tr>
+<td>Active processes or temporary files after cleanup</td>
+<td style="text-align: right;">None</td>
+</tr>
+</tbody>
+</table>
+<p>The official 2026 ZIP has SHA-256<br />
+<code>26f2a0c96e37f2cfdca02e467f472d764a91e1c908a38edc0002c2c8ef913021</code>.<br />
+Physical line 2,072,135, dated 2026-10-22 with ticker <code>FR0T5L</code>, occupies 246<br />
+UTF-8 bytes. <a href="../../../dev-guide/benchmark-results/cotahist-release-20261109/official-2026-rejection.json">Rejection of the original</a><br />
+is expected and preserves existing output: the contract still requires 245<br />
+bytes. The campaign used a TXT copy strictly converted from UTF-8 to Latin-1,<br />
+changing only this record while retaining the original. Its SHA-256 is<br />
+<code>44ee9ffb6bc33d1d205d17966d6e7d5108c4b014b55b5290cff43ee63dfe5be6</code>.</p>
+<p>Executor-generated artifacts remain separate: <a href="../../../dev-guide/benchmark-results/cotahist-release-20261109/manifest.json">manifest</a>,<br />
+<a href="../../../dev-guide/benchmark-results/cotahist-release-20261109/results.jsonl">complete result</a>,<br />
+<a href="../../../dev-guide/benchmark-results/cotahist-release-20261109/summary.json">summary</a>,<br />
+and <a href="../../../dev-guide/benchmark-results/cotahist-release-20261109/source-normalization.json">conversion provenance</a>.<br />
+Reconciliation also compares the original 20 fields and all 2,671 quotations<br />
+in market <code>021</code>. The ordered logical digest is<br />
+<code>19f73a7a8471d38c2c592ea50d904c53dbacf2b036b4d5291dda63b1dbf7835d</code>.<br />
+This local Linux run does not replace final-commit acceptance in CI.</p>
+<p>To reproduce, retain source hashes and prepare the copy following the<br />
+<a href="../../user-guide/b3-docs/#diagnose-utf-8-text-in-records-with-an-invalid-width">encoding guide</a>,<br />
+leaving only the 2025 ZIP and converted 2026 TXT in the selected directory:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>--locked<span class="w"> </span>--no-sync<span class="w"> </span>python<span class="w"> </span>scripts/real_validation.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--source<span class="w"> </span>cotahist<span class="w"> </span>--cotahist-path<span class="w"> </span>/external/path/inputs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--initial-year<span class="w"> </span><span class="m">2025</span><span class="w"> </span>--last-year<span class="w"> </span><span class="m">2026</span><span class="w"> </span>--cotahist-mode<span class="w"> </span>all<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--case<span class="w"> </span>cotahist-multi-parity-2025-2026<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--report<span class="w"> </span>/external/path/report<span class="w"> </span>--timeout<span class="w"> </span><span class="m">3600</span><span class="w"> </span>--progress
+</code></pre></div>
 <p>Official format and offsets: <a href="https://www.b3.com.br/data/files/33/67/B9/50/D84057102C784E47AC094EA8/SeriesHistoricas_Layout.pdf">B3 historical series layout</a>.</p>
 
 

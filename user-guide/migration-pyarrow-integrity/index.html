@@ -1815,6 +1815,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#notas-para-a-release-020" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notas para a release 0.2.0
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#b3" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1825,17 +1836,6 @@
   
     <nav class="md-nav" aria-label="B3">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#notas-para-a-release-020" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Notas para a release 0.2.0
-      
-    </span>
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#b3-schema-v2-e-regeneracao" class="md-nav__link">
@@ -2042,14 +2042,37 @@ conversões explícitas e inspeção de locks após interrupção.</p>
 chamada explícita a <code>setup_logging()</code>, o namespace <code>globaldatafinance</code> usa<br />
 <code>NullHandler</code> e permanece silencioso; uma falha ao reconfigurar handlers<br />
 preserva a configuração anterior.</p>
-<h2 id="b3">B3<a class="headerlink" href="#b3" title="Link para esta seção">&para;</a></h2>
-<h3 id="notas-para-a-release-020">Notas para a release 0.2.0<a class="headerlink" href="#notas-para-a-release-020" title="Link para esta seção">&para;</a></h3>
-<p>O texto abaixo é o corpo preparado para a release 0.2.0 no GitHub.<br />
-O workflow existente <code>.github/workflows/publish.yml</code> executa os gates e a<br />
-publicação a partir do evento de release publicada. A versão, tag e publicação<br />
-devem aguardar a aprovação das evidências de aceitação; este texto não afirma<br />
-que a release já foi publicada.</p>
-<p><strong>Requisitos de dependências da próxima release:</strong></p>
+<h2 id="notas-para-a-release-020">Notas para a release 0.2.0<a class="headerlink" href="#notas-para-a-release-020" title="Link para esta seção">&para;</a></h2>
+<p>Estas notas resumem o que muda ao atualizar de 0.1.4 para 0.2.0.</p>
+<p><strong>Quebras de compatibilidade para quem atualiza de 0.1.4:</strong></p>
+<ul>
+<li><strong>CVM:</strong> todas as colunas Parquet passam a Arrow <code>string</code>, com campos vazios<br />
+  como <code>""</code> e preservação de zeros iniciais e valores decimais. Regenere os<br />
+  arquivos a partir dos ZIPs; conversões numéricas passam a ser explícitas no<br />
+  consumidor. Consulte a <a href="../migration-cvm-exact-text/">migração textual CVM</a>.</li>
+<li><strong>Dependências:</strong> Pandas e Polars deixam de ser instalados e importados pelo<br />
+  runtime. Instale-os explicitamente se sua aplicação usa DataFrames.</li>
+<li><strong>Imports removidos:</strong> <code>globaldatafinance.__version__</code>,<br />
+<code>ExtractorAdapter</code>, <code>ReadFilesAdapter</code> e os módulos genéricos<br />
+<code>macro_infra.extractor_file</code>/<code>macro_infra.read_files</code> deixam de existir.<br />
+  Consulte a versão com <code>importlib.metadata.version("globaldatafinance")</code><br />
+  e migre os adapters para os componentes da fonte.</li>
+<li><strong>Timeout:</strong> substitua o import da exceção de domínio <code>TimeoutError</code> por<br />
+<code>DownloadTimeoutError</code>; a exceção nativa do Python é distinta. Esses cortes<br />
+  e as mudanças de erros de escrita estão no<br />
+<a href="../migration-infrastructure-clean-cut/">guia de infraestrutura</a>.</li>
+<li><strong>B3 <code>fast</code>:</strong> processos <code>spawn</code> passam a ser o padrão elegível para várias<br />
+  fontes. Proteja a execução do script com <code>if __name__ == '__main__':</code> ou<br />
+  defina <code>GDF_B3_EXECUTOR_BACKEND=thread</code> antes de construir a fachada para<br />
+  manter threads como na 0.1.4. Chamadas durante a inicialização de um filho<br />
+  agora falham antes de revalidar fontes; o erro do pool orienta a correção.<br />
+  Coloque também downloads CVM e outros efeitos da aplicação dentro da<br />
+  proteção: a biblioteca não impede código executado antes da chamada B3.</li>
+<li><strong>B3 persistido:</strong> migre a seleção de mercados e regenere os Parquets no<br />
+  schema v2 conforme os detalhes abaixo. Os guias desta release devem ser<br />
+  lidos em conjunto antes de atualizar os consumidores.</li>
+</ul>
+<p><strong>Requisitos de dependências:</strong></p>
 <ul>
 <li>PyArrow: <code>&gt;=26.0.0,&lt;27.0.0</code>.</li>
 <li>psutil: <code>&gt;=7.2.2,&lt;8.0.0</code>.</li>
@@ -2076,9 +2099,35 @@ na ativação de ambientes Bash. Essa dependência é usada pelo <code>pre-commi
   verificar <code>success</code>, <code>schema_version</code> e <code>integrity</code> antes de mudar de arquivo.</li>
 </ul>
 <p>O corpus local de aceitação cobre 2000–2026 e seu snapshot termina em<br />
-2026-09-02. A release deve anexar as evidências finais do corpus congelado e os<br />
-manifestos de checksums; esses limites não são uma confirmação externa de<br />
-completude da bolsa ou de disponibilidade de todos os anos históricos.</p>
+2026-09-02. O manifesto de checksums e as evidências da campanha estão<br />
+versionados com a <a href="../../reference/cotahist-v2-supplied-corpus/">auditoria do corpus</a>.<br />
+Esses limites não são uma confirmação externa de completude da bolsa ou de<br />
+disponibilidade de todos os anos históricos.<br />
+Uma <a href="../../reference/cotahist-v2-supplied-corpus/#aceitacao-complementar-de-20252026-em-09112026">aceitação complementar de 2025–2026</a><br />
+conferiu 6.604.374 cotações até 06/11/2026, com igualdade integral entre<br />
+<code>fast</code> e <code>slow</code>, usando a cópia Latin-1 explicitamente registrada abaixo.</p>
+<p><strong>Fonte oficial 2026 e espaço em disco:</strong> uma versão de<br />
+<code>COTAHIST_A2026.ZIP</code> publicada em novembro contém um registro UTF-8 com 246<br />
+bytes, em vez dos 245 bytes exigidos. A validação estrita rejeita esse arquivo<br />
+e preserva a saída anterior. Preserve o original e siga a<br />
+<a href="../b3-docs/#diagnosticar-texto-utf-8-em-registros-com-largura-invalida">conversão explícita para uma cópia Latin-1</a>;<br />
+os hashes e <code>registro_original</code> dessa extração identificam a cópia convertida.<br />
+A <a href="../b3-docs/#espaco-livre-antes-da-extracao">regra de espaço livre</a> é uma<br />
+estimativa conservadora para staging e publicação, e pode superar bastante<br />
+o tamanho do Parquet final.</p>
+<p><strong>Retomada após queda:</strong> novas travas transacionais registram também o início<br />
+do processo para diagnóstico. Esse horário pode mudar com ajustes do relógio,<br />
+portanto um PID vivo com início diferente não autoriza recuperar a transação.<br />
+A retomada automática exige que o PID registrado não exista mais no mesmo<br />
+host e namespace; PIDs vivos, inclusive reutilizados, e travas de outro host<br />
+exigem inspeção. Consulte o procedimento de<br />
+<a href="../../reference/transactional-publication/#recuperacao-manual-e-conteineres">recuperação manual de CVM/B3</a>.</p>
+<p><strong>Console no Windows:</strong> a saída redirecionada no Windows, como <code>&gt; log.txt</code>,<br />
+tarefas agendadas ou subprocessos, costuma usar uma página de código legada.<br />
+O progresso e os resumos de CVM e B3 deixam de abortar com<br />
+<code>UnicodeEncodeError</code> nesse caso: as barras usam <code>#</code> e <code>-</code>, e símbolos sem<br />
+suporte viram <code>?</code>. A versão 0.1.4 tinha essa falha.</p>
+<h2 id="b3">B3<a class="headerlink" href="#b3" title="Link para esta seção">&para;</a></h2>
 <p>Todas as linhas <code>01</code> são validadas e convertidas antes da seleção de mercados.<br />
 Linhas vazias e controles <code>00</code>/<code>99</code> são contados, e qualquer outro identificador<br />
 não vazio falha. Ambos os modos usam a conversão canônica e lotes limitados<br />

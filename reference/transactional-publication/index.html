@@ -1513,6 +1513,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Aquisição e recuperação do lock">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#recuperacao-manual-e-conteineres" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recuperação manual e contêineres
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1941,14 +1958,58 @@ processo termina:</p>
   bloquear o mesmo arquivo.</li>
 </ul>
 <p>A guarda protege a janela anterior à persistência de <code>owner.json</code> e serializa<br />
-tentativas de recuperação. Depois da inicialização, o registro continua<br />
-rejeitando PIDs vivos e locks de outro host. Um lock privado sem dono só é<br />
-recuperado automaticamente quando está vazio ou contém apenas temporários<br />
+tentativas de recuperação. Depois da inicialização, o registro identifica<br />
+hostname, PID e <code>process_started_at</code>, o início do processo retornado por<br />
+<code>psutil.Process.create_time()</code>. Esse horário pode variar com ajustes do relógio<br />
+do sistema. Um PID vivo com início diferente pode indicar reutilização do PID<br />
+ou mudança do relógio; essa diferença não autoriza recuperar a transação.<br />
+Qualquer PID vivo, falhas de permissão, identidades inválidas e locks de outro<br />
+host bloqueiam a retomada. Um lock com dono identificado só é recuperado<br />
+automaticamente quando o PID não existe mais no mesmo host e namespace.<br />
+Um lock privado sem dono só é recuperado automaticamente quando está vazio<br />
+ou contém apenas temporários<br />
 privados de <code>owner.json</code>. Conteúdo não reconhecido, aliases e permissões<br />
 inseguras são preservados com erro explícito.</p>
 <p>A consulta de PID usa <code>psutil.Process.is_running()</code>, sem emitir sinais ou<br />
 eventos de console no Windows. Falhas de permissão na consulta impedem a<br />
 retomada e preservam a causa do diagnóstico.</p>
+<h3 id="recuperacao-manual-e-conteineres">Recuperação manual e contêineres<a class="headerlink" href="#recuperacao-manual-e-conteineres" title="Link para esta seção">&para;</a></h3>
+<p>Uma trava antiga sem <code>process_started_at</code> continua recuperável quando o PID<br />
+não existe; com PID vivo, a biblioteca preserva o comportamento conservador.<br />
+PIDs de contêineres diferentes não identificam o mesmo processo. Não trate<br />
+ausência de um PID no contêiner atual, idade do arquivo ou mudança de hostname<br />
+como prova de que o escritor anterior terminou. Destinos compartilhados<br />
+exigem hosts identificáveis e escritores no mesmo namespace de processos<br />
+quando usam o mesmo hostname.</p>
+<p>Para retomar após interrupção:</p>
+<ol>
+<li>Pare downloads, extrações e outros escritores do destino, inclusive em<br />
+   outros hosts ou contêineres. Confirme no ambiente de origem que o processo<br />
+   dono terminou; se isso não for possível, mantenha o destino intacto e use<br />
+   um diretório novo.</li>
+<li>Preserve uma cópia completa do destino, incluindo ZIPs, Parquets,<br />
+<code>.cvm-write-lock</code>, <code>.globaldatafinance-transaction.lock</code>, manifestos e<br />
+   staging. Examine os <code>owner.json</code> sem alterar PID, hostname ou timestamps.</li>
+<li>No fluxo CVM, <code>.cvm-write-lock</code> é uma trava externa separada, que exige<br />
+   liberação manual após essa confirmação. Se contém somente <code>owner.json</code><br />
+   regular e privado, remova apenas esse arquivo e o diretório então vazio.<br />
+   Conteúdo adicional, links ou ownership desconhecido exigem inspeção;<br />
+   não remova recursivamente a árvore.</li>
+<li>No mesmo host e namespace, execute novamente a fachada no mesmo destino.<br />
+   A trava transacional só é recuperada automaticamente se o PID registrado<br />
+   não existir mais; os journals determinam rollback ou conclusão antes de<br />
+   começar a nova publicação. Um PID vivo continua bloqueando, mesmo com<br />
+   horário de início diferente. Preserve logs se houver erro de recuperação.</li>
+<li>Se a trava transacional pertence a outro host, tem PID ainda vivo<br />
+   (inclusive por reutilização) ou não permite verificar a identidade,<br />
+   regenere em um destino novo a partir das fontes preservadas e confira o<br />
+   resultado antes de trocar consumidores.<br />
+   Esta versão não oferece tomada automática nem comando de recuperação<br />
+   forçada entre hosts.</li>
+</ol>
+<p>Não apague journals, backups, staging ou o arquivo de guarda Windows para<br />
+desbloquear uma publicação; isso pode eliminar a autoridade necessária para<br />
+recuperar o lote. A verificação do resultado da fachada continua obrigatória.</p>
 <h2 id="staging-e-manifestos">Staging e manifestos<a class="headerlink" href="#staging-e-manifestos" title="Link para esta seção">&para;</a></h2>
 <p>Novas transações criam staging dentro do lock privado, no mesmo filesystem<br />
 dos outputs. Os temporários do manifesto ficam dentro do staging. Quedas<br />

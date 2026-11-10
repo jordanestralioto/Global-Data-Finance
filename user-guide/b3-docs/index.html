@@ -681,6 +681,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Escolher modo e destino">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#espaco-livre-antes-da-extracao" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Espaço livre antes da extração
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2108,13 +2125,29 @@ em português, inclusive quando o restante do programa usa outro idioma.</p>
 </table>
 <p>Os dois modos aplicam as mesmas regras de dados e integridade. Para ajustar<br />
 workers e recursos, consulte <a href="../../dev-guide/advanced-usage/">uso avançado</a>.</p>
+<h3 id="espaco-livre-antes-da-extracao">Espaço livre antes da extração<a class="headerlink" href="#espaco-livre-antes-da-extracao" title="Link para esta seção">&para;</a></h3>
+<p>Após validar as fontes e antes de abrir o staging, a B3 exige no filesystem<br />
+de destino a soma, em bytes, de <code>2 * uncompressed_bytes + 256 * selected_quotes</code><br />
+para cada fonte selecionada. O tamanho descompactado considera o arquivo<br />
+anual completo; a contagem de cotações respeita a seleção de mercados.<br />
+Essa é uma estimativa conservadora para arquivos privados por fonte e a saída<br />
+consolidada, não uma medição do pico de disco nem do Parquet comprimido final.<br />
+Ao substituir saídas existentes, o publicador também confere espaço para<br />
+seus backups completos, pois um hard link pode exigir fallback para cópia.<br />
+Espaço insuficiente produz <code>DiskFullError</code> e preserva a saída anterior.</p>
 <h2 id="conferir-e-consumir-o-resultado">Conferir e consumir o resultado<a class="headerlink" href="#conferir-e-consumir-o-resultado" title="Link para esta seção">&para;</a></h2>
 <p>O <code>ExtractionResultB3</code> contém os campos principais abaixo. A lista completa e<br />
 as exceções estão na <a href="../../reference/b3-api/">referência B3</a>.<br />
 Em um event loop já ativo, use <code>await b3.extract_async(...)</code>; os argumentos e<br />
 o resultado são os mesmos. Em scripts que processam várias fontes com<br />
 processos, proteja a chamada com <code>if __name__ == '__main__':</code>, conforme o<br />
-<a href="../../dev-guide/advanced-usage/">exemplo de processamento paralelo</a>.</p>
+<a href="../../dev-guide/advanced-usage/">exemplo de processamento paralelo</a>.<br />
+O padrão elegível de <code>fast</code> usa processos. Uma chamada feita enquanto um<br />
+filho <code>spawn</code> importa o script levanta <code>RuntimeError</code> antes de ler as fontes;<br />
+o processo principal retorna a orientação em <code>errors</code> se o pool encerrar.<br />
+Defina <code>GDF_B3_EXECUTOR_BACKEND=thread</code> antes de construir <code>HistoricalQuotesB3</code><br />
+para optar por threads. Downloads e outros efeitos no topo do script também<br />
+precisam ficar dentro da proteção <code>__main__</code>.</p>
 <table>
 <thead>
 <tr>

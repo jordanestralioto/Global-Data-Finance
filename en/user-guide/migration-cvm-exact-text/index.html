@@ -2062,7 +2062,9 @@ termination, the library retains that lock and requires explicit inspection<br /
 before recovery: confirm no active writer exists, preserve evidence, and<br />
 recover derived transaction state. The library never automatically takes<br />
 an unverifiable lock. Failures remain in the result; a Parquet&rsquo;s existence<br />
-alone does not establish success.</p>
+alone does not establish success.<br />
+Follow the <a href="../../reference/transactional-publication/#manual-recovery-and-containers">manual recovery procedure</a>,<br />
+which distinguishes CVM&rsquo;s outer lock from Parquet transaction recovery.</p>
 <p>IPE includes 2003 onward. <code>get_available_years().ipe_min_year</code> exposes that<br />
 minimum as a property; the four tuple fields continue to describe general<br />
 documents, ITR, CGVN/VLMO, and the current year.</p>

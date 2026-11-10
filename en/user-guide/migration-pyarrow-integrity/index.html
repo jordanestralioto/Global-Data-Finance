@@ -1815,6 +1815,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#notes-for-release-020" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes for release 0.2.0
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#b3" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1825,17 +1836,6 @@
   
     <nav class="md-nav" aria-label="B3">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#notes-for-release-020" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Notes for release 0.2.0
-      
-    </span>
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#b3-schema-v2-and-regeneration" class="md-nav__link">
@@ -2040,13 +2040,37 @@ for regeneration, explicit conversions, and lock inspection after interruption.<
 <code>setup_logging()</code> call, the <code>globaldatafinance</code> namespace uses a <code>NullHandler</code><br />
 and remains quiet; a handler reconfiguration failure preserves the previous<br />
 configuration.</p>
-<h2 id="b3">B3<a class="headerlink" href="#b3" title="Link para esta seção">&para;</a></h2>
-<h3 id="notes-for-release-020">Notes for release 0.2.0<a class="headerlink" href="#notes-for-release-020" title="Link para esta seção">&para;</a></h3>
-<p>The text below is the prepared body for the 0.2.0 GitHub release. The<br />
-existing <code>.github/workflows/publish.yml</code> runs gates and publication from the<br />
-published-release event. Version, tag, and publication must await approval of<br />
-the acceptance evidence; this draft does not claim a release was published.</p>
-<p><strong>Dependency requirements for the next release:</strong></p>
+<h2 id="notes-for-release-020">Notes for release 0.2.0<a class="headerlink" href="#notes-for-release-020" title="Link para esta seção">&para;</a></h2>
+<p>These notes summarize what changes when upgrading from 0.1.4 to 0.2.0.</p>
+<p><strong>Breaking changes when upgrading from 0.1.4:</strong></p>
+<ul>
+<li><strong>CVM:</strong> all Parquet columns become Arrow <code>string</code>, with empty fields as<br />
+<code>""</code> and preserved leading zeros and decimal text. Regenerate files from<br />
+  their ZIP sources; consumers must explicitly convert numeric columns. See<br />
+  the <a href="../migration-cvm-exact-text/">CVM text migration</a>.</li>
+<li><strong>Dependencies:</strong> Pandas and Polars are no longer installed or imported by<br />
+  the runtime. Install them explicitly if your application uses DataFrames.</li>
+<li><strong>Removed imports:</strong> <code>globaldatafinance.__version__</code>, <code>ExtractorAdapter</code>,<br />
+<code>ReadFilesAdapter</code>, and the generic<br />
+<code>macro_infra.extractor_file</code>/<code>macro_infra.read_files</code> modules are removed.<br />
+  Read the version with <code>importlib.metadata.version("globaldatafinance")</code><br />
+  and migrate adapters to the source-owned components.</li>
+<li><strong>Timeout:</strong> replace imports of the domain <code>TimeoutError</code> exception with<br />
+<code>DownloadTimeoutError</code>; Python&rsquo;s built-in exception is distinct. See the<br />
+<a href="../migration-infrastructure-clean-cut/">infrastructure guide</a> for these<br />
+  removals and the changed write-error behavior.</li>
+<li><strong>B3 <code>fast</code>:</strong> eligible multi-source runs now default to <code>spawn</code> processes.<br />
+  Protect script execution with <code>if __name__ == '__main__':</code>, or set<br />
+<code>GDF_B3_EXECUTOR_BACKEND=thread</code> before constructing the facade to retain<br />
+  threads as in 0.1.4. Calls during child bootstrap now fail before source<br />
+  revalidation; the pool error explains the correction. Put CVM downloads<br />
+  and other application side effects inside the main guard too: the library<br />
+  cannot prevent code that executes before the B3 call.</li>
+<li><strong>Persisted B3 data:</strong> migrate market selection and regenerate Parquets<br />
+  with schema v2 as described below. Read this release&rsquo;s migration guides<br />
+  together before updating consumers.</li>
+</ul>
+<p><strong>Dependency requirements:</strong></p>
 <ul>
 <li>PyArrow: <code>&gt;=26.0.0,&lt;27.0.0</code>.</li>
 <li>psutil: <code>&gt;=7.2.2,&lt;8.0.0</code>.</li>
@@ -2073,9 +2097,35 @@ in Bash environment activation. This dependency is used by <code>pre-commit</cod
   check <code>success</code>, <code>schema_version</code>, and <code>integrity</code> before switching files.</li>
 </ul>
 <p>The local acceptance corpus covers 2000–2026, with a snapshot ending on<br />
-2026-09-02. The release must attach final frozen-corpus evidence and checksum<br />
-manifests. These bounds are not independent confirmation of exchange coverage<br />
-or availability of every historical year.</p>
+2026-09-02. The checksum manifest and the campaign evidence are versioned with<br />
+the <a href="../../reference/cotahist-v2-supplied-corpus/">corpus audit</a>. These<br />
+bounds are not independent confirmation of exchange coverage or availability of<br />
+every historical year.<br />
+A <a href="../../reference/cotahist-v2-supplied-corpus/#supplementary-20252026-acceptance-on-2026-11-09">supplementary 2025–2026 acceptance</a><br />
+verified 6,604,374 quotations through 2026-11-06 with exact <code>fast</code>/<code>slow</code><br />
+equality, using the Latin-1 copy explicitly recorded below.</p>
+<p><strong>Official 2026 source and disk space:</strong> a November version of<br />
+<code>COTAHIST_A2026.ZIP</code> contains one UTF-8 record occupying 246 bytes instead of<br />
+the required 245. Strict validation rejects that file and preserves the<br />
+previous output. Retain the original and follow the<br />
+<a href="../b3-docs/#diagnose-utf-8-text-in-records-with-an-invalid-width">explicit conversion to a Latin-1 copy</a>;<br />
+the extraction hashes and <code>registro_original</code> identify that converted copy.<br />
+The <a href="../b3-docs/#free-space-before-extraction">free-space rule</a> conservatively<br />
+estimates staging and publication needs and can substantially exceed the<br />
+final Parquet size.</p>
+<p><strong>Restart after a crash:</strong> new transaction locks also record the process<br />
+start time for diagnostics. This timestamp can change with clock adjustments,<br />
+so a live PID with a different start time cannot authorize recovery.<br />
+Automatic recovery requires the recorded PID to no longer exist on the same<br />
+host and process namespace; live PIDs, including reused ones, and locks from<br />
+another host require inspection.<br />
+Follow the <a href="../../reference/transactional-publication/#manual-recovery-and-containers">manual CVM/B3 recovery procedure</a>.</p>
+<p><strong>Windows console:</strong> redirected Windows output, such as <code>&gt; log.txt</code>,<br />
+scheduled tasks, or subprocesses, commonly uses a legacy code page. CVM and B3<br />
+progress and summaries no longer abort with <code>UnicodeEncodeError</code> there: bars<br />
+use <code>#</code> and <code>-</code>, and unsupported symbols become <code>?</code>. The 0.1.4 release had<br />
+this failure.</p>
+<h2 id="b3">B3<a class="headerlink" href="#b3" title="Link para esta seção">&para;</a></h2>
 <p>Every <code>01</code> record is validated and converted before market selection. Blank<br />
 lines and <code>00</code>/<code>99</code> controls are counted, while every other nonempty identifier<br />
 fails. Both modes use canonical conversion and bounded CSV row batches through<br />
