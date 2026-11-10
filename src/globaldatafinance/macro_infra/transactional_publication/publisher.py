@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import math
 import os
 import re
 import socket
@@ -25,7 +26,11 @@ from ...macro_exceptions import (
 from .durability import sync_directory
 from .locking import destination_guard
 from .manifests import ManifestStore
-from .ownership import read_private_json, require_private_entry
+from .ownership import (
+    RECOVERY_GUIDE_URL,
+    read_private_json,
+    require_private_entry,
+)
 from .paths import require_descendant
 from .publication import TransactionalPublication
 from .types import (
@@ -175,7 +180,8 @@ class TransactionalPublisher:
         if lock_record.get('hostname') != socket.gethostname():
             raise ExtractionError(
                 self.source_path,
-                'Destination transaction lock belongs to another host',
+                'Destination transaction lock belongs to another host. '
+                f'See the manual recovery procedure: {RECOVERY_GUIDE_URL}',
             )
         pid = lock_record.get('pid')
         if not isinstance(pid, int) or pid <= 0:
@@ -183,10 +189,27 @@ class TransactionalPublisher:
                 self.source_path,
                 'Destination transaction lock has no verifiable process id',
             )
-        if self._pid_is_alive(pid):
+        started_at = lock_record.get('process_started_at')
+        try:
+            valid_start = (
+                not isinstance(started_at, bool)
+                and isinstance(started_at, (int, float))
+                and started_at > 0
+                and math.isfinite(started_at)
+            )
+        except OverflowError:
+            valid_start = False
+        if 'process_started_at' in lock_record and not valid_start:
             raise ExtractionError(
                 self.source_path,
-                f'Destination transaction lock is held by live PID {pid}',
+                'Destination transaction lock has no verifiable process '
+                f'start time. See: {RECOVERY_GUIDE_URL}',
+            )
+        if self._pid_is_alive(pid, started_at=started_at):
+            raise ExtractionError(
+                self.source_path,
+                f'Destination transaction lock is held by live PID {pid}. '
+                f'See the manual recovery procedure: {RECOVERY_GUIDE_URL}',
             )
         self._recover_pending()
         self._remove_tree(self.lock_dir)
@@ -206,9 +229,19 @@ class TransactionalPublisher:
         self._remove_tree(self.lock_dir)
 
     @staticmethod
-    def _pid_is_alive(pid: int) -> bool:
+    def _pid_is_alive(pid: int, *, started_at: float | None = None) -> bool:
         try:
-            return bool(psutil.Process(pid).is_running())
+            process = psutil.Process(pid)
+            if not process.is_running():
+                return False
+            if started_at is not None and process.create_time() != started_at:
+                raise ExtractionError(
+                    str(pid),
+                    f'Process start time differs for live PID {pid}: '
+                    'PID reused or system clock changed. '
+                    f'See the manual recovery procedure: {RECOVERY_GUIDE_URL}',
+                )
+            return True
         except psutil.NoSuchProcess:
             return False
         except psutil.AccessDenied as error:
@@ -220,6 +253,7 @@ class TransactionalPublisher:
         record = {
             'hostname': socket.gethostname(),
             'pid': os.getpid(),
+            'process_started_at': psutil.Process(os.getpid()).create_time(),
             'transaction_id': self._transaction_id or '',
             'created_at': datetime.now(UTC).isoformat(),
             'manifest': (

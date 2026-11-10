@@ -81,4 +81,51 @@ the 27 manifest checksums; see the
 These results are historical. A new campaign must recheck input hashes and
 reconcile the data before using these numbers as acceptance criteria.
 
+## Supplementary 2025–2026 acceptance on 2026-11-09
+
+A new campaign reconciles the current official 2025 and 2026 sources through
+the 2026-11-06 trading session. It supplements the baseline above without
+replacing its hashes or attributing later records to its September snapshot.
+
+| Measure | Result |
+| --- | ---: |
+| 2025 quotations | 3,174,698 |
+| 2026 quotations | 3,429,676 |
+| Rows verified in each mode | 6,604,374 |
+| Observed date range | 2025-01-02 to 2026-11-06 |
+| `fast`/`slow` parity | Exact equality of every record and its order |
+| Verification | Independent raw-to-Parquet oracle, schema v2 |
+| Total time, including readback and reconciliation of both modes | 2,936.14 s |
+| Active processes or temporary files after cleanup | None |
+
+The official 2026 ZIP has SHA-256
+`26f2a0c96e37f2cfdca02e467f472d764a91e1c908a38edc0002c2c8ef913021`.
+Physical line 2,072,135, dated 2026-10-22 with ticker `FR0T5L`, occupies 246
+UTF-8 bytes. [Rejection of the original](../dev-guide/benchmark-results/cotahist-release-20261109/official-2026-rejection.json)
+is expected and preserves existing output: the contract still requires 245
+bytes. The campaign used a TXT copy strictly converted from UTF-8 to Latin-1,
+changing only this record while retaining the original. Its SHA-256 is
+`44ee9ffb6bc33d1d205d17966d6e7d5108c4b014b55b5290cff43ee63dfe5be6`.
+
+Executor-generated artifacts remain separate: [manifest](../dev-guide/benchmark-results/cotahist-release-20261109/manifest.json),
+[complete result](../dev-guide/benchmark-results/cotahist-release-20261109/results.jsonl),
+[summary](../dev-guide/benchmark-results/cotahist-release-20261109/summary.json),
+and [conversion provenance](../dev-guide/benchmark-results/cotahist-release-20261109/source-normalization.json).
+Reconciliation also compares the original 20 fields and all 2,671 quotations
+in market `021`. The ordered logical digest is
+`19f73a7a8471d38c2c592ea50d904c53dbacf2b036b4d5291dda63b1dbf7835d`.
+This local Linux run does not replace final-commit acceptance in CI.
+
+To reproduce, retain source hashes and prepare the copy following the
+[encoding guide](../user-guide/b3-docs.en.md#diagnose-utf-8-text-in-records-with-an-invalid-width),
+leaving only the 2025 ZIP and converted 2026 TXT in the selected directory:
+
+```bash
+uv run --locked --no-sync python scripts/real_validation.py \
+  --source cotahist --cotahist-path /external/path/inputs \
+  --initial-year 2025 --last-year 2026 --cotahist-mode all \
+  --case cotahist-multi-parity-2025-2026 \
+  --report /external/path/report --timeout 3600 --progress
+```
+
 Official format and offsets: [B3 historical series layout](https://www.b3.com.br/data/files/33/67/B9/50/D84057102C784E47AC094EA8/SeriesHistoricas_Layout.pdf).

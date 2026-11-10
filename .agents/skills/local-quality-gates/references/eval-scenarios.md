@@ -141,6 +141,20 @@ Use real analyzer findings for a selected baseline policy. Freeze stable
 identities, reject new `C`, and confirm analysis does not expand the baseline.
 Simulated failures may test infrastructure handling only; label their scope.
 
+## Targeted maintenance extension
+
+**Prompt:** "Adiciona Gitleaks ao pre-commit existente; não quero uma auditoria
+completa de código morto."
+
+**Assertions:**
+
+- [ ] Existing hook IDs, scopes, and blocking rules remain present.
+- [ ] Only the selected secret-scanning setup is added and exercised.
+- [ ] The seven-capability dead-code report is left outside scope without
+  claiming that unassessed coverage passed.
+- [ ] Evidence names executed commands and stages, and lists checks not run;
+  direct commands are not described as an executed installed hook stage.
+
 ## Existing Regression Assertions
 
 Preserve these assertions when moving details out of `SKILL.md`:

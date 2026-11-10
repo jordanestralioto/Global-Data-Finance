@@ -100,9 +100,11 @@ meaning across every framework.
 
 ## 5. Tool Selection Rules
 
-Assess `[DEAD_CODE]` in every setup or review. Apply the per-capability statuses,
-snapshot contract, selection procedure, findings policy, and example report in
-[dead-code-policy.md](dead-code-policy.md). A generic linter is not full coverage.
+Assess `[DEAD_CODE]` in full setups, audits, or requests concerning unused code.
+Targeted maintenance of another hook may leave it outside scope while preserving
+existing gates. Apply the per-capability statuses, snapshot contract, selection
+procedure, findings policy, and report in [dead-code-policy.md](dead-code-policy.md).
+A generic linter is not full coverage.
 
 1. **Prefer project-native tools**: If the repository configures a tool via `pyproject.toml` or `package.json`, execute it via the project's package manager (`uv run`, `pnpm exec`).
 2. **Use the published line gate when its policy fits**: In a consumer of the

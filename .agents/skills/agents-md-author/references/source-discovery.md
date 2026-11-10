@@ -15,6 +15,12 @@ cliente declara aplicáveis. Confira `AGENTS.override.md` e `AGENTS.md` nos
 diretórios relevantes. A ordem de precedência e o modo como arquivos globais
 entram na cadeia dependem do cliente.
 
+Registre diretório inicial, cadeia descoberta, fallbacks e orçamento do cliente
+na devolutiva da tarefa. Esses dados de sessão orientam a autoria, mas não viram
+regras duráveis de `AGENTS.md` por si só. Inclua uma configuração do cliente no
+documento apenas quando o alvo a adotar como política compartilhada; uma
+configuração fornecida para uma sessão de avaliação não estabelece essa política.
+
 Considere um nome alternativo somente quando a configuração ou a documentação
 do cliente confirma que ele é carregado. No Codex, verifique
 `project_doc_fallback_filenames`; nomes de exemplo incluem `TEAM_GUIDE.md` e
@@ -44,7 +50,9 @@ Faça uma descoberta limitada ao caminho que a solicitação requer:
 1. Leia o `AGENTS.md` alvo e seus ancestrais aplicáveis antes de propor texto.
 2. Localize README, onboarding, governança e `CODEOWNERS` quando existirem.
 3. Inspecione manifests, lockfiles, configurações, entrypoints, CI e comandos
-   owner para confirmar stack, ownership e validação.
+   owner para confirmar stack, ownership e validação. Para comandos de teste,
+   confronte as fontes disponíveis antes de concluir que um comando é oficial;
+   configurações de CI frequentemente ficam em arquivos ou diretórios ocultos.
 4. Abra código ou testes apenas para resolver uma afirmação necessária, não para
    inventariar o repositório inteiro.
 5. Mapeie o caminho inicial, o owner dos detalhes e o próximo documento útil.
@@ -52,8 +60,8 @@ Faça uma descoberta limitada ao caminho que a solicitação requer:
 Comandos úteis para listar candidatos sem assumir uma stack:
 
 ```bash
-rg --files -g 'AGENTS.md' -g 'AGENTS.override.md' -g 'README*' -g 'CONTRIBUTING*' -g 'CODEOWNERS'
-rg --files -g 'pyproject.toml' -g 'package.json' -g 'Cargo.toml' -g 'go.mod' -g 'pom.xml' -g 'build.gradle*' -g '*.csproj' -g '*.sln' -g 'Gemfile' -g 'composer.json' -g 'Package.swift' -g 'Makefile' -g 'Taskfile*' -g '.github/workflows/*'
+rg --files --hidden -g 'AGENTS.md' -g 'AGENTS.override.md' -g 'README*' -g 'CONTRIBUTING*' -g 'CODEOWNERS' -g '!**/.git/**'
+rg --files --hidden -g 'pyproject.toml' -g 'package.json' -g 'Cargo.toml' -g 'go.mod' -g 'pom.xml' -g 'build.gradle*' -g '*.csproj' -g '*.sln' -g 'Gemfile' -g 'composer.json' -g 'Package.swift' -g 'Makefile' -g 'Taskfile*' -g '.github/workflows/*' -g '.gitlab-ci.yml' -g '.circleci/config.yml' -g '!**/.git/**'
 ```
 
 Use `--help`, listagem de tasks e checks secos para confirmar sintaxe quando o

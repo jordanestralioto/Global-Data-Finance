@@ -195,7 +195,8 @@ root_package = "globaldatafinance"
 name = "Layered architecture"
 type = "layers"
 layers = [
-  "globaldatafinance.application : globaldatafinance.brazil",
+  "globaldatafinance.application",
+  "globaldatafinance.brazil",
   "globaldatafinance.macro_infra",
   "globaldatafinance.core",
   "globaldatafinance.macro_exceptions",

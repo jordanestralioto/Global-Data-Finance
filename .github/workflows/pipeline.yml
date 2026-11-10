@@ -320,6 +320,7 @@ jobs:
             tests/core/test_logging_redaction.py \
             tests/core/utils/test_path_safety.py \
             tests/macro_infra/test_publication_platforms.py \
+            tests/macro_infra/test_publication_process_identity.py \
             tests/macro_infra/test_publication_crashes.py \
             tests/macro_infra/test_requests_adapter.py \
             tests/macro_infra/test_http_safety.py \
@@ -329,7 +330,8 @@ jobs:
             "$cvm_tests/integration/test_cvm_log_redaction.py" \
             "$b3_tests/parquet_writer/test_writer_lifecycle.py" \
             "$b3_tests/extraction_service/test_source_result_validation.py" \
-            tests/application/b3_docs/test_release_regressions.py
+            tests/application/b3_docs/test_release_regressions.py \
+            tests/application/b3_docs/test_spawn_entrypoint.py
           git diff --exit-code
       - name: Upload native evidence
         if: always()

@@ -121,6 +121,18 @@ Portuguese, including when the rest of the program uses another language.
 Both modes apply the same data and integrity rules. For worker and resource
 settings, see [advanced usage](../dev-guide/advanced-usage.md).
 
+### Free space before extraction
+
+After validating sources and before opening staging, B3 requires the sum, in
+bytes, of `2 * uncompressed_bytes + 256 * selected_quotes` for every selected
+source on the destination filesystem. Uncompressed size covers the entire
+annual file; quotation counts reflect market selection. This conservative
+estimate allows for private per-source files and the consolidated output; it
+does not measure peak disk use or the final compressed Parquet size. When
+replacing existing outputs, the publisher also checks space for their full
+backups because hard links may require a copy fallback. Insufficient space
+produces `DiskFullError` and preserves the previous output.
+
 ## Check and consume the result
 
 The main `ExtractionResultB3` fields are below. The complete list and exceptions
@@ -129,6 +141,12 @@ Inside an active event loop, use `await b3.extract_async(...)`; arguments and
 results are identical. In scripts processing several sources with processes,
 protect the call with `if __name__ == '__main__':`, as shown in the
 [parallel processing example](../dev-guide/advanced-usage.md).
+Eligible `fast` runs default to processes. A call made while a spawned child
+imports the script raises `RuntimeError` before reading sources; the parent
+includes the correction in `errors` if the pool terminates. Set
+`GDF_B3_EXECUTOR_BACKEND=thread` before constructing `HistoricalQuotesB3` to
+select threads. Downloads and other top-level script side effects must also
+be inside the `__main__` guard.
 
 | Field | How to use it |
 | --- | --- |

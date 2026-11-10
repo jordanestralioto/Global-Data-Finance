@@ -55,6 +55,34 @@
     "schemaVersion": {
       "type": "string"
     },
+    "scope": {
+      "properties": {
+        "baseCommit": {
+          "type": "string"
+        },
+        "headCommit": {
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "worktree",
+            "staged",
+            "refs"
+          ]
+        },
+        "paths": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "mode",
+        "paths"
+      ],
+      "type": "object"
+    },
     "statistics": {
       "properties": {
         "blockingFindingCount": {

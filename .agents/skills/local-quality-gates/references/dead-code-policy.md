@@ -5,9 +5,11 @@
 
 ## 1. Capability Report
 
-Every gate setup or review must assess `[DEAD_CODE]`, even when no new command
-is selected. Inspect actual enabled rules; a generic lint command is not proof
-of complete coverage. Record these seven capabilities individually:
+Assess `[DEAD_CODE]` in full setups, audits, or requests concerning unused code.
+For a targeted change to another hook, preserve existing gates and report this
+assessment as outside scope; do not expand the task or claim unassessed coverage.
+When applicable, inspect actual enabled rules; a generic lint command is not
+proof of complete coverage. Record these seven capabilities individually:
 
 | Capability                                             | Required assessment                                                                                       |
 | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |

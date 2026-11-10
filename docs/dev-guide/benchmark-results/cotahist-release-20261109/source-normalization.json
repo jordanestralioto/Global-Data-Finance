@@ -1,0 +1,19 @@
+{
+  "sourceUrl": "https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_A2026.ZIP",
+  "originalArchiveSha256": "26f2a0c96e37f2cfdca02e467f472d764a91e1c908a38edc0002c2c8ef913021",
+  "originalContentSha256": "517dff1b6f83692035fe736231e290154b1f971822d2d0be0dc7c8ca84a389a5",
+  "normalizedContentSha256": "44ee9ffb6bc33d1d205d17966d6e7d5108c4b014b55b5290cff43ee63dfe5be6",
+  "encodingConversion": "strict UTF-8 to ISO-8859-1; original retained",
+  "changedRecords": [
+    {
+      "physicalLine": 2072135,
+      "date": "20261022",
+      "ticker": "FR0T5L",
+      "originalWidth": 246,
+      "normalizedWidth": 245
+    }
+  ],
+  "quoteRows": 3429676,
+  "latestTradingDate": "20261106",
+  "physicalRows": 3429678
+}

@@ -194,29 +194,14 @@ def get_staged_diff(target_files: list[str] | None = None) -> str:
         raise GitInspectionError(str(err)) from err
 
 
-def is_cli_or_script_file(file_path: str) -> bool:
-    """Determine if file is a CLI entry point or script where print is expected."""
-    p = Path(file_path)
-    posix_path = p.as_posix().lower()
-    return (
-        '/cli/' in posix_path
-        or '/scripts/' in posix_path
-        or posix_path.startswith('scripts/')
-        or p.name in ('manage.py', 'cli.py', 'main.py')
-    )
-
-
 def _check_debug_violations(
     content: str,
     file_path: str,
     line_num: int,
-    allow_debug_in_scripts: bool,
     allow_print_files: frozenset[str],
 ) -> list[str]:
     errors: list[str] = []
-    is_script = is_cli_or_script_file(file_path)
-    allow_print = allow_debug_in_scripts and is_script
-    allow_print = allow_print or file_path in allow_print_files
+    allow_print = file_path in allow_print_files
     for pattern, desc in DEBUG_PATTERNS:
         if 'print(' in desc and allow_print:
             continue
@@ -270,7 +255,6 @@ def _check_security_violations(
 
 def scan_diff(
     diff_text: str,
-    allow_debug_in_scripts: bool = True,
     check_bypasses: bool = True,
     allow_print_files: frozenset[str] | set[str] | None = None,
 ) -> list[str]:
@@ -307,7 +291,6 @@ def scan_diff(
                     added_content,
                     current_file,
                     line_num,
-                    allow_debug_in_scripts,
                     allowed_print_files,
                 )
             )
@@ -332,11 +315,6 @@ def main() -> int:
         'files',
         nargs='*',
         help='Specific files to check. If omitted, checks all staged files.',
-    )
-    parser.add_argument(
-        '--disallow-script-prints',
-        action='store_true',
-        help=f'Fail on {PRINT_LABEL} even inside scripts/ or cli/ directories.',
     )
     parser.add_argument(
         '--allow-print-file',
@@ -366,7 +344,6 @@ def main() -> int:
 
     errors = scan_diff(
         diff_text,
-        allow_debug_in_scripts=not args.disallow_script_prints,
         check_bypasses=True,
         allow_print_files=frozenset(
             Path(path).as_posix() for path in args.allow_print_file

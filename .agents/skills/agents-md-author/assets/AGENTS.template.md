@@ -20,25 +20,15 @@
 
 ## Engineering Rules
 
-- Inspect the responsible code and documentation before editing; verify behavior
-  instead of assuming it from a filename or directory.
-- Preserve public contracts, component ownership, and established boundaries.
-- Keep each change cohesive and within the requested scope. Do not mix unrelated
-  refactors into a behavior change.
-- Give each function, class, and module a clear responsibility. Remove duplicated
-  logic and avoid circular dependencies.
-- Add or update tests for changed behavior, relevant edge cases, and regressions.
-- Update affected contracts and documentation when behavior or ownership changes.
-- Treat implemented behavior and accepted decisions as current; identify plans
-  and unimplemented proposals as planned work.
-- Use canonical sources for recurring rules. When current sources conflict,
-  identify the sources and the disagreement instead of inventing a resolution.
-- Protect secrets in notes, logs, and responses; do not seek or copy secret
-  values into project documentation.
-- Run repository-native validation that fits the change and report checks that
+- Inspect the responsible code and documentation before editing; preserve public
+  contracts, component ownership, and established boundaries.
+- Keep each change cohesive; add or update tests, contracts, and documentation
+  for changed behavior. Run repository-native validation and report checks that
   failed or were not run.
-- When a repository generates mirrors or projections, edit their source and use
-  the owning generator instead of editing generated output directly.
+- Edit generated output through its canonical source and owning generator. Name
+  conflicting sources instead of inventing a resolution; distinguish implemented
+  behavior and accepted decisions from plans.
+- Protect secrets in commands, logs, and responses.
 
 <!-- AGENTS_AUTHOR: Add only durable rules confirmed for this target, such as
      language policy, dependency manager, framework conventions, data/security

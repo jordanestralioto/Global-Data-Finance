@@ -13,6 +13,9 @@ TEMPLATE_PATH = (
 
 
 def main() -> int:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors='backslashreplace')
     parser = argparse.ArgumentParser(
         description='Create an AGENTS.md scaffold from the portable template.'
     )

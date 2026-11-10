@@ -82,4 +82,51 @@ Esses resultados são históricos. Uma nova campanha precisa reconferir os
 hashes e reconciliar os dados antes de usar estes números como critério de
 aceitação.
 
+## Aceitação complementar de 2025–2026 em 09/11/2026
+
+Uma nova campanha reconcilia os arquivos oficiais atuais de 2025 e 2026,
+incluindo o pregão de 06/11/2026. Ela complementa a linha de base acima,
+sem substituir seus hashes ou atribuir-lhe dados posteriores a setembro.
+
+| Medida | Resultado |
+| --- | ---: |
+| Cotações de 2025 | 3.174.698 |
+| Cotações de 2026 | 3.429.676 |
+| Total conferido em cada modo | 6.604.374 |
+| Intervalo observado | 2025-01-02 a 2026-11-06 |
+| Paridade `fast`/`slow` | Igualdade integral dos registros e da ordem |
+| Verificação | Oracle independente de fonte para Parquet, schema v2 |
+| Tempo total, com releitura e reconciliação dos dois modos | 2.936,14 s |
+| Processos ativos ou temporários após limpeza | Nenhum |
+
+O ZIP oficial de 2026 tem SHA-256
+`26f2a0c96e37f2cfdca02e467f472d764a91e1c908a38edc0002c2c8ef913021`.
+Sua linha física 2.072.135, de 22/10/2026, ticker `FR0T5L`, tem 246 bytes em
+UTF-8. A [rejeição do original](../dev-guide/benchmark-results/cotahist-release-20261109/official-2026-rejection.json)
+é esperada e preserva a saída: o contrato continua exigindo 245 bytes.
+A campanha usou uma cópia TXT convertida estritamente de UTF-8 para Latin-1,
+alterando somente essa linha; o original foi preservado. A cópia tem SHA-256
+`44ee9ffb6bc33d1d205d17966d6e7d5108c4b014b55b5290cff43ee63dfe5be6`.
+
+Os artefatos gerados pelo executor ficam separados: [manifesto](../dev-guide/benchmark-results/cotahist-release-20261109/manifest.json),
+[resultado completo](../dev-guide/benchmark-results/cotahist-release-20261109/results.jsonl),
+[resumo](../dev-guide/benchmark-results/cotahist-release-20261109/summary.json)
+e [proveniência da conversão](../dev-guide/benchmark-results/cotahist-release-20261109/source-normalization.json).
+A reconciliação também compara os 20 campos anteriores e as 2.671 cotações
+`021`. O digest lógico ordenado é
+`19f73a7a8471d38c2c592ea50d904c53dbacf2b036b4d5291dda63b1dbf7835d`.
+Essa execução local em Linux não substitui o aceite do commit final no CI.
+
+Para reproduzir, preserve os hashes e prepare a cópia conforme o
+[guia de encoding](../user-guide/b3-docs.md#diagnosticar-texto-utf-8-em-registros-com-largura-invalida),
+deixando apenas o ZIP 2025 e o TXT convertido 2026 na pasta selecionada:
+
+```bash
+uv run --locked --no-sync python scripts/real_validation.py \
+  --source cotahist --cotahist-path /external/path/inputs \
+  --initial-year 2025 --last-year 2026 --cotahist-mode all \
+  --case cotahist-multi-parity-2025-2026 \
+  --report /external/path/report --timeout 3600 --progress
+```
+
 Formato e offsets oficiais: [layout de séries históricas da B3](https://www.b3.com.br/data/files/33/67/B9/50/D84057102C784E47AC094EA8/SeriesHistoricas_Layout.pdf).

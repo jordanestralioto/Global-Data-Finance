@@ -6,6 +6,7 @@
 - change_type: ${changeType}
 - changed_by: ${changedBy}
 - security_touch: ${securityTouch}
+- scope: ${scope}
 
 ## Changed Files
 

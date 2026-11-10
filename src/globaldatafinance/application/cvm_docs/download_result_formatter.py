@@ -18,6 +18,7 @@ Example:
 """
 
 from ...brazil.cvm.ingestion.models import DownloadResultCVM
+from ...core.utils.console import print_console
 
 
 class DownloadResultFormatter:
@@ -203,4 +204,4 @@ class DownloadResultFormatter:
             >>> formatter = DownloadResultFormatter()
             >>> formatter.print_result(result)
         """
-        print(self.format_result(result))
+        print_console(self.format_result(result))

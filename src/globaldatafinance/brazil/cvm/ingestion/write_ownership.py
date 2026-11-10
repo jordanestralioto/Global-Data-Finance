@@ -13,6 +13,9 @@ from pathlib import Path
 from ....core import get_logger
 from ....core.utils import normalize_destination_path
 from ....macro_exceptions import ExtractionError, PathIsNotDirectoryError
+from ....macro_infra.transactional_publication.ownership import (
+    RECOVERY_GUIDE_URL,
+)
 from .destination_io import (
     DestinationFileOperationsCVM,
     DownloadDestinationSnapshot,
@@ -76,7 +79,9 @@ def exclusive_destination(
         except FileExistsError as error:
             raise ExtractionError(
                 str(destination),
-                f'CVM destination has an active or unrecovered writer: {lock}',
+                f'CVM destination has an active or unrecovered writer: '
+                f'{lock}. See the manual recovery procedure: '
+                f'{RECOVERY_GUIDE_URL}',
             ) from error
         with operations.open_child_directory(lock) as lock_operations:
             owner_path = lock / 'owner.json'

@@ -1,186 +1,61 @@
-# Modularizar Phase 2
+# Phase 2: extract responsibilities and migrate callers
 
-Use este reference apenas para **Fase 2A** e **Fase 2B**. Entre aqui somente
-quando o Gate 1 já estiver aprovado, a Fase 1B já tiver sido executada, a
-avaliação pós-Fase 1 tiver marcado `PHASE_2_NEEDED: YES` com evidência de
-necessidade estrutural e o usuário tiver autorizado seguir para a modularização
-estrutural.
+Enter after Phase 1 checks and `PHASE_2_NEEDED: YES`. Confirm that the existing
+authorization covers extraction; honor any user-requested approval boundary.
 
-## Abrir junto nesta etapa
+## Plan and execute in the same record
 
-- `references/PLAN_TEMPLATE.md` ao atualizar `## 6` e `## 7` do plano
-- `references/OUTPUT_TEMPLATE.md` ao montar `modularizar_<target-basename>-output.md`
-- `.agents/skills/modularizar/scripts/modularizar_guard.sh` ao validar plano e report
+1. Map each remaining responsibility to its destination and justify the boundary.
+   Identify the canonical public entrypoint, symbols staying internal and caller
+   migrations. List the legacy file to remove and the extraction order.
+2. Extract one responsibility at a time with useful validation checkpoints.
+   Reuse existing modules where appropriate; avoid new re-export-only wrappers.
+3. Use public basenames for extracted modules. A package's `__init__.py` can
+   contain its docstring, explicit imports and a literal `__all__` export list,
+   but no implementation or wildcard imports.
+4. Remove the legacy target and fix its imports, exports, callers and tests.
+   A supported import may survive through a canonical package at the same import
+   name. List only genuinely retired names for import scanning.
+5. Update the original findings and extraction map with results, commands, exit
+   codes and remaining risks. Inspect the final diff for undeclared extractions
+   and indirect consumers. Run the consumer's required checks before closing.
 
-## Pré-condições
+## Structural verification
 
-- `GATE_1_APPROVED: YES`
-- `PHASE_1_EXECUTED: YES`
-- `PHASE_2_NEEDED: YES`
-- baseline, inventário e log da Fase 1 já preenchidos no mesmo plano
-- `Residual condition: size`, `complexity` ou `both`
-- `Structural separation needed: YES`
-- evidência de que o alvo continua materialmente grande ou complexo e ainda precisa de separação estrutural
-- aprovação explícita do usuário para sair da Fase 1 e começar `## 6. Phase 2A - Modularization Proposal`
-
-## Objetivo da etapa
-
-1. Propor a modularização pós-limpeza sem misturar redesign prematuro com saneamento.
-2. Garantir compatibilidade pelo entrypoint canônico final, nunca pelo arquivo legado.
-3. Executar a extração por responsabilidade real e corrigir a fallout da remoção do legado.
-4. Fechar a trilha de evidência no report final.
-
-## Sequência operacional
-
-01. Atualize `## 6. Phase 2A - Modularization Proposal` no mesmo `modularizar_<target-basename>.md`.
-02. Preencha pelo menos estes pontos:
-    - entrypoints públicos finais
-    - justificativa de cada entrypoint público
-    - policy de naming com `public-only`
-    - entrypoint canônico de compatibilidade
-    - módulos internos e suas responsabilidades
-    - símbolos promovidos a públicos e justificativa
-    - símbolos mantidos internos e justificativa
-    - imports/exports a migrar
-    - callers a migrar
-    - fallout esperada após remover o legado
-    - arquivos legados a remover
-    - sequência unitária de extração com `P2-STEP-*`
-03. Em cada `Planned step`, registre:
-    - ordem de extração
-    - arquivos tocados
-    - arquivos extraídos
-    - responsabilidade movida
-    - impacto em símbolos públicos/privados
-    - checkpoint de validação
-    - motivo da ordem
-04. Peça aprovação explícita do usuário para o Gate 2 e pare antes de extrair módulos.
-05. Após a aprovação, valide com:
-    - `bash .agents/skills/modularizar/scripts/modularizar_guard.sh validate-plan --phase phase2 --target <file-or-module>`
-06. Execute a Fase 2B:
-    - extraia módulos por responsabilidade real
-    - preserve como público apenas o que continua com callers reais ou reuso planejado
-    - promova a público apenas o que se tornou reutilizável
-    - use o entrypoint canônico do módulo ou pacote como superfície de compatibilidade
-    - remova o arquivo legado
-    - corrija imports, exports, callers, entrypoints e testes quebrados pela remoção do legado
-07. Atualize `## 7. Phase 2B - Modularization Execution Log`.
-08. Gere `modularizar_<target-basename>-output.md` a partir de `references/OUTPUT_TEMPLATE.md`.
-09. No report final, espelhe:
-    - cada `Inventory item` aprovado da Fase 1 em `4.1`
-    - cada `Planned step` aprovado da Fase 2 em `5.3`
-10. Rode a validação final via `lint-and-validate` com o menor escopo útil para o diff.
-11. Finalize com:
-
-- `bash .agents/skills/modularizar/scripts/modularizar_guard.sh validate-report --target <file-or-module>`
-
-## Regras que não podem ser violadas
-
-- Arquivos extraídos não podem ter basename iniciado por `_`.
-- `__init__.py` só é exceção quando é o entrypoint canônico do pacote, não um módulo extraído de responsabilidade.
-- O entrypoint canônico de compatibilidade não pode apontar para o arquivo legado alvo.
-- `Legacy files to remove` deve listar explicitamente o alvo legado.
-- Gateway legado não é permitido.
-- A fallout da remoção do legado precisa ser corrigida na própria Fase 2.
-- O report final precisa registrar status, evidência e rollback por item e por passo.
-
-## Armadilhas que devem parar a etapa
-
-- Gate 2 ainda está `NO`.
-- `PHASE_2_NEEDED` não está marcado como `YES` com evidência pós-Fase 1.
-- A proposta usa `_helper.py` ou outro basename privado para módulo extraído.
-- O plano mantém o arquivo legado como entrypoint canônico.
-- `Legacy files to remove` não inclui o alvo original.
-- A extração foi executada sem `validate-plan --phase phase2`.
-- O report final virou resumo solto sem blocos por item e por passo.
-- A avaliação pós-Fase 1 usa condição `none` ou `Structural separation needed: NO` para iniciar a Fase 2.
-
-## Exemplo: proposta de Fase 2A
-
-```markdown
-## 6. Phase 2A - Modularization Proposal
-
-### 6.1 Final module map
-- Final public entrypoints: `src/features/chat/ui/ChatContainer/index.ts`
-- Public entrypoint justification: `ChatPage.tsx` e `ChatPane.tsx` continuam consumindo esse path durante a migração.
-- File naming policy for extracted modules: public-only; nenhum basename de arquivo extraído pode começar com `_`
-- Canonical compatibility entrypoint: `src/features/chat/ui/ChatContainer/index.ts`
-- Internal modules and responsibilities: `ChatContainer.tsx` coordena layout; `message-list.tsx` renderiza lista; `message-actions.ts` centraliza handlers
-- Symbols promoted to public: `buildMessageGroups`
-- Promotion justification: o helper passa a ser consumido por mais de um módulo de chat após a extração.
-- Symbols kept internal: `resolveScrollAnchor`, `renderEmptyState`
-- Why symbols stay internal: continuam acoplados a detalhes de renderização do container.
-
-### 6.2 Import and caller migration plan
-- Imports/exports to update: `ChatPage.tsx` e `ChatPane.tsx` passam a importar de `index.ts`
-- Callers to migrate: `ChatPage.tsx`, `ChatPane.tsx`
-- Breakages expected after legacy file removal: imports antigos de `ChatContainer.tsx` quebram até a migração dos callers
-- Legacy files to remove: `src/features/chat/ui/ChatContainer.tsx`
+```bash
+python .agents/skills/modularizar/scripts/check_modularization.py check \
+  --target src/legacy_orders.py --entrypoint src/orders/__init__.py \
+  --module src/orders --python-root src --retired-import legacy_orders
 ```
 
-## Exemplo: report de Fase 2B
+- `--module` accepts a file or source-only directory and can be repeated. Pass
+  every extracted destination, including reused files that received code. A
+  directory checks its files recursively, skipping caches, environments, vendor
+  trees and generated harness projections. Select individual files for a tree
+  containing binary assets or unrelated documents.
+- The checker verifies the legacy path is absent, the entrypoint and selected
+  modules exist, public basenames, line limits, Python syntax and initializer
+  structure. `--max-lines` defaults to 400; match the consumer's production policy.
+- `--retired-import` can be repeated. Static Python imports are resolved relative
+  to `--python-root` (default: repository root). Choose the actual Python source
+  root, include caller directories in that scan, and run additional scans when
+  the consumer has multiple source roots.
+- The import scan covers `import`, `from ... import ...` and relative imports.
+  It ignores comments and ordinary strings. Dynamic imports, runtime loading,
+  other languages and consumers outside the selected source root require native
+  tooling and review. Parse or read errors fail the check instead of disappearing.
+- No command parses Markdown approvals or certifies behavior. A structural PASS
+  covers only the listed paths and selected static checks. It does not establish
+  a complete inventory of the diff or substitute for tests, typecheck and build.
 
-```markdown
-## 5. Phase 2B Report
+Output is JSON. Exit `0` means selected checks passed, `1` means structural
+violations, and `2` means invalid input or an operational error. `init` requires
+an explicit `--record` path inside the consumer and refuses overwrites. It works
+without Git and before the first commit; the template comes from the skill.
 
-### 5.2 Migration evidence
-- Public symbols promoted: `buildMessageGroups`
-- Symbols kept internal: `resolveScrollAnchor`, `renderEmptyState`
-- Import/export migrations applied: callers do feature chat apontam para o novo entrypoint
-- Caller migrations applied: `ChatPage.tsx`, `ChatPane.tsx`
-- Breakages fixed after legacy file removal: imports antigos de `ChatContainer.tsx` foram migrados para `index.ts`
+## Existing records
 
-### 5.3 Step execution evidence
-
-#### Executed step P2-STEP-01
-- Step ID: P2-STEP-01
-- Execution status: executed
-- Files changed: `ChatContainer.tsx`, `message-list.tsx`
-- Extracted module files: `src/features/chat/ui/ChatContainer/message-list.tsx`
-- Summary: renderização da lista extraída para módulo dedicado
-- Validation evidence: testes de render e smoke de chat
-- Rollback note: reverter para a composição anterior do container
-```
-
-## Exemplo: compatibilidade por pacote sem gateway legado
-
-```markdown
-### 6.1 Final module map
-- Final public entrypoints: `src/filters/dfp_itr/validators/__init__.py`
-- Public entrypoint justification: o pacote exporta apenas validadores contabeis DFP/ITR
-- File naming policy for extracted modules: public-only; nenhum basename de arquivo extraído pode começar com `_`
-- Canonical compatibility entrypoint: `src/filters/dfp_itr/validators/__init__.py`
-- Internal modules and responsibilities: `balance_equation.py`, `quarter_sum.py`, `temporal_overlap.py`
-- Symbols promoted to public: none
-- Promotion justification: not applicable
-- Symbols kept internal: `build_risk_split_result`
-- Why symbols stay internal: helper reaproveitado apenas dentro do pacote
-
-### 6.2 Import and caller migration plan
-- Imports/exports to update: callers apontam para `src.filters.dfp_itr.validators`
-- Callers to migrate: imports diretos de modulo legado migram para o pacote publico
-- Breakages expected after legacy file removal: imports diretos de arquivo legado deixam de resolver
-- Legacy files to remove: nenhum arquivo legado concreto permanece neste exemplo
-```
-
-## Exemplo inválido: arquivo privado ou gateway legado
-
-```markdown
-### 6.1 Final module map
-- Final public entrypoints: `src/features/foo/foo.py`
-- File naming policy for extracted modules: permite `_helper.py` se ficar interno
-- Canonical compatibility entrypoint: `src/features/foo/foo.py`
-
-### 6.2 Import and caller migration plan
-- Imports/exports to update: none
-- Callers to migrate: none
-- Breakages expected after legacy file removal: none
-- Legacy files to remove: none
-
-### 6.3 Step-by-step extraction sequence
-#### Planned step P2-STEP-01
-- Extracted module files: `src/features/foo/_helper.py`
-```
-
-Isso falha porque usa basename privado em arquivo extraído, preserva o legado
-como entrypoint canônico e não registra a remoção do alvo legado.
+The old Bash Markdown guard and separate plan/output templates are retired.
+Retain old records as historical evidence; continue active work in one record
+and invoke the structural checker with actual paths. No compatibility shim or
+bulk rewrite of consumer documents is needed.

@@ -6,6 +6,8 @@ results, making it easy for users to understand extraction outcomes.
 
 from typing import Any
 
+from ...core.utils.console import print_console
+
 
 class ExtractionResultFormatter:
     """Formats extraction results for user-friendly display.
@@ -61,8 +63,8 @@ class ExtractionResultFormatter:
         title = self._colorize(
             '📊 B3 Historical Quotes Extraction', self.BOLD + self.CYAN
         )
-        print(f'\n{title}')
-        print(
+        print_console(f'\n{title}')
+        print_console(
             '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
         )
 
@@ -76,55 +78,59 @@ class ExtractionResultFormatter:
                 self.YELLOW if result.get('error_count', 0) > 0 else self.RED
             )
 
-        print(f'{self._colorize(status_text, self.BOLD + status_color)}')
+        print_console(
+            f'{self._colorize(status_text, self.BOLD + status_color)}'
+        )
 
         # Summary
-        print(f'\n{self._colorize("📈 Summary:", self.BOLD + self.BLUE)}')
+        print_console(
+            f'\n{self._colorize("📈 Summary:", self.BOLD + self.BLUE)}'
+        )
 
         # Files processed
         success_count = result.get('success_count', 0)
-        print(f'  • Processed files: {success_count}')
+        print_console(f'  • Processed files: {success_count}')
 
         # Total records
         total_records = result.get('total_records', 0)
-        print(f'  • Total records: {total_records:,}')
+        print_console(f'  • Total records: {total_records:,}')
 
         # Assets
         assets = result.get('assets', [])
         assets_str = (
             ', '.join(assets) if isinstance(assets, list) else str(assets)
         )
-        print(f'  • Asset classes: {assets_str}')
+        print_console(f'  • Asset classes: {assets_str}')
 
         # Processing mode
-        print(
+        print_console(
             f'  • Processing mode: {result.get("processing_mode", "unknown")}'
         )
 
         # Elapsed time
         elapsed = result.get('elapsed_time', 0)
-        print(f'  • Elapsed time: {elapsed:.1f}s')
+        print_console(f'  • Elapsed time: {elapsed:.1f}s')
 
         # Output file
         if 'output_file' in result:
             output_label = self._colorize(
                 '💾 Generated file:', self.BOLD + self.BLUE
             )
-            print(f'\n{output_label}')
-            print(f'  {result["output_file"]}')
+            print_console(f'\n{output_label}')
+            print_console(f'  {result["output_file"]}')
 
         # Error details
         if result.get('error_count', 0) > 0 and 'errors' in result:
-            print(
+            print_console(
                 f'\n{self._colorize("⚠️ Error details:", self.BOLD + self.RED)}'
             )
             errors = result['errors']
             if isinstance(errors, dict):
                 for file_path, error_msg in errors.items():
-                    print(f'  • {file_path}')
-                    print(
+                    print_console(f'  • {file_path}')
+                    print_console(
                         f'    {self._colorize("Error:", self.RED)} {error_msg}'
                     )
             else:
                 for error in errors:
-                    print(f'  • {error}')
+                    print_console(f'  • {error}')

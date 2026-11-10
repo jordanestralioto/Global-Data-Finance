@@ -5,8 +5,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -16,10 +14,10 @@ sys.path.append(
 )
 
 from gate_integrity import recorded_evidence_issue
+from review_scope import scope_gaps
 from runtime_support import (
     CURRENT_SCHEMA_VERSION,
     NON_TERMINAL_SECURITY_STATUSES,
-    REPO_ROOT,
     assert_transition,
     list_findings,
     load_or_migrate_artifact,
@@ -48,6 +46,8 @@ def plan_gaps(session: dict[str, Any], plan: dict[str, Any]) -> list[str]:
         reasons.append('The review plan has no items.')
     if plan['status'] != 'completed':
         reasons.append('Review plan is not completed.')
+    if plan.get('scope') != session.get('scope'):
+        reasons.append('Review plan covers a different review scope.')
     covered = {path for item in items for path in item['files']}
     missing = sorted(changed_files - covered)
     if missing:
@@ -56,40 +56,6 @@ def plan_gaps(session: dict[str, Any], plan: dict[str, Any]) -> list[str]:
         )
     if any(item['status'] != 'completed' for item in items):
         reasons.append('There are pending review items.')
-    return reasons
-
-
-def declared_diff_gaps(session: dict[str, Any]) -> list[str]:
-    base = session['change'].get('baseRef')
-    head = session['change'].get('headRef')
-    if not base and not head:
-        return []
-    if not base or not head or base.startswith('-') or head.startswith('-'):
-        return ['Review diff requires valid baseRef and headRef.']
-    result = subprocess.run(
-        [
-            'git',
-            'diff',
-            '--name-only',
-            '-z',
-            '--no-ext-diff',
-            f'{base}...{head}',
-            '--',
-        ],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        return ['Review diff refs could not be resolved.']
-    actual = {os.fsdecode(path) for path in result.stdout.split(b'\0') if path}
-    missing = sorted(actual - set(session['changedFiles']))
-    extra = sorted(set(session['changedFiles']) - actual)
-    reasons = []
-    if missing:
-        reasons.append('Files missing from review diff: ' + ', '.join(missing))
-    if extra:
-        reasons.append('Files outside review diff: ' + ', '.join(extra))
     return reasons
 
 
@@ -198,6 +164,8 @@ def evidence_gaps(
     reasons = []
     if gates.get('reviewedFiles') != session['changedFiles']:
         reasons.append('Gate report covers a different set of changed files.')
+    if gates.get('reviewScope') != session.get('scope'):
+        reasons.append('Gate report covers a different review scope.')
     if not failed_blocking:
         issue = recorded_evidence_issue(gates, session_dir)
         if issue:
@@ -228,7 +196,9 @@ def main() -> int:
             raise SystemExit('review artifacts belong to different sessions')
 
     incomplete_reasons = plan_gaps(session, plan)
-    incomplete_reasons.extend(declared_diff_gaps(session))
+    incomplete_reasons.extend(
+        scope_gaps(session, session_dir, gates.get('sourceEvidencePath'))
+    )
     (
         gate_incomplete,
         failed_blocking_gates,

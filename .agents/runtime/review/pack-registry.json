@@ -21,6 +21,7 @@
     "label": "Data Integrity",
     "priority": 70,
     "skills": [
+      "database-design",
       "structural-inspector"
     ],
     "topic": "data:integrity"
@@ -45,7 +46,8 @@
     "label": "External Interfaces",
     "priority": 80,
     "skills": [
-      "architecture"
+      "architecture",
+      "api-patterns"
     ],
     "topic": "interface:contract"
   },

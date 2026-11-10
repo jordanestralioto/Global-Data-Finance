@@ -15,67 +15,79 @@
     },
     {
       "hasScripts": true,
-      "hash": "sha256:51c133c50d39861e1f74121772a14e66aa34b912365676c04a42f54cf3854510",
+      "hash": "sha256:c79fe1670e270342e99427ff74c61ad34f6104668fdb18362611c35d30dd1217",
       "id": "runtime/review",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:b1d43423f7ac32cfcb12118fe20bfc59e3ffcfe638557aedf2aa98f7f40190e3",
+      "hash": "sha256:c59fc596ae8579110d5294d7337d4c7eaf4af22b9cd76c8ebd1b35e6f68e7e3d",
       "id": "skills/agents-md-author",
       "selectedBy": "manifest"
     },
     {
+      "hasScripts": true,
+      "hash": "sha256:bf3b025773e4b80b0fb280e94441973117bdb56d0882ec73f2c210c78da240d7",
+      "id": "skills/api-patterns",
+      "selectedBy": "dependency:skills/review-workflow"
+    },
+    {
       "hasScripts": false,
-      "hash": "sha256:6dfeae3cd3cc15bd0becc96115b5d8f4cd9882f99481b34a63d5a3dc82bc9e4b",
+      "hash": "sha256:d59b48c7dbcea1ca8b0b20913bab24bfb2ba43d5b7c432ecf9997f8b4c1cbb14",
       "id": "skills/architecture",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:3451cc98c542ecf2e468bb5a145ab6330460d632adbe2f03dcd136887a04c93e",
+      "hash": "sha256:b1ea2ebdc90e85049713c9e7acccd7117a38f1f4101533850662bbfe1a9faccd",
+      "id": "skills/database-design",
+      "selectedBy": "dependency:skills/review-workflow"
+    },
+    {
+      "hasScripts": true,
+      "hash": "sha256:60ada3f3a301a7908b0e4050a85fd9a1702980dad556a077cad03ba4698a4582",
       "id": "skills/lint-and-validate",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:569ebccfb135b9adf37bfe01dd3bf64cf9503d5c4f412452212da23f482d6cdd",
+      "hash": "sha256:16b41977d685a31656c71c881cbf865a52f07738aa8e702fd3c5a333a5798072",
       "id": "skills/local-quality-gates",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:72129cd78fc96d63ecbdc76d24c0c1384252cd0ecf249edacc6a939f3885bceb",
+      "hash": "sha256:15b387230fa9d05e0581003a2706b5bb03003794f667963da948f7d0532f72b0",
       "id": "skills/modularizar",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": false,
-      "hash": "sha256:0a27f4bf5fbfae5a858076a7d1b1fdc514bf566132ad80c971ca9c6fc88c44b4",
+      "hash": "sha256:c3cd6f9c0672419f527d2af7920fe5a79e2214846135d22b2bd6dda8888002ef",
       "id": "skills/openspec-workflow",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:b8f774e455524d22535d2d5b602724b40901d7462591b2672113100e5e6a93f9",
+      "hash": "sha256:476d83523936f8a5323a2c8f50eb8bbef7a02b03dca330dca3a87fc228af3766",
       "id": "skills/performance-profiling",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": false,
-      "hash": "sha256:c50b68b91d6a32fd25203b2e59df349a3d10f46f996a6c5fd78b2f5c6dfb3cf6",
+      "hash": "sha256:52a07ebae88342783039d665a63faeb0e36f7920faf22093bab6ea00af917ad2",
       "id": "skills/red-team-tactics",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": false,
-      "hash": "sha256:4a3f43d4a56c91506df41ec320010bf4ede173bb46330175e536f59e0c1918ef",
+      "hash": "sha256:0c2d8fa589a9996f22e4eb5b9816853cbae549bc83dab5eccbb6e89ea1218434",
       "id": "skills/resolve-open-questions",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:5d35f6f7b4f0f34daf8ce1cbabbaf737cd2de2488c2c920ab3933e0ad2404144",
+      "hash": "sha256:77c525f7801415a4e7033f0e9d98d1ab6b1beaace288eaf05047fcf88e429039",
       "id": "skills/review-workflow",
       "selectedBy": "manifest"
     },
@@ -111,7 +123,7 @@
     },
     {
       "hasScripts": true,
-      "hash": "sha256:fe6def5f2066d33551e3dded01072435f6c21a95753aa68c067bef9e7cf0435a",
+      "hash": "sha256:57b9141dc0c0483240216ff3c7d94d0de3c489e95720659d3082db54e1781cac",
       "id": "skills/vulnerability-scanner",
       "selectedBy": "manifest"
     },
@@ -123,7 +135,7 @@
     },
     {
       "hasScripts": true,
-      "hash": "sha256:6646d9d6101e709be5b511510648e4f9024a8787c4ff2c5ff0cf65333112204b",
+      "hash": "sha256:40c7df1945cc6881134d72211b094b9fb6a09de5dc42100da1fca0bdf12bb154",
       "id": "tools/harness-verify",
       "selectedBy": "manifest"
     },
@@ -209,7 +221,9 @@
     ".agents/scripts/harness_verify.py",
     ".agents/scripts/validate-commit-msg.sh",
     ".agents/skills/agents-md-author",
+    ".agents/skills/api-patterns",
     ".agents/skills/architecture",
+    ".agents/skills/database-design",
     ".agents/skills/lint-and-validate",
     ".agents/skills/local-quality-gates",
     ".agents/skills/modularizar",

@@ -10,7 +10,8 @@
 A Python library for downloading Brazilian CVM regulatory filings and
 converting B3 historical market quotes to Parquet files. Its API lets
 applications select sources and years, validate data, and persist results in
-directories of their choice.
+directories of their choice. The name anticipates the long-term goal: start
+with Brazilian sources and add other markets later.
 
 [Documentation](https://jordanestralioto.github.io/Global-Data-Finance/en/)
 · [Package on PyPI](https://pypi.org/project/globaldatafinance/)
@@ -48,6 +49,17 @@ uv add globaldatafinance
 
 See the [installation guide](https://jordanestralioto.github.io/Global-Data-Finance/en/user-guide/installation/)
 for environment setup and installation checks.
+
+## Migration to 0.2.0
+
+When upgrading from `0.1.4`, regenerate CVM and B3 Parquets before switching
+consumers: CVM preserves every column as text, and B3 uses schema v2. Pandas
+and Polars are no longer installed automatically. Also review removed imports,
+the download timeout exception, and the main guard for B3 scripts using
+processes. Follow the
+[0.2.0 migration guide](https://jordanestralioto.github.io/Global-Data-Finance/en/user-guide/migration-pyarrow-integrity/),
+the [CVM text migration](https://jordanestralioto.github.io/Global-Data-Finance/en/user-guide/migration-cvm-exact-text/),
+and the [infrastructure clean cut](https://jordanestralioto.github.io/Global-Data-Finance/en/user-guide/migration-infrastructure-clean-cut/).
 
 ## Quickstart
 
@@ -179,6 +191,29 @@ uv run --locked --no-sync pre-commit install --install-hooks
 ```
 
 Participation follows the [Code of Conduct](https://github.com/jordanestralioto/Global-Data-Finance/blob/develop/CODE_OF_CONDUCT.md).
+
+## Development with AI agents
+
+The project is developed with AI agents. The harness that guides them is
+versioned in [`.agents/`](https://github.com/jordanestralioto/Global-Data-Finance/tree/develop/.agents),
+and [`AGENTS.md`](https://github.com/jordanestralioto/Global-Data-Finance/blob/develop/AGENTS.md)
+defines the repository rules for any agent.
+
+- **Separate roles:** `developer-engineer` implements changes and runs the
+  checks; `security-engineer` assesses risks and verifies fixes without
+  implementing them.
+- **Pinned selection:** `harness.json` picks skills from a central catalog,
+  leaving out the frontend, mobile, Node.js, and Supabase ones, and
+  `harness.lock.json` pins each component by hash.
+- **Risk-based review:** `review-workflow` builds the review plan from the
+  changed files and records findings and a verdict.
+- **Same standards:** code written by agents is subject to the same local
+  quality gates and the same CI.
+
+Example: before 0.2.0, an agent review reproduced a clock adjustment and showed
+that the publication lock could be taken over while its owning process was
+still alive. The fix and its regression tests are in commit
+[`2411c81`](https://github.com/jordanestralioto/Global-Data-Finance/commit/2411c81).
 
 ## Support and security
 

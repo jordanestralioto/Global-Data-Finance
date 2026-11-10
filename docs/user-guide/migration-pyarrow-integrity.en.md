@@ -42,16 +42,39 @@ Library logging does not alter the application root logger. Before an explicit
 and remains quiet; a handler reconfiguration failure preserves the previous
 configuration.
 
-## B3
+## Notes for release 0.2.0
 
-### Notes for release 0.2.0
+These notes summarize what changes when upgrading from 0.1.4 to 0.2.0.
 
-The text below is the prepared body for the 0.2.0 GitHub release. The
-existing `.github/workflows/publish.yml` runs gates and publication from the
-published-release event. Version, tag, and publication must await approval of
-the acceptance evidence; this draft does not claim a release was published.
+**Breaking changes when upgrading from 0.1.4:**
 
-**Dependency requirements for the next release:**
+- **CVM:** all Parquet columns become Arrow `string`, with empty fields as
+  `""` and preserved leading zeros and decimal text. Regenerate files from
+  their ZIP sources; consumers must explicitly convert numeric columns. See
+  the [CVM text migration](migration-cvm-exact-text.en.md).
+- **Dependencies:** Pandas and Polars are no longer installed or imported by
+  the runtime. Install them explicitly if your application uses DataFrames.
+- **Removed imports:** `globaldatafinance.__version__`, `ExtractorAdapter`,
+  `ReadFilesAdapter`, and the generic
+  `macro_infra.extractor_file`/`macro_infra.read_files` modules are removed.
+  Read the version with `importlib.metadata.version("globaldatafinance")`
+  and migrate adapters to the source-owned components.
+- **Timeout:** replace imports of the domain `TimeoutError` exception with
+  `DownloadTimeoutError`; Python's built-in exception is distinct. See the
+  [infrastructure guide](migration-infrastructure-clean-cut.en.md) for these
+  removals and the changed write-error behavior.
+- **B3 `fast`:** eligible multi-source runs now default to `spawn` processes.
+  Protect script execution with `if __name__ == '__main__':`, or set
+  `GDF_B3_EXECUTOR_BACKEND=thread` before constructing the facade to retain
+  threads as in 0.1.4. Calls during child bootstrap now fail before source
+  revalidation; the pool error explains the correction. Put CVM downloads
+  and other application side effects inside the main guard too: the library
+  cannot prevent code that executes before the B3 call.
+- **Persisted B3 data:** migrate market selection and regenerate Parquets
+  with schema v2 as described below. Read this release's migration guides
+  together before updating consumers.
+
+**Dependency requirements:**
 
 - PyArrow: `>=26.0.0,<27.0.0`.
 - psutil: `>=7.2.2,<8.0.0`.
@@ -79,9 +102,39 @@ in Bash environment activation. This dependency is used by `pre-commit`.
   check `success`, `schema_version`, and `integrity` before switching files.
 
 The local acceptance corpus covers 2000–2026, with a snapshot ending on
-2026-09-02. The release must attach final frozen-corpus evidence and checksum
-manifests. These bounds are not independent confirmation of exchange coverage
-or availability of every historical year.
+2026-09-02. The checksum manifest and the campaign evidence are versioned with
+the [corpus audit](../reference/cotahist-v2-supplied-corpus.en.md). These
+bounds are not independent confirmation of exchange coverage or availability of
+every historical year.
+A [supplementary 2025–2026 acceptance](../reference/cotahist-v2-supplied-corpus.en.md#supplementary-20252026-acceptance-on-2026-11-09)
+verified 6,604,374 quotations through 2026-11-06 with exact `fast`/`slow`
+equality, using the Latin-1 copy explicitly recorded below.
+
+**Official 2026 source and disk space:** a November version of
+`COTAHIST_A2026.ZIP` contains one UTF-8 record occupying 246 bytes instead of
+the required 245. Strict validation rejects that file and preserves the
+previous output. Retain the original and follow the
+[explicit conversion to a Latin-1 copy](b3-docs.en.md#diagnose-utf-8-text-in-records-with-an-invalid-width);
+the extraction hashes and `registro_original` identify that converted copy.
+The [free-space rule](b3-docs.en.md#free-space-before-extraction) conservatively
+estimates staging and publication needs and can substantially exceed the
+final Parquet size.
+
+**Restart after a crash:** new transaction locks also record the process
+start time for diagnostics. This timestamp can change with clock adjustments,
+so a live PID with a different start time cannot authorize recovery.
+Automatic recovery requires the recorded PID to no longer exist on the same
+host and process namespace; live PIDs, including reused ones, and locks from
+another host require inspection.
+Follow the [manual CVM/B3 recovery procedure](../reference/transactional-publication.en.md#manual-recovery-and-containers).
+
+**Windows console:** redirected Windows output, such as `> log.txt`,
+scheduled tasks, or subprocesses, commonly uses a legacy code page. CVM and B3
+progress and summaries no longer abort with `UnicodeEncodeError` there: bars
+use `#` and `-`, and unsupported symbols become `?`. The 0.1.4 release had
+this failure.
+
+## B3
 
 Every `01` record is validated and converted before market selection. Blank
 lines and `00`/`99` controls are counted, while every other nonempty identifier

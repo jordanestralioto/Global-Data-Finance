@@ -5,6 +5,11 @@ import time
 from types import TracebackType
 from typing import Self
 
+from .console import console_supports, console_text
+
+_UNICODE_GLYPHS = ('█', '░')
+_ASCII_GLYPHS = ('#', '-')
+
 
 class SimpleProgressBar:
     """A small terminal progress bar.
@@ -30,7 +35,10 @@ class SimpleProgressBar:
 
         if self.total > 0:
             sys.stdout.write(
-                f'\n{desc}: Starting {operation} of {self.total} files...\n'
+                console_text(
+                    f'\n{desc}: Starting {operation} of {self.total} '
+                    'files...\n'
+                )
             )
             sys.stdout.flush()
 
@@ -61,12 +69,17 @@ class SimpleProgressBar:
             return
         percent = float(self.current) / float(self.total)
         filled = int(self.width * percent)
-        bar = '█' * filled + '░' * (self.width - filled)
+        filled_glyph, empty_glyph = (
+            _UNICODE_GLYPHS
+            if console_supports(''.join(_UNICODE_GLYPHS))
+            else _ASCII_GLYPHS
+        )
+        bar = filled_glyph * filled + empty_glyph * (self.width - filled)
         progress_text = (
             f'\r{self.desc} [{bar}] {self.current}/{self.total} '
             f'({percent * 100:.0f}%)'
         )
-        sys.stdout.write(progress_text)
+        sys.stdout.write(console_text(progress_text))
         sys.stdout.flush()
 
     def close(self) -> None:

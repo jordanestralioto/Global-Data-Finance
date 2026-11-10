@@ -20,9 +20,11 @@ ROOT_SECTIONS = (
     'Engineering Rules',
     'Documentation Map',
 )
-PLACEHOLDER_PATTERNS = (
+PROSE_PLACEHOLDER_PATTERNS = (
     r'\b(?:TODO|TBD|FIXME)\b',
     r'\bYYYY-MM-DD\b',
+)
+AUTHORSHIP_PLACEHOLDER_PATTERNS = (
     r'\[PROJECT_NAME\]',
     r'\{\{\s*[^}]+\s*\}\}',
     r'<(?:fill|replace|preencher|project(?: name)?|todo|owner|date)[^>]*>',
@@ -35,7 +37,7 @@ INLINE_LINK_RE = re.compile(
 REFERENCE_LINK_RE = re.compile(
     r'^\s{0,3}\[[^\]]+\]:\s*(<[^>\n]+>|(?:\\.|[^\s]+))'
 )
-INLINE_CODE_RE = re.compile(r'`+[^`\n]*`+')
+INLINE_CODE_RE = re.compile(r'(?<!`)(`+)(?!`)([^\n]*?)\1(?!`)')
 HTML_COMMENT_RE = re.compile(r'<!--.*?-->', flags=re.DOTALL)
 EMPTY_MARKUP_RE = re.compile(r'(?:[-*+]|\d+[.)]|#{1,6})\s*')
 
@@ -104,7 +106,8 @@ def _root_sections(lines: list[str]) -> list[tuple[str, str]]:
 
 
 def _check_root_sections(lines: list[str]) -> list[str]:
-    sections = _root_sections(lines)
+    content = HTML_COMMENT_RE.sub('', '\n'.join(lines))
+    sections = _root_sections(content.splitlines())
     names = [name for name, _ in sections]
     errors: list[str] = []
 
@@ -133,10 +136,16 @@ def _check_root_sections(lines: list[str]) -> list[str]:
 
 
 def _check_placeholders(text: str) -> list[str]:
+    """Allow inline literals while retaining explicit scaffold markers."""
+    prose = INLINE_CODE_RE.sub('', text)
     return [
         f'unresolved authorship marker found: {pattern}'
-        for pattern in PLACEHOLDER_PATTERNS
-        if re.search(pattern, text, flags=re.IGNORECASE)
+        for source, patterns in (
+            (prose, PROSE_PLACEHOLDER_PATTERNS),
+            (text, AUTHORSHIP_PLACEHOLDER_PATTERNS),
+        )
+        for pattern in patterns
+        if re.search(pattern, source, flags=re.IGNORECASE)
     ]
 
 
@@ -171,6 +180,8 @@ def _check_relative_links(lines: list[str], base_dir: Path) -> list[str]:
             target = _relative_path(destination, base_dir)
             if target is not None and not target.exists():
                 errors.append(f'broken relative Markdown link: {destination}')
+        except ValueError:
+            errors.append(f'invalid Markdown link destination: {destination}')
         except (OSError, RuntimeError):
             errors.append(f'broken relative Markdown link: {destination}')
     return errors
@@ -222,10 +233,40 @@ def _render_text(payload: dict[str, Any]) -> str:
     path = str(payload['file'])
     lines = [f'{status} ({scope}, structural): {path}']
     lines.extend(f'- {error}' for error in payload['errors'])
+    if 'size' in payload:
+        size = payload['size']
+        lines.append(
+            f'Size: {size["utf8_bytes"]} UTF-8 bytes, {size["lines"]} lines'
+        )
+        lines.extend(f'WARNING: {warning}' for warning in payload['warnings'])
     return '\n'.join(lines)
 
 
+def _add_size_report(
+    payload: dict[str, Any], text: str, data: bytes, max_bytes: int | None
+) -> None:
+    """Report this file's size without claiming client-chain validation."""
+    byte_count = len(data)
+    payload['size'] = {
+        'utf8_bytes': byte_count,
+        'lines': len(text.splitlines()),
+        'max_bytes': max_bytes,
+    }
+    payload['warnings'] = (
+        [
+            f'document uses {byte_count} UTF-8 bytes, exceeding the '
+            f'configured per-file budget of {max_bytes} bytes; '
+            'instruction-chain loading was not checked'
+        ]
+        if max_bytes is not None and byte_count > max_bytes
+        else []
+    )
+
+
 def main() -> int:
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, 'reconfigure'):
+            stream.reconfigure(encoding='utf-8', errors='backslashreplace')
     parser = argparse.ArgumentParser(
         description='Structurally validate root or local AGENTS.md guidance.'
     )
@@ -247,11 +288,24 @@ def main() -> int:
         default='text',
         help='output format (default: text)',
     )
+    parser.add_argument(
+        '--size-report',
+        action='store_true',
+        help='Report UTF-8 bytes and lines without imposing a size limit.',
+    )
+    parser.add_argument(
+        '--max-bytes',
+        type=int,
+        help='Warn above this positive per-file byte budget; implies --size-report.',
+    )
     args = parser.parse_args()
+    if args.max_bytes is not None and args.max_bytes <= 0:
+        parser.error('--max-bytes must be greater than zero')
 
     try:
-        text = args.file.read_text(encoding='utf-8')
-    except OSError as exc:
+        data = args.file.read_bytes()
+        text = data.decode('utf-8')
+    except (OSError, UnicodeError) as exc:
         payload = _payload(
             args.file,
             [str(exc)],
@@ -270,6 +324,8 @@ def main() -> int:
         base_dir=args.file.resolve().parent,
     )
     payload = _payload(args.file, errors, scope=args.scope)
+    if args.size_report or args.max_bytes is not None:
+        _add_size_report(payload, text, data, args.max_bytes)
     if args.format == 'json':
         print(json.dumps(payload, indent=2, ensure_ascii=False))
     else:

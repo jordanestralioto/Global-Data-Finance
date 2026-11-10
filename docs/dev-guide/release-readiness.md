@@ -85,6 +85,14 @@ todos os ambientes nativos, campanha completa, coberturas e digests dos
 artefatos baixados. Uma falha produz um relatório pendente e bloqueia o job
 de publicação. Um dry-run realiza essas verificações sem enviar ao PyPI.
 
+Antes de criar a tag, dispare manualmente `pipeline.yml` no commit candidato:
+`workflow_dispatch` executa também os oito shards da campanha e sua agregação.
+O dry-run de `publish.yml` exige uma tag estável já existente; depois de
+validar e enviar a tag, dispare esse workflow na mesma tag com
+`release_tag=v0.2.0` e `dry_run=true`. Criar a tag, por si só, não dispara
+publicação no PyPI. Publicar a release no GitHub dispara o fluxo de publicação
+e deve aguardar o aceite do dry-run.
+
 ## Evidência e limites
 
 Os artefatos de aceite e testes ficam disponíveis por pelo menos 30 dias na

@@ -362,6 +362,7 @@ and a compatible spawn context. Conditions and measurements are in the
   - Annual preflight: In `fast` with `process`, admits processes when policy allows at least two workers, the context is compatible, and stored annual candidates total at least 64 MiB. Coexisting ZIP and TXT files both count. Smaller workloads and size-read errors use serial validation. Order, first error, typed causes, and joining workers before cleanup are preserved.
   - Child workers instantiate default readers and parsers; internally injected custom collaborators are not serialized. Use threads for these collaborators.
   - Scripts must guard the call with `if __name__ == '__main__':`. Set `GDF_B3_EXECUTOR_BACKEND=thread` to explicitly select threads. Invalid values raise `ValueError` at construction.
+  - `extract()` and `extract_async()` raise `RuntimeError` while a spawned child imports the main script, before preflight and destination preparation. If this terminates the pool, the parent's failed result includes the same guidance in `errors` and preserves the previous output. Other side effects before the B3 call require the script's own main guard.
 - `GDF_B3_WORKER_LIMIT`: Optional fast-mode worker cap. Use a positive integer; the effective limit remains the minimum of this value, source-file count, available CPUs, and memory budget. Slow mode remains single-worker. A non-numeric value preserves the default cap; values below one are clamped to one worker.
 
 ______________________________________________________________________

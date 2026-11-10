@@ -85,3 +85,33 @@ Accepted
 ## Revisit trigger
 - rever se o worker exigir deploy independente frequente ou ownership próprio
 ```
+
+## Exemplo 7: edição independente no mesmo deploy
+
+**Entrada:** "Pessoas e agentes conflitam no módulo de integração. A operação cabe
+no mesmo processo e não precisamos de escala ou deploy independente. Criamos serviços?"
+
+**Direção esperada:** comparar módulos com contratos internos, dependências
+explícitas e testes locais com a separação de serviços. Priorizar a menor mudança
+que isole edição e regras; nomear arquivos e estados que ainda exigem coordenação.
+Descobrir os comandos nativos e preservar testes de integração dos providers.
+
+## Exemplo 8: restrição comprovada de caminho único
+
+**Entrada:** "O contrato de implantação aprovado exige manter o job no processo
+atual até a próxima revisão. Já confirmamos que workers e serviços externos estão
+fora do escopo; registre os custos dessa decisão."
+
+**Direção esperada:** vincular a restrição à evidência fornecida em
+`alternatives_constraint`, sem inventar uma segunda opção viável. Registrar
+competição por recursos, mitigação, limites de falha e o evento de revisão do
+contrato que permite reabrir a escolha.
+
+## Exemplo 9: sabatina ainda aberta
+
+**Entrada:** "A sabatina está em andamento e ainda decidimos ownership. Analise
+as fronteiras e o ADR que vamos precisar depois."
+
+**Direção esperada:** produzir análise provisória para o documento autorizado,
+sem tratar ownership como decidido. Declarar a emissão do ADR adiada até o
+fechamento e seguir `decision-handoffs.md` para o rascunho posterior.

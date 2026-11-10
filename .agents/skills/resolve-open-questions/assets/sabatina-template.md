@@ -13,7 +13,7 @@ do catalogo ou documentacao do sistema.
 
 ## 1. Objetivo
 
-Uma frase: o que precisa ficar decidido para o trabalho poder comecar.
+<o que precisa ficar decidido para o trabalho poder comecar>
 
 Esta secao tambem e a procedencia do documento. Antes de escrever num caminho
 que ja existe, compare o objetivo: igual, retome; diferente, consolide de forma
@@ -92,7 +92,7 @@ Cada linha usa somente `adr-draft/adr-draft-<slug-da-decisao>.md` (ou o caminho
 completo equivalente sob `docs/internal/sabatina/adr-draft/`). Nao use alias,
 caminho de ADR canonico ou numero `NNNN` antes da promocao pelo catalogo.
 
-| rascunho                                   | decisoes que o sustentam | criterio do §2 atendido        |
+| rascunho                                   | decisoes que o sustentam | criterio atendido              |
 | ------------------------------------------ | ------------------------ | ------------------------------ |
 | `adr-draft/adr-draft-<slug-da-decisao>.md` | Q3, Q7                   | contrato entre multiplas fases |
 
@@ -154,10 +154,13 @@ Nenhuma delas comeca sem autorizacao explicita.
 | rota recomendada       | \<execucao direta, plano ou openspec> | <resultado do classificador>            |
 | autorizacao explicita  | pendente                              | <autorizacao separada ainda necessaria> |
 
-Se qualquer um dos seis primeiros criterios for `sim`, a rota recomendada e
-`openspec`. Se todos forem `nao` e `varios passos` for `sim`, a rota e `plano`;
-caso contrario, e `execucao direta`. A linha de autorizacao permanece
-separada: `pendente` significa que a rota foi apenas recomendada.
+Contrato duradouro compartilhado (inclusive entre owners independentes),
+multiplos consumidores, rollout supervisionado, rollback proprio ou lifecycle
+auditavel recomendam `openspec`. Dado persistido novo e um sinal para investigar
+esses criterios, sem exigir OpenSpec sozinho. Sem nenhum desses cinco criterios,
+`varios passos: sim` recomenda `plano`; caso contrario, `execucao direta`.
+A linha de autorizacao permanece separada: `pendente` significa que a rota foi
+apenas recomendada.
 
 #### Decomposicao em unidades
 

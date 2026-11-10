@@ -7,179 +7,226 @@ description: >-
   sei se é backend ou banco". Cobre baseline, profiling e comparação. Se o
   gargalo já aponta para renderização, waterfall ou bundle de um app React/Next,
   use `react-performance`; para query SQL identificada, use `database-design`
-  ou `supabase` conforme a stack. Não use para testes de navegador ou bugs sem
-  sintoma de performance.
+  ou `supabase` conforme a stack. Para bloqueio comprovado do event loop Node,
+  use `nodejs-best-practices`; para capacidade de processos ou workers,
+  `server-management`. Não use para testes de navegador ou bugs sem sintoma de
+  performance.
 ---
 
 # Performance Profiling
 
 ## Procedimento
 
-1. Descubra se o pedido ainda e de triagem cross-layer ou se o gargalo ja esta localizado:
-   - se o usuario ja delimitou re-render, waterfall React, bundle ou custo de JavaScript no browser, saia cedo para `react-performance`
-   - se o usuario ja delimitou query lenta, indice, schema, Postgres ou Supabase, saia cedo para `database-design` ou `supabase`
-   - se o pedido dominante for bug intermitente, falha sem reproducao estavel ou causa raiz incerta sem sinal claro de performance, saia cedo para `systematic-debugging`
-   - se o pedido for "roda os checks", gate-report ou validacao repo-native, saia cedo para `lint-and-validate`
-   - se o pedido dominante for reproduzir fluxo real no browser, auth/session, screenshot ou E2E, saia cedo para `webapp-testing`
-2. Defina o sintoma em uma metrica observavel antes de propor qualquer mudanca: LCP, INP, tempo total de request, latencia de handler, tempo de query, CPU, memoria, bundle ou throughput.
-3. Escolha a trilha inicial de medicao pela camada mais provavel, sem adivinhar profundidade:
-   - carregamento ou interacao no browser: Lighthouse, waterfall de rede, Performance tab, React Profiler
-   - API ou backend: tempo total por request, handler timing, serializacao, cProfile ou logs de duracao
-   - banco: `EXPLAIN ANALYZE`, tempo de query, seletividade, chamadas repetidas ou `pg_stat_statements`
-4. Colete um baseline minimo. Se nao houver ambiente, URL, comando, fixture ou metrica minimamente confiavel, trate isso como bloqueio explicito e nao recomende micro-otimizacao especulativa.
-5. Isole o gargalo dominante com a menor evidencia que permita decidir a proxima skill ou a proxima mudanca. Pare de abrir novas frentes assim que houver sinal suficiente para um handoff confiavel.
-6. Se a triagem ainda for desta skill, recomende apenas a menor intervencao que tenha relacao direta com a metrica observada. Se o pedido incluir implementacao, aplique uma mudanca por vez para preservar comparacao valida.
-7. Depois da mudanca, compare antes/depois com a mesma metrica e o mesmo metodo de medicao. Se nao houver delta mensuravel, registre isso e prefira reverter a insistir em otimizar no escuro.
+1. Descubra as skills disponíveis e determine se o gargalo já está localizado:
 
-## Heuristicas
+   - re-render, waterfall React, bundle ou custo de JavaScript React/Next: `react-performance`
+   - query lenta, índice ou schema: `database-design`; recursos específicos de Postgres/Supabase: `supabase`
+   - bloqueio comprovado do event loop Node por CPU ou I/O síncrono: `nodejs-best-practices`
+   - saturação de processos/workers, cotas de container ou operação de healthchecks: `server-management`
+   - bug intermitente ou causa raiz incerta sem sinal claro de performance: `systematic-debugging`
+   - checks, gate-report ou validação repo-native: `lint-and-validate`
+   - reprodução de jornada, auth/session, screenshot ou E2E como pedido principal: `webapp-testing`
 
-- O trabalho principal desta skill e localizar a camada dominante, nao esgotar a otimizacao de React, banco ou runtime especifico.
-- Sem baseline minimamente confiavel, a resposta correta costuma ser desbloquear medicao, nao sugerir tuning por intuicao.
-- Waterfall, bundle e re-render quase sempre pertencem a `react-performance` assim que o sintoma deixa de ser difuso.
-- Query lenta, indice faltando e plano ruim pertencem a skills de banco assim que a evidencia encostar na query.
-- Uma unica mudanca por rodada vale mais do que varias "melhorias" impossiveis de atribuir a um delta.
+   Se a skill indicada não estiver instalada, descreva a especialidade necessária,
+   a evidência e o próximo passo; não invente caminhos nem declare o handoff executado.
 
-## Contrato de saida
+2. Defina o sintoma em uma métrica observável antes de propor mudança: LCP, INP,
+   tempo de request, latência de handler, tempo de query, CPU, memória, bundle ou throughput.
 
-### Quando o sintoma ainda e difuso e ha ambiente mensuravel
+3. Escolha a menor medição executável pela camada mais provável:
+
+   - browser: Lighthouse para navegação; trace de Performance/rede via ferramentas de navegador disponíveis para interações
+   - API: `curl` para tempos do request e logs/traces para separar handler, serialização e banco
+   - banco: tempo da query e plano de execução no ambiente de diagnóstico
+
+   Leia `references/measurement.md` somente para montar essa coleta; use ferramentas
+   existentes no consumidor antes de adicionar instrumentação.
+
+4. Colete um baseline com comando ou roteiro, versão, entrada, estado de cache,
+   concorrência e condições de CPU/rede registrados. Repita a medição para conhecer
+   a variação. Sem ambiente ou artefato reproduzível, declare o bloqueio e o menor
+   dado faltante; não recomende micro-otimização especulativa.
+
+5. Isole a camada dominante com a menor evidência suficiente. Faça handoff assim
+   que o gargalo estiver localizado, preservando os dados e a comparação pendente.
+
+6. Se a triagem ainda pertencer a esta skill, escolha a menor intervenção ligada
+   à métrica observada. Quando houver implementação, teste uma intervenção por
+   rodada. Uma intervenção pode exigir vários arquivos; o limite é a hipótese,
+   não a contagem de arquivos.
+
+7. Compare antes/depois com a mesma métrica, método e condições. Registre amostras
+   e variação; uma diferença dentro do ruído não comprova melhora. Sem delta
+   mensurável, registre a ausência de ganho e prefira reverter a empilhar otimizações.
+
+## Heurísticas
+
+- Um score agregado ajuda a detectar regressão, mas não localiza a causa.
+- Tempo de resposta do documento não identifica sozinho o custo de API ou banco;
+  confirme com timings dessas etapas antes de atribuir a causa.
+- TBT de navegação não equivale a INP. Investigue interação com roteiro e trace,
+  distinguindo evidência de laboratório de dados de usuários reais.
+
+## Contrato de saída
+
+### Quando o sintoma ainda é difuso e há ambiente mensurável
 
 Entregue:
 
-- sintoma observado e a metrica escolhida
-- baseline ou estado atual medido
-- camada inicial escolhida e por que ela foi priorizada
-- gargalo dominante ou hipotese lider apoiada por evidencia
-- proximo passo recomendado
-- skill de handoff, se o problema deixou de ser difuso
-- evidencia esperada do delta depois da mudanca
+- sintoma e métrica escolhida
+- baseline com comando/roteiro, condições, amostras e variação observada
+- camada priorizada e evidência do gargalo dominante ou hipótese líder
+- próximo passo e skill disponível de handoff, quando aplicável
+- comparação esperada depois da intervenção
 
-### Quando nao existe baseline viavel
+### Quando não existe baseline viável
 
 Entregue:
 
-- sintoma observado
-- o que impede a medicao agora
-- o menor artefato que falta para criar baseline confiavel
-- o proximo passo para desbloquear medicao
-- ausencia explicita de recomendacao especulativa de micro-otimizacao
+- sintoma e impedimento concreto à medição
+- menor artefato faltante e próximo passo para obtê-lo
+- ausência explícita de recomendação especulativa de micro-otimização
 
-### Quando o gargalo ja esta localizado
+### Quando o gargalo já está localizado
 
 Entregue:
 
-- por que o caso deixou de ser triagem cross-layer
-- qual skill deve assumir como owner principal
-- qual evidencia ja existe para o handoff
-- o que ainda precisa ser medido ou validado depois da intervencao
+- por que a triagem entre camadas terminou
+- especialidade responsável e disponibilidade da skill indicada
+- evidência coletada e o que medir depois da intervenção
 
 ## Uso de scripts
 
-- Use `python3 .agents/skills/performance-profiling/scripts/lighthouse_audit.py <url>` quando houver uma URL executavel e a suspeita inicial estiver no browser.
-- Trate o script como helper opcional de baseline, nao como diagnostico completo.
-- Nao exponha o script como solucao principal para backend ou banco; nesses casos ele so adiciona ruido.
+- Execute `python3 .agents/skills/performance-profiling/scripts/lighthouse_audit.py <url>`
+  quando houver URL executável e a suspeita inicial estiver na navegação do browser.
+  O helper requer Lighthouse CLI e Chrome no ambiente; não instala ferramentas.
+- A saída JSON contém `scores.performance`, `metrics`, até cinco `diagnostics`,
+  versão do Lighthouse e configurações de medição. Executa apenas a categoria performance.
+  O score é arredondado para inteiro de 0 a 100; estimativas booleanas são ignoradas.
+- `metrics` preserva `numericValue`, `numericUnit` e `displayValue` disponíveis.
+  Métricas ausentes, sem valor ou indisponíveis na versão são `null`, nunca zero.
+  TTI e tempo de resposta do servidor são diagnósticos opcionais legados.
+- Os diagnósticos priorizam a maior economia estimada em ms, depois o score.
+  São pistas para investigação, não prova da camada responsável nem ganhos somáveis.
+- O helper faz uma navegação sem interações. INP normalmente será `null`; não
+  apresente TBT como substituto de INP ou resultado de laboratório como dado de campo.
+- Sucesso termina com código `0`; falha de execução, timeout, relatório inválido
+  ou score indisponível termina com código `1` e JSON com `error`.
+- Trate o helper como baseline opcional. Para backend ou banco, meça essas etapas
+  diretamente; a nota do Lighthouse não substitui seus timings.
 
 ## Exemplos
 
 ### Caso positivo
 
-**Entrada:** Usuario diz "a tela esta lenta e nao sei se o problema e bundle, request ou backend".
-**Saida esperada:** Tratar como triagem cross-layer, escolher uma metrica observavel, medir o baseline inicial e identificar qual camada deve receber o proximo mergulho.
+**Entrada:** Usuário diz "a tela está lenta e não sei se o problema é bundle, request ou backend".
+**Saída esperada:** Escolher métrica, coletar baseline repetível e encaminhar a camada dominante com evidência.
 
 ### Caso positivo
 
-**Entrada:** Usuario pede "quero evidencia antes/depois para decidir qual gargalo atacar primeiro nesta regressao".
-**Saida esperada:** Definir baseline, priorizar a camada dominante, limitar a resposta a uma hipotese por vez e amarrar a recomendacao a uma comparacao objetiva.
-
-### Caso positivo
-
-**Entrada:** Usuario relata lentidao generica na API, mas ainda nao sabe se o tempo esta na serializacao, no handler ou na query.
-**Saida esperada:** Medir por camada, localizar o gargalo dominante e fazer handoff para a skill especializada assim que a causa deixar de ser difusa.
+**Entrada:** Usuário pede "quero evidência antes/depois para decidir qual gargalo atacar primeiro".
+**Saída esperada:** Registrar condições e variação, testar uma hipótese por rodada e comparar sem atribuir ganho ao ruído.
 
 ### Caso negativo
 
-**Entrada:** Usuario pede revisao de um componente React que re-renderiza demais apos cada digitacao.
-**Por que nao:** O gargalo ja esta localizado no cliente React. Use `react-performance`.
+**Entrada:** Usuário pede revisão de componente React que re-renderiza após cada digitação.
+**Por quê não:** O problema já está no cliente React. Use `react-performance`, se disponível.
 
 ### Caso negativo
 
-**Entrada:** Usuario diz "essa query Postgres esta lenta; qual indice eu adiciono?".
-**Por que nao:** O problema ja esta no banco. Use `database-design` ou `supabase`.
+**Entrada:** Usuário diz "essa query Postgres está lenta; qual índice eu adiciono?".
+**Por quê não:** O problema já está no banco. Use `database-design` ou `supabase`, conforme a stack e disponibilidade.
 
 ### Caso negativo
 
-**Entrada:** Usuario diz "o bug as vezes trava e as vezes nao, preciso achar a causa raiz".
-**Por que nao:** O problema dominante e reproducao e prova de causa raiz, nao triagem de performance. Use `systematic-debugging`.
+**Entrada:** Usuário diz "o bug às vezes trava e às vezes não; preciso achar a causa raiz".
+**Por quê não:** Sem sinal claro de performance, o trabalho dominante é reprodução e causa raiz. Use `systematic-debugging`.
 
 ## Evals de trigger
 
+São casos propostos. Registre execução e transcrição antes de afirmar eficácia;
+validação estática e testes do helper não comprovam comportamento do agente.
+
 Deve acionar:
 
-- "esta lento e nao sei onde esta o gargalo"
+- "está lento e não sei onde está o gargalo"
+- "esta lento e nao sei onde" (variante informal sem acento)
 - "mede antes de otimizar"
-- "quero comparar antes e depois dessa regressao"
-- "qual gargalo atacar primeiro com evidencia"
-- "a API ficou lenta mas ainda nao sei se o problema esta no backend ou no banco"
+- "quero comparar antes e depois dessa regressão"
+- "qual gargalo atacar primeiro com evidência"
+- "a API ficou lenta, mas não sei se o problema está no backend ou no banco"
 
-Nao deve acionar:
+Não deve acionar:
 
 - "esse componente React re-renderiza demais"
 - "tem waterfall de requests nessa tela React"
 - "otimiza essa query Postgres"
-- "bug intermitente e as vezes trava"
+- "o profiling confirmou que JSON.parse bloqueia o event loop Node"
+- "a latência sobe por CPU throttling do container; ajusta os workers"
+- "bug intermitente e às vezes trava"
 - "roda os checks do repo"
 - "testa o fluxo de login no navegador"
 
 ## Evals de workflow
 
-### Cenario 1 - sintoma difuso com ambiente mensuravel
+### Cenário 1 - sintoma difuso com ambiente mensurável
 
-Entrada: pagina web ficou lenta depois de uma feature e ainda nao esta claro se o custo principal esta no browser, na API ou na query.
-
-Assertions:
-
-- [ ] output escolhe uma metrica observavel antes de sugerir mudanca
-- [ ] output registra baseline ou estado atual mensuravel
-- [ ] output identifica uma camada dominante ou uma hipotese lider apoiada por evidencia
-- [ ] output limita o proximo passo a uma investigacao ou mudanca por vez
-- [ ] output aponta a skill de handoff se o gargalo deixou de ser difuso
-
-### Cenario 2 - sem baseline viavel
-
-Entrada: owner pede otimizacao, mas nao existe URL executavel, fixture, comando reproduzivel nem metrica confiavel no ambiente atual.
+Entrada: página lenta após uma feature, sem saber se o custo está no browser, API ou query.
 
 Assertions:
 
-- [ ] output declara explicitamente o bloqueio de medicao
-- [ ] output identifica o menor artefato faltante para criar baseline
-- [ ] output evita recomendar micro-otimizacao como se fosse evidente
-- [ ] output define o proximo passo para desbloquear medicao
+- [ ] output escolhe uma métrica antes de sugerir mudança
+- [ ] output registra baseline com condições, amostras e variação
+- [ ] output identifica camada dominante ou hipótese líder apoiada por evidência
+- [ ] output limita o próximo passo a uma investigação ou intervenção por vez
+- [ ] output aponta a skill de handoff quando o gargalo deixa de ser difuso
 
-### Cenario 3 - gargalo localizado durante a triagem
+### Cenário 2 - sem baseline viável
 
-Entrada: a investigacao inicial mostra que a lentidao vem de waterfall React e bundle inicial pesado.
-
-Assertions:
-
-- [ ] output explica por que o caso deixou de ser triagem cross-layer
-- [ ] output encaminha o owner principal para `frontend-design`
-- [ ] output preserva a evidencia coletada para o handoff
-- [ ] output explicita o que deve ser validado depois da intervencao
-
-### Cenario 4 - intervencao com comparacao antes/depois
-
-Entrada: pedido inclui aplicar uma mudanca de performance depois de medir o baseline.
+Entrada: pedido de otimização sem URL, fixture, comando reproduzível ou métrica confiável.
 
 Assertions:
 
-- [ ] output mantem uma mudanca por rodada
-- [ ] output compara antes e depois com a mesma metrica
-- [ ] output registra ausencia de delta quando a melhora nao for mensuravel
-- [ ] output evita empilhar outras otimizacoes antes de concluir a comparacao
+- [ ] output declara o bloqueio de medição
+- [ ] output identifica o menor artefato faltante e o próximo passo para obtê-lo
+- [ ] output evita recomendar micro-otimização como se a causa fosse evidente
 
-## Referencias
+### Cenário 3 - gargalo localizado durante a triagem
 
-Leia apenas o arquivo necessario para a decisao em maos:
+Entrada: a investigação confirma waterfall React e bundle inicial pesado.
 
-| Necessidade                                                        | Ler                       | Extrair                                                                |
-| ------------------------------------------------------------------ | ------------------------- | ---------------------------------------------------------------------- |
-| Escolher metrica, ferramenta inicial e skill de handoff por camada | `references/reference.md` | matriz de sintoma, medicao minima, ferramenta de apoio e skill vizinha |
+Assertions:
+
+- [ ] output explica por que a triagem entre camadas terminou
+- [ ] output encaminha o responsável principal para `react-performance`, se disponível
+- [ ] output preserva a evidência e a validação pendente para o handoff
+
+### Cenário 4 - intervenção com comparação antes/depois
+
+Entrada: pedido inclui implementar uma mudança após medir o baseline.
+
+Assertions:
+
+- [ ] output mantém uma intervenção por rodada, mesmo que ela toque vários arquivos
+- [ ] output compara a mesma métrica sob condições equivalentes
+- [ ] output registra ausência de ganho quando o delta fica dentro da variação
+- [ ] output não empilha otimizações antes de concluir a comparação
+
+### Cenário 5 - runtime ou operação identificados
+
+Entrada A: trace confirma parsing síncrono bloqueando o event loop Node.
+Entrada B: medições confirmam saturação de workers ou cotas de CPU do container.
+
+Assertions:
+
+- [ ] A encaminha para `nodejs-best-practices`; B, para `server-management`
+- [ ] output verifica a disponibilidade da skill antes de declarar o encaminhamento
+- [ ] se a skill faltar, output informa a especialidade, a evidência e o próximo passo
+
+## Referências
+
+Leia apenas quando precisar montar a coleta executável:
+
+| Necessidade                                              | Ler                         | Extrair                                                      |
+| -------------------------------------------------------- | --------------------------- | ------------------------------------------------------------ |
+| Medir navegação, interação, request, CPU Python ou query | `references/measurement.md` | comandos, condições de comparação e limites de interpretação |

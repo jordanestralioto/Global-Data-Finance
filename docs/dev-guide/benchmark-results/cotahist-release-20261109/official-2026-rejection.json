@@ -1,0 +1,50 @@
+{
+  "total_files": 1,
+  "success_count": 0,
+  "error_count": 1,
+  "total_records": 0,
+  "errors": {
+    "COTAHIST_A2026.ZIP": "ExtractionError: Extraction error for '/tmp/gdf-v020-readiness-20261109/originals/COTAHIST_A2026.ZIP': Invalid COTAHIST source COTAHIST_A2026.ZIP: ExtractionError: Extraction error for 'COTAHIST_A2026.ZIP': source=COTAHIST_A2026.ZIP; member=COTAHIST_A2026.TXT; record=2072135; line=2072135; field=record_length; value='246'; cause=Expected exactly 245 bytes; detected UTF-8 text that has the expected width in Latin-1. Keep the original source and create a separate Latin-1 copy before extraction"
+  },
+  "output_file": "",
+  "schema_version": 2,
+  "integrity": {
+    "status": "failed",
+    "schema_version": 2,
+    "verification_method": "not completed",
+    "requested_years": [
+      2026
+    ],
+    "selected_years": [],
+    "missing_years": [],
+    "complete_market_selection": true,
+    "market_codes": [],
+    "asset_classes": [
+      "todos"
+    ],
+    "raw_quotes": 0,
+    "selected_quotes": 0,
+    "intentional_exclusions": 0,
+    "excluded_records": 0,
+    "written_rows": 0,
+    "verified_rows": 0,
+    "selection_complete": false,
+    "source_complete": false,
+    "source_first_trading_date": null,
+    "source_last_trading_date": null,
+    "output_first_trading_date": null,
+    "output_last_trading_date": null,
+    "unknown_market_counts": {},
+    "warnings": [],
+    "sources": [],
+    "ignored_duplicate_sources": [],
+    "output_sha256": null
+  },
+  "assets": [
+    "todos"
+  ],
+  "processing_mode": "fast",
+  "elapsed_time": 163.19974780082703,
+  "success": false,
+  "message": "Extraction completed with errors. Processed 0/1 files. Extracted 0 records. Errors: 1"
+}

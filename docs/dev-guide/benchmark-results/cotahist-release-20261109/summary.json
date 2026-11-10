@@ -1,0 +1,25 @@
+{
+  "durationSeconds": 2936.136491,
+  "processCheck": {
+    "activeProcesses": [],
+    "status": "passed"
+  },
+  "schemaVersion": 2,
+  "statusCounts": {
+    "external_failure": 0,
+    "failed": 0,
+    "not_published": 0,
+    "passed": 1,
+    "skipped": 0
+  },
+  "totalApproved": 1,
+  "totalCombinations": 1,
+  "totalExecuted": 1,
+  "totalExternalFailures": 0,
+  "totalFunctionalFailures": 0,
+  "totalNotExecuted": 0,
+  "totalNotPublished": 0,
+  "totalPublished": 1,
+  "totalSkipped": 0,
+  "unclassifiedCaseIds": []
+}

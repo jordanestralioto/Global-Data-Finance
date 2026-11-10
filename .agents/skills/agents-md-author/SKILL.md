@@ -18,7 +18,9 @@ description: >-
    do repositório e o diretório de início da sessão; leia as instruções que o
    cliente realmente aplica nessa cadeia. Confira arquivos `AGENTS.override.md`,
    `AGENTS.md` e nomes de fallback somente quando o cliente os reconhecer ou
-   estiver configurado para carregá-los. Consulte
+   estiver configurado para carregá-los. Relate dados da sessão na devolutiva;
+   leve-os ao documento somente quando forem política compartilhada do projeto.
+   Consulte
    `references/source-discovery.md` se a cadeia, os fallbacks ou os limites do
    cliente não forem óbvios.
 
@@ -26,12 +28,19 @@ description: >-
    a fonte responsável em código, manifest, CI, testes, governança ou
    documentação atual. Use somente os arquivos e subsistemas relevantes; nome
    de diretório, preferência isolada ou plano não comprova um fato atual. Não
+   trate caminhos ou comandos dos exemplos da skill como fatos do alvo. Não
    abra valores de `.env`, credenciais ou cofres.
+
+   Para documentar validação, confronte manifest/task runner, documentação e CI
+   existente. Inclua arquivos ocultos ao localizar CI, como `.github/workflows/`;
+   `rg --files` sem `--hidden` pode omiti-los.
 
 3. Ao criar uma orientação raiz, use `assets/AGENTS.template.md`. Ao atualizar
    um arquivo existente, preserve regras válidas fora do pedido. Uma orientação
    local herda a política aplicável acima dela e registra somente diferenças da
-   subárvore.
+   subárvore. Para copiar o esqueleto raiz sem sobrescrever um arquivo, use
+   `python3 <skill-directory>/scripts/init_agents_md.py --output <path/to/AGENTS.md>`;
+   `--stdout` permite inspecioná-lo sem gravar.
 
 4. Organize a orientação raiz em cinco blocos. Os títulos do template são
    sugestões em inglês; escreva no idioma permitido pela política explícita do
@@ -54,7 +63,9 @@ description: >-
    documentação afetados, valide de forma proporcional e relate checks que
    falharam ou não rodaram. Idioma, `__init__.py`, manager, framework e regras de
    qualidade específicas entram somente quando são fatos ou políticas
-   confirmados no alvo. Consulte `references/policy-authoring.md` quando houver
+   confirmados no alvo. O Python executa os helpers da skill; não implica que o
+   projeto use Python, `uv` ou qualquer outra stack. Consulte
+   `references/policy-authoring.md` quando houver
    escolha de política ou fontes conflitantes.
 
 6. Faça uma revisão factual separada da validação estrutural. Links relativos
@@ -74,6 +85,13 @@ description: >-
    declare o documento factual ou pronto apenas porque o comando terminou com
    código `0`; informe a revisão de conteúdo, a validação executada e qualquer
    conflito ou check que ficou pendente. Não exija uma etapa formal de aprovação.
+
+   Acrescente `--size-report` para informar bytes UTF-8 e linhas. Se o alvo tiver
+   um orçamento confirmado por arquivo, `--max-bytes <bytes>` emite aviso ao
+   excedê-lo, sem mudar o resultado estrutural. Não imponha um teto universal
+   nem trate a medida de um arquivo como validação da cadeia do cliente. Os
+   detalhes de marcadores, tamanho e inicialização estão em
+   `references/content-contract.md`.
 
 ## Referências
 

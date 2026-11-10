@@ -19,13 +19,35 @@ HOOK_ID = re.compile(r'^\s*-\s+id:\s*[A-Za-z0-9._-]+\s*$', re.M)
 HOOK_STAGES = re.compile(r'^\s*(?:default_)?stages\s*:', re.M)
 
 
-def declared_contract(change: str | None) -> dict[str, Any]:
+def declared_command(path: Path) -> dict[str, Any]:
+    """Read an aggregate validation command supplied by the repository."""
+    try:
+        raw = path.read_bytes()
+        config = json.loads(raw)
+        if not isinstance(config, dict) or set(config) != {
+            'validationCommand'
+        }:
+            raise ArtifactError('expected only validationCommand')
+        value = config['validationCommand']
+        if not isinstance(value, str) or not value.strip():
+            raise ArtifactError('validationCommand must be a nonempty string')
+        command = shlex.split(value)
+        if not command or not command[0]:
+            raise ArtifactError('validationCommand must name an executable')
+    except (OSError, UnicodeError, ValueError) as exc:
+        raise ArtifactError(f'invalid .review-validation.json: {exc}') from exc
+    return {
+        'mode': 'command',
+        'command': command,
+        'contractSha256': hashlib.sha256(raw).hexdigest(),
+    }
+
+
+def declared_contract(change: str | None, session_dir: Path) -> dict[str, Any]:
     handoff_path = REPO_ROOT / 'openspec/handoff.json'
     if handoff_path.is_file():
-        if (
-            not change
-            or change in {'.', '..'}
-            or not CHANGE_NAME.fullmatch(change)
+        if change is not None and (
+            change in {'.', '..'} or not CHANGE_NAME.fullmatch(change)
         ):
             raise ArtifactError(
                 'a valid --change is required by openspec/handoff.json'
@@ -36,10 +58,12 @@ def declared_contract(change: str | None) -> dict[str, Any]:
             if relative != 'evidence/gate-report.json':
                 raise ArtifactError('invalid handoff evidence path')
             evidence = normalize_repo_path(
-                f'openspec/changes/{change}/{relative}'
+                f'openspec/changes/{change or "<change>"}/{relative}'
             )
             command = shlex.split(
-                config['validationCommand'].replace('<change>', change)
+                config['validationCommand'].replace(
+                    '<change>', change or '<change>'
+                )
             )
             verifier = normalize_repo_path(config['evidenceVerifier'])
         except (OSError, KeyError, TypeError, ValueError) as exc:
@@ -62,6 +86,27 @@ def declared_contract(change: str | None) -> dict[str, Any]:
             raise ArtifactError(
                 'handoff validation command does not match evidence'
             )
+        if change is None:
+            session = normalize_repo_path(str(session_dir))
+            evidence = normalize_repo_path(
+                str(session_dir / 'evidence/gate-report.json')
+            )
+            if not re.fullmatch(
+                r'\.agents/sessions/[^/]+/evidence/gate-report\.json',
+                evidence,
+            ):
+                raise ArtifactError(
+                    'review evidence requires a session under .agents/sessions'
+                )
+            if evidence != f'{session}/evidence/gate-report.json':
+                raise ArtifactError(
+                    'review evidence must stay in its own session'
+                )
+            command[evidence_index + 1] = evidence
+            if any('<change>' in argument for argument in command):
+                raise ArtifactError(
+                    'validation command requires an OpenSpec change outside its evidence path'
+                )
         return {
             'mode': 'structured',
             'command': command,
@@ -69,6 +114,10 @@ def declared_contract(change: str | None) -> dict[str, Any]:
             'verifier': verifier,
             'change': change,
         }
+
+    command_contract = REPO_ROOT / '.review-validation.json'
+    if command_contract.is_file():
+        return declared_command(command_contract)
 
     precommit = REPO_ROOT / '.pre-commit-config.yaml'
     config = (
@@ -87,8 +136,12 @@ def declared_contract(change: str | None) -> dict[str, Any]:
 
 
 def _git(*args: str) -> bytes:
+    # A local core.filemode=false must not hide executable changes from evidence.
     result = subprocess.run(
-        ['git', *args], cwd=REPO_ROOT, capture_output=True, check=False
+        ['git', '-c', 'core.filemode=true', *args],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        check=False,
     )
     if result.returncode != 0:
         raise ArtifactError('cannot read repository state with git')
@@ -140,6 +193,9 @@ def state_fingerprint(
             digest.update(b'link\0' + os.fsencode(os.readlink(candidate)))
         elif candidate.is_file():
             digest.update(
+                f'mode:{candidate.stat().st_mode & 0o111}\0'.encode('ascii')
+            )
+            digest.update(
                 b'file\0' + hashlib.sha256(candidate.read_bytes()).digest()
             )
         else:
@@ -156,7 +212,7 @@ def recorded_evidence_issue(
 ) -> str | None:
     """Return the reason a completed report cannot be used for approval."""
     try:
-        contract = declared_contract(report.get('change'))
+        contract = declared_contract(report.get('change'), session_dir)
         if report.get('validationMode') != contract['mode']:
             return 'Gate report does not match the declared validation mode.'
         command = shlex.join(contract['command'])
@@ -164,6 +220,10 @@ def recorded_evidence_issue(
             return (
                 'Gate report does not match the declared validation command.'
             )
+        if contract.get('contractSha256') != report.get(
+            'validationContractSha256'
+        ):
+            return 'Declared validation contract changed after recording.'
         excluded = (
             (contract['evidence'],) if contract['mode'] == 'structured' else ()
         )
@@ -171,7 +231,7 @@ def recorded_evidence_issue(
             session_dir, report['reviewedFiles'], excluded
         ):
             return 'Repository state changed after validation.'
-        if contract['mode'] == 'pre-commit':
+        if contract['mode'] != 'structured':
             return None
         evidence = REPO_ROOT / contract['evidence']
         if report.get('sourceEvidencePath') != contract['evidence']:
