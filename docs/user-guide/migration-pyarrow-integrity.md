@@ -46,11 +46,7 @@ preserva a configuração anterior.
 
 ## Notas para a release 0.2.0
 
-O texto abaixo é o corpo preparado para a release 0.2.0 no GitHub.
-O workflow existente `.github/workflows/publish.yml` executa os gates e a
-publicação a partir do evento de release publicada. A versão, tag e publicação
-devem aguardar a aprovação das evidências de aceitação; este texto não afirma
-que a release já foi publicada.
+Estas notas resumem o que muda ao atualizar de 0.1.4 para 0.2.0.
 
 **Quebras de compatibilidade para quem atualiza de 0.1.4:**
 
@@ -80,7 +76,7 @@ que a release já foi publicada.
   schema v2 conforme os detalhes abaixo. Os guias desta release devem ser
   lidos em conjunto antes de atualizar os consumidores.
 
-**Requisitos de dependências da próxima release:**
+**Requisitos de dependências:**
 
 - PyArrow: `>=26.0.0,<27.0.0`.
 - psutil: `>=7.2.2,<8.0.0`.
@@ -108,9 +104,10 @@ na ativação de ambientes Bash. Essa dependência é usada pelo `pre-commit`.
   verificar `success`, `schema_version` e `integrity` antes de mudar de arquivo.
 
 O corpus local de aceitação cobre 2000–2026 e seu snapshot termina em
-2026-09-02. A release deve anexar as evidências finais do corpus congelado e os
-manifestos de checksums; esses limites não são uma confirmação externa de
-completude da bolsa ou de disponibilidade de todos os anos históricos.
+2026-09-02. O manifesto de checksums e as evidências da campanha estão
+versionados com a [auditoria do corpus](../reference/cotahist-v2-supplied-corpus.md).
+Esses limites não são uma confirmação externa de completude da bolsa ou de
+disponibilidade de todos os anos históricos.
 Uma [aceitação complementar de 2025–2026](../reference/cotahist-v2-supplied-corpus.md#aceitacao-complementar-de-20252026-em-09112026)
 conferiu 6.604.374 cotações até 06/11/2026, com igualdade integral entre
 `fast` e `slow`, usando a cópia Latin-1 explicitamente registrada abaixo.

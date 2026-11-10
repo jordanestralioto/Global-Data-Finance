@@ -44,10 +44,7 @@ configuration.
 
 ## Notes for release 0.2.0
 
-The text below is the prepared body for the 0.2.0 GitHub release. The
-existing `.github/workflows/publish.yml` runs gates and publication from the
-published-release event. Version, tag, and publication must await approval of
-the acceptance evidence; this draft does not claim a release was published.
+These notes summarize what changes when upgrading from 0.1.4 to 0.2.0.
 
 **Breaking changes when upgrading from 0.1.4:**
 
@@ -77,7 +74,7 @@ the acceptance evidence; this draft does not claim a release was published.
   with schema v2 as described below. Read this release's migration guides
   together before updating consumers.
 
-**Dependency requirements for the next release:**
+**Dependency requirements:**
 
 - PyArrow: `>=26.0.0,<27.0.0`.
 - psutil: `>=7.2.2,<8.0.0`.
@@ -105,9 +102,10 @@ in Bash environment activation. This dependency is used by `pre-commit`.
   check `success`, `schema_version`, and `integrity` before switching files.
 
 The local acceptance corpus covers 2000–2026, with a snapshot ending on
-2026-09-02. The release must attach final frozen-corpus evidence and checksum
-manifests. These bounds are not independent confirmation of exchange coverage
-or availability of every historical year.
+2026-09-02. The checksum manifest and the campaign evidence are versioned with
+the [corpus audit](../reference/cotahist-v2-supplied-corpus.en.md). These
+bounds are not independent confirmation of exchange coverage or availability of
+every historical year.
 A [supplementary 2025–2026 acceptance](../reference/cotahist-v2-supplied-corpus.en.md#supplementary-20252026-acceptance-on-2026-11-09)
 verified 6,604,374 quotations through 2026-11-06 with exact `fast`/`slow`
 equality, using the Latin-1 copy explicitly recorded below.
