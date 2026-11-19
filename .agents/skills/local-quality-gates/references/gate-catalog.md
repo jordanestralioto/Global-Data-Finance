@@ -3,6 +3,15 @@
 > Summary: Map candidate quality gates to project-native tools. Select slots
 > from the project's contract, then record their stage, snapshot and coverage.
 
+## Contents
+
+- [1. Quality Gate Slot Matrix](#1-quality-gate-slot-matrix)
+- [2. Structural `[LINTER]` Profile](#2-structural-linter-profile)
+- [3. Configuration & Structured Data Validations](#3-configuration--structured-data-validations)
+- [4. Test and Dependency Audit Placement](#4-test-and-dependency-audit-placement)
+- [5. Tool Selection Rules](#5-tool-selection-rules)
+- [6. Hook Runner Pins and Snapshots](#6-hook-runner-pins-and-snapshots)
+
 ## 1. Quality Gate Slot Matrix
 
 | Slot                          | Purpose                                                                                       | Python                                                               | JS / TS                                                                       | Go / Rust                                                                                              |
@@ -129,7 +138,8 @@ A generic linter is not full coverage.
 4. **Measure, do not impose a universal speed budget**: Choose each hook's scope
    and stage from the repository's actual cost and workflow. Keep a check in
    pre-commit when its safety value justifies the observed latency; move it to
-   pre-push or CI when it harms the workflow or encourages `--no-verify`.
+   pre-push or CI when it harms the workflow or encourages contributors to
+   bypass the hooks.
 5. **Separate dependency lifecycle operations**: `[LOCKFILE]` may validate
    existing state only. Environment synchronization and dependency updates
    belong to explicit setup or reviewed maintenance changes, not to a default
@@ -147,3 +157,47 @@ A generic linter is not full coverage.
    explicit contract permits a tool's safe fixes for flow or return rules,
    require review before staging. Never enable unsafe fixes or automatic
    business-logic rewrites in a commit hook.
+
+## 6. Hook Runner Pins and Snapshots
+
+### Remote hook pins
+
+`rev` names the commit of the selected release. For an annotated tag,
+`git rev-parse <tag>` and `pre-commit autoupdate --freeze` return the SHA of
+the tag object, not of its commit. Peel the tag with
+`git rev-parse '<tag>^{commit}'` in a clone, or ask the remote:
+
+```bash
+git ls-remote <repo> 'refs/tags/<tag>' 'refs/tags/<tag>^{}'
+```
+
+The `^{}` line holds the commit of an annotated tag. A lightweight tag has no
+such line; its own ref already names the commit. Compare every pin with the
+upstream commit before declaring the configuration ready.
+
+### What the pre-commit runner inspects
+
+Verified with pre-commit 4.6; confirm each point for the pinned runner.
+
+- **Commit:** the runner stashes unstaged changes to tracked files, so hooks
+  read the index for those files. Untracked files stay on disk. A
+  whole-repository gate that reads the disk, such as a documentation contract,
+  an import graph or test discovery, can pass because of an untracked file the
+  commit lacks. Classify that coverage as partial (working tree) and close it
+  with a pre-push run on a clean checkout of the pushed commit, or with CI.
+- **Push without the root commit:** the runner stashes unstaged changes to
+  tracked files and passes the files changed in the pushed range. Hooks read
+  those files from the working tree and drop paths that are absent from it,
+  so a ref other than the checked-out one is not inspected.
+- **Push with the root commit:** the runner passes all files and does not
+  stash; hooks inspect unstaged edits instead of the committed content.
+- **New commits:** for a new remote branch, or when the old remote tip is
+  missing locally, commits reachable from the local remote-tracking refs
+  (`--remotes=<remote>`) count as already published. Stale refs can make a
+  push run no hook at all; run `git fetch --prune` before pushing.
+- **Several refs:** a push of several refs runs the hooks only for the first
+  ref with new commits. Push one ref at a time, or add a gate that fails
+  unless the working tree equals the pushed commit.
+- **Installed hook:** `pre-commit install` moves an existing hook to
+  `<hook>.legacy` and keeps running it. Verify the installed content and its
+  version, including any `.legacy` script, not only that a hook exists.

@@ -27,10 +27,15 @@
       "source": "skills/seo-fundamentals"
     },
     {
-      "action": "replace",
+      "action": "remove",
+      "componentId": "skills/supabase",
+      "message": "skills/supabase was retired. Remove supabase from components.skills in .agents/harness.json, then run harness-sync. Projects that use Supabase can install the official skill from supabase/agent-skills.",
+      "source": "skills/supabase"
+    },
+    {
+      "action": "remove",
       "componentId": "skills/supabase-postgres-best-practices",
-      "message": "skills/supabase-postgres-best-practices was merged into skills/supabase; select skills/supabase instead",
-      "replacement": "skills/supabase"
+      "message": "skills/supabase-postgres-best-practices was merged into skills/supabase, which was later retired. Remove supabase-postgres-best-practices from components.skills in .agents/harness.json, then run harness-sync."
     },
     {
       "action": "remove",

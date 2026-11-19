@@ -1,7 +1,7 @@
 """Adapt asynchronous HTTP requests and streamed filesystem writes."""
 
 import contextlib
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +19,7 @@ from .http_safety import (
     download_response_hook,
     identity_headers,
     redirect_header_hook,
+    redirect_target_hook,
     validate_download_response_headers,
     validate_download_response_length,
 )
@@ -39,6 +40,7 @@ class RequestsAdapter:
         http2: bool = False,
         default_headers: Mapping[str, str] | None = None,
         follow_redirects: bool = True,
+        allow_cross_origin_redirects: bool = True,
     ):
         """Initialize the httpx adapter.
 
@@ -55,12 +57,16 @@ class RequestsAdapter:
                 Headers explicitly supplied to a request take precedence.
                 Redirects to another origin retain only public headers.
             follow_redirects: Whether requests may follow HTTP redirects.
+            allow_cross_origin_redirects: Whether a redirect may change
+                scheme, host, or port. A request that starts on HTTPS is
+                never redirected to another scheme.
         """
         self.timeout = timeout
         self.max_redirects = max_redirects
         self.verify = verify
         self.http2 = http2
         self.follow_redirects = follow_redirects
+        self.allow_cross_origin_redirects = allow_cross_origin_redirects
         self.default_headers = (
             dict(default_headers) if default_headers is not None else None
         )
@@ -84,6 +90,17 @@ class RequestsAdapter:
             merged_headers[key] = value
 
         return merged_headers
+
+    def _request_hooks(
+        self, url: str
+    ) -> list[Callable[[httpx.Request], Awaitable[None]]]:
+        """Validate each redirect target before confining its headers."""
+        return [
+            redirect_target_hook(
+                allow_cross_origin=self.allow_cross_origin_redirects
+            ),
+            redirect_header_hook(url),
+        ]
 
     async def async_head(
         self,
@@ -113,7 +130,7 @@ class RequestsAdapter:
             verify=self.verify,
             http2=self.http2,
             event_hooks={
-                'request': [redirect_header_hook(url)],
+                'request': self._request_hooks(url),
                 'response': [discard_head_body],
             },
         ) as client:
@@ -192,7 +209,7 @@ class RequestsAdapter:
                     verify=self.verify,
                     http2=self.http2,
                     event_hooks={
-                        'request': [redirect_header_hook(url)],
+                        'request': self._request_hooks(url),
                         'response': [
                             download_response_hook(max_bytes, output_path)
                         ],

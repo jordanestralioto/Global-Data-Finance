@@ -42,144 +42,17 @@ description: >-
 **Entrada:** Usuário pergunta qual arquitetura escolher antes de código existir.
 **Por quê não:** Não há artefato para validar; use planejamento/arquitetura.
 
-## Evals de trigger
-
-Deve acionar:
-
-- "roda validação depois das mudanças"
-- "gera gate-report desse PR"
-- "quero saber quais gates vão rodar antes"
-- "uma gate falhou; resume o impacto"
-- "essa mudança pequena precisa de E2E?"
-
-Não deve acionar:
-
-- "qual stack devo usar?"
-- "desenha a arquitetura"
-- "projete uma migration segura para este schema"
-- "revise se este componente está com UX genérica"
-- "implemente a feature inteira"
-- "corrija automaticamente todos os problemas de lint"
-
-## Evals de workflow
-
-Os cenários abaixo são testes propostos. Registre execução, transcrição e
-resultado de cada assertion antes de afirmar eficácia de trigger ou workflow;
-lint, testes de código e validadores estáticos não medem essa eficácia.
-
-### Cenário 1 - diff comum
-
-Entrada: repositório com `.pre-commit-config.yaml` configurado.
-
-Assertions:
-
-- [ ] escolhe a validação repo-native como entrypoint principal
-- [ ] distingue os gates `pre-commit` dos estágios `commit-msg` e `pre-push`
-- [ ] identifica execução direta do comando de um hook como manual, sem atribuir execução ao estágio
-- [ ] reporta status das gates executadas de forma determinística
-- [ ] reporta falhas e saídas de terminal com clareza
-
-### Cenário 2 - validação de skills, agents ou workflows
-
-Entrada: pedido para validar skills, agents ou workflows projetados no consumidor.
-
-Assertions:
-
-- [ ] usa `harness-validate --request <caminho-do-request>` para os escopos estáticos declarados
-- [ ] usa `harness-sync --check` para conferir manifesto, lock e projeção
-- [ ] não afirma que `harness-validate` confere manifesto ou lock
-- [ ] não recomenda `validate-skills.py` nem `validate-agent-protocols.py` fora da central
-- [ ] reporta diagnósticos e códigos de erro de validação com clareza
-
-### Cenário 3 - validação repo-native do projeto
-
-Entrada: pedido para validar o projeto segundo seus comandos declarados.
-
-Assertions:
-
-- [ ] usa o comando oficial declarado pelo consumidor
-- [ ] reporta status das gates executadas de forma determinística
-- [ ] reporta falha estrutural sem declarar sucesso parcial implícito
-
-### Cenário 4 - gate-report por change
-
-Entrada: `openspec/handoff.json` declara `validationCommand` e `evidencePath`.
-
-Assertions:
-
-- [ ] executa o comando declarado com o caminho de evidência da change
-- [ ] não inventa um comando `ai-verify` ausente do contrato
-- [ ] confere os estágios exigidos antes de declarar todos os gates aprovados
-- [ ] descreve `stateFingerprint` como hash de vinculação ao estado, sem alegar assinatura ou autenticidade
-
-### Cenário 5 - falha externa
-
-Entrada: comando oficial falha por ausência de ferramenta no ambiente.
-
-Assertions:
-
-- [ ] classifica a falha como ambiente ou `external_failure`
-- [ ] não classifica o problema como erro de código sem evidência
-- [ ] devolve comando e sintoma mínimo para reproduzir
-
-### Cenário 6 - E2E proporcional
-
-Entrada: mudança de texto em componente interno sem fluxo de navegador afetado.
-
-Assertions:
-
-- [ ] não força E2E sem necessidade quando a mudança é puramente textual ou interna
-- [ ] usa os testes repo-native correspondentes
-- [ ] deixa explícito se testes adicionais são recomendados
-
-### Cenário 7 - erro preexistente
-
-Entrada: typecheck repo-native falha em arquivo fora do diff.
-
-Assertions:
-
-- [ ] só atribui a falha ao baseline se houver evidência comparável
-- [ ] reporta o gate oficial como falho e não declara validação completa
-
-### Cenário 8 - checks com escopo menor que o contrato
-
-Entrada: mypy executado apenas na skill e três arquivos de pytest aprovados;
-o contrato exige typecheck de toda a árvore, suíte com cobertura mínima e
-estágios adicionais ainda não executados.
-
-Assertions:
-
-- [ ] registra os checks como execução direta e validação parcial
-- [ ] identifica a diferença de arquivos, cobertura e estágios exigidos
-- [ ] lista gates não executados sem declarar aprovação de todos os validadores
-- [ ] não infere eficácia comportamental a partir desses checks
-
-### Cenário 9 - assets de um runner removido
-
-Entrada: pedido de limpeza dos quatro assets publicados de `ai-verify`, com
-decisão de preservação e uma regra específica de consumidor em `path-rules.json`.
-
-Assertions:
-
-- [ ] mantém os assets e distingue contrato publicado de runner removido
-- [ ] remove a regra específica da distribuição, preservando arquivos, formatos e regras genéricas
-- [ ] documenta a mudança de perfil e a configuração local para consumidores que dependam da escalada removida
-- [ ] direciona configuração específica ao consumidor, sem editar sua projeção gerenciada
-- [ ] não apresenta a checagem de presença dos assets como validação semântica dos JSONs
-
 ## Scripts
 
 - O executor de gate-report segue o `validationCommand` do repositório.
   Esta central publica o verificador como `tools/harness-verify`; o consumidor
   só encontra sua cópia projetada quando seleciona esse componente. Não
   presuma a existência de `ai-verify`.
-- `scripts/normalize-skill-metadata.py`: helper privado desta skill que remove metadados extras do frontmatter de skills em lote controlado.
 - `.agents/scripts/check-max-lines.py`: tool pública selecionada pelo catálogo (`tools/check-max-lines`) como gate portátil de tamanho de arquivo por responsabilidade (produção 400, teste 1000, documentação 500 linhas). O consumidor executa `python .agents/scripts/check-max-lines.py` e adiciona o comando ao próprio gate roster.
 
-Os quatro assets publicados de `ai-verify` permanecem por contrato, mesmo sem
-o runner. Preserve seus arquivos e formatos; regras exclusivas de um consumidor
-pertencem à configuração local dele. Leia a seção de compatibilidade em
-`references/reference.md` ao corrigir regras de caminhos ou avaliar migração.
+Preserve os quatro assets de `ai-verify` (`schemas/` e `assets/`): são contrato
+publicado e validado. Regras exclusivas de um consumidor ficam na configuração
+local dele; detalhes em `references/reference.md`.
 
 ## Referências
 

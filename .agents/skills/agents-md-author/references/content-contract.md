@@ -1,32 +1,52 @@
 # Contrato de conteúdo para `AGENTS.md`
 
+## Sumário
+
+- [Por que enxuto](#por-que-enxuto)
+- [Estrutura raiz](#estrutura-raiz)
+- [Arquivos locais](#arquivos-locais)
+- [Evidência e concisão](#evid%C3%AAncia-e-concis%C3%A3o)
+- [Inicialização portátil](#inicializa%C3%A7%C3%A3o-port%C3%A1til)
+- [Validação estrutural](#valida%C3%A7%C3%A3o-estrutural)
+
+## Por que enxuto
+
+Um estudo de 2026 com vários agentes
+([Gloaguen et al., arXiv:2602.11988](https://arxiv.org/abs/2602.11988)) mediu
+que arquivos de contexto gerados por LLM reduziram a taxa de sucesso, os
+escritos por desenvolvedores renderam ganho de até cerca de 4% e os arquivos
+elevaram o custo de inferência em mais de 20%. Os agentes seguiram as
+instruções: citar uma ferramenta ou rotina de testes aumentou seu uso. Visões
+gerais do repositório, várias delas listas de diretórios, não reduziram os
+passos até os arquivos certos. O estudo cobre repositórios Python, mede só a
+resolução de tarefas verificadas por testes e não avaliou declarações de
+propósito ou prioridades. Por isso o conteúdo raiz é curto e só contém o que
+mudaria uma decisão do agente: propósito e prioridades que o código não mostra,
+comandos exatos, convenções fora do padrão e rotas ligadas a erros já
+observados.
+
 ## Estrutura raiz
 
-O template sugere cinco headings de nível 2, nesta ordem:
-
-1. `## Project Overview`
-2. `## Architecture & Ownership`
-3. `## Development Workflow`
-4. `## Engineering Rules`
-5. `## Documentation Map`
-
-Cada bloco deve ter conteúdo útil. Seções adicionais são permitidas quando
-respondem a uma pergunta recorrente ou mudam uma decisão de trabalho. Traduza
-os títulos quando a política explícita do repositório alvo exigir outro idioma;
-preserve as cinco funções e a ordem sugerida.
+O template sugere quatro headings de nível 2: `Project Overview`,
+`Development Workflow`, `Engineering Rules` e `Navigation`. Nenhum é
+obrigatório. Funda, renomeie, reordene ou omita seções conforme o alvo; traduza
+os títulos quando a política explícita do repositório exigir outro idioma.
+Arquivos que ainda usam as cinco seções anteriores continuam válidos.
 
 ### Project Overview
 
-Resuma o que o projeto faz, seus consumidores e limites importantes. Inclua
-invariantes que mudem uma decisão de implementação. Não transforme a abertura
-em um catálogo de dependências, serviços ou diretórios.
+Uma ou duas frases sobre o que o projeto é, que problema resolve e para quem,
+mais o limite ou invariante que muda onde o trabalho deve acontecer. Mantenha o
+propósito mesmo quando o README também o descreve: o `AGENTS.md` entra em toda
+sessão, e o README só quando o agente decide abri-lo. Aponte para o README em
+vez de repetir detalhes.
 
-### Architecture & Ownership
-
-Mostre por onde começar no código e como as responsabilidades fluem. Nomeie
-entrypoints, owners, fronteiras e pontos de extensão estáveis quando eles
-evitam editar a camada errada. Encaminhe detalhes internos para o documento ou
-módulo que os mantém.
+Acrescente o que o projeto prioriza quando objetivos conflitam e o que fica
+fora de escopo. Prioridade é política, não fato: a fonte é uma decisão
+registrada ou o próprio usuário, nunca uma inferência a partir do código. Sem
+fonte, deixe-as fora do documento e pergunte por elas na devolutiva, sem
+bloquear o restante. Corte qualquer frase que serviria para qualquer projeto,
+como "qualidade, performance e manutenibilidade".
 
 ### Development Workflow
 
@@ -37,19 +57,18 @@ aponte para a configuração owner quando o roster completo já existe nela.
 
 ### Engineering Rules
 
-Preserve as práticas portáteis do template: inspecionar a fonte responsável,
-respeitar contratos e boundaries, manter mudanças coesas, atualizar testes e
-documentação afetados, validar proporcionalmente e relatar falhas ou skips.
-Acrescente regras específicas do projeto quando estiverem confirmadas por
-política ou comportamento atual. Não copie para cá cada regra de linter ou
-configuração mecânica que um hook já impõe.
+Só regras que o agente erraria sem ler: convenções fora do padrão, arquivos
+gerados e seu gerador, invariantes de dados ou segurança, compatibilidade
+pública e erros que agentes ou revisões já cometeram. Não pré-preencha práticas
+que agentes seguem por padrão, como inspecionar antes de editar, manter
+mudanças coesas ou atualizar testes. Não copie regras que um hook ou linter já
+impõe.
 
-### Documentation Map
+### Navigation
 
-Ordene poucos links existentes pela pergunta que respondem: começar, entender a
-arquitetura, desenvolver, operar, testar, consultar contratos ou decisões.
-Explique qual abrir primeiro e qual documento possui os detalhes. Não use uma
-lista de diretórios como substituto de navegação.
+Só rotas que o agente não encontraria rápido: qual caminho possui uma
+responsabilidade e qual documento responde a qual pergunta, com o momento de
+lê-lo. Não use uma lista de diretórios como substituto de navegação.
 
 ## Arquivos locais
 
@@ -80,10 +99,12 @@ cliente pertencem à devolutiva. Não os copie para instruções reutilizáveis 
 uma política compartilhada do alvo que justifique sua presença. Caminhos e
 comandos dos exemplos da skill também não comprovam fatos do projeto.
 
-Mantenha um detalhe quando ele identifica onde começar, quem possui uma
-responsabilidade, qual boundary preservar ou como validar uma mudança
-recorrente. Encaminhe defaults, schemas, inventários extensos e anatomia que não
-mude uma decisão para seu owner canônico.
+Mantenha um detalhe só quando o agente erraria sem ele: onde começar quando não
+é óbvio, qual boundary preservar ou como validar uma mudança recorrente.
+Encaminhe defaults, schemas, inventários extensos e anatomia que não mude uma
+decisão para seu owner canônico. Mire em menos de 200 linhas por arquivo, a
+meta documentada pelo Claude Code; para o Codex, o limite combinado da cadeia
+está em `references/source-discovery.md`.
 
 Não exija tabela de métricas, superfície de configuração, comandos ou
 documentação. Use tabelas quando melhorarem comparação ou consulta; não invente
@@ -108,11 +129,9 @@ configura outro encoding, para preservar caminhos com acentos.
 
 `scripts/validate_agents_md.py` oferece dois escopos:
 
-- `--scope root` (padrão): exige pelo menos cinco seções de nível 2, distintas e
-  não vazias, além de verificar marcadores de autoria e links Markdown
-  relativos; aceita seções extras. Quando os cinco títulos padrão são usados,
-  confere também sua ordem. Com títulos traduzidos, a revisão factual deve
-  confirmar que as cinco funções estão presentes.
+- `--scope root` (padrão): exige pelo menos uma seção de nível 2 e rejeita
+  seções vazias ou duplicadas, além de verificar marcadores de autoria e links
+  Markdown relativos. Não exige nomes, quantidade nem ordem de seções.
 - `--scope local`: exige apenas conteúdo não vazio e aceita links relativos e
   marcadores da mesma forma, sem exigir os headings herdados do root.
 
@@ -143,8 +162,8 @@ iguais. Falhas de leitura ou encoding retornam `2` sem medidas de tamanho.
 `--max-bytes <inteiro positivo>` implica `--size-report` e emite um aviso quando
 o arquivo ultrapassa esse orçamento. Igualar o orçamento é permitido. O aviso não
 altera o status ou o código estrutural; erros de estrutura continuam falhando.
-Use somente um orçamento confirmado para o alvo, sem default universal por
-linguagem, número de linhas ou escopo.
+A CLI não bloqueia por tamanho: a meta de 200 linhas orienta a autoria, e
+`--max-bytes` serve para um orçamento confirmado pelo alvo.
 
 A CLI mede um arquivo; ela não descobre instruções ancestrais, configura o
 cliente, confirma carregamento ou verifica o orçamento da cadeia combinada.

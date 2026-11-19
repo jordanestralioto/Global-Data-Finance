@@ -33,8 +33,8 @@ jobs:
           persist-credentials: false
           ref: ${{ github.sha }}
 
-      # Gitleaks v8.30.0 source tag object:
-      # 2ca41cc1372d1e939a6a879f18cdc19fc1cac1ce (the frozen local hook pin).
+      # Gitleaks v8.30.0 release commit:
+      # 6eaad039603a4de39fddd1cf5f727391efe9974e (the frozen local hook pin).
       # The published OCI image is pinned by digest, not by a mutable tag.
       - name: Scan clean checkout with Gitleaks
         uses: >-
@@ -139,7 +139,7 @@ jobs:
           uv run --locked --no-sync python scripts/check-ruff-policy.py \
             --profile all
 
-      # The remote Ruff hooks apply safe fixes and formatting to changed files;
+      # The locked Ruff hooks fix import order and formatting on changed files;
       # the policy hook above verifies the complete path-scoped profiles.
       - name: Run pre-commit (pre-commit stage)
         run: >-

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -21,6 +22,20 @@ NATIVE_LOCKFILE_COMMANDS: dict[tuple[str, str], tuple[str, ...]] = {
     ('pyproject.toml', 'uv.lock'): ('uv', 'lock', '--check'),
     ('pyproject.toml', 'poetry.lock'): ('poetry', 'check', '--lock'),
     ('Cargo.toml', 'Cargo.lock'): ('cargo', 'check', '--locked'),
+}
+
+# How each native check reports a lockfile that no longer matches its manifest:
+# the documented exit code plus the tool's own message. Any other non-zero
+# result (invalid configuration, usage error, network failure, compilation
+# error, crash) is an infrastructure error, reported with the tool's
+# diagnostic instead of being mistaken for an outdated lockfile.
+NATIVE_OUTDATED_SIGNALS: dict[tuple[str, str], tuple[int, re.Pattern[str]]] = {
+    ('pyproject.toml', 'uv.lock'): (1, re.compile(r'needs to be updated')),
+    ('pyproject.toml', 'poetry.lock'): (1, re.compile(r'poetry lock')),
+    ('Cargo.toml', 'Cargo.lock'): (
+        101,
+        re.compile(r'needs to be updated but --locked was passed'),
+    ),
 }
 
 
@@ -121,10 +136,11 @@ def is_lockfile_in_sync(
 ) -> bool:
     """Return whether a native package manager confirms lockfile coherence.
 
-    No universal wall-clock budget is imposed here. A native command that
-    returns non-zero means the existing lockfile is not confirmed as coherent.
-    A missing tool or subprocess execution error is infrastructure failure and
-    must remain distinguishable from that deterministic mismatch.
+    No universal wall-clock budget is imposed here. Only the documented
+    outdated signal of the native command (NATIVE_OUTDATED_SIGNALS) means the
+    lockfile is not coherent. A missing tool, an execution error or any other
+    non-zero result is infrastructure failure and raises
+    LockfileInfrastructureError with the tool's diagnostic.
     """
     target_dir = root / manifest_dir
     for lock_name in existing_locks:
@@ -151,4 +167,29 @@ def is_lockfile_in_sync(
             ) from err
         if result.returncode == 0:
             return True
+        _raise_unless_outdated(
+            (manifest_path.name, lock_name),
+            result,
+            command_text,
+            manifest_path,
+        )
     return False
+
+
+def _raise_unless_outdated(
+    key: tuple[str, str],
+    result: subprocess.CompletedProcess[str],
+    command_text: str,
+    manifest_path: Path,
+) -> None:
+    """Accept only the documented outdated signal; anything else is an error."""
+    code, pattern = NATIVE_OUTDATED_SIGNALS[key]
+    output = f'{result.stdout or ""}{result.stderr or ""}'
+    if result.returncode == code and pattern.search(output):
+        return
+    detail = output.strip()[-500:] or 'no diagnostic output'
+    raise LockfileInfrastructureError(
+        f'native lockfile check "{command_text}" for '
+        f'{manifest_path.as_posix()} ({key[1]}) exited with '
+        f'{result.returncode} without reporting an outdated lockfile: {detail}'
+    )

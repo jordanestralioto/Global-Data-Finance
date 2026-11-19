@@ -63,8 +63,8 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      # Gitleaks v8.30.0 source tag object:
-      # 2ca41cc1372d1e939a6a879f18cdc19fc1cac1ce (the frozen local hook pin).
+      # Gitleaks v8.30.0 release commit:
+      # 6eaad039603a4de39fddd1cf5f727391efe9974e (the frozen local hook pin).
       # The published OCI image is pinned by digest, not by a mutable tag.
       - name: Scan clean checkout with Gitleaks
         uses: >-
@@ -73,6 +73,39 @@ jobs:
           args: >-
             dir . --config=.gitleaks.toml --redact --no-banner
             --log-level=error
+
+      # Positive control for the scan above: `gitleaks dir` must still report
+      # a synthetic token appended to every file a policy exception names. An
+      # allowlist without `targetRules` would make it skip those files unread.
+      # The token is generated per run and has entropy far above the rule's.
+      - name: Prove Gitleaks scans the files its exceptions name
+        shell: bash
+        env:
+          GITLEAKS_IMAGE: >-
+            ghcr.io/gitleaks/gitleaks@sha256:691af3c7c5a48b16f187ce3446d5f194838f91238f27270ed36eef6359a574d9
+        run: |
+          controls=(
+            .secrets.baseline
+            .agents/skills/api-patterns/references/async-webhooks.md
+            .agents/skills/api-patterns/references/examples.md
+          )
+          for path in "${controls[@]}"; do
+            canary="$(mktemp -d "$RUNNER_TEMP/gitleaks-control.XXXXXX")"
+            mkdir -p "$canary/$(dirname "$path")"
+            cp .gitleaks.toml "$canary/"
+            cp "$path" "$canary/$path"
+            random="$(head -c 96 /dev/urandom | base64 -w0 | tr -dc 'A-Za-z0-9')"
+            printf '\ntoken: ghp_%s\n' "${random:0:36}" >> "$canary/$path"
+            chmod -R a+rX "$canary"
+            status=0
+            docker run --rm -v "$canary:/scan:ro" -w /scan "$GITLEAKS_IMAGE" \
+              dir . --config=.gitleaks.toml --redact --no-banner \
+              --log-level=error --exit-code=42 || status=$?
+            if [ "$status" -ne 42 ]; then
+              echo "::error::Gitleaks missed the control in $path ($status)"
+              exit 1
+            fi
+          done
 
       - name: Set up Python 3.12
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
@@ -101,10 +134,11 @@ jobs:
           uv run --locked --no-sync python
           scripts/audit_locked_dependencies.py
 
+      # Tracked harness projections in .agents/ stay in scope; only the
+      # locally generated client mirrors are excluded, as in pre-commit.
       - name: Scan secrets with detect-secrets
         run: |
           git ls-files -z -- . \
-            ':(exclude).agents/**' \
             ':(exclude).claude/**' \
             ':(exclude).codex/**' \
             ':(exclude).opencode/**' \

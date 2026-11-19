@@ -88,7 +88,10 @@ camadas ou re-exports para uniformizar fontes sem necessidade.
 Uma fonte nova precisa de uma entrega completa: implementação na área da fonte,
 facade em `application/`, export público, testes espelhando o comportamento e
 documentação em português e inglês. Preserve dependências sem ciclos e
-`__init__.py` restritos a exports explícitos.
+`__init__.py` restritos a exports explícitos. Fontes em `brazil/` ficam
+independentes entre si pelo contrato do import-linter, inclusive as novas. Uma
+nova área de topo em `globaldatafinance` precisa entrar no contrato de camadas
+do `pyproject.toml`; os testes de tooling falham até que ela seja classificada.
 
 Os testes espelham as fronteiras públicas, de fonte e compartilhadas. Seus
 subdiretórios organizam assuntos; não criam camadas de runtime. Consulte

@@ -3,6 +3,13 @@
 Use este arquivo antes de comparar padrões. O objetivo é transformar um pedido
 vago em um frame de decisão que explique por que a arquitetura precisa mudar.
 
+## Sumário
+
+- [Descoberta mínima](#descoberta-m%C3%ADnima)
+- [Atributos de qualidade](#atributos-de-qualidade)
+- [Perguntas por sintoma](#perguntas-por-sintoma)
+- [Saída esperada desta fase](#sa%C3%ADda-esperada-desta-fase)
+
 ## Descoberta mínima
 
 Capture pelo menos estes blocos:

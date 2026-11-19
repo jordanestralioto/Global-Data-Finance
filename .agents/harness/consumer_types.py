@@ -26,6 +26,8 @@ ALLOWED_SKILL_ACTIVE_FM = {'name', 'description'}
 ALLOWED_SKILL_ARCHIVED_FM = {'name', 'description', 'status', 'replaced_by'}
 ALLOWED_AGENT_FM = {'name', 'description', 'mode', 'agents'}
 ALLOWED_WORKFLOW_FM = {'name', 'description', 'category', 'tags'}
+FRONTMATTER_RE = re.compile(r'^---\r?\n(.*?)\r?\n---\r?\n', re.DOTALL)
+BLOCK_SCALAR_INDICATORS = frozenset({'>', '>-', '>+', '|', '|-', '|+'})
 
 AGENT_REQUIRED_SECTIONS = ('Identity', 'Can Do', 'Cannot Do', 'Done When')
 AGENT_LEGACY_SECTIONS = (
@@ -145,33 +147,52 @@ def _parse_yaml_scalar(val: str) -> Any:
     return val
 
 
-def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
-    """Parse UTF-8 YAML frontmatter block and return (metadata, body)."""
-    match = re.match(r'^---\r?\n(.*?)\r?\n---\r?\n', text, re.DOTALL)
+def split_frontmatter(text: str) -> tuple[str, str]:
+    """Return the raw frontmatter block and the body that follows it."""
+    match = FRONTMATTER_RE.match(text)
     if not match:
         raise ValueError(
             'frontmatter missing or malformed (expected --- ... ---)'
         )
-    body = text[match.end() :]
+    return match.group(1), text[match.end() :]
+
+
+def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
+    """Parse UTF-8 YAML frontmatter block and return (metadata, body).
+
+    A block scalar joins its lines with spaces. A blank line inside the
+    block starts a new paragraph, joined with a newline, and never ends
+    the value early.
+    """
+    block, body = split_frontmatter(text)
     meta: dict[str, Any] = {}
     current_key: str | None = None
-    current_lines: list[str] = []
+    paragraphs: list[list[str]] = [[]]
 
     def flush() -> None:
         if current_key is not None:
-            meta[current_key] = ' '.join(current_lines).strip()
+            meta[current_key] = '\n'.join(
+                ' '.join(lines) for lines in paragraphs if lines
+            )
 
-    for line in match.group(1).splitlines():
-        if line.startswith((' ', '\t')) and current_key:
-            current_lines.append(line.strip())
+    for line in block.splitlines():
+        if current_key and (line.startswith((' ', '\t')) or not line.strip()):
+            if line.strip():
+                paragraphs[-1].append(line.strip())
+            elif paragraphs[-1]:
+                paragraphs.append([])
             continue
         flush()
-        current_key, current_lines = None, []
-        if not line.strip() or ':' not in line:
+        current_key, paragraphs = None, [[]]
+        if (
+            not line.strip()
+            or line.lstrip().startswith('#')
+            or ':' not in line
+        ):
             continue
         key, _, raw_val = line.partition(':')
         key, val = key.strip(), raw_val.strip()
-        if val in ('>', '>-', '|', '|-', '>+', '|+'):
+        if val in BLOCK_SCALAR_INDICATORS:
             current_key = key
         else:
             meta[key] = _parse_yaml_scalar(val)

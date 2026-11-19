@@ -516,7 +516,7 @@ def validate_managed_paths(
     if not isinstance(entries, list):
         return ['managedPaths must be a list']
     errors: list[str] = []
-    if entries != sorted(entries):
+    if (paths := [e for e in entries if isinstance(e, str)]) != sorted(paths):
         errors.append('managedPaths must be sorted')
     authority = _managed_authority(catalog)
     seen: set[str] = set()

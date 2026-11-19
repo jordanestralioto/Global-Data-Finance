@@ -4,18 +4,31 @@ from __future__ import annotations
 
 import json
 import re
+import tomllib
+import uuid
 from collections.abc import Callable
 from importlib import import_module
 from pathlib import Path
-from typing import Protocol, cast
+from typing import Any, Protocol, cast
 
 import pytest
+
+from tests.support.git_repository import (
+    initialize_git_repository,
+    run_gate,
+    run_git,
+)
+from tests.support.precommit_config import hook_block
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
 PRE_COMMIT_CONFIG = REPOSITORY_ROOT / '.pre-commit-config.yaml'
 PIPELINE_CONFIG = REPOSITORY_ROOT / '.github' / 'workflows' / 'pipeline.yml'
 PUBLISH_CONFIG = REPOSITORY_ROOT / '.github' / 'workflows' / 'publish.yml'
 GITLEAKS_CONFIG = REPOSITORY_ROOT / '.gitleaks.toml'
+SECURITY_GATE_CONFIG = (
+    REPOSITORY_ROOT / '.github' / 'workflows' / 'pr-security-gate.yml'
+)
+GITLEAKS_CONTROL_STEP = 'name: Prove Gitleaks scans the files its exceptions'
 AGENTS_VALIDATOR = (
     REPOSITORY_ROOT
     / '.agents'
@@ -48,27 +61,6 @@ SHELL_SYNTAX = REPOSITORY_ROOT / 'scripts' / 'check-shell-syntax.py'
 pytestmark = pytest.mark.unit
 
 
-def run_git(repo: Path, *args: str) -> ProcessResult:
-    """Run a Git command in an isolated test repository."""
-    return run_process(['git', *args], cwd=repo)
-
-
-def initialize_git_repository(repo: Path) -> None:
-    """Initialize a disposable repository with deterministic metadata."""
-    run_git(repo, 'init', '--quiet')
-    run_git(repo, 'config', 'user.name', 'Quality Gate Tests')
-    run_git(repo, 'config', 'user.email', 'quality-gates@example.invalid')
-
-
-def run_gate(script: Path, repo: Path, *arguments: str) -> ProcessResult:
-    """Execute a gate script from an isolated repository."""
-    return run_process(
-        ['python', str(script), *arguments],
-        cwd=repo,
-        check=False,
-    )
-
-
 def staged_test_patch_hash(repo: Path) -> str:
     """Return the checker-authored hash for the staged test patch."""
     result = run_gate(TEST_INTEGRITY, repo, '--print-hash')
@@ -94,17 +86,6 @@ def stage_assertion_reduction_policy(
     policy_path = repo / '.test-integrity-policy.json'
     policy_path.write_text(json.dumps(policy), encoding='utf-8')
     run_git(repo, 'add', '--', '.test-integrity-policy.json')
-
-
-def hook_block(content: str, hook_id: str) -> str:
-    """Return one hook block from the YAML configuration."""
-    match = re.search(
-        rf'(?ms)^[ ]+- id: {re.escape(hook_id)}\n.*?(?=^[ ]+- id: |\Z)',
-        content,
-    )
-    if match is None:
-        raise AssertionError(f'Missing hook: {hook_id}')
-    return match.group(0)
 
 
 def configured_print_files(content: str) -> set[str]:
@@ -242,22 +223,72 @@ def test_mutating_hooks_keep_projection_exclusions() -> None:
     assert 'openspec/' in mdformat_block
 
 
-def test_gitleaks_policy_only_excludes_external_harness_roots() -> None:
-    """The project gitleaks policy must keep product paths in scope."""
-    content = GITLEAKS_CONFIG.read_text(encoding='utf-8')
+def _gitleaks_allowlists() -> list[dict[str, Any]]:
+    """Return the allowlists that the repository Gitleaks policy declares."""
+    policy = tomllib.loads(GITLEAKS_CONFIG.read_text(encoding='utf-8'))
+    assert policy['extend'] == {'useDefault': True}
+    assert 'allowlist' not in policy
+    allowlists = policy['allowlists']
+    assert isinstance(allowlists, list)
+    return allowlists
 
-    assert 'useDefault = true' in content
-    assert 'description = "Developer-owned harness projections"' in content
-    for root in (
-        r'^\.agents/',
-        r'^\.claude/',
-        r'^\.codex/',
-        r'^\.opencode/',
-        r'^\.github/prompts/',
-    ):
-        assert root in content
-    assert 'src/' not in content
-    assert 'tests/' not in content
+
+def test_gitleaks_exceptions_silence_one_rule_never_whole_files() -> None:
+    """Every exception targets a rule, so no scan mode skips a file.
+
+    `gitleaks dir`, the CI scan, applies an allowlist without `targetRules`
+    to its `paths` alone and skips each matching file before reading it.
+    """
+    allowlists = _gitleaks_allowlists()
+
+    assert allowlists
+    for allowlist in allowlists:
+        assert allowlist['targetRules'] == ['generic-api-key']
+        assert allowlist['condition'] == 'AND'
+        assert allowlist['regexTarget'] == 'line'
+        assert len(allowlist['paths']) == len(allowlist['regexes']) == 1
+
+
+def test_gitleaks_exceptions_match_only_their_audited_lines() -> None:
+    """Each exception covers one tracked file and one audited line shape."""
+    tracked = run_git(REPOSITORY_ROOT, 'ls-files', '-z').stdout.split('\0')
+    unaudited = (
+        f'Idempotency-Key: {uuid.uuid4()}',
+        f'"api_key": "{uuid.uuid4().hex}{uuid.uuid4().hex[:8]}",',
+    )
+
+    for allowlist in _gitleaks_allowlists():
+        path_pattern = re.compile(allowlist['paths'][0])
+        line_pattern = re.compile(allowlist['regexes'][0])
+        files = [path for path in tracked if path_pattern.search(path)]
+        assert len(files) == 1, allowlist['description']
+        lines = (REPOSITORY_ROOT / files[0]).read_text(encoding='utf-8')
+        allowed = {
+            line for line in lines.splitlines() if line_pattern.search(line)
+        }
+        assert allowed, f'stale exception: {allowlist["description"]}'
+        if files[0].startswith('.agents/'):
+            assert len(allowed) == 1, allowlist['description']
+        assert not any(line_pattern.search(line) for line in unaudited)
+
+
+def test_gitleaks_positive_control_covers_every_exception() -> None:
+    """CI proves with the scan's own image that excepted files are read."""
+    workflow = SECURITY_GATE_CONFIG.read_text(encoding='utf-8')
+    images = re.findall(
+        r'ghcr\.io/gitleaks/gitleaks@sha256:[0-9a-f]{64}', workflow
+    )
+    step = workflow.split(GITLEAKS_CONTROL_STEP, maxsplit=1)[1]
+    step = step.split('\n      - name:', maxsplit=1)[0]
+    tracked = run_git(REPOSITORY_ROOT, 'ls-files', '-z').stdout.split('\0')
+
+    assert len(images) == 2
+    assert len(set(images)) == 1
+    assert '--exit-code=42' in step
+    for allowlist in _gitleaks_allowlists():
+        pattern = re.compile(allowlist['paths'][0])
+        (excepted,) = [path for path in tracked if pattern.search(path)]
+        assert re.search(rf'(?m)^\s+{re.escape(excepted)}$', step), excepted
 
 
 def test_agents_hook_validator_rejects_an_invalid_document(
@@ -280,7 +311,7 @@ def test_agents_hook_validator_rejects_an_invalid_document(
 
     assert result.returncode == 1
     assert (
-        'root document requires at least five level-two sections'
+        'root document requires at least one level-two section'
         in result.stdout
     )
 
@@ -398,21 +429,14 @@ def test_diff_sanity_does_not_flag_its_policy_source(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
 
 
-def test_generic_gates_ignore_all_external_harness_roots(
+def test_generic_gates_ignore_generated_client_mirrors(
     tmp_path: Path,
 ) -> None:
-    """Generic staged gates must not inspect generated harness projections."""
+    """Generic staged gates must not inspect the generated client mirrors."""
     initialize_git_repository(tmp_path)
-    external_roots = (
-        '.agents',
-        '.claude',
-        '.codex',
-        '.opencode',
-        '.github/prompts',
-    )
     focused_test = 'test' + '.only'
     debug_call = 'breakpoint' + '()'
-    for root in external_roots:
+    for root in ('.claude', '.codex', '.opencode', '.github/prompts'):
         candidate = tmp_path / root / 'test_candidate.py'
         candidate.parent.mkdir(parents=True, exist_ok=True)
         candidate.write_text(
@@ -426,11 +450,6 @@ def test_generic_gates_ignore_all_external_harness_roots(
         shell_candidate.write_text(
             '#!/usr/bin/env bash\nif true; then\n', encoding='utf-8'
         )
-    external_manifest = tmp_path / '.agents' / 'pyproject.toml'
-    external_manifest.write_text(
-        '[project]\nname = "generated-harness"\nversion = "0.1.0"\n',
-        encoding='utf-8',
-    )
     run_git(tmp_path, 'add', '--', '.')
 
     for script in (
@@ -563,7 +582,7 @@ def test_diff_sanity_scans_an_explicit_commit_range(tmp_path: Path) -> None:
     assert '[DEBUG]' in result.stderr
 
 
-def test_diff_sanity_ignores_external_harness_in_an_explicit_range(
+def test_diff_sanity_skips_projection_debug_in_an_explicit_range(
     tmp_path: Path,
 ) -> None:
     """Range mode must apply the same projection filter as staged mode."""
@@ -585,8 +604,8 @@ def test_diff_sanity_ignores_external_harness_in_an_explicit_range(
 
     result = run_gate(DIFF_SANITY, tmp_path, '--range', 'HEAD~1...HEAD')
 
-    assert result.returncode == 0
-    assert 'SKIP' in result.stdout
+    assert result.returncode == 0, result.stderr
+    assert '[DEBUG]' not in result.stderr
 
 
 @pytest.mark.parametrize(

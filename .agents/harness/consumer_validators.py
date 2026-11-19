@@ -114,11 +114,6 @@ def validate_skill_item(
             "'## Exemplos' must contain negative case",
         ),
         (
-            not re.search(r'^## Evals de trigger\s*$', body, re.M)
-            or not re.search(r'[Nn]ão deve acionar|[Nn]ao deve acionar', body),
-            "'## Evals de trigger' must contain 'Não deve acionar'",
-        ),
-        (
             bool(re.search(r'^## Quando usar\s*$', body, re.M)),
             "forbidden '## Quando usar'",
         ),

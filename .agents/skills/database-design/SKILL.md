@@ -5,9 +5,9 @@ description: >-
   qualquer linguagem. Ative com "como modelo esse banco?", "essa query precisa
   de índice?", "como renomeio sem quebrar o deploy?", "dois jobs duplicam esse
   registro" ou "como garanto ownership nessa relação?". Cobre integridade,
-  concorrência, isolamento e evolução de dados. Para RLS, grants, pooling ou
-  operação específica de Supabase/Postgres, prefira `supabase`; para lentidão
-  sem origem isolada, `performance-profiling`; para contratos de endpoint,
+  concorrência, isolamento e evolução de dados. Para auditar RLS, grants ou
+  vazamento entre tenants, use `vulnerability-scanner`; para lentidão sem
+  origem isolada, `performance-profiling`; para contratos de endpoint,
   `api-patterns`.
 ---
 
@@ -61,10 +61,13 @@ correspondente antes de afirmar cada garantia.
 6. **Resolva detalhes pela ferramenta e versão reais.** Leia
    `references/native-tooling.md` quando o ORM, driver ou engine mudar a
    garantia. Reuse comandos nativos declarados pelo repositório e ambientes
-   descartáveis apropriados; não invente um validador por linguagem. RLS,
-   grants e tuning operacional de Supabase/Postgres seguem para `supabase`,
-   quando disponível. Sem essa skill, use documentação oficial e explicite a
-   evidência que falta, sem bloquear o trabalho independente.
+   descartáveis apropriados; não invente um validador por linguagem. Para
+   RLS, grants e tuning operacional, use a documentação oficial da engine e
+   da versão reais e explicite a evidência que falta, sem bloquear o trabalho
+   independente. Auditoria de vazamento entre tenants segue para
+   `vulnerability-scanner`. Se a skill indicada neste ou em outro
+   encaminhamento não estiver instalada, descreva a especialidade necessária e
+   o próximo passo, sem declarar o encaminhamento executado.
 
 7. **Use triagem estática como evidência limitada.** Quando houver artefatos de
    schema/migration, execute o helper Python sobre arquivos ou diretórios
@@ -104,7 +107,6 @@ com campos irrelevantes para uma alteração pequena.
 | Índices, paginação, N+1, outbox, JSON e vetores                | `references/queries-and-access.md`      |
 | Garantias reais de ORM/driver/engine e ferramentas nativas     | `references/native-tooling.md`          |
 | Executar e interpretar o helper portátil                       | `references/triage-contract.md`         |
-| Exercitar a skill com critérios de aceitação observáveis       | `references/evals.md`                   |
 
 ## Exemplos
 
@@ -127,31 +129,8 @@ abandono da coluna antiga.
 **Entrada:** "A tela ficou lenta; não sei se é React, rede ou banco."
 **Por quê não:** falta localizar o gargalo; use `performance-profiling`.
 
-### Caso negativo — policy de produto específico
+### Caso negativo — vazamento entre tenants
 
-**Entrada:** "A policy RLS do Supabase aceita o tenant errado."
-**Por quê não:** a implementação e a prova da policy pertencem a `supabase`.
-
-## Evals de trigger
-
-Deve acionar:
-
-- "Dois jobs podem inserir a mesma conciliação; onde garanto unicidade?"
-- "Esse índice atende o filtro e a ordenação desta query?"
-- "Nossa migration roda com duas versões da aplicação; revisa o rollout."
-- "A FK entre pedido e item preserva o workspace correto?"
-- "Esse valor representa dinheiro, taxa aproximada ou identificador opaco?"
-
-Não deve acionar:
-
-- "Qual status HTTP uso quando a cobrança já existe?" (`api-patterns`)
-- "A API ficou lenta e não localizei o gargalo." (`performance-profiling`)
-- "Revisa grants e service role no Supabase." (`supabase`)
-- "Escreve um SELECT trivial sem decisão de schema ou acesso."
-
-## Evals de workflow
-
-Use `references/evals.md` para cenários de migração concorrente, isolamento
-herdado, paginação e triagem em projetos de linguagens diferentes. As assertions
-avaliam decisões e evidências; passar na estrutura da skill não prova seu ganho
-em relação a um agente sem ela.
+**Entrada:** "A policy RLS aceita o tenant errado."
+**Por quê não:** é um vazamento de dados; a triagem e a prova pertencem a
+`vulnerability-scanner`.

@@ -88,17 +88,17 @@ Consequências operacionais em toda rota que escreve artefato (`new`,
 
 A tabela abaixo vale somente depois que a decisão de rota adota OpenSpec.
 
-| Intenção do usuário                                                                      | Workflow canônico | Primeira ação                                                                                                                                            |
-| ---------------------------------------------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Criar uma nova change, iniciar OPSX, pedir `/opsx:new`                                   | `opsx-new`        | Executar preflight spec check, pedir aprovação explícita e só então criar a change, mostrar o primeiro artefato `ready` e parar antes de gerar artefatos |
-| Continuar uma change, criar `proposal.md`, `design.md`, `tasks.md` ou o próximo artefato | `opsx-continue`   | Se o nome da change não vier no pedido, selecionar explicitamente a change, pedir aprovação e só então criar um único artefato `ready`                   |
-| Fast-forward, gerar artefatos até ficar apply-ready, pedir `/opsx:ff`                    | `opsx-ff`         | Executar preflight spec check, pedir aprovação explícita e só então criar a change e avançar até satisfazer `apply.requires`                             |
-| Revisar artefatos antes da implementação, pedir `/opsx:review`                           | `opsx-review`     | Selecionar explicitamente a change, executar o gate `bundle` e revisar artefatos e fonte de decisão em modo read-only                                    |
-| Implementar tarefas de uma change, pedir `/opsx:apply`                                   | `opsx-apply`      | Exigir bundle verde, ler `status` e `instructions apply`; `apply` é a única exceção que pode inferir ou auto-selecionar a change quando isso for seguro  |
-| Verificar implementação antes de arquivar, pedir `/opsx:verify`                          | `opsx-verify`     | Selecionar explicitamente a change e comparar implementação com tarefas, specs, cenários e decisões de design                                            |
-| Sincronizar delta specs com `openspec/specs`, pedir `/opsx:sync`                         | `opsx-sync`       | Selecionar explicitamente a change e executar o owner deterministico por operacao                                                                        |
-| Arquivar uma change, pedir `/opsx:archive`                                               | `opsx-archive`    | Selecionar explicitamente a change, exigir completion verde sem override, avaliar sync e só então mover                                                  |
-| Explorar ideias, trade-offs ou contexto de uma change, pedir `/opsx:explore`             | `opsx-explore`    | Investigar em modo read-only; persistência de artefato segue por `continue` ou `ff`                                                                      |
+| Intenção do usuário                                                                                              | Workflow canônico | Primeira ação                                                                                                                                            |
+| ---------------------------------------------------------------------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Criar uma nova change, iniciar OPSX, pedir `/opsx:new`                                                           | `opsx-new`        | Executar preflight spec check, pedir aprovação explícita e só então criar a change, mostrar o primeiro artefato `ready` e parar antes de gerar artefatos |
+| Continuar uma change, criar `proposal.md`, `design.md`, `tasks.md` ou o próximo artefato, pedir `/opsx:continue` | `opsx-continue`   | Se o nome da change não vier no pedido, selecionar explicitamente a change, pedir aprovação e só então criar um único artefato `ready`                   |
+| Fast-forward, gerar artefatos até ficar apply-ready, pedir `/opsx:ff`                                            | `opsx-ff`         | Executar preflight spec check, pedir aprovação explícita e só então criar a change e avançar até satisfazer `apply.requires`                             |
+| Revisar artefatos antes da implementação, pedir `/opsx:review`                                                   | `opsx-review`     | Selecionar explicitamente a change, executar o gate `bundle` e revisar artefatos e fonte de decisão em modo read-only                                    |
+| Implementar tarefas de uma change, pedir `/opsx:apply`                                                           | `opsx-apply`      | Exigir bundle verde, ler `status` e `instructions apply`; `apply` é a única exceção que pode inferir ou auto-selecionar a change quando isso for seguro  |
+| Verificar implementação antes de arquivar, pedir `/opsx:verify`                                                  | `opsx-verify`     | Selecionar explicitamente a change e comparar implementação com tarefas, specs, cenários e decisões de design                                            |
+| Sincronizar delta specs com `openspec/specs`, pedir `/opsx:sync`                                                 | `opsx-sync`       | Selecionar explicitamente a change e executar o owner deterministico por operacao                                                                        |
+| Arquivar uma change, pedir `/opsx:archive`                                                                       | `opsx-archive`    | Selecionar explicitamente a change, exigir completion verde sem override, avaliar sync e só então mover                                                  |
+| Explorar ideias, trade-offs ou contexto de uma change, pedir `/opsx:explore`                                     | `opsx-explore`    | Investigar em modo read-only; persistência de artefato segue por `continue` ou `ff`                                                                      |
 
 ## Guardrails
 
@@ -187,7 +187,7 @@ um único plano Markdown; não precisa de `openspec-workflow` formal.
 ### Caso negativo
 
 **Entrada:** "essa skill está fraca"
-**Por quê não:** Isso é trabalho de governança ou autoria de skill; use `skill-governance`.
+**Por quê não:** Isso é trabalho de governança ou autoria de skill; use `skill-governance`. Se ela não estiver instalada, descreva o que precisa ser revisado na skill, sem abrir change OpenSpec.
 
 ### Caso negativo
 
@@ -199,73 +199,6 @@ um único plano Markdown; não precisa de `openspec-workflow` formal.
 **Entrada:** "redesenha a arquitetura dessa feature"
 **Por quê não:** Isso é arquitetura ou ideação, não roteamento OpenSpec.
 
-## Evals de trigger
-
-Deve acionar o lifecycle:
-
-- "cria uma change OpenSpec"
-- "/opsx:continue deploy"
-- "revisa a change OpenSpec antes de implementar"
-- "sincroniza delta specs da minha change"
-- "verifica essa implementação antes de arquivar"
-- "quero fazer fast-forward de uma change OPSX"
-
-Deve acionar apenas para triagem:
-
-- "OpenSpec parece excessivo; faça um plano simples"
-- "Mencionei OpenSpec, mas preciso mesmo de uma change?"
-- "Quero um plano Markdown, não artefatos OpenSpec"
-
-Não deve acionar:
-
-- "plano simples sem openspec"
-- "essa skill está fraca"
-- "bug de CSS"
-- "define a arquitetura dessa feature"
-- "me ajuda a escrever uma proposal comercial"
-
-## Evals de workflow
-
-Casos propostos em `references/EVALS.md`. Registre execução e transcrição antes
-de afirmar eficácia comportamental; os validadores estáticos não a demonstram.
-
-### Cenário 0: menção que exige somente triagem
-
-**Entrada:** "OpenSpec parece excessivo; faça um plano Markdown para este módulo isolado."
-
-- [ ] anuncia a rota de plano Markdown e o motivo
-- [ ] não executa `opsx new` nem cria `openspec/changes/<name>/`
-- [ ] não escreve fonte de decisão, proposal, design, spec ou tasks
-
-### Cenário 1: `continue` sem nome de change
-
-**Entrada:** "/opsx:continue"
-
-- [ ] consulta `opsx list --json`
-- [ ] pede seleção explícita da change
-- [ ] anuncia a primeira escrita e pede aprovação explícita
-- [ ] cria no máximo um artefato `ready`, somente após aprovação
-
-### Cenário 2: `apply` sem nome de change
-
-**Entrada:** "/opsx:apply"
-
-- [ ] documenta que `apply` pode inferir ou auto-selecionar quando seguro
-- [ ] anuncia a change escolhida e como sobrescrever a seleção
-- [ ] exige a autorização própria de `apply` antes da primeira escrita de código
-- [ ] para se `state` for `blocked` ou `all_done`
-
-### Cenário 3: autoria de `tasks.md`
-
-**Entrada:** "/opsx:continue add-x" com `tasks` no estado `ready`
-
-- [ ] lê `references/HANDOFF_STANDARD.md` antes de escrever
-- [ ] aplica o que veio em `rules` de `opsx instructions`
-- [ ] escreve `## 0. Traceability` ligando requisitos e cenários a IDs reais
-- [ ] tipa cada task e usa paths concretos, testes por cenário e comando exato
-- [ ] aguarda aprovação explícita antes de escrever o artefato
-- [ ] roda o gate `artifact` antes de declarar o único artefato pronto
-
 ## Referências
 
 Leia apenas o arquivo necessário para o pedido atual:
@@ -275,7 +208,6 @@ Leia apenas o arquivo necessário para o pedido atual:
 | Escrever ou revisar qualquer artefato de change                                   | `references/HANDOFF_STANDARD.md` |
 | Confirmar roteamento comando -> workflow, inclusive exceções de seleção           | `references/COMMAND_MAP.md`      |
 | Relembrar guardrails operacionais e diferenças entre `apply` e os outros comandos | `references/GUARDRAILS.md`       |
-| Revisar trigger evals e workflow evals detalhados                                 | `references/EVALS.md`            |
 
 ## Scripts e Comandos
 

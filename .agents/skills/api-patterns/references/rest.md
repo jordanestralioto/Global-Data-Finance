@@ -2,6 +2,18 @@
 
 > Recursos com substantivos, métodos HTTP com semântica correta.
 
+## Sumário
+
+- [Naming de rotas](#naming-de-rotas)
+- [Query contract](#query-contract)
+- [Semântica que precisa de decisão](#sem%C3%A2ntica-que-precisa-de-decis%C3%A3o)
+- [Status codes](#status-codes)
+- [Ações de domínio](#a%C3%A7%C3%B5es-de-dom%C3%ADnio)
+- [Idempotência](#idempot%C3%AAncia)
+- [Operações longas](#opera%C3%A7%C3%B5es-longas)
+- [Concorrência e preconditions](#concorr%C3%AAncia-e-preconditions)
+- [Versionamento](#versionamento)
+
 ## Naming de rotas
 
 - Use substantivos, nunca verbos — `/workspaces`, não `/getWorkspaces`

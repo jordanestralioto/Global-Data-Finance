@@ -29,7 +29,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from harness.paths import repo_root
 
-HARNESS_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = repo_root()
 PRECOMMIT_CONFIG = REPO_ROOT / '.pre-commit-config.yaml'
 
@@ -45,8 +44,8 @@ EVIDENCE_REPORT_RE = re.compile(
     r'(?:gate-report|verification-report)\.json$|'
     r'^\.agents/sessions/[^/]+/evidence/gate-report\.json$'
 )
-# Parse the simple hook roster without third-party dependencies.
-HOOK_ID_RE = re.compile(r'^\s*-\s+id:\s*([A-Za-z0-9._-]+)\s*$')
+# Parse the hook roster without third-party dependencies; aliases name gates.
+HOOK_ID_RE = re.compile(r'^\s*(?:-\s+id|alias):\s*([A-Za-z0-9._-]+)\s*$')
 COMMIT_MSG_SAMPLE = 'feat(harness): synthetic commit-msg gate evidence\n'
 
 
@@ -457,19 +456,25 @@ def produce_evidence(raw_path: str) -> tuple[bool, str]:
 def produce_precomposition_evidence(
     raw_path: str, plan_path_str: str, head_sha: str
 ) -> tuple[bool, str]:
-    evidence_path = REPO_ROOT / raw_path
+    evidence_path, relative_path = resolve_evidence_path(raw_path)
     plan_path = REPO_ROOT / plan_path_str
-    if not plan_path.is_file():
-        raise EvidenceError(f'publication plan missing at {plan_path}')
-    plan = json.loads(plan_path.read_text(encoding='utf-8'))
+    try:
+        plan = json.loads(plan_path.read_text(encoding='utf-8'))
+    except (OSError, ValueError) as exc:
+        raise EvidenceError(f'publication plan unreadable: {exc}') from exc
+    paths = plan.get('publicationPaths') if isinstance(plan, dict) else None
+    if not isinstance(paths, list) or not all(
+        isinstance(p, str) for p in paths
+    ):
+        raise EvidenceError('publicationPaths must be a list of paths')
     git_head_sha = _git(['rev-parse', 'HEAD']).strip()
     if git_head_sha != head_sha:
         raise EvidenceError(
             f'HEAD {git_head_sha} != expected precomposition HEAD {head_sha}'
         )
-    passed, message = _run_gates(raw_path)
+    passed, message = _run_gates(relative_path)
     report = json.loads(evidence_path.read_text(encoding='utf-8'))
-    pub_paths = sorted(plan.get('publicationPaths', []))
+    pub_paths = sorted(paths)
     comp_digest = hashlib.sha256(
         ''.join(pub_paths).encode('utf-8')
     ).hexdigest()

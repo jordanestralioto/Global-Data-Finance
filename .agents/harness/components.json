@@ -46,7 +46,7 @@
       "source": "skills/i18n-localization"
     },
     "skills/lint-and-validate": {
-      "hasScripts": true,
+      "hasScripts": false,
       "requires": [
         "tools/check-max-lines"
       ],
@@ -120,7 +120,7 @@
       "source": "skills/server-management"
     },
     "skills/skill-governance": {
-      "hasScripts": false,
+      "hasScripts": true,
       "requires": [],
       "source": "skills/skill-governance"
     },
@@ -128,11 +128,6 @@
       "hasScripts": true,
       "requires": [],
       "source": "skills/structural-inspector"
-    },
-    "skills/supabase": {
-      "hasScripts": false,
-      "requires": [],
-      "source": "skills/supabase"
     },
     "skills/systematic-debugging": {
       "hasScripts": false,

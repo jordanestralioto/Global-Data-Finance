@@ -29,11 +29,6 @@ Não use mock para substituir a regra de negócio sob teste, máquina de estados
 validador, serializador, predicate de tenant, política de autorização ou
 transação de banco.
 
-Para evitar aprovações enganosas, um teste só é considerado aprovado quando há
-evidência concreta de testes descobertos e executados com sucesso; zero testes
-descobertos ou suítes onde todos os testes foram pulados constituem falha de
-evidência.
-
 ## Procedimento
 
 1. Nomeie o contrato e os riscos.
@@ -79,26 +74,28 @@ evidência.
 
    - Mantenha fixtures minimalistas e autocontidas, gerando apenas os dados
      estritamente necessários para o teste.
-   - Posicione mocks exclusivamente nas boundaries externas instáveis. Mantenha
-     a regra sob teste e a persistência local reais.
+   - Mocke só as boundaries externas descritas em Fundamentos; a regra sob teste
+     e a persistência local ficam reais.
 
-5. Formule assertions concretas (Arrange, Act, Assert).
-
-   - **Arrange** cria dados e configura o estado inicial de forma explícita.
-   - **Act** dispara a ação observável sob teste.
-   - **Assert** valida valores exatos, códigos de status, payloads estruturados,
-     efeitos persistidos no banco e chamadas externas esperadas. Evite asserts
-     apenas `truthy`, `assert res is not None` ou snapshots cegos.
+5. Formule assertions concretas, com Arrange, Act e Assert explícitos. Valide
+   valores exatos, códigos de status, payloads estruturados, efeitos persistidos
+   no banco e chamadas externas esperadas. Asserts apenas `truthy`,
+   `assert res is not None` ou snapshots cegos passam mesmo quando a regra
+   quebra.
 
 6. Valide contra tautologia e exija evidência real.
 
    - O teste deve falhar se o controle ou a regra for removida (RED/GREEN).
-   - Nunca considere aprovada uma execução de teste que reportou zero testes
-     coletados ou onde todos os testes foram pulados.
+   - Não considere aprovada uma execução que coletou zero testes ou pulou todos:
+     ela não exercitou a regra e passa por engano.
 
 ## Formato de saída
 
-Ao desenhar estratégias e escrever testes para o usuário, entregue:
+Proporcione a saída ao pedido. Para um teste pontual, entregue o código do teste
+e uma linha com o comportamento protegido, o comando executado e a prova
+RED/GREEN. Quando o pedido for uma estratégia, com várias regras, níveis ou
+riscos, entregue antes do código o bloco abaixo, omitindo as dimensões que não
+se aplicam em vez de preenchê-las:
 
 ```yaml
 test_strategy:
@@ -124,8 +121,7 @@ test_strategy:
     red_green_proof: <como provar que a asserção não é tautológica>
 ```
 
-Complemente com o bloco executável de implementação (`test_implementation`)
-contendo o código concreto do teste com Arrange, Act e Assert estruturados.
+Em seguida, entregue o código executável dos testes.
 
 ## Scripts
 
@@ -133,18 +129,24 @@ contendo o código concreto do teste com Arrange, Act e Assert estruturados.
   proporcionais (`pytest`, `vitest`, `jest`, `npm test`). Exige evidência de
   testes descobertos e aprovados (`total > 0` e `passed > 0`), rejeitando
   aprovações com zero testes executados ou quando todos são pulados. Use
-  `--dry-run` para apenas inspecionar o comando detectado.
+  `--dry-run` para apenas inspecionar o comando detectado:
+  `python3 <skill-dir>/scripts/test_runner.py <repo> --dry-run --output json`.
+- O JSON traz `status`, `framework`, `command` e `result`. `planned` só
+  descreve o comando e sai com `0`; `not_configured` indica que nenhum runner
+  foi detectado e sai com `2`. Sem `--dry-run`, o runner nativo precisa estar
+  instalado: `result` traz `status`, `counts` e `error`, e o script sai com `0`
+  só em `passed`. `failed`, `timeout`, `blocked` (comando ausente),
+  `no_tests_collected`, `all_skipped`, `no_passing_tests` e caminho
+  inexistente saem com `1`.
 
 ## Referencias
 
 Consulte o arquivo relevante para o tipo de teste necessário:
 
-| Tópico                                                              | Arquivo                        |
-| :------------------------------------------------------------------ | :----------------------------- |
-| Heurísticas de limites, estados, dependências, concorrência e mocks | `references/reference.md`      |
-| Exemplos de contrato → casos → assertions concretas                 | `references/examples.md`       |
-| Exemplos de triggers e near-misses                                  | `references/evals/trigger.md`  |
-| Cenários de workflow com critérios binários verificáveis            | `references/evals/workflow.md` |
+| Tópico                                                              | Arquivo                   |
+| :------------------------------------------------------------------ | :------------------------ |
+| Heurísticas de limites, estados, dependências, concorrência e mocks | `references/reference.md` |
+| Exemplos de contrato → casos → assertions concretas                 | `references/examples.md`  |
 
 ## Exemplos
 
@@ -177,68 +179,3 @@ retornando HTTP 401.
 
 **Por quê não:** Isso é execução operacional de suíte existente; utilize
 `lint-and-validate` ou invoque o comando nativo diretamente.
-
-## Evals de trigger
-
-Deve acionar:
-
-- "qual teste cobre essa regressão?"
-- "escreva testes para esta regra de negócio"
-- "como testo casos de limite e transições de estado?"
-- "como testo concorrência e race condition neste endpoint?"
-- "como testo falha de timeout da API externa?"
-- "essa assertion prova o bug ou é tautológica?"
-- "mocko esse provider como?"
-- "escreva testes para garantir que o tenant B não acesse dado do tenant A"
-
-Não deve acionar:
-
-- "coordena a suíte inteira de validação"
-- "roda a validação repo-native e testes"
-- "modele o schema do banco desta feature"
-- "crie testes E2E com Playwright gravando vídeo no navegador"
-- "audita a acessibilidade visual da tela"
-
-## Evals de workflow
-
-### Cenário 1: Regra de negócio com limiares e transição de cupom
-
-Assertions:
-
-- [ ] define nível de teste como 'unit' com justificativa de cálculo puro sem I/O
-- [ ] deriva casos de limite inferior (`subtotal = 99.99`), exato (`100.00`) e teto (`1000.00`)
-- [ ] testa transição de estado de `ACTIVE` para `EXHAUSTED` no último uso permitido
-- [ ] código fornecido utiliza asserções numéricas exatas sem asserts apenas truthy
-- [ ] não utiliza mocks para a lógica de cálculo ou entidade de cupom
-
-### Cenário 2: Falha de dependência externa e side effects
-
-Assertions:
-
-- [ ] escolhe nível 'integration' com mocks restritos às boundaries externas instáveis
-- [ ] não mocka o repositório sob teste nem a lógica de orquestração interna
-- [ ] simula timeout da dependência externa verificando retries configurados
-- [ ] assert verifica que status no banco é gravado como `PAYMENT_PENDING`
-- [ ] assert verifica ausência de publicação indevida de evento no broker em caso de falha
-
-### Cenário 3: Concorrência e idempotência
-
-Assertions:
-
-- [ ] propõe teste concorrente simulando duas requisições paralelas sobre saldo finito
-- [ ] valida pré-condição de leitura isolada com sessões independentes e version_id inicial
-- [ ] sincroniza as threads no ponto crítico de gravação (OCC) e valida retornos de espera
-- [ ] assert comprova que exatamente uma requisição conclui e a outra falha por conflito de versão
-- [ ] assert verifica que o saldo final é debitado exatamente uma vez (20.00), nunca negativo
-- [ ] assert comprova política de idempotência: rejeição concorrente in-flight e cache após conclusão
-
-### Cenário 4: Isolamento multi-tenant
-
-Assertions:
-
-- [ ] cria fixture explícita com dois workspaces distintos e recursos associados
-- [ ] inclui controle positivo duplo comprovando que ambos os donos acessam seus recursos com HTTP 200
-- [ ] assert verifica rejeição bidirecional com status codes exatos contratados (404 para sigilo e 403 para workspace)
-- [ ] assert valida ausência de dados do recurso em corpo e headers da resposta
-- [ ] inclui casos de teste para token ausente e expirado retornando HTTP 401
-- [ ] não substitui a regra de autorização ou filtro de workspace por mocks

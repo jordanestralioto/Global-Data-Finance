@@ -72,6 +72,7 @@ class CvmDownloadAdapter:
             verify=True,
             max_redirects=5,
             follow_redirects=follow_redirects,
+            allow_cross_origin_redirects=False,
             default_headers=headers,
         )
         self.retry_strategy = RetryStrategy(

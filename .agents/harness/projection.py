@@ -10,7 +10,10 @@ it writes last.
 It never invokes a mirror generator and never decides what is selected; the
 only subprocess it runs is the Git guard. Everything it removes or
 overwrites is either listed as managed by the previous lock or is the target
-path of a component being materialized by this run.
+path of a component being materialized by this run. Those paths, ``.agents``,
+the staging directory and the lock must stay below the repository root with
+no symbolic link in any component, dangling ones included, so a linked
+``.agents`` never turns publication into I/O outside the repository.
 """
 
 from __future__ import annotations
@@ -19,11 +22,12 @@ import json
 import os
 import shutil
 import subprocess
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from harness import selection
+from harness import mirror_paths, mirrors, selection
 from harness.paths import HARNESS_ROOT
 from harness.projection_modes import AGENTS_DIR_NAME, BASE_DIRS
 
@@ -52,6 +56,32 @@ class Plan:
 
 def _agents_root(repo_root: Path) -> Path:
     return repo_root / AGENTS_DIR_NAME
+
+
+# Paths publication touches whatever the selection: root, staging and lock.
+OWNED_PATHS = (
+    AGENTS_DIR_NAME,
+    f'{AGENTS_DIR_NAME}/{selection.STAGING_DIR_NAME}',
+    f'{AGENTS_DIR_NAME}/{selection.LOCK_NAME}',
+)
+
+
+def _refuse_links(repo_root: Path, relative_paths: Iterable[str]) -> None:
+    """Refuse paths with a link in any component, as mirror I/O does."""
+    unsafe = []
+    for relative_path in sorted(set(relative_paths)):
+        try:
+            mirror_paths.inspect(repo_root, repo_root / relative_path)
+        except mirror_paths.UnsafePath as exc:
+            unsafe.append(f'{relative_path} ({exc})')
+    if unsafe:
+        raise ProjectionError(
+            'projection paths traverse a symbolic link or leave the '
+            'repository: '
+            + ', '.join(unsafe)
+            + '; replace the links with real directories, then rerun '
+            'harness-sync'
+        )
 
 
 def _relative(target: Path, repo_root: Path) -> str:
@@ -160,6 +190,8 @@ def plan(
 ) -> Plan:
     if catalog is None:
         catalog = selection.load_catalog()
+    if run_guard:
+        _refuse_links(repo_root, OWNED_PATHS)
     previous = set(_previous_managed_paths(repo_root, catalog))
     targets = _targets(resolution)
 
@@ -173,6 +205,8 @@ def plan(
             'reserved consumer-owned validation path cannot be managed: '
             + ', '.join(overlaps)
         )
+    if run_guard:
+        _refuse_links(repo_root, previous | set(targets))
 
     replacements: list[Replacement] = []
     for target in targets:
@@ -185,6 +219,17 @@ def plan(
             _git_guard(target, repo_root)
         component = _component_for_target(resolution, target)
         replacements.append(Replacement(component=component, path=target))
+    refused = (
+        mirrors.collisions(repo_root, targets, previous) if run_guard else []
+    )
+    if refused:
+        raise ProjectionError(
+            'mirror targets of newly selected components have a symbolic '
+            'link in their path or hold content Git cannot restore: '
+            + ', '.join(refused)
+            + '; remove symbolic links or commit or move conflicting content, '
+            'then rerun harness-sync'
+        )
 
     removed = tuple(sorted(previous - set(targets)))
     return Plan(
@@ -296,6 +341,10 @@ def publish(
     lock_bytes: bytes,
 ) -> None:
     repo_root = plan.repo_root
+    # The writer checks again: a plan may predate a link or skip its guard.
+    _refuse_links(
+        repo_root, (*OWNED_PATHS, *plan.managed_paths, *plan.removed_paths)
+    )
     agents_root = _agents_root(repo_root)
     agents_root.mkdir(parents=True, exist_ok=True)
     staging = agents_root / selection.STAGING_DIR_NAME

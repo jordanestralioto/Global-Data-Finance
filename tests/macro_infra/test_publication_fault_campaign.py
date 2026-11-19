@@ -16,8 +16,8 @@ from tests.support.publication_crashes import ARTIFACT_NAMES
 
 pytestmark = [
     pytest.mark.integration,
-    pytest.mark.slow,
-    pytest.mark.skipif(
+    pytest.mark.slow,  # skip-reason: sharded release fault campaign
+    pytest.mark.skipif(  # skip-reason: native Linux fork campaign
         sys.platform != 'linux',
         reason='the complete fork/descriptor campaign runs on native Linux',
     ),

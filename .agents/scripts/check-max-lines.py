@@ -236,6 +236,10 @@ HARD_SKIPS = (
     ('coverage/', 'build-output'),
 )
 
+# Data subtrees: their non-source files are hard skips, while a recognized
+# source file inside them keeps its ordinary classification.
+DATA_SKIPS = frozenset({'evidence', 'snapshot'})
+
 RECORD_KEYS = (
     'path',
     'classification',
@@ -356,13 +360,23 @@ def hard_skip_reason(path: str) -> str | None:
         if path.startswith(prefix):
             return reason
     parts = path.split('/')
+    if len(parts) >= 3 and parts[0] == 'skills' and parts[2] == 'references':
+        return 'skill-reference'
     if 'evidence' in parts:
         return 'evidence'
     if 'snapshots' in parts:
         return 'snapshot'
-    if len(parts) >= 3 and parts[0] == 'skills' and parts[2] == 'references':
-        return 'skill-reference'
     return None
+
+
+def _is_source(path: str, data: bytes, policy: Policy) -> bool:
+    """Recognize source by registry name, extension or supported shebang."""
+    lower = path.lower()
+    return (
+        path.split('/')[-1] in EXTENSIONLESS
+        or any(lower.endswith(ext) for ext in (*SUFFIXES, *policy[0]))
+        or shebang_interpreter(data) in INTERPRETERS
+    )
 
 
 def classify(
@@ -383,7 +397,9 @@ def classify(
     if b'\0' in data:
         return 'skip', 'binary-data', data, False
     hard = hard_skip_reason(path)
-    if hard is not None:
+    if hard is not None and not (
+        hard in DATA_SKIPS and _is_source(path, data, policy)
+    ):
         return 'skip', hard, data, False
     matches = [(p, c, r) for p, c, r in policy[1] if match_glob(p, path)]
     if len(matches) > 1:
@@ -406,17 +422,9 @@ def classify(
         name.startswith('README') and name.endswith('.md')
     ):
         return 'documentation', None, data, False
-    lower = path.lower()
-    if (
-        any(lower.endswith(ext) for ext in (*SUFFIXES, *policy[0]))
-        or name in EXTENSIONLESS
-    ):
+    if _is_source(path, data, policy):
         return 'production', None, data, False
-    interpreter = shebang_interpreter(data)
-    if interpreter is not None:
-        cls = 'production' if interpreter in INTERPRETERS else 'unclassified'
-        return cls, None, data, False
-    if info.st_mode & 0o111:
+    if shebang_interpreter(data) is not None or info.st_mode & 0o111:
         return 'unclassified', None, data, False
     return 'skip', 'unrecognized-non-executable', data, False
 
@@ -434,20 +442,14 @@ def evaluate(
     tracked = set(paths)
     for path in paths:
         cls, reason, data, policy_skip = classify(root, path, policy)
+        if cls in ('skip', 'unclassified') and path in entries:
+            outcome.violations.append(f'baseline entry not enforced: {path}')
         if cls == 'skip':
-            if path in entries:
-                outcome.violations.append(
-                    f'baseline entry not enforced: {path}'
-                )
             record = Record(
                 path, 'skip', None, None, reason, 'skip', policy_skip
             )
         elif cls == 'unclassified':
             outcome.errors.append(f'unclassified executable source: {path}')
-            if path in entries:
-                outcome.violations.append(
-                    f'baseline entry not enforced: {path}'
-                )
             record = Record(
                 path,
                 'unclassified',
@@ -1030,14 +1032,10 @@ def _execute(args: argparse.Namespace) -> tuple[int, Outcome]:
         validate_baseline(root, current, policy, outcome.evaluated)
     )
     entries = {entry.path: entry for entry in baseline}
+    expected = render_inventory(outcome.records, entries).encode('utf-8')
     if args.write_inventory:
-        _write_artifact(
-            root,
-            INVENTORY_PATH,
-            render_inventory(outcome.records, entries).encode('utf-8'),
-        )
+        _write_artifact(root, INVENTORY_PATH, expected)
     if args.write_inventory or args.check_inventory or policy[2]:
-        expected = render_inventory(outcome.records, entries).encode('utf-8')
         actual = _read_artifact(root, INVENTORY_PATH) or b''
         if actual != expected:
             outcome.violations.append(

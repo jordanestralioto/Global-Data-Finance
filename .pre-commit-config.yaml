@@ -8,12 +8,16 @@
 #   pre-push   : full type, test and dependency checks before publishing
 #
 # Bootstrap once with `uv sync --locked --all-extras --dev`, then install every
-# stage with: `uv run --locked --no-sync pre-commit install --install-hooks`.
+# stage with: `uv run --locked --no-sync pre-commit install --install-hooks`,
+# followed by the validator that checks every ref of a push:
+# `uv run --locked --no-sync python scripts/check_push_snapshot.py --install`.
 ---
 minimum_pre_commit_version: "4.3.0"
 
 default_install_hook_types: [pre-commit, commit-msg, pre-push]
 # Without this, every hook that omits `stages` would also re-run on push.
+# It does not override stages a remote manifest declares, so those hooks pin
+# `stages` explicitly below.
 default_stages: [pre-commit]
 
 # No `default_language_version` on purpose. Pinning `python3.12` here made
@@ -28,10 +32,11 @@ default_stages: [pre-commit]
 
 # `.agents/` is tracked so clones carry the portable validators, while the
 # central-skills project remains the only owner of generated harness content.
-# Generic file-based hooks must not format or inspect those projections.
+# Auto-fixers and lexical hooks exclude it locally; read-only validators and
+# secret scanners keep inspecting it. The client mirrors below are generated
+# locally and ignored by Git; Gitleaks still scans anything force-added.
 exclude: |
   (?x)^(
-    \.agents/|
     \.claude/|
     \.codex/|
     \.opencode/|
@@ -81,6 +86,11 @@ repos:
         name: uv-lock-check
         # `uv lock --check` is read-only. Do not replace it with `uv lock` or
         # `uv sync`: those can alter tracked resolution or the environment.
+        # A pyproject.toml change that alters the declared dependencies makes
+        # it build the project metadata with hatchling and hatch-vcs; without
+        # them in the uv cache it needs the package index, and offline it fails
+        # closed. Edits that keep the dependencies, such as the description,
+        # did not need them with uv 0.13.7.
         entry: uv lock --check
         language: system
         pass_filenames: false
@@ -156,6 +166,27 @@ repos:
         always_run: true
         stages: [pre-commit]
 
+      # Pre-push hooks inspect the checkout, not the pushed objects, and
+      # pre-commit exposes only the first pushed ref. The validator installed
+      # by `check_push_snapshot.py --install` runs first with every ref of
+      # the push and refuses any that publishes a commit other than the
+      # checkout. This guard requires that validator, checks the first ref,
+      # and requires a clean checkout before the expensive hooks run. Manual
+      # runs report SKIP and cover the working tree. Incremental pushes stash
+      # unstaged tracked edits first, so this guard sees them only when the
+      # push includes a root commit. Both checks judge which commits are new
+      # by the local remote-tracking refs.
+      - id: push-snapshot
+        name: push-snapshot
+        entry: >-
+          uv run --locked --no-sync python
+          scripts/check_push_snapshot.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        fail_fast: true
+        stages: [pre-push]
+
       - id: test-quality
         name: test-quality
         entry: >-
@@ -181,7 +212,10 @@ repos:
     # frozen: v6.0.0
     rev: 3e8a8703264a2f4a69428a0aa4dcb512790b2c8c  # pragma: allowlist secret
     hooks:
+      # These manifests also declare pre-push; fixers must not edit the
+      # checkout while a push is being validated.
       - id: trailing-whitespace
+        stages: [pre-commit]
         exclude: |
           (?x)^(
             \.agents/|
@@ -191,6 +225,7 @@ repos:
             \.github/prompts/
           )
       - id: end-of-file-fixer
+        stages: [pre-commit]
         exclude: |
           (?x)^(
             \.agents/|
@@ -216,12 +251,16 @@ repos:
       - id: check-ast
       - id: check-added-large-files
         args: ["--maxkb=500"]
+        stages: [pre-commit]
       - id: check-case-conflict
       - id: detect-private-key
       - id: check-executables-have-shebangs
+        stages: [pre-commit]
       - id: check-shebang-scripts-are-executable
+        stages: [pre-commit]
       - id: check-symlinks
       - id: destroyed-symlinks
+        stages: [pre-commit]
       - id: forbid-submodules
       - id: name-tests-test
         args: ["--pytest-test-first"]
@@ -235,11 +274,15 @@ repos:
   # below; the base configuration intentionally does not enable `S` globally.
 
   # Secret Detection: detect-secrets (baseline-driven, entropy + plugins)
-  - repo: https://github.com/Yelp/detect-secrets
-    # frozen: v1.5.0
-    rev: 68e8b45440415753fff70a312ece8da92ba85b4a  # pragma: allowlist secret
+  # Tools that CI also runs from uv.lock (detect-secrets, Ruff, mdformat) run
+  # from that same locked environment here, so hook and CI versions cannot
+  # drift apart and no unpinned transitive dependency is resolved for them.
+  - repo: local
     hooks:
       - id: detect-secrets
+        name: detect-secrets
+        entry: uv run --locked --no-sync detect-secrets-hook
+        language: system
         args:
           - "--baseline"
           - ".secrets.baseline"
@@ -252,8 +295,9 @@ repos:
 
   # Secret Detection: gitleaks (provider-specific token patterns)
   - repo: https://github.com/gitleaks/gitleaks
-    # frozen: v8.30.0
-    rev: 2ca41cc1372d1e939a6a879f18cdc19fc1cac1ce  # pragma: allowlist secret
+    # frozen: v8.30.0 release commit, not the annotated tag object that
+    # `git rev-parse v8.30.0` returns.
+    rev: 6eaad039603a4de39fddd1cf5f727391efe9974e  # pragma: allowlist secret
     hooks:
       - id: gitleaks
         args: [--redact, --config=.gitleaks.toml]
@@ -270,15 +314,21 @@ repos:
   # --------------------------------------------------------------------------
   # 4. Formatting & Linting
   # --------------------------------------------------------------------------
-  # Ruff check/format enforce base rules on changed Python files.
-  # The local policy hook below owns the complete, path-scoped base, docs, and
+  # Ruff check/format enforce base rules on changed Python files with the
+  # uv-locked Ruff that CI runs. Automatic fixes stop at import ordering and
+  # formatting; every other finding fails for review instead of rewriting
+  # code before it is staged.
+  # The policy hook below owns the complete, path-scoped base, docs, and
   # security profiles so CI and local hooks share one auditable entrypoint.
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    # frozen: v0.17.3
-    rev: 25bcf95026b96e2dd3c0aec3090c3d6ef6ca2e6c  # pragma: allowlist secret
+  - repo: local
     hooks:
       - id: ruff-check
-        args: [--fix, --exit-non-zero-on-fix]
+        name: ruff-check
+        entry: uv run --locked --no-sync ruff check --force-exclude
+        language: system
+        types_or: [python, pyi, jupyter]
+        require_serial: true
+        args: [--fix, --exit-non-zero-on-fix, --fixable=I]
         exclude: |
           (?x)^(
             \.agents/|
@@ -288,8 +338,12 @@ repos:
             \.github/prompts/
           )
       - id: ruff-format
+        name: ruff-format
+        entry: uv run --locked --no-sync ruff format --force-exclude
+        language: system
         # Ruff 0.17 also formats Markdown code blocks; keep it on Python.
         types_or: [python, pyi, jupyter]
+        require_serial: true
         exclude: |
           (?x)^(
             \.agents/|
@@ -299,8 +353,6 @@ repos:
             \.github/prompts/
           )
 
-  - repo: local
-    hooks:
       - id: ruff-policy
         name: ruff-policy
         entry: >-
@@ -311,23 +363,26 @@ repos:
         always_run: true
         stages: [pre-commit, pre-push]
 
-  - repo: https://github.com/hukkin/mdformat
-    # frozen: 1.0.0
-    rev: 2d496dbc18e31b83a1596685347ffe0b6041daf0  # pragma: allowlist secret
+  - repo: local
     hooks:
       - id: mdformat
+        name: mdformat
+        # mdformat loads every installed plugin; uv.lock pins mdformat-gfm and
+        # its transitive dependencies.
+        entry: uv run --locked --no-sync mdformat
+        language: system
+        types: [markdown]
         # `--number` keeps 1./2./3. numbering instead of collapsing every
         # ordered-list item to "1.", which reads badly in raw Markdown.
         args: ["--number"]
-        additional_dependencies: ["mdformat-gfm==1.0.0"]
         # docs/ is built and strictly validated by MkDocs Material; mdformat
         # does not support Python-Markdown admonitions (!!!) and would corrupt
         # 4-space callout indentations.
         # Canonical source lives in the installed central distribution;
         # .agents/ is a public, tracked projection; .claude/, .codex/,
         # .opencode/ and .github/prompts/ are generated mirrors. The global
-        # exclusion keeps these paths out of generic hooks; this local guard
-        # prevents drift if a projection is passed to mdformat explicitly.
+        # exclusion covers only the mirrors; this local guard also keeps the
+        # formatter off the tracked projection.
         exclude: |
           (?x)^(
             docs/|

@@ -10,7 +10,7 @@ failure, 2 usage error.
 The pinned version is verified against the installed distribution and never
 fetched; ``--update`` is the one operation that moves the pin. This module
 is the only caller of the mirror generators, which run as subprocesses after
-a successful publish.
+a successful publish and receive the paths the previous lock managed.
 """
 
 from __future__ import annotations
@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from harness import client_links, projection, projection_modes, selection
+from harness.mirrors import previous_flags
 from harness.paths import HARNESS_ROOT, repo_root
 
 DISTRIBUTION_NAME = 'central-skills'
@@ -82,10 +83,12 @@ def _report_replacements(plan: projection.Plan) -> None:
         _print(f'replaced {replacement.path} with {replacement.component}')
 
 
-def run_generator(script_name: str, root: Path) -> tuple[int, str]:
+def run_generator(
+    script_name: str, root: Path, previous: tuple[str, ...]
+) -> tuple[int, str]:
     script = HARNESS_ROOT / 'scripts' / script_name
     completed = subprocess.run(
-        [sys.executable, str(script)],
+        [sys.executable, str(script), *previous_flags(previous)],
         cwd=root,
         capture_output=True,
         text=True,
@@ -95,21 +98,19 @@ def run_generator(script_name: str, root: Path) -> tuple[int, str]:
     return completed.returncode, output
 
 
-def run_fanout(root: Path) -> int:
+def run_fanout(root: Path, previous: tuple[str, ...]) -> int:
     failures: list[str] = []
     try:
         client_links.synchronize(root)
     except client_links.ClientLinkError as exc:
         failures.append(f'client links failed:\n{exc}')
     for script_name in GENERATOR_SCRIPTS:
-        returncode, output = run_generator(script_name, root)
+        returncode, output = run_generator(script_name, root, previous)
         if returncode != 0:
             failures.append(f'{script_name} failed:\n{output.strip()}')
     for failure in failures:
         print(failure, file=sys.stderr)
-    if failures:
-        return 1
-    return 0
+    return 1 if failures else 0
 
 
 def _projection_matches(resolution: selection.Resolution, root: Path) -> bool:
@@ -130,13 +131,11 @@ def default_mode(no_sync: bool) -> int:
         return _error(str(exc))
     lock_bytes = selection.build_lock(resolution, manifest.version, plan)
     lock_path = root / '.agents' / selection.LOCK_NAME
-    if (
+    if not (
         lock_path.is_file()
         and lock_path.read_bytes() == lock_bytes
         and _projection_matches(resolution, root)
     ):
-        pass
-    else:
         try:
             projection.publish(resolution, plan, lock_bytes)
         except projection.ProjectionError as exc:
@@ -144,7 +143,7 @@ def default_mode(no_sync: bool) -> int:
         _report_replacements(plan)
     if no_sync:
         return 0
-    return run_fanout(root)
+    return run_fanout(root, plan.previous_managed)
 
 
 def _lock_summary(old: dict[str, Any], new: bytes) -> list[str]:
@@ -380,7 +379,7 @@ def update_mode(no_sync: bool) -> int:
         return _error(str(exc))
     if no_sync:
         return 0
-    return run_fanout(root)
+    return run_fanout(root, plan.previous_managed)
 
 
 def list_mode() -> int:

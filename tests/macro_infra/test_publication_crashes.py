@@ -333,7 +333,7 @@ def test_initial_ownership_temporary_cannot_alias_caller_data(
             temporary.symlink_to(caller)
         except OSError as error:
             if os.name == 'nt' and getattr(error, 'winerror', None) == 1314:
-                pytest.skip(
+                pytest.skip(  # skip-reason: needs symlink privilege
                     'Windows symlink capability unavailable: error 1314'
                 )
             raise

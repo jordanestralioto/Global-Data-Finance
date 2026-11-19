@@ -61,8 +61,7 @@ A linguagem do consumidor não muda a obrigação de provar a invariante.
 
 ## PostgreSQL e operação de DDL
 
-Use estes pontos para identificar a evidência necessária, sem duplicar tuning
-operacional da skill `supabase` quando ela estiver disponível:
+Use estes pontos para identificar a evidência necessária:
 
 - `lock_timeout` limita a espera para adquirir cada lock. Não limita por si só
   quanto tempo uma operação mantém um lock após adquiri-lo; distinga-o de
@@ -79,6 +78,6 @@ Fontes: [timeouts](https://www.postgresql.org/docs/current/runtime-config-client
 [CREATE INDEX](https://www.postgresql.org/docs/current/sql-createindex.html).
 
 Quando o centro do problema for RLS, grants, papéis privilegiados, pooling,
-locks ou tuning operacional, siga o roteamento do corpo da skill. Se a skill
-especializada não estiver instalada, explicite o limite e consulte fontes
-oficiais da versão; não substitua a prova por uma regra genérica de SQL.
+locks ou tuning operacional, siga o roteamento do corpo da skill: explicite o
+limite e consulte fontes oficiais da versão; não substitua a prova por uma
+regra genérica de SQL.

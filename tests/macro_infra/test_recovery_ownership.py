@@ -157,7 +157,9 @@ def test_nonprivate_recovery_state_is_rejected_before_mutation(
 ) -> None:
     """A shared journal or transaction directory provides no authority."""
     if not hasattr(os, 'geteuid'):
-        pytest.skip('POSIX ownership and permission contract')
+        pytest.skip(  # skip-reason: POSIX-only ownership semantics
+            'POSIX ownership and permission contract'
+        )
     _publisher, publication, final = _registered_publication(tmp_path)
     _mark_process_dead(tmp_path)
     path = {
@@ -341,7 +343,7 @@ def test_cleanup_preserves_substituted_private_caller_directory(
     )
 
 
-@pytest.mark.skipif(
+@pytest.mark.skipif(  # skip-reason: needs descriptor-relative os.open
     os.open not in os.supports_dir_fd, reason='Descriptor-relative cleanup'
 )
 def test_cleanup_uses_opened_root_after_directory_name_is_replaced(

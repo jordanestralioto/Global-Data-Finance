@@ -624,7 +624,7 @@ def test_historical_quotes_b3_last_phase_timings_reset_on_missing_year(
     assert client.last_phase_timings == {}
 
 
-@pytest.mark.slow
+@pytest.mark.slow  # skip-reason: wall-clock process-pool cancellation
 @pytest.mark.asyncio
 async def test_active_process_pool_cancellation_cleans_up_bounded(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch

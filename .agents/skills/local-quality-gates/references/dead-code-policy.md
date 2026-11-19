@@ -3,6 +3,15 @@
 > Summary: Assess each capability separately, enforce the selected project
 > policy, and distinguish analyzer results from contract review.
 
+## Contents
+
+- [1. Capability Report](#1-capability-report)
+- [2. Tool Selection](#2-tool-selection)
+- [3. Graph, Snapshot, and Invocation](#3-graph-snapshot-and-invocation)
+- [4. Findings, Review, and Exceptions](#4-findings-review-and-exceptions)
+- [5. Native Outcomes and Evidence](#5-native-outcomes-and-evidence)
+- [6. Example Capability Report](#6-example-capability-report)
+
 ## 1. Capability Report
 
 Assess `[DEAD_CODE]` in full setups, audits, or requests concerning unused code.

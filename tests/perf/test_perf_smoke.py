@@ -23,7 +23,10 @@ from globaldatafinance.brazil.cvm.fundamental_stocks_data.client import (
 )
 from tests.support.builders import build_cotahist_record
 
-pytestmark = [pytest.mark.perf, pytest.mark.slow]
+pytestmark = [
+    pytest.mark.perf,  # skip-reason: opt-in benchmark tier
+    pytest.mark.slow,  # skip-reason: opt-in benchmark tier
+]
 
 
 def test_benchmark_cvm_url_generation(benchmark) -> None:

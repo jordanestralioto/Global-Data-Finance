@@ -235,7 +235,9 @@ def test_repeated_validation_keeps_symlink_destination_canonical(
     try:
         link.symlink_to(first, target_is_directory=True)
     except OSError as error:
-        pytest.skip(f'symlink support is unavailable: {error}')
+        pytest.skip(  # skip-reason: platform without symlink support
+            f'symlink support is unavailable: {error}'
+        )
 
     publisher = TransactionalPublisher(link, owner='test')
     publisher.validate_destination()

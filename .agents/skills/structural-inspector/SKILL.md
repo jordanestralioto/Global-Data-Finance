@@ -14,21 +14,23 @@ description: >-
 
 ## O Princípio do Zero Memory Overhead
 
-Quando inspecionar arquivos grandes de dados de forma investigativa, **não use abstrações da linguagem (ex: pandas, json)** para leitura inicial. Abstrações de parser assumem dados bem formados e explodem a memória.
+Na leitura inicial de um arquivo grande ou suspeito, **não o carregue com um leitor de alto nível (pandas, `json.load`)**: ele assume dados bem formados e põe tudo na memória. Comece pelos bytes. Use um parser só em streaming, sobre poucos registros, depois de conhecer encoding e delimitador.
 
 ### Tática: Byte-Sniffing (Linux CLI)
 
 ```bash
 # 1. Identificar tipo real (independente de extensão)
-file -i dataset.csv
+file --mime dataset.csv
 
-# 2. Descobrir codificação (Encoding) ou presença de BOM
-uchardet dataset.csv || file -I dataset.csv
+# 2. Descobrir codificação (Encoding) ou presença de BOM ("ef bb bf" = BOM UTF-8)
+uchardet dataset.csv || file --mime-encoding dataset.csv
+head -c 3 dataset.csv | od -An -tx1
 
 # 3. Detectar quebras de linha misturadas (CRLF vs LF)
 head -n 1000 dataset.csv | grep -U $'\r$' | wc -l
 
-# 4. Amostrar dados ignorando tamanho (Stream)
+# 4. Amostrar dados ignorando tamanho (Stream). Em CSV com quebra de linha
+#    entre aspas, cortar por linha pode partir um registro ao meio.
 head -n 50 dataset.csv > sample_dataset.csv
 ```
 
@@ -38,21 +40,38 @@ ______________________________________________________________________
 
 ### CSV / TSV
 
-- **Verificação Rápida de Colunas:**
+- **Campos por registro:** conte com um parser CSV em streaming, não com
+  `awk -F','`, `cut` ou `wc -l`. Vírgula e quebra de linha dentro de aspas são
+  CSV válido, e uma contagem por linha as trata como separadores: um arquivo
+  correto parece quebrado.
   ```bash
-  head -n 1 dataset.csv | awk -F',' '{print NF}'
-  # Ver se linhas subsequentes quebram o padrão
-  head -n 100 dataset.csv | awk -F',' '{print NF}' | sort | uniq -c
+  python3 - dataset.csv <<'EOF'
+  import collections, csv, itertools, sys
+  with open(sys.argv[1], newline='', encoding='utf-8', errors='replace') as f:
+      rows = itertools.islice(csv.reader(f, delimiter=','), 1000)
+      print(collections.Counter(len(row) for row in rows))
+  EOF
   ```
-- **Separadores Anômalos:** Vírgulas dentro de campos ou quebras de linha mal escapadas em strings quebram parsers.
+  Ajuste `encoding` e `delimiter` ao que o byte sniffing mostrou. Uma única
+  contagem indica estrutura consistente; mais de uma aponta os registros a
+  conferir antes de declarar o arquivo corrompido.
+- **Separadores anômalos:** o que quebra um parser é aspas desbalanceadas, o
+  delimitador dentro de um campo sem aspas ou a mistura de delimitadores, não
+  vírgulas entre aspas.
 
 ### JSONL (JSON Lines)
 
 - Em JSONL, cada linha é um JSON válido.
-- **Validador Rápido de Quebras (sem falhar por 1 erro):**
+- **Validador de linhas** (lista todas as inválidas, sem parar na primeira):
   ```bash
-  head -n 1000 data.jsonl | jq -c . > /dev/null
+  head -n 1000 data.jsonl | python3 -c 'import json, sys
+  for number, line in enumerate(sys.stdin.buffer, 1):
+      try:
+          json.loads(line)
+      except ValueError as error:
+          print(number, error)'
   ```
+  Saída vazia significa que todas as linhas amostradas são JSON válido.
 - **Inspeção de Schema Inferida:**
   Pegue as chaves da primeira linha:
   ```bash
@@ -75,7 +94,7 @@ ______________________________________________________________________
 ## Detecção de Oportunidades de Otimização (Recon)
 
 1. **Campos muito longos ou repetitivos em JSON:** Podem ser melhor compactados mudando o schema para array posicional ou usar Parquet Dictionary Encoding se armazenados em banco colunar.
-2. **Tipos Amplos Incorretos:** Detectar `float64` onde poderia ser `float32` ou int. Extraia uma coluna e confira o valor máximo.
+2. **Tipos mais largos que o necessário:** antes de sugerir inteiro para uma coluna `float64`, confirme na coluna inteira, não só na amostra, que não há casas decimais e que mínimo e máximo cabem no tipo. O máximo sozinho não basta: preços como `38.27` cabem em `Int16` e perderiam os centavos. `float32` guarda cerca de 7 dígitos significativos; não o sugira para valores monetários.
 3. **Strings Escapadas Duplamente:** Anomalias em APIs REST antigas (ex: JSON serializado como string dentro de JSON).
    ```bash
    # Procurar por escapamento excessivo
@@ -88,9 +107,9 @@ ______________________________________________________________________
 
 - [ ] A codificação exata foi verificada (UTF-8, Latin-1, com ou sem BOM)?
 - [ ] O separador de quebra de linha está consistente (`\n` vs `\r\n`)?
-- [ ] Em CSV, a contagem de colunas por linha é absolutamente idêntica na amostra?
+- [ ] Em CSV, a contagem de campos por registro, feita por um parser CSV, é idêntica na amostra?
 - [ ] Foram encontradas strings duplamente escapadas ou JSON aninhado em strings?
-- [ ] Em datasets >1GB, a inspeção inicial usou stream (`head`, `awk`) em vez de carregar tudo?
+- [ ] Em datasets >1GB, a inspeção inicial usou leitura em streaming (`head`, parser sobre poucos registros) em vez de carregar tudo?
 
 ## Procedimento
 
@@ -101,7 +120,14 @@ ______________________________________________________________________
 
 ## Scripts
 
-- `scripts/inspector.py`: faz inspeção estrutural streaming/byte-level de arquivos.
+- `scripts/inspector.py --path <arquivo>`: relatório JSON de schema de CSV,
+  Parquet ou Excel. Requer `polars` no ambiente; sem ele, sai com código 2 e
+  diz o que instalar. Nesse caso, use os comandos acima. As estatísticas vêm de
+  uma amostra (o arquivo inteiro até 2.000 linhas; acima disso, as 1.000
+  primeiras e as 1.000 últimas), indicada em `sample_rows` e
+  `source_is_sample`. Sugestões `CHECK` valem só para a amostra: confirme na
+  coluna inteira antes de converter tipos. Sai com código 1 quando o relatório
+  traz `error`.
 
 ## Exemplos
 
@@ -114,20 +140,3 @@ ______________________________________________________________________
 
 **Entrada:** Usuário pede interpretar regra de negócio no código.
 **Por quê não:** Não é inspeção estrutural de arquivo/dados.
-
-## Evals de trigger
-
-Deve acionar:
-
-- "identifica encoding e schema desse CSV enorme"
-- "inspeciona parquet sem carregar tudo"
-- "esse JSONL tem BOM ou quebra de linha CRLF?"
-- "por que o parser falhou ao ler esse arquivo binário?"
-- "descobre o delimitador e encoding desse arquivo"
-
-Não deve acionar:
-
-- "interpreta regra de negócio"
-- "redesenha UI"
-- "otimiza query lenta no Postgres"
-- "escreve teste unitário para o parser"

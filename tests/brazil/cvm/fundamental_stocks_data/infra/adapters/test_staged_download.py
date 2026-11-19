@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import os
 import zipfile
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -144,6 +145,50 @@ class TestCvmStagedDownloadFlow:
         assert 'SecurityError' in result.failed_downloads['DRE_2023']
         assert target.read_bytes() == old_bytes
         assert _staging_files(target) == []
+
+    @pytest.mark.parametrize('folder', ['timeout', 'unavailable'])
+    async def test_limit_rejection_is_not_retried_for_a_keyword_destination(
+        self, tmp_path, monkeypatch, folder
+    ):
+        destination = tmp_path / folder
+        destination.mkdir()
+        limit = ArchiveSafetySettings().max_archive_bytes
+        calls = 0
+
+        def response_factory(url: str) -> FakeResponse:
+            nonlocal calls
+            calls += 1
+            return FakeResponse(
+                url,
+                [b'oversized response'],
+                headers={'content-length': str(limit + 1)},
+            )
+
+        install_fake_http_client(monkeypatch, response_factory)
+        adapter = CvmDownloadAdapter(
+            file_extractor_repository=MagicMock(),
+            max_retries=2,
+            initial_backoff=0.0,
+            max_backoff=0.0,
+        )
+
+        result = await adapter.async_download_docs(
+            [
+                (
+                    'https://example.com/file.zip',
+                    'DRE',
+                    '2023',
+                    str(destination),
+                )
+            ],
+            automatic_extractor=False,
+        )
+
+        error = result.failed_downloads['DRE_2023']
+        assert calls == 1
+        assert error.startswith('SecurityError: ')
+        assert f'{os.sep}{folder}{os.sep}' in error
+        assert list(destination.iterdir()) == []
 
     async def test_exhausted_retries_preserve_existing_target(
         self, tmp_path, monkeypatch

@@ -15,24 +15,13 @@ description: >-
 
 ## Fundamentos não-óbvios
 
-Decisão arquitetural não é sinônimo de escolher framework, banco ou buzzword.
-Ela existe quando a conversa mexe em fronteiras, ownership, deploy, consistência,
-blast radius, operabilidade, contratos compartilhados ou custo de evolução.
-
 O melhor critério raramente é "o que times maiores costumam usar". Tamanho de
 equipe, volume e maturidade influenciam a análise, mas não decidem sozinhos.
 Escolha a menor mudança estrutural que resolva o risco dominante.
 
-Arquitetura boa explicita custo operacional. Se uma alternativa adiciona fila,
-orquestração, tracing, múltiplos deploys ou reconciliação eventual, isso deve
-aparecer na recomendação final em vez de ficar implícito.
-
 Simplicidade é default, não dogma. Adiar complexidade faz sentido quando o risco
 principal continua coberto; ignorar falha, latência, consistência ou isolamento
 porque "depois a gente vê" costuma apenas empurrar dívida para produção.
-
-Recomendação arquitetural boa escolhe um vencedor e nomeia o que fica mais difícil
-depois da escolha. Se a resposta não diz o que piora, ela está incompleta.
 
 Descubra os comandos de build, teste e validação no repositório em análise. A
 fronteira deve fazer sentido para a linguagem e o runtime existentes; a skill não
@@ -50,14 +39,13 @@ Leia apenas os arquivos relevantes para a decisão em mãos:
 | Estruturar comparação, decisão, mitigação e ADR               | `references/trade-off-analysis.md` |
 | Compor análise com sabatina, ADR e lifecycle formal           | `references/decision-handoffs.md`  |
 | Ver o contrato esperado da resposta final                     | `references/output-contract.md`    |
-| Validar manualmente a consistência da skill                   | `references/workflow-evals.md`     |
 | Ver exemplos concretos de decisões parecidas                  | `references/examples.md`           |
 
 Use `api-patterns` para detalhar HTTP, handlers, authz, status codes ou contratos
 de API. Para schema, tipos, constraints, migrations, índices e ownership dos dados,
-use `database-design`; para RLS, grants, pooling, service role ou particularidades
-de Supabase/Postgres, use `supabase`. Essas skills complementam a decisão de
-fronteira quando ela continuar arquitetural. Dúvidas de organização local de
+use `database-design`; para auditar RLS, grants ou service role, use
+`vulnerability-scanner`. Essas skills complementam a decisão de fronteira
+quando ela continuar arquitetural. Dúvidas de organização local de
 componente, hook ou módulo seguem para `modularizar` ou `frontend-design`.
 
 Use `resolve-open-questions` quando houver intenção explícita de persistir ou
@@ -69,10 +57,11 @@ o comportamento quando a skill de destino não estiver instalada.
 
 ## Procedimento
 
-1. Classifique se a dúvida é realmente arquitetural antes de responder.
-   Pergunte mentalmente se a decisão altera fronteiras, ownership, estratégia de
-   deploy, consistência, falha, observabilidade, contratos compartilhados ou custo
-   de mudança. Se não alterar nada disso, redirecione para a skill mais apropriada.
+1. Classifique se a dúvida é realmente arquitetural antes de responder: escolher
+   framework, banco ou ferramenta não basta. Pergunte se a decisão altera
+   fronteiras, ownership, estratégia de deploy, consistência, blast radius,
+   falha, observabilidade, contratos compartilhados ou custo de mudança. Se não
+   alterar nada disso, redirecione para a skill mais apropriada.
    Se já houver sabatina ou lifecycle ativo, confira sua fase e limites de escrita
    antes de produzir ADR, plano ou implementação.
 
@@ -98,14 +87,16 @@ o comportamento quando a skill de destino não estiver instalada.
    uma segunda opção inviável para completar a lista.
 
 5. Explicite o custo operacional da alternativa escolhida.
-   Fila, retries, eventual consistency, tracing distribuído, coordenação entre
-   times, múltiplos repositórios, contrato público e migração incremental precisam
-   aparecer como custo concreto, não como abstração elegante.
+   Fila, orquestração, retries, eventual consistency, tracing distribuído,
+   coordenação entre times, múltiplos deploys ou repositórios, contrato público e
+   migração incremental precisam aparecer como custo concreto, não como
+   abstração elegante.
 
 6. Recomende uma direção clara.
    A resposta final deve dizer qual opção vence, por que vence neste contexto, o
    que fica mais difícil depois dela, quais irreversibilidades foram aceitas e em
-   que sinais a decisão deve ser revisitada.
+   que sinais a decisão deve ser revisitada. Sem dizer o que piora, a
+   recomendação está incompleta.
 
 7. Produza um ADR curto quando a decisão sobreviver à conversa.
    Se a escolha afetar mais de um owner, mais de um deploy, contrato público ou
@@ -140,12 +131,18 @@ o comportamento quando a skill de destino não estiver instalada.
 
 ## Formato de saída recomendado
 
-Leia `references/output-contract.md` antes de entregar desenho ou decisão. Essa
-referência é a fonte única do esquema de saída, das exceções e das regras de
-qualidade. Entregue problema, evidência, alternativas, vencedor, custos e sinais de
-revisão em prosa; use o YAML quando ele ajudar o consumidor ou for solicitado.
+Uma decisão concluída entrega, em prosa:
+
+- escopo, causa raiz, restrições e 3 a 5 atributos de qualidade com evidência;
+- pelo menos duas alternativas reais, incluindo a mais simples viável; caminho
+  único só com a restrição e a evidência que excluem as demais;
+- uma vencedora explícita e os custos aceitos, que não podem ficar vazios;
+- o que fica mais difícil depois e o que é difícil de desfazer;
+- sinais observáveis para revisar a escolha e a necessidade de ADR.
+
 Durante descoberta ainda aberta, explicite as lacunas e o caráter provisório da
-recomendação antes de aplicar o contrato de uma decisão concluída.
+recomendação. Leia `references/output-contract.md` quando o consumidor pedir o
+YAML ou quando precisar das exceções e regras de qualidade detalhadas.
 
 ## Exemplos
 
@@ -170,28 +167,6 @@ invariante central e frontend apenas para projeção ou visualização se fizer 
 **Entrada:** "Onde coloco esse hook do React no meu repositório?"
 **Por quê não:** decisão local de organização e implementação. Direcione para
 `modularizar`, `frontend-design` ou `react-performance`.
-
-## Evals de trigger
-
-**Deve acionar:**
-
-- "Como separo esses módulos sem virar um Frankenstein?"
-- "Precisamos separar o worker do backend principal?"
-- "Vale usar fila aqui ou estou complicando demais?"
-- "Isso fica no backend ou no frontend?"
-- "Devo manter monólito modular ou extrair serviço?"
-- "Preciso de um ADR para essa decisão."
-- "Essa arquitetura está acoplada demais e difícil de evoluir."
-- "Essa estrutura hexagonal está certa?"
-
-**Não deve acionar:**
-
-- "Qual função do pandas eu uso para isso?" (Problema de linguagem/biblioteca)
-- "Como eu otimizo essa query SQL?" (Problema de banco de dados, use `database-design`)
-- "Minha policy RLS no Supabase esta lenta e preciso revisar grants." (Problema especifico de engine, use `supabase`)
-- "Onde coloco o middleware no Express?" (Problema de API/framework, use `api-patterns`)
-- "Esse componente React re-renderiza demais." (Problema de frontend/performance)
-- "Escreve um hook para consumir esse endpoint." (Implementação local, não arquitetura)
 
 ## Assets
 

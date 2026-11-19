@@ -2,6 +2,14 @@
 
 > Type safety end-to-end sem schema manual, sem code generation.
 
+## Sumário
+
+- [Anatomia de um router](#anatomia-de-um-router)
+- [Middleware de autenticação](#middleware-de-autentica%C3%A7%C3%A3o)
+- [Tratamento de erros](#tratamento-de-erros)
+- [Integração com React Query](#integra%C3%A7%C3%A3o-com-react-query)
+- [Anti-patterns](#anti-patterns)
+
 ## Anatomia de um router
 
 ```typescript

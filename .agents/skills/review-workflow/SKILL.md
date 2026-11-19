@@ -150,10 +150,3 @@ parecer formal, entregar a revisão leve sem artefatos.
 
 **Entrada:** "só roda os testes e me diz se passou"
 **Por quê não:** validação mecânica isolada pertence a `lint-and-validate`.
-
-## Evals de trigger
-
-Deve acionar: "review rápido desse diff", "fecha a revisão com parecer", "faz uma
-segunda leitura". Não deve acionar: "só roda os gates", "corrige esse bug" ou
-"explora esse possível IDOR". Casos completos e assertions verificáveis ficam em
-[references/evals.md](references/evals.md); leia ao avaliar ou alterar o workflow.

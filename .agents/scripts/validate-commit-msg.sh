@@ -5,23 +5,34 @@
 #   feat, fix, refactor, build, chore, test, docs, ci, evidence
 #
 # Runs as a commit-msg hook via pre-commit (stages: [commit-msg]).
+#
+# Exit codes: 0 accepted, 1 rejected message, 2 unreadable message file.
 
 set -euo pipefail
 
 MSG_FILE="${1:-.git/COMMIT_EDITMSG}"
-MSG=$(head -1 "$MSG_FILE")
+if ! MSG=$(head -n 1 -- "$MSG_FILE" 2>/dev/null); then
+  echo "ERROR [COMMIT_MSG]: cannot read commit message file: $MSG_FILE" >&2
+  exit 2
+fi
 
 # Skip merge and revert commits
 if [[ "$MSG" =~ ^Merge\  ]] || [[ "$MSG" =~ ^Revert\  ]]; then
   exit 0
 fi
 
-# Regex: type(scope): description
+# Regex: type(scope)!: description
 # Scope: optional, lowercase with hyphens/underscores/slashes
+# Breaking change: optional `!` before the colon (Conventional Commits 1.0)
 # Description: required, starts lowercase, no trailing period, max 500 chars
-PATTERN="^(feat|fix|refactor|build|chore|test|docs|ci|evidence)(\([a-z0-9/_-]+\))?: [a-z].{0,499}$"
+PATTERN="^(feat|fix|refactor|build|chore|test|docs|ci|evidence)(\([a-z0-9/_-]+\))?!?: [a-z](.*[^.])?$"
+MAX_DESCRIPTION_CHARS=500
 
-if echo "$MSG" | grep -Eq "$PATTERN"; then
+# The length is counted by Bash instead of a bounded `.{0,N}` repetition,
+# which GNU grep compiles for about a second in UTF-8 locales.
+DESCRIPTION="${MSG#*: }"
+if printf '%s\n' "$MSG" | grep -Eq "$PATTERN" &&
+  ((${#DESCRIPTION} <= MAX_DESCRIPTION_CHARS)); then
   exit 0
 fi
 
@@ -40,6 +51,7 @@ echo "  evidence(scope): description   - Gate evidence artifacts"
 echo ""
 echo "Rules:"
 echo "  - Scope is optional (lowercase, hyphens, underscores, slashes)"
+echo "  - Mark a breaking change with ! before the colon: feat(api)!: ..."
 echo "  - Description starts lowercase"
 echo "  - Max 500 chars, no trailing period"
 echo ""

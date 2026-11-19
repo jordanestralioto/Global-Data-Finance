@@ -6,6 +6,11 @@ Detects common test erosion patterns:
   - Skipped or xfailed tests (@pytest.mark.skip, it.skip, xit) - fail unless justified with reason
   - Unjustified net removal of assertion lines in test files
   - Deleted test files without staged policy authorization (.test-deletions.json)
+  - Renames that drop test classification or default test discovery
+
+Paths come from NUL-delimited staged metadata and each test file's patch is
+read as bytes and split by hunk counts, so Git quoting, prefixes, carriage
+returns, and patch-like content cannot change which file or line is checked.
 
 Fail-closed: Exits with code 2 on git errors, code 1 on violations, code 0 on clean pass.
 Zero external dependencies (Python 3.10+ standard library only).
@@ -15,10 +20,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
-from pathlib import Path
+from collections.abc import Iterator
+from pathlib import Path, PurePosixPath
 
 
 class GitInspectionError(Exception):
@@ -62,6 +69,17 @@ ALLOW_ASSERTION_REDUCTION_RE = re.compile(
     r'(?:allow-assertion-reduction|assertion-reduction-reason):\s*\S+.*',
     re.IGNORECASE,
 )
+# Broad classification folds case; default discovery below does not.
+TEST_NAME_RE = re.compile(
+    r'(?:test_.*\.py|.*_test\.py|.*\.(?:test|spec)\.[cm]?[jt]sx?)$',
+    re.IGNORECASE | re.DOTALL,
+)
+JS_TEST_NAME = r'.*\.(?:test|spec)\.[cm]?[jt]sx?'
+# pytest's default norecursedirs plus __pycache__; Jest and Vitest skip only
+# node_modules by default.
+PYTEST_SKIPPED_DIRS = r'\..*|.*\.egg|_darcs|build|CVS|dist|node_modules|venv|\{arch\}|__pycache__'
+HUNK_RE = re.compile(r'@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@')
+DIFF_FLAGS = ['--no-color', '--find-renames', '--no-ext-diff', '--no-textconv']
 
 
 def is_test_file(file_path: str) -> bool:
@@ -71,44 +89,46 @@ def is_test_file(file_path: str) -> bool:
     posix_path = p.as_posix().lower()
     return (
         name.startswith('test_')
-        or name.endswith(
-            (
-                '_test.py',
-                '.test.ts',
-                '.test.js',
-                '.test.tsx',
-                '.test.jsx',
-                '.spec.ts',
-                '.spec.js',
-                '.spec.tsx',
-                '.spec.jsx',
-            )
-        )
+        or TEST_NAME_RE.fullmatch(name) is not None
         or '/tests/' in posix_path
         or '/__tests__/' in posix_path
         or posix_path.startswith(('tests/', 'test/'))
     )
 
 
-def _run_git(
-    args: list[str], repo_root: Path | None = None
-) -> subprocess.CompletedProcess[str]:
-    """Run Git and distinguish command failures from empty results."""
+def is_default_discovered(file_path: str, *, fold_case: bool = False) -> bool:
+    """Match default pytest, Jest, and Vitest discovery on one platform.
+
+    ``fold_case`` models Windows, where pytest's fnmatch ignores case in the
+    name and in skipped directories but still requires the exact ``.py``.
+    """
+    path = PurePosixPath(file_path)
+    case = 'i' if fold_case else ''
+    if re.fullmatch(rf'(?{case}:test_.*|.*_test)\.py', path.name, re.DOTALL):
+        skipped = PYTEST_SKIPPED_DIRS
+    elif re.fullmatch(JS_TEST_NAME, path.name, re.DOTALL):
+        skipped = 'node_modules'
+    else:
+        return False
+    return not any(
+        re.fullmatch(f'(?{case}:{skipped})', part, re.DOTALL)
+        for part in path.parts[:-1]
+    )
+
+
+def _run_git(args: list[str], repo_root: Path | None = None) -> bytes:
+    """Run Git as bytes so paths and line breaks reach the parser unchanged."""
     try:
         return subprocess.run(
             ['git', *args],
             cwd=repo_root or Path.cwd(),
             capture_output=True,
-            text=True,
             check=True,
-        )
-    except (
-        subprocess.CalledProcessError,
-        subprocess.SubprocessError,
-        FileNotFoundError,
-        OSError,
-    ) as err:
+        ).stdout
+    except (subprocess.SubprocessError, OSError) as err:
         detail = getattr(err, 'stderr', None) or str(err)
+        if isinstance(detail, bytes):
+            detail = detail.decode('utf-8', 'replace')
         raise GitInspectionError(str(detail).strip()) from err
 
 
@@ -117,10 +137,12 @@ def read_staged_git_file(
 ) -> str | None:
     """Read an indexed file, returning ``None`` only when it is absent."""
     root = repo_root or Path.cwd()
-    index_entry = _run_git(['ls-files', '--stage', '--', file_path], root)
-    if not index_entry.stdout.strip():
+    index_entry = _run_git(
+        ['--literal-pathspecs', 'ls-files', '--stage', '--', file_path], root
+    )
+    if not index_entry.strip():
         return None
-    return _run_git(['show', f':{file_path}'], root).stdout
+    return _run_git(['show', f':{file_path}'], root).decode('utf-8', 'replace')
 
 
 def is_test_deletion_approved(
@@ -133,73 +155,126 @@ def is_test_deletion_approved(
         if content is not None:
             try:
                 data = json.loads(content)
-                if isinstance(data, dict):
-                    allowed = data.get('allowed_deletions')
-                    if isinstance(allowed, dict) and file_path in allowed:
-                        reason = allowed[file_path]
-                        if isinstance(reason, str) and reason.strip():
-                            return True
-                        if (
-                            isinstance(reason, dict)
-                            and str(reason.get('reason', '')).strip()
-                        ):
-                            return True
-            except (OSError, json.JSONDecodeError):
-                pass
+            except json.JSONDecodeError as err:
+                raise GitInspectionError(
+                    f'staged {policy_name} is not valid JSON: {err}'
+                ) from err
+            if isinstance(data, dict):
+                allowed = data.get('allowed_deletions')
+                if isinstance(allowed, dict) and file_path in allowed:
+                    reason = allowed[file_path]
+                    if isinstance(reason, str) and reason.strip():
+                        return True
+                    if (
+                        isinstance(reason, dict)
+                        and str(reason.get('reason', '')).strip()
+                    ):
+                        return True
     return False
 
 
-def get_staged_diff(target_files: list[str] | None = None) -> str:
-    """Retrieve staged git diff."""
-    cmd = ['git', 'diff', '--cached', '--no-color', '-U1', '--']
-    if target_files:
-        cmd.extend(target_files)
-    try:
-        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        return res.stdout
-    except (
-        subprocess.CalledProcessError,
-        subprocess.SubprocessError,
-        FileNotFoundError,
-    ) as err:
-        raise GitInspectionError(str(err)) from err
-
-
-def _evaluate_file_assertions(
-    file_path: str,
-    removed_assertions: int,
-    added_assertions: int,
-    has_reduction_allow: bool,
-    is_deleted: bool,
-    allow_deleted: bool,
+def get_staged_changes(
     repo_root: Path | None = None,
-) -> list[str]:
-    """Evaluate whether changes to a test file violate integrity."""
-    errors: list[str] = []
-    if not (file_path and is_test_file(file_path)):
-        return errors
+) -> list[tuple[str, str, str]]:
+    """Return ``(status, old, new)`` from raw NUL-delimited staged metadata."""
+    raw = _run_git(
+        ['diff', '--cached', '--name-status', '-z', *DIFF_FLAGS, '--'],
+        repo_root,
+    )
+    if raw and not raw.endswith(b'\0'):
+        raise GitInspectionError('unterminated staged name-status output')
+    fields = iter(raw.split(b'\0')[:-1])
+    changes = []
+    try:
+        for status in fields:
+            old = os.fsdecode(next(fields))
+            paired = status[:1] in (b'R', b'C')
+            new = os.fsdecode(next(fields)) if paired else old
+            changes.append((status[:1].decode('ascii', 'replace'), old, new))
+    except StopIteration as exc:
+        raise GitInspectionError(
+            'incomplete staged name-status record'
+        ) from exc
+    return changes
 
-    if is_deleted:
-        if not (
-            allow_deleted or is_test_deletion_approved(file_path, repo_root)
+
+def get_selected_paths(files: list[str]) -> set[str] | None:
+    """Resolve CLI pathspecs to staged paths; ``None`` means no filter."""
+    if not files:
+        return None
+    raw = _run_git(
+        ['diff', '--cached', '--name-only', '-z', '--no-renames', '--', *files]
+    )
+    return {os.fsdecode(path) for path in raw.split(b'\0') if path}
+
+
+def get_file_patch(old: str, new: str, repo_root: Path | None = None) -> str:
+    """Read one staged change as text, even when Git would call it binary."""
+    paths = dict.fromkeys((old, new))
+    command = ['--literal-pathspecs', 'diff', '--cached', '-U1', '--text']
+    raw = _run_git([*command, *DIFF_FLAGS, '--', *paths], repo_root)
+    return raw.decode('utf-8', 'replace')
+
+
+def iter_hunk_lines(patch: str) -> Iterator[tuple[str, int, str]]:
+    """Yield ``(sign, new_line, text)`` using hunk counts, never content."""
+    lines = iter(patch.split('\n'))
+    for header in lines:
+        match = HUNK_RE.match(header)
+        if match is None:
+            continue
+        old_left, new_line = int(match[1] or 1), int(match[2])
+        new_left = int(match[3] or 1)
+        while old_left > 0 or new_left > 0:
+            line = next(lines, None)
+            if line is None:
+                return
+            sign, text = line[:1], line[1:]
+            if sign == '\\':  # "\ No newline at end of file"
+                continue
+            if sign in {'-', '+'}:
+                yield sign, new_line, text
+            if sign != '+':  # removed or context line
+                old_left -= 1
+            if sign != '-':  # added or context line
+                new_left -= 1
+                new_line += 1
+
+
+def check_test_renames(
+    renames: list[tuple[str, str]], repo_root: Path | None = None
+) -> list[str]:
+    """Require the old path's staged deletion approval when discovery is lost."""
+    errors = []
+    for old, new in renames:
+        loses_discovery = any(
+            is_default_discovered(old, fold_case=fold)
+            and not is_default_discovered(new, fold_case=fold)
+            for fold in (False, True)
+        )
+        if (
+            is_test_file(old)
+            and (not is_test_file(new) or loses_discovery)
+            and not is_test_deletion_approved(old, repo_root)
         ):
             errors.append(
-                f'{file_path}: [TEST_DELETION] Test file deleted in staged changes. '
-                'To authorize, pass --allow-deleted-tests or stage a policy entry in .test-deletions.json.'
-            )
-    elif removed_assertions > added_assertions and not has_reduction_allow:
-        file_text = read_staged_git_file(file_path, repo_root)
-        if file_text is not None:
-            has_reduction_allow = bool(
-                ALLOW_ASSERTION_REDUCTION_RE.search(file_text)
-            )
-        if not has_reduction_allow:
-            errors.append(
-                f'{file_path}: [TEST_INTEGRITY] Net reduction of test assertions detected '
-                f'({removed_assertions} removed vs {added_assertions} added without '
-                f'"allow-assertion-reduction: <reason>")'
+                f'{old}: [TEST_DELETION] Rename to {new} removes test discovery. '
+                'Stage allowed_deletions for the old path with a reason in .test-deletions.json.'
             )
     return errors
+
+
+def check_test_deletions(
+    paths: list[str], repo_root: Path | None = None
+) -> list[str]:
+    """Require a staged policy reason for every deleted test file."""
+    return [
+        f'{path}: [TEST_DELETION] Test file deleted in staged changes. '
+        'To authorize, stage a policy entry with a reason in .test-deletions.json.'
+        for path in paths
+        if is_test_file(path)
+        and not is_test_deletion_approved(path, repo_root)
+    ]
 
 
 def _check_focus_or_skip_line(
@@ -224,93 +299,35 @@ def _check_focus_or_skip_line(
     return errors
 
 
-class _FileDiffState:
-    """Track assertion and skip counts for a file during diff scanning."""
-
-    def __init__(self) -> None:
-        self.current_file: str = ''
-        self.prev_file: str = ''
-        self.line_num: int = 0
-        self.removed_assertions: int = 0
-        self.added_assertions: int = 0
-        self.has_assertion_reduction_allow: bool = False
-        self.is_deleted_file: bool = False
-
-    def reset_for_file(self, file_path: str, is_deleted: bool = False) -> None:
-        self.current_file = file_path
-        self.removed_assertions = 0
-        self.added_assertions = 0
-        self.has_assertion_reduction_allow = False
-        self.is_deleted_file = is_deleted
-
-    def evaluate(
-        self, allow_deleted: bool, repo_root: Path | None = None
-    ) -> list[str]:
-        return _evaluate_file_assertions(
-            self.current_file,
-            self.removed_assertions,
-            self.added_assertions,
-            self.has_assertion_reduction_allow,
-            self.is_deleted_file,
-            allow_deleted,
-            repo_root,
-        )
-
-
-def scan_test_integrity(
-    diff_text: str,
-    allow_deleted_tests: bool = False,
-    repo_root: Path | None = None,
+def scan_file_patch(
+    file_path: str, patch: str, repo_root: Path | None = None
 ) -> list[str]:
-    """Scan diff for test integrity violations."""
+    """Check one test file's patch for markers and a net assertion loss."""
     errors: list[str] = []
-    state = _FileDiffState()
-
-    for line in diff_text.splitlines():
-        if line.startswith('--- a/'):
-            state.prev_file = line[6:]
+    removed = added = 0
+    has_reduction_allow = False
+    for sign, line_num, text in iter_hunk_lines(patch):
+        content = text.strip()
+        if sign == '-':
+            removed += len(ASSERTION_PATTERNS.findall(content))
             continue
-
-        if line.startswith('+++ b/'):
-            errors.extend(state.evaluate(allow_deleted_tests, repo_root))
-            state.reset_for_file(line[6:], is_deleted=False)
+        if not content:
             continue
+        if ALLOW_ASSERTION_REDUCTION_RE.search(content):
+            has_reduction_allow = True
+        added += len(ASSERTION_PATTERNS.findall(content))
+        errors.extend(_check_focus_or_skip_line(content, file_path, line_num))
 
-        if line.startswith('+++ /dev/null'):
-            errors.extend(state.evaluate(allow_deleted_tests, repo_root))
-            state.reset_for_file(state.prev_file, is_deleted=True)
-            continue
-
-        if not is_test_file(state.current_file):
-            continue
-
-        if line.startswith('@@ '):
-            m = re.search(r'\+(\d+)', line)
-            if m:
-                state.line_num = int(m.group(1)) - 1
-            continue
-
-        if line.startswith('-') and not line.startswith('---'):
-            if ASSERTION_PATTERNS.search(line[1:].strip()):
-                state.removed_assertions += 1
-            continue
-
-        if line.startswith('+') and not line.startswith('+++'):
-            state.line_num += 1
-            content = line[1:].strip()
-            if not content:
-                continue
-            if ALLOW_ASSERTION_REDUCTION_RE.search(content):
-                state.has_assertion_reduction_allow = True
-            if ASSERTION_PATTERNS.search(content):
-                state.added_assertions += 1
-            errors.extend(
-                _check_focus_or_skip_line(
-                    content, state.current_file, state.line_num
-                )
+    if removed > added and not has_reduction_allow:
+        file_text = read_staged_git_file(file_path, repo_root)
+        if file_text is None or not ALLOW_ASSERTION_REDUCTION_RE.search(
+            file_text
+        ):
+            errors.append(
+                f'{file_path}: [TEST_INTEGRITY] Net reduction of test assertions detected '
+                f'({removed} removed vs {added} added without '
+                f'"allow-assertion-reduction: <reason>")'
             )
-
-    errors.extend(state.evaluate(allow_deleted_tests, repo_root))
     return errors
 
 
@@ -319,30 +336,41 @@ def main() -> int:
     parser.add_argument(
         'files',
         nargs='*',
-        help='Specific files to check. If omitted, checks all staged test files.',
-    )
-    parser.add_argument(
-        '--allow-deleted-tests',
-        action='store_true',
-        help='Allow test file deletions without failing the gate.',
+        help='Files for content checks; deletion and rename policy always checks all staged paths.',
     )
     args = parser.parse_args()
 
     try:
-        diff_text = get_staged_diff(args.files if args.files else None)
-        if not diff_text.strip():
-            sys.stdout.write(
-                'SKIP [TEST_INTEGRITY]: No staged test changes to inspect.\n'
-            )
-            return 0
-        errors = scan_test_integrity(
-            diff_text, allow_deleted_tests=args.allow_deleted_tests
+        changes = get_staged_changes()
+        selected = get_selected_paths(args.files)
+        errors = check_test_renames(
+            [(old, new) for status, old, new in changes if status == 'R']
         )
+        errors.extend(
+            check_test_deletions(
+                [old for status, old, _ in changes if status == 'D']
+            )
+        )
+        scoped = [
+            (old, new)
+            for status, old, new in changes
+            if status != 'D'
+            and (selected is None or not selected.isdisjoint((old, new)))
+        ]
+        for old, new in scoped:
+            if is_test_file(new):
+                errors.extend(scan_file_patch(new, get_file_patch(old, new)))
     except GitInspectionError as err:
         sys.stderr.write(
             f'ERROR [TEST_INTEGRITY]: unable to inspect staged Git changes: {err}\n'
         )
         return 2
+
+    if not changes and not errors:
+        sys.stdout.write(
+            'SKIP [TEST_INTEGRITY]: No staged test changes to inspect.\n'
+        )
+        return 0
 
     if errors:
         sys.stderr.write(

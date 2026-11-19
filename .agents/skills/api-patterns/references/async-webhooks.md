@@ -3,6 +3,17 @@
 > Se a resposta não cabe com segurança no ciclo de um request normal, modele o
 > trabalho como job, stream ou callback explícito.
 
+## Sumário
+
+- [Quando usar `202 Accepted`](#quando-usar-202-accepted)
+- [Recurso de job](#recurso-de-job)
+- [Polling](#polling)
+- [Webhooks de saída](#webhooks-de-sa%C3%ADda)
+- [Webhook receiver](#webhook-receiver)
+- [Idempotência e deduplicação](#idempot%C3%AAncia-e-deduplica%C3%A7%C3%A3o)
+- [Anti-patterns](#anti-patterns)
+- [Checklist](#checklist)
+
 ## Quando usar `202 Accepted`
 
 Use `202 Accepted` quando o servidor aceitou a solicitação, mas a conclusão real

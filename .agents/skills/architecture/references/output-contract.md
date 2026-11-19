@@ -4,6 +4,13 @@ Esta é a fonte única do esquema e das regras de uma decisão concluída. Duran
 descoberta, responda com fatos, lacunas e recomendação provisória; não invente uma
 causa comprovada ou uma decisão aceita para preencher o contrato.
 
+## Sumário
+
+- [Contrato mínimo](#contrato-m%C3%ADnimo)
+- [Shape recomendado](#shape-recomendado)
+- [Regras de qualidade](#regras-de-qualidade)
+- [Quando exigir ADR](#quando-exigir-adr)
+
 ## Contrato mínimo
 
 Uma resposta arquitetural boa precisa entregar:

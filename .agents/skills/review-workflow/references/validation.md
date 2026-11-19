@@ -3,6 +3,14 @@
 Leia ao executar o protocolo formal, integrar validação de outra stack ou
 registrar um finding/encaminhamento. Os CLIs continuam sendo a interface canônica.
 
+## Sumário
+
+- [Contrato de validação](#contrato-de-valida%C3%A7%C3%A3o)
+- [Execução e evidência](#execu%C3%A7%C3%A3o-e-evid%C3%AAncia)
+- [Registro de finding](#registro-de-finding)
+- [Encaminhamento de segurança](#encaminhamento-de-seguran%C3%A7a)
+- [Conclusão dos itens e exportação](#conclus%C3%A3o-dos-itens-e-exporta%C3%A7%C3%A3o)
+
 ## Contrato de validação
 
 O recorder usa esta precedência:

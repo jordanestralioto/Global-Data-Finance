@@ -10,6 +10,15 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+if __package__ in {None, ''}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from scripts.pytest_markers import (
+    expression_markers,
+    marker_name,
+    pytestmark_value,
+)
+
 PRIMARY_MARKERS = frozenset({'unit', 'integration', 'perf'})
 REAL_DATA_MARKER = 'real_data'
 NAME_MANGLED_PATTERN = re.compile(r'_[A-Za-z][A-Za-z0-9]*__[_A-Za-z0-9]+')
@@ -29,64 +38,23 @@ class Finding:
         return f'{self.path}:{self.line}: [{self.code}] {self.message}'
 
 
-def _marker_name(node: ast.AST) -> str | None:
-    """Return a pytest marker name from a marker expression."""
-    if isinstance(node, ast.Call):
-        node = node.func
-    if not isinstance(node, ast.Attribute):
-        return None
-    parent = node.value
-    if not isinstance(parent, ast.Attribute):
-        return None
-    if not isinstance(parent.value, ast.Name) or parent.value.id != 'pytest':
-        return None
-    if parent.attr != 'mark':
-        return None
-    return node.attr
-
-
-def _markers_from_expression(node: ast.AST) -> set[str]:
-    """Collect pytest marker names from a ``pytestmark`` expression."""
-    if isinstance(node, (ast.List, ast.Set, ast.Tuple)):
-        markers: set[str] = set()
-        for element in node.elts:
-            marker = _marker_name(element)
-            if marker is not None:
-                markers.add(marker)
-        return markers
-
-    marker = _marker_name(node)
-    return {marker} if marker is not None else set()
-
-
 def _module_markers(tree: ast.Module) -> set[str]:
     """Collect module-level markers used by pytest for every test."""
     markers: set[str] = set()
     for statement in tree.body:
-        if isinstance(statement, (ast.Assign, ast.AnnAssign)):
-            targets = (
-                statement.targets
-                if isinstance(statement, ast.Assign)
-                else [statement.target]
-            )
-            if any(
-                isinstance(target, ast.Name) and target.id == 'pytestmark'
-                for target in targets
-            ):
-                value = statement.value
-                if value is not None:
-                    markers.update(_markers_from_expression(value))
+        value = pytestmark_value(statement)
+        if value is not None:
+            markers.update(name for name, _ in expression_markers(value))
     return markers
 
 
 def _decorator_markers(decorators: list[ast.expr]) -> set[str]:
     """Collect pytest markers attached to a class or test function."""
-    markers: set[str] = set()
-    for decorator in decorators:
-        marker = _marker_name(decorator)
-        if marker is not None:
-            markers.add(marker)
-    return markers
+    return {
+        name
+        for decorator in decorators
+        if (name := marker_name(decorator)) is not None
+    }
 
 
 def _test_functions(

@@ -1,24 +1,61 @@
-"""Structural Inspector Script.
+"""Report the schema of a CSV, Parquet or Excel file from a bounded sample."""
 
-Implementation of the 'structural-inspector' skill for the Antigravity Agent.
-"""
+from __future__ import annotations
 
 import argparse
 import csv
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
-import polars
+try:
+    import polars
+except ImportError:  # main() reports it; the pure helpers stay importable.
+    HAS_POLARS = False
+else:
+    HAS_POLARS = True
+
+# Sources up to twice this size are read whole. Larger ones are sampled at
+# both ends, so a pattern change near the end still shows up, and no row is
+# counted twice.
+EDGE_ROWS = 1000
+INT16_MIN = -32768
+INT16_MAX = 32767
+MISSING_POLARS = (
+    'inspector.py requires polars in this environment (for example'
+    ' `uv pip install polars`); without it, use the byte-sniffing'
+    ' commands in SKILL.md.\n'
+)
+
+
+def needs_tail(head_rows: int) -> bool:
+    """Return whether a head read of `2 * EDGE_ROWS + 1` rows missed the end."""
+    return head_rows > 2 * EDGE_ROWS
+
+
+def integer_insight(
+    minimum: float | None, maximum: float | None, whole_numbers: bool
+) -> str | None:
+    """Suggest an Int16 check only for whole numbers inside its range.
+
+    The range alone is not enough: `38.27` fits Int16 and would lose its
+    decimals. The values come from a sample, so the hint asks for a
+    full-column check instead of claiming that the downcast is safe.
+    """
+    if minimum is None or maximum is None or not whole_numbers:
+        return None
+    if minimum >= INT16_MIN and maximum <= INT16_MAX:
+        return (
+            'CHECK: sampled values are whole numbers within Int16; confirm'
+            ' the full column before downcasting'
+        )
+    return None
 
 
 class StructuralInspector:
-    """Skill implementation: structural-inspector.
-
-    Path: .agents/skills/structural-inspector/scripts/inspector.py
-    Standard: Google Antigravity Skill Protocol (2026)
-    """
+    """Build a schema report from a bounded sample of a data file."""
 
     def inspect(self, file_path: str) -> dict[str, Any]:
         path = Path(file_path)
@@ -119,13 +156,20 @@ class StructuralInspector:
     ) -> dict[str, Any]:
         schema = lz.collect_schema()
 
-        # Sampling inteligente: Head + Tail para detectar se o final do arquivo muda de padrão
-        df_sample = polars.concat([lz.head(1000), lz.tail(1000)]).collect()
+        head = lz.head(2 * EDGE_ROWS + 1).collect()
+        if needs_tail(head.height):
+            df_sample = polars.concat(
+                [head.head(EDGE_ROWS), lz.tail(EDGE_ROWS).collect()]
+            )
+            is_sample = True
+        else:
+            df_sample = head
         total_rows = df_sample.height
 
         columns_report = []
         for name, dtype in schema.items():
             col_data = df_sample[name]
+            values = col_data.drop_nulls()
             n_unique = col_data.n_unique()
             null_count = col_data.null_count()
             unique_ratio = n_unique / total_rows if total_rows > 0 else 0
@@ -133,24 +177,30 @@ class StructuralInspector:
             suggestion = None
             dtype_str = str(dtype)
 
-            # Inteligência de Tradução (The Hunter)
-            if dtype_str == 'String':
+            if total_rows > 0 and values.len() == 0:
+                suggestion = 'CHECK: every sampled value is null'
+            elif dtype_str == 'String':
                 # 1. Sugestão de Categorical (Otimização de Memória)
                 if unique_ratio < 0.15 and n_unique < 100:
                     suggestion = 'OPTIMIZE: Convert to Categorical (High compression potential)'
 
                 # 2. Detecção de Datas ocultas em Strings (Essencial para Finanças)
-                sample_val = str(col_data[0]) if total_rows > 0 else ''
+                sample_val = str(values[0]) if values.len() > 0 else ''
                 if (
                     any(char in sample_val for char in ['-', '/'])
                     and len(sample_val) >= 8
                 ):
                     suggestion = 'PARSE: Potential DateTime string detected'
 
-            # 3. Detecção de Inteiros que poderiam ser menores (SmallInt)
+            # 3. Inteiros que caberiam em Int16, só com valores sem decimais
             elif dtype_str in ['Int64', 'Float64']:
-                if col_data.max() < 32767 and col_data.min() > -32768:
-                    suggestion = 'OPTIMIZE: Downcast to Int16'
+                whole_numbers = dtype_str == 'Int64' or (
+                    not values.is_nan().any()
+                    and bool((values == values.round(0)).all())
+                )
+                suggestion = integer_insight(
+                    values.min(), values.max(), whole_numbers
+                )
 
             columns_report.append(
                 {
@@ -175,6 +225,7 @@ class StructuralInspector:
                 'recommended_n_threads': os.cpu_count(),
                 'estimated_read_speed': 'High (Zero-copy)',
                 'source_is_sample': is_sample,
+                'sample_rows': total_rows,
             },
         }
 
@@ -210,17 +261,21 @@ class StructuralInspector:
             }
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> int:
+    """Write the JSON report; exit 1 on a report error, 2 without polars."""
     parser = argparse.ArgumentParser(description='Structural Inspector')
     parser.add_argument(
         '--path', required=True, help='Path to the file to inspect'
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+    if not HAS_POLARS:
+        sys.stderr.write(MISSING_POLARS)
+        return 2
 
-    inspector = StructuralInspector()
-    report = inspector.inspect(args.path)
-    print(json.dumps(report, indent=2))
+    report = StructuralInspector().inspect(args.path)
+    sys.stdout.write(json.dumps(report, indent=2) + '\n')
+    return 1 if 'error' in report else 0
 
 
 if __name__ == '__main__':
-    main()
+    raise SystemExit(main())

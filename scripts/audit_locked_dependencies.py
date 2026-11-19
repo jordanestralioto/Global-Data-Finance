@@ -11,9 +11,16 @@ from typing import Any
 if __package__ in {None, ''}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from scripts.diagnostics import summarize_diagnostic
 from scripts.process_runner import ProcessRunnerError, run_process
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _diagnostic(stderr: str) -> str:
+    """Return the pip-audit diagnostic, redacted and bounded."""
+    summary = summarize_diagnostic(stderr)
+    return f': {summary}' if summary else ''
 
 
 def _export_requirements(requirements: Path) -> bool:
@@ -59,7 +66,8 @@ def _load_dependencies(report: Path, stderr: str) -> list[Any] | None:
             )
         else:
             print(
-                'ERROR [DEPENDENCY_AUDIT]: audit report is missing or invalid'
+                'ERROR [DEPENDENCY_AUDIT]: audit report is missing or '
+                f'invalid{_diagnostic(stderr)}'
             )
         return None
     if not isinstance(payload, dict):
@@ -102,6 +110,7 @@ def _audit_report(requirements: Path, report: Path) -> int:
     if result.returncode not in {0, 1}:
         print(
             f'ERROR [DEPENDENCY_AUDIT]: pip-audit exited {result.returncode}'
+            f'{_diagnostic(result.stderr or "")}'
         )
         return 2
     try:

@@ -21,7 +21,10 @@ from globaldatafinance.brazil.b3_data.historical_quotes.zip_reader import (
 from globaldatafinance.macro_exceptions import ExtractionError
 from tests.support.builders import write_cotahist_zip
 
-pytestmark = [pytest.mark.integration, pytest.mark.real_data]
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.real_data,  # skip-reason: caller-provided COTAHIST files
+]
 
 _SAMPLE_RECORD_COUNT = 20_000
 _FULL_TABLE_COMPARE_LIMIT_BYTES = 256 * 1024 * 1024
@@ -82,7 +85,7 @@ async def test_real_cotahist_catalog_resolves_one_line_per_available_input(
 
 
 @pytest.mark.asyncio
-@pytest.mark.slow
+@pytest.mark.slow  # skip-reason: extracts a real COTAHIST sample twice
 async def test_real_cotahist_limited_sample_has_fast_slow_arrow_parity(
     local_cotahist: tuple[Path, int], tmp_path: Path
 ) -> None:
@@ -113,7 +116,7 @@ async def test_real_cotahist_limited_sample_has_fast_slow_arrow_parity(
 
 
 @pytest.mark.asyncio
-@pytest.mark.slow
+@pytest.mark.slow  # skip-reason: extracts a full real COTAHIST year
 async def test_real_cotahist_full_year_fast_has_stable_arrow_contract(
     local_cotahist: tuple[Path, int], tmp_path: Path
 ) -> None:
@@ -135,7 +138,7 @@ async def test_real_cotahist_full_year_fast_has_stable_arrow_contract(
 
 
 @pytest.mark.asyncio
-@pytest.mark.slow
+@pytest.mark.slow  # skip-reason: runs both modes over a full real year
 async def test_real_cotahist_full_year_fast_slow_have_same_digest(
     local_cotahist: tuple[Path, int], tmp_path: Path
 ) -> None:

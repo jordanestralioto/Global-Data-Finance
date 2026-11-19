@@ -13,13 +13,6 @@ from urllib.parse import unquote, urlsplit
 
 SCHEMA_VERSION = 'agents-md-policy.v3'
 VALIDATION_KIND = 'structural'
-ROOT_SECTIONS = (
-    'Project Overview',
-    'Architecture & Ownership',
-    'Development Workflow',
-    'Engineering Rules',
-    'Documentation Map',
-)
 PROSE_PLACEHOLDER_PATTERNS = (
     r'\b(?:TODO|TBD|FIXME)\b',
     r'\bYYYY-MM-DD\b',
@@ -106,16 +99,13 @@ def _root_sections(lines: list[str]) -> list[tuple[str, str]]:
 
 
 def _check_root_sections(lines: list[str]) -> list[str]:
+    """Require navigable sections without prescribing their names or count."""
     content = HTML_COMMENT_RE.sub('', '\n'.join(lines))
     sections = _root_sections(content.splitlines())
-    names = [name for name, _ in sections]
     errors: list[str] = []
 
-    if len(sections) < len(ROOT_SECTIONS):
-        errors.append(
-            'root document requires at least five level-two sections '
-            f'(found {len(sections)})'
-        )
+    if not sections:
+        errors.append('root document requires at least one level-two section')
 
     seen: set[str] = set()
     for name, content in sections:
@@ -124,14 +114,6 @@ def _check_root_sections(lines: list[str]) -> list[str]:
         seen.add(name)
         if not _has_content(content):
             errors.append(f'root section is empty: {name}')
-
-    if all(name in names for name in ROOT_SECTIONS) and [
-        names.index(name) for name in ROOT_SECTIONS
-    ] != sorted(names.index(name) for name in ROOT_SECTIONS):
-        errors.append(
-            'standard root sections must appear in order: '
-            + ', '.join(ROOT_SECTIONS)
-        )
     return errors
 
 

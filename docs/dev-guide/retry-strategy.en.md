@@ -59,6 +59,10 @@ additional backoff. Diagnostics retain the original status. Status selection
 takes precedence over keywords in the message or URL; timeouts and connection
 failures continue to use the shared strategy.
 
+A `SecurityError`, such as a rejected redirect or a download above the byte
+limit, also ends the attempt without retry. Message-fallback keywords in the
+host or path do not change that decision.
+
 ### HTTP Limits and Redirects
 
 The download byte limit requires `Accept-Encoding: identity`. Responses with
@@ -83,6 +87,13 @@ In the shared HTTP adapter, redirects changing scheme, host, or port retain
 only `Accept`, `Accept-Encoding`, `Accept-Language`, `Connection`, `Host`, and
 `User-Agent`. Credentials and custom headers are confined to the initial
 origin. CVM header configuration supplies `User-Agent` when provided.
+
+Every redirect hop is checked before it is sent. A request that starts on
+HTTPS never continues on another scheme, including on the same host. CVM also
+confines redirects to the requested origin, `https://dados.cvm.gov.br`; another
+host or port is rejected. The shared adapter raises `SecurityError` reporting
+only the target origin. In CVM, the failure is recorded in `failed_downloads`
+and the caller's previous ZIP is preserved.
 
 ______________________________________________________________________
 

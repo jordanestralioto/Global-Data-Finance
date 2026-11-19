@@ -2,6 +2,16 @@
 
 > Summary: Candidate patterns for local checks during agent-assisted development.
 
+## Contents
+
+- [1. Catalog of AI Coding Agent Traps](#1-catalog-of-ai-coding-agent-traps):
+  debug artifacts, stubs, type-safety erosion, test integrity, dependency
+  drift, operational bypasses, structural complexity, exception masking,
+  monolithic functions, hollow assertions and dead code.
+- [2. Detection Strategy in Diff](#2-detection-strategy-in-diff): which
+  staged lines diff gates inspect, when parser-aware analyzers are required,
+  and how narrow an intentional exception must be.
+
 The scanner rules below describe an optional strict profile. Select it only
 when the project's policy accepts its bans and Python runtime requirement;
 the portable workflow does not impose these rules on every stack.
@@ -74,7 +84,9 @@ projections, scripts and configuration. It blocks download-to-shell
 pipelines, hook-disabling command flags, hook-skip environment assignments,
 CI settings that continue after an error, and shell fallbacks that force a
 successful exit. A documentation citation never authorizes one of these
-operations.
+operations. A consumer adapter may exclude a tracked generated projection
+from the debug and stub classifier only; the operational scan keeps it in
+scope, above all when hooks execute scripts from it.
 
 ### 1.7 Control-Flow and Structural Complexity
 

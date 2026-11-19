@@ -11,6 +11,9 @@ index or an explicit Git revision range:
 Documentation files may quote compiler/linter bypass markers as explanatory
 content. Operational bypasses remain prohibited in documentation.
 
+The tracked .agents/ projection gets every check except the debug and stub
+classifier; the generated client mirrors are not inspected.
+
 Fail-closed: Exits with code 2 on git errors, code 1 on violations, and code 0
 on a clean pass.
 Zero external dependencies (Python 3.10+ standard library only).
@@ -38,6 +41,7 @@ from scripts.git_changes import (
     GitInspectionError,
     get_diff,
     is_external_harness_path,
+    is_tracked_projection_path,
 )
 
 
@@ -64,7 +68,7 @@ def scan_diff(
 
         if not line.startswith('+') or line.startswith('+++'):
             continue
-        if is_external_harness_path(current_file):
+        if is_external_harness_path(current_file, include_projection=True):
             continue
         if not is_security_inspectable_file(current_file):
             continue
@@ -74,7 +78,11 @@ def scan_diff(
         if not added_content:
             continue
 
-        if is_inspectable_file(current_file):
+        # The projected harness CLIs print by design; only the debug and
+        # stub classifier skips the projection. Its security checks stay.
+        if is_inspectable_file(
+            current_file
+        ) and not is_tracked_projection_path(current_file):
             errors.extend(
                 check_debug_violations(
                     added_content,
@@ -129,6 +137,7 @@ def main() -> int:
             context_lines=0,
             target_files=args.files if args.files else None,
             revision_range=args.revision_range,
+            include_projection=True,
         )
     except GitInspectionError as err:
         sys.stderr.write(

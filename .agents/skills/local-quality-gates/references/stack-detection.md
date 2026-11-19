@@ -2,6 +2,15 @@
 
 > Summary: Heuristics and indicator files for identifying languages, package managers, formatters, linters, typecheckers, and test runners in a workspace.
 
+## Contents
+
+- [1. Package Managers and Language Indicators](#1-package-managers-and-language-indicators)
+- [1.1 Dependency Lifecycle Classification](#11-dependency-lifecycle-classification)
+- [2. Toolchain Discovery Heuristics](#2-toolchain-discovery-heuristics)
+- [3. Structural Lint Capability Discovery](#3-structural-lint-capability-discovery)
+- [4. Existing Hook Runner Detection](#4-existing-hook-runner-detection)
+- [5. Reuse-First Decision Matrix](#5-reuse-first-decision-matrix)
+
 ## 1. Package Managers and Language Indicators
 
 | Ecosystem           | Manifest File                         | Lockfile                        | Execution Prefix     |
@@ -36,6 +45,18 @@ after explicit setup. Never infer an updater from the presence of a manifest
 and lockfile. When the manager has no safe native check, use the shared
 lockfile-parity gate and document the limitation instead of inventing a
 mutating command.
+
+uv nuance: with `--no-sync`, `uv run --locked` no longer checks the lockfile
+and runs even when `uv.lock` is stale, so keep `uv lock --check` as its own
+gate. `uv sync --check --locked` verifies, without changing files, that the
+lockfile is current and that the environment matches it; drop `--locked` and
+a stale lockfile passes. The check also fails while the project itself awaits
+a reinstall, for example after a `pyproject.toml` edit. When uv must
+build metadata to validate the lockfile, as with `dynamic` dependencies,
+`uv lock --check` needs the build backend from the cache or the network; a
+dynamic version alone did not need it in uv 0.13. Commands that sync, such as
+`uv run` without `--no-sync`, rebuild the editable project after a manifest
+change and need that backend as well. Declare and measure these costs.
 
 Go nuance: `go.sum` records module checksums, not a fully resolved lockfile.
 `go mod verify` audits downloaded module-cache contents and may add missing

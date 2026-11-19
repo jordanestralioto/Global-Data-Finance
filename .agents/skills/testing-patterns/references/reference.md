@@ -4,14 +4,14 @@ Use this reference to choose test level, design fixtures and mocks, derive
 comprehensive test cases (boundaries, state transitions, dependency failures,
 side effects, concurrency), and formulate non-tautological assertions.
 
-## Sumario
+## Sumário
 
-- [Heurísticas de Nível de Teste](#heuristicas-de-nivel-de-teste)
-- [Derivação Sistemática de Casos](#derivacao-sistematica-de-casos)
+- [Heurísticas de Nível de Teste](#heur%C3%ADsticas-de-n%C3%ADvel-de-teste)
+- [Derivação Sistemática de Casos](#deriva%C3%A7%C3%A3o-sistem%C3%A1tica-de-casos)
 - [Mocks vs Fixtures: Regras de Ouro](#mocks-vs-fixtures-regras-de-ouro)
-- [Matriz de Vetores de Segurança e Isolamento](#matriz-de-vetores-de-seguranca-e-isolamento)
-- [Critérios de Assertions Não-Tautológicas](#criterios-de-assertions-nao-tautologicas)
-- [Validação e Evidência Confiável](#validacao-e-evidencia-confiavel)
+- [Matriz de Vetores de Segurança e Isolamento](#matriz-de-vetores-de-seguran%C3%A7a-e-isolamento)
+- [Critérios de Assertions Não-Tautológicas](#crit%C3%A9rios-de-assertions-n%C3%A3o-tautol%C3%B3gicas)
+- [Validação e Evidência Confiável](#valida%C3%A7%C3%A3o-e-evid%C3%AAncia-confi%C3%A1vel)
 
 ## Heurísticas de Nível de Teste
 

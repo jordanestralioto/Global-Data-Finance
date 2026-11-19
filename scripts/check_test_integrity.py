@@ -27,6 +27,8 @@ from scripts.integrity_policy import (
     is_test_deletion_approved,
     test_integrity_policy_errors,
 )
+from scripts.skip_constructs import LINE_GATE_DECORATOR_RE
+from scripts.skip_signals import ALLOW_SKIP_RE, skip_signal_errors
 
 # Focused tests are strictly prohibited in pre-commit (no bypass allowed)
 STRICT_FOCUS_PATTERNS = [
@@ -42,10 +44,7 @@ STRICT_FOCUS_PATTERNS = [
 ]
 
 SKIPPED_TEST_PATTERNS = [
-    (
-        re.compile(r'@pytest\.mark\.(?:skip|xfail)\b'),
-        'Skipped/xfailed pytest marker added',
-    ),
+    (LINE_GATE_DECORATOR_RE, 'Skipped/xfailed pytest marker added'),
     (
         re.compile(r'\b(?:it|describe|test)\.skip\b'),
         'Skipped test (.skip) detected',
@@ -61,10 +60,6 @@ ASSERTION_PATTERNS = re.compile(
     r'assertIs|assertEqual|assertTrue|assertFalse|pytest\.(?:raises|warns)\()'
 )
 
-# Must include a colon and non-empty reason content.
-ALLOW_SKIP_RE = re.compile(
-    r'(?:allow-skip|skip-reason):\s*\S+.*', re.IGNORECASE
-)
 _ALLOW_DELETED_FLAG = '--allow-' + 'deleted-tests'
 _TEST_EXT_RE = re.compile(r'(_test\.py|\.(test|spec)\.[tj]sx?)$')
 
@@ -299,6 +294,14 @@ def scan_test_integrity(
             base_deleted_paths=b_del,
             base_hashes=b_hashes,
             base_reduced_paths=b_red,
+        )
+    )
+    errors.extend(
+        skip_signal_errors(
+            diff_text,
+            is_test_file,
+            repo_root=repo_root,
+            revision_range=revision_range,
         )
     )
     return errors

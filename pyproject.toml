@@ -191,6 +191,9 @@ globaldatafinance = { workspace = true }
 [tool.importlinter]
 root_package = "globaldatafinance"
 
+# Every top-level namespace must appear in this layer list; import-linter
+# ignores unlisted packages, so tests/tooling/test_import_contracts.py fails
+# when a new namespace is added without a layer.
 [[tool.importlinter.contracts]]
 name = "Layered architecture"
 type = "layers"
@@ -212,10 +215,9 @@ type = "forbidden"
 source_modules = ["globaldatafinance.brazil.cvm.ingestion"]
 forbidden_modules = ["globaldatafinance.brazil.cvm.fundamental_stocks_data"]
 
+# The wildcard covers every source package under brazil/, including sources
+# added later, instead of a fixed list that new sources silently bypass.
 [[tool.importlinter.contracts]]
-name = "B3 and CVM source implementations are independent"
+name = "Brazilian source implementations are independent"
 type = "independence"
-modules = [
-  "globaldatafinance.brazil.b3_data",
-  "globaldatafinance.brazil.cvm",
-]
+modules = ["globaldatafinance.brazil.*"]

@@ -6,11 +6,11 @@ falhas de dependência, efeitos colaterais, concorrência e isolamento.
 
 ## Sumário
 
-- [Exemplo 1: Regra de Negócio com Limites e Transições de Estado](#exemplo-1-regra-de-negocio-com-limites-e-transicoes-de-estado)
-- [Exemplo 2: Integração com Falha de Dependência e Efeitos Colaterais](#exemplo-2-integracao-com-falha-de-dependencia-e-efeitos-colaterais)
-- [Exemplo 3: Concorrência e Idempotência](#exemplo-3-concorrencia-e-idempotencia)
-- [Exemplo 4: Isolamento Multi-Tenant e Negativos de Segurança](#exemplo-4-isolamento-multi-tenant-e-negativos-de-seguranca)
-- [Exemplo 5: Caso Negativo (Quando NÃO usar testing-patterns)](#exemplo-5-caso-negativo-quando-nao-usar-testing-patterns)
+- [Exemplo 1: Regra de Negócio com Limites e Transições de Estado](#exemplo-1-regra-de-neg%C3%B3cio-com-limites-e-transi%C3%A7%C3%B5es-de-estado)
+- [Exemplo 2: Integração com Falha de Dependência e Efeitos Colaterais](#exemplo-2-integra%C3%A7%C3%A3o-com-falha-de-depend%C3%AAncia-e-efeitos-colaterais)
+- [Exemplo 3: Concorrência e Idempotência](#exemplo-3-concorr%C3%AAncia-e-idempot%C3%AAncia)
+- [Exemplo 4: Isolamento Multi-Tenant e Negativos de Segurança](#exemplo-4-isolamento-multi-tenant-e-negativos-de-seguran%C3%A7a)
+- [Exemplo 5: Caso Negativo (Quando NÃO usar testing-patterns)](#exemplo-5-caso-negativo-quando-n%C3%A3o-usar-testing-patterns)
 
 ______________________________________________________________________
 

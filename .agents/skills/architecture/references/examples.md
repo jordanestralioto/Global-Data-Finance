@@ -2,6 +2,18 @@
 
 Exemplos abaixo mostram o tipo de decisão que esta skill deve conduzir.
 
+## Sumário
+
+- [Exemplo 1: extrair serviço ou manter no deploy atual](#exemplo-1-extrair-servi%C3%A7o-ou-manter-no-deploy-atual)
+- [Exemplo 2: fronteira frontend/backend](#exemplo-2-fronteira-frontendbackend)
+- [Exemplo 3: síncrono vs assíncrono](#exemplo-3-s%C3%ADncrono-vs-ass%C3%ADncrono)
+- [Exemplo 4: modular monolith vs microservices](#exemplo-4-modular-monolith-vs-microservices)
+- [Exemplo 5: CQRS rejeitado](#exemplo-5-cqrs-rejeitado)
+- [Exemplo 6: ADR curto resultante](#exemplo-6-adr-curto-resultante)
+- [Exemplo 7: edição independente no mesmo deploy](#exemplo-7-edi%C3%A7%C3%A3o-independente-no-mesmo-deploy)
+- [Exemplo 8: restrição comprovada de caminho único](#exemplo-8-restri%C3%A7%C3%A3o-comprovada-de-caminho-%C3%BAnico)
+- [Exemplo 9: sabatina ainda aberta](#exemplo-9-sabatina-ainda-aberta)
+
 ## Exemplo 1: extrair serviço ou manter no deploy atual
 
 **Entrada:** "Nosso gerador de relatórios trava o app em horários de pico. Extraio

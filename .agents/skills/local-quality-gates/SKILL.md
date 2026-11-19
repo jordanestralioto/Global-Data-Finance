@@ -20,6 +20,41 @@ Configure gates determinísticos, meça seu custo e escolha o estágio conforme
 o contrato do projeto. Hooks locais podem ser ignorados ou estar ausentes;
 controles essenciais também precisam de proteção remota equivalente.
 
+## Escolha o modo antes de começar
+
+**Ajuste pontual:** consertar, adicionar ou remover um hook ou gate específico
+("arruma meu pre-commit", "o push não roda nada", "adiciona o gitleaks").
+Preserve o runner e os gates existentes, aplique as regras abaixo, teste o hook
+alterado e relate só o que mudou. Não monte a matriz completa, não percorra o
+catálogo de slots nem abra uma auditoria de código morto.
+
+1. Fixe o `rev` de cada repositório remoto de hooks no SHA de 40 caracteres do
+   commit da release, com a release em comentário. Numa tag anotada,
+   `git rev-parse <tag>` e `pre-commit autoupdate --freeze` devolvem o SHA do
+   objeto da tag; resolva o commit como no item 07 do Passo 3.
+2. Nenhum hook atualiza, sincroniza ou resolve dependências. Para lockfile, use
+   só checks somente leitura (`uv lock --check`, `poetry check --lock`,
+   `cargo check --locked`); `go mod verify` não prova a coerência entre
+   `go.mod` e `go.sum`.
+3. Auto-fixers e corretores lexicais excluem projeções geradas rastreadas;
+   corrija a fonte canônica e regenere.
+4. Auto-fix só para espaços, formatadores determinísticos e imports. Não
+   enfraqueça asserções nem adicione supressões para passar.
+5. Depois de um auto-fix, rode `git add --` apenas nos arquivos alterados.
+6. Dívida pré-existente vira baseline por identidade do achado, não por contagem.
+7. Confira se o hook está instalado, se `core.hooksPath` muda o local efetivo
+   e se o conteúdo instalado é a versão esperada, inclusive um `<hook>.legacy`
+   que o pre-commit preserva e continua executando.
+8. Ferramenta ausente ou quebrada é `ERROR`, não sucesso; `SKIP` declara o motivo.
+9. Rode o gate alterado pelo runner, no estágio dele, e mostre o código de
+   saída. `pre-commit run --all-files` não cobre `commit-msg` nem `pre-push`.
+
+**Setup completo ou auditoria:** projeto sem runner, novo estágio, revisão de
+todos os gates, código morto, limites ou perfil estrito. Siga as seções abaixo e
+o procedimento inteiro, incluindo a matriz do Passo 2 e a prova de `PASS` e
+`FAIL` do Passo 5. Se um ajuste pontual crescer para um desses casos, troque de
+modo e diga isso ao usuário.
+
 ## Contrato portátil e política do projeto
 
 1. Leia as regras e os comandos oficiais do projeto antes de escolher gates.
@@ -65,7 +100,10 @@ Um prefixo usado apenas para invocar uma ferramenta já fixada do gate, como
 `uv run --locked`, não é um updater por si só. Mantenha-o somente quando fizer
 parte do contrato existente do projeto; se a execução puder sincronizar o
 ambiente implicitamente, considere `--no-sync` depois que o setup local já
-estiver concluído.
+estiver concluído. Com `--no-sync`, o `--locked` do `uv run` deixa de
+verificar o lockfile, e o comando roda mesmo com `uv.lock` desatualizado:
+mantenha `uv lock --check` como gate próprio. Veja as demais nuances do uv em
+[stack-detection.md](references/stack-detection.md#11-dependency-lifecycle-classification).
 
 Se a stack não fornecer uma verificação nativa somente leitura, exija a
 paridade staged entre manifesto e lockfile usando o gate compartilhado; não
@@ -87,7 +125,10 @@ adicionado em todo formato textual, inclusive documentação. Consulte
 
 - **Pre-push**: Escolha suítes, typechecks e auditorias pelo custo medido e pelo
   contrato. Identifique commits/refspecs enviados ou a cobertura residual do
-  working tree. Helpers de diff staged não comprovam cobertura do push.
+  working tree. Helpers de diff staged não comprovam cobertura do push. Com o
+  runner pre-commit, confira o que ele inspeciona em cada estágio (stash,
+  commit raiz, refs remotas desatualizadas, push de vários refs) em
+  [gate-catalog.md](references/gate-catalog.md#6-hook-runner-pins-and-snapshots).
 - **Testes por estágio**: `[TESTS_FAST]` tem escopo e custo delimitados;
   `[TESTS_FULL]` executa toda a suíte local atribuída ao push.
 - **Auditoria de dependências**: Fixe um scanner somente leitura e registre
@@ -125,7 +166,11 @@ semântica e severidade documentadas antes de classificar; consulte
    runtime disponível para qualquer helper local.
 5. Determine a entrada de cada estágio: index no pre-commit, mensagem no
    commit-msg e commits/refspecs no pre-push. Um check de projeto que lê o
-   working tree deve tratar alterações não staged como outro snapshot.
+   working tree deve tratar alterações não staged como outro snapshot. O stash
+   do runner não esconde arquivos não rastreados: um gate de repositório
+   inteiro que lê o disco pode aprovar o commit graças a um arquivo que ficou
+   fora dele. Classifique essa cobertura como parcial (working tree) e feche-a
+   com pre-push em checkout limpo do commit enviado ou com CI.
 
 ### Passo 2: Análise de Lacunas e Mapeamento de Slots
 
@@ -137,9 +182,10 @@ ao pedido; uma manutenção pontual não exige preencher todo o catálogo.
   status em [dead-code-policy.md](references/dead-code-policy.md#1-capability-report).
   Lint aprovado não comprova cobertura completa nem aprova APIs de compatibilidade.
 
-Registre a decisão em uma matriz com colunas `gate`, `estágio`, `comando/versão`,
-`snapshot`, `efeito`, `duração observada`, `status` e `justificativa`. Inclua
-slots omitidos quando a ausência poderia ser confundida com cobertura.
+No setup completo, registre a decisão em uma matriz com colunas `gate`,
+`estágio`, `comando/versão`, `snapshot`, `efeito`, `duração observada`, `status`
+e `justificativa`. Inclua slots omitidos quando a ausência poderia ser
+confundida com cobertura.
 
 Para cada slot selecionado, registre regra nativa, métrica, limite, escopo,
 estágio e status (`ENABLED`, `DELEGATED`, `MANUAL`, `UNSUPPORTED`).
@@ -168,21 +214,24 @@ de análise em [agent-anti-patterns.md](references/agent-anti-patterns.md).
 05. Configure `[CIRCULAR_DEPENDENCIES]` quando requerido. Um ciclo novo falha.
     Se a ferramenta aceitar escopo, execute o grafo afetado; não substitua uma exigência do
     projeto por `SKIP`. Registre ciclos históricos por identidade.
-06. Configure `[LOCKFILE]` em projetos com lockfile autoritativo como um gate
-    de validação. Exija o lockfile correspondente no diff staged ou use o comando
-    nativo somente quando ele comprovar coerência sem persistir uma nova
-    resolução, reescrever manifestos/lockfiles ou instalar dependências. Para stacks sem
-    esse comando, mantenha a exigência de paridade e registre a limitação; nunca
-    substitua o gate por comandos
-    mutáveis como `install`, `sync`, `update`, `upgrade`, `lock` ou `tidy`.
-    Comandos explicitamente somente leitura, como `uv lock --check`,
-    `poetry check --lock`, `cargo check --locked` e `go mod tidy -diff` (quando
-    suportado), são exceções autorizadas. `go mod verify` verifica a integridade
-    do cache de módulos e não a coerência entre `go.mod` e `go.sum`; trate-o como
-    auditoria de integridade separada, nunca como substituto do `[LOCKFILE]`.
+06. Configure `[LOCKFILE]` em projetos com lockfile autoritativo como gate de
+    validação, conforme a política de dependências acima: exija o lockfile
+    correspondente no diff staged ou um comando nativo que comprove coerência sem
+    persistir resolução, reescrever manifestos ou instalar dependências
+    (`uv lock --check`, `poetry check --lock`, `cargo check --locked`,
+    `go mod tidy -diff` quando suportado). Sem esse comando, mantenha a paridade
+    e registre a limitação; nunca substitua o gate por `install`, `sync`,
+    `update`, `upgrade`, `lock` ou `tidy`. `go mod verify` audita o cache de
+    módulos, não a coerência entre `go.mod` e `go.sum`.
 07. Para cada repositório remoto de hooks, resolva uma release e fixe `rev` em
     um SHA de commit de 40 caracteres antes de declarar a configuração pronta.
     Preserve a release em comentário; não deixe tags mutáveis na configuração.
+    Numa tag anotada, `git rev-parse <tag>` e `pre-commit autoupdate --freeze`
+    devolvem o SHA do objeto da tag. Resolva o commit com
+    `git rev-parse '<tag>^{commit}'` ou consulte o upstream com
+    `git ls-remote <repo> 'refs/tags/<tag>' 'refs/tags/<tag>^{}'`; sem linha
+    `^{}`, a tag é leve e a própria ref aponta para o commit. Confira cada pin
+    contra o upstream.
 08. Quando houver `additional_dependencies`, resolva e fixe o grupo compatível
     em conjunto. Atualize pacote base e plugins juntos, valide a resolução e
     só então registre versões exatas.
@@ -192,8 +241,11 @@ de análise em [agent-anti-patterns.md](references/agent-anti-patterns.md).
     `codespell`) devem declarar `exclude` local para esses caminhos quando eles
     puderem estar rastreados. Mantenha scanners de segurança e validações
     semânticas no escopo apropriado e, quando a projeção precisar ser validada,
-    use um gate dedicado somente leitura. Corrija sempre a fonte canônica e
-    regenere a projeção; não corrija o espelho diretamente.
+    use um gate dedicado somente leitura. Adaptadores de diff do consumidor,
+    como a varredura operacional e a checagem de sintaxe shell, não excluem a
+    projeção rastreada, sobretudo quando hooks executam scripts dela; só o
+    classificador de debug e stubs pode excluí-la. Corrija sempre a fonte
+    canônica e regenere a projeção; não corrija o espelho diretamente.
 10. Quando pre-push fizer parte do pedido ou contrato do projeto, substitua o
     placeholder pelo gate escolhido, declare `stages: [pre-push]` ou
     `pre-push:` e instale esse estágio. Fora desse escopo, remova o placeholder
@@ -226,11 +278,27 @@ inferência em qualquer stack:
   diretórios de scripts não recebem liberação automática. Complexidade e
   aninhamento exigem analisador com parser.
 - `check_test_integrity.py`: Bloqueia `.only`/`fit`, skips e perda de asserções
-  sem razão; exige policy staged em `.test-deletions.json` para deleções.
+  sem razão; exige policy staged em `.test-deletions.json` para deleções e
+  renames que removam a classificação de teste ou a coleta padrão do pytest,
+  Jest ou Vitest em alguma plataforma: a caixa do nome conta, e diretórios
+  ignorados por padrão, como `build/`, `dist/`, ocultos e `node_modules/`,
+  tiram o teste da coleta. Autorize o caminho antigo exato em
+  `allowed_deletions`; a policy só no working tree não vale. O helper lê os
+  caminhos dos metadados staged como bytes e o patch de cada teste como
+  texto, e verifica todas as deleções e renames staged, mesmo com filtro de
+  arquivos no CLI. Adapte as raízes e os padrões de coleta à configuração do
+  projeto, como `testDir`/`testMatch` do Playwright e
+  `testpaths`/`python_files`/`norecursedirs` do pytest.
   Justificativas de redução vêm do índice, inclusive fora do hunk alterado;
   uma justificativa só no working tree não autoriza o snapshot staged.
   Semântica de assertions e tautologias exigem lint nativo ou `testing-patterns`.
-- `check_lockfile_sync.py`, `lockfile_checks.py`, `staged_changes.py` e `workspace_members.py`: Copie os quatro arquivos juntos para `scripts/`; o primeiro é o CLI, o segundo centraliza a leitura de manifests e as verificações nativas de coerência, o terceiro preserva relações de rename/copy no índice e o quarto fornece a leitura indexada e o matching conservador de membros. O conjunto exige lockfile staged ou confirmação nativa de coerência e comprova pertencimento ao workspace. Paridade staged sozinha não prova que o conteúdo do lockfile está correto; registre essa limitação. O CLI deve analisar o conteúdo staged de `package.json`, dispensar manifests sem dependências declaradas e recusar confirmação nativa quando arquivos relevantes divergem do index. Ele não executa atualizadores ou sincronizadores de ambiente.
+- `check_lockfile_sync.py`, `lockfile_checks.py`, `staged_changes.py` e
+  `workspace_members.py`: copie os quatro juntos para `scripts/`, porque o CLI
+  `check_lockfile_sync.py` importa os outros três. O conjunto exige lockfile
+  staged ou confirmação nativa de coerência, comprova pertencimento ao
+  workspace e não executa atualizadores nem sincronizadores. Paridade staged
+  sozinha não prova que o conteúdo do lockfile está correto; registre essa
+  limitação.
 
 ### Passo 5: Verificação, Tratamento de Legado e Baseline
 
@@ -249,8 +317,8 @@ inferência em qualquer stack:
    ```
    Use o prefixo fixado pelo projeto (`uv run --locked`, `pnpm exec` etc.)
    quando necessário. Evite invocação que baixe um runner não fixado.
-3. Em um checkout de teste, prove pelo menos um `PASS` e um `FAIL` real em
-   cada estágio configurado. Inclua um arquivo parcialmente staged, uma
+3. No setup completo, prove pelo menos um `PASS` e um `FAIL` real em cada
+   estágio configurado, usando um checkout de teste. Inclua um arquivo parcialmente staged, uma
    ferramenta ausente e um formatter que altera arquivos quando aplicáveis.
 4. Para dívida pré-existente, use [baseline-recipes.md](references/baseline-recipes.md)
    e congele achados por identidade. Contagem total isolada não garante zero
@@ -353,45 +421,3 @@ o comando deliberado de manutenção; não deduza CI, bots ou agendamentos.
 - **Solução Correta**: O agente mede custo e dependências, mantém checks locais
   rápidos no pre-commit e escolhe pre-push ou CI para os testes pesados conforme
   o contrato do projeto.
-
-## Evals de trigger
-
-### Deve acionar
-
-- "Cria uma configuração de pre-commit para este projeto."
-- "Configura um pre-push que rode os testes antes de enviar a branch."
-- "O arquivo de hooks existe, mas o git push não roda nada."
-- "Adiciona quality gates locais para impedir que a IA commite debugs e console.log."
-- "Arruma os hooks do git que estão falhando no commit."
-- "Configura pre-commit com ruff, prettier e gitleaks."
-- "Adiciona checagem de lockfile e integridade de testes no commit."
-- "Adiciona um atualizador de dependências ao pre-commit." → Acionar a
-  política de lifecycle: configurar validação de lockfile e explicar por que
-  o updater deve ser uma automação deliberada fora do hook.
-- "Bloqueia imports circulares antes do commit."
-- "Bloqueia código morto antes do commit."
-- "Revisa se nossos hooks detectam exports e arquivos sem uso."
-- "Configura o linter para bloquear funções complexas e aninhamento profundo."
-- "Bloqueia arquivos com mais de 400 linhas no pre-commit."
-- "Adiciona gates para catch-all, handlers vazios e funções longas."
-- "Distribui testes rápidos no commit e completos no push; audita as dependências."
-
-### Não deve acionar
-
-- "Cria uma pipeline de CI no GitHub Actions para deploy em produção." → Encaminhar para arquitetura/CI.
-- "Escreve testes E2E com Playwright para o fluxo de checkout." → Encaminhar para `webapp-testing`.
-- "Audita a segurança da API contra vulnerabilidades OWASP." → Encaminhar para `vulnerability-scanner`.
-- "Refatora essa função que está muito longa." → Encaminhar para `modularizar`.
-- "Essa assertion realmente prova a regressão?" → Encaminhar para `testing-patterns`.
-- "Remove esse alias obsoleto da aplicação." → Revise consumidores e contratos
-  na aplicação; não foi pedida configuração de hooks.
-- "Apaga as funções sem uso deste módulo." → Limpeza da aplicação com remoções
-  revisadas; não deduza configuração de gates.
-
-## Evals de workflow
-
-Execute os três cenários e as assertions binárias em
-[eval-scenarios.md](references/eval-scenarios.md) antes de chamar uma mudança
-de templates portátil entre stacks.
-
-Preserve as assertions de regressão existentes ao estender essas avaliações.

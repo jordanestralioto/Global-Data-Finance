@@ -10,6 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from harness import mirror_paths
+
 
 class ClientLinkError(Exception):
     """A generated client link is stale or conflicts with project content."""
@@ -50,21 +52,11 @@ def _source_exists(spec: LinkSpec) -> bool:
     return spec.source.is_file()
 
 
-def _is_managed_link(spec: LinkSpec) -> bool:
-    return (
-        spec.target.is_symlink() and spec.target.readlink() == spec.link_target
-    )
-
-
-def _exists(spec: LinkSpec) -> bool:
-    return spec.target.exists() or spec.target.is_symlink()
-
-
-def _conflict(spec: LinkSpec, root: Path) -> str:
+def _conflict(spec: LinkSpec, root: Path, link: Path | None) -> str:
     target = _display(spec.target, root)
-    if spec.target.is_symlink():
+    if link is not None:
         return (
-            f'{target} points to {str(spec.target.readlink())!r}; '
+            f'{target} points to {str(link)!r}; '
             f'harness-sync manages only a link to {str(spec.link_target)!r}'
         )
     return f'{target} is project-owned; harness-sync will not replace it'
@@ -75,12 +67,17 @@ def _plan(root: Path) -> tuple[list[LinkSpec], list[LinkSpec]]:
     remove: list[LinkSpec] = []
     conflicts: list[str] = []
     for spec in _specs(root):
-        managed = _is_managed_link(spec)
+        try:
+            exists, link = mirror_paths.link_state(root, spec.target)
+        except mirror_paths.UnsafePath as exc:
+            conflicts.append(str(exc))
+            continue
+        managed = link == spec.link_target
         if _source_exists(spec):
             if managed:
                 continue
-            if _exists(spec):
-                conflicts.append(_conflict(spec, root))
+            if exists:
+                conflicts.append(_conflict(spec, root, link))
             else:
                 create.append(spec)
         elif managed:
@@ -105,14 +102,15 @@ def synchronize(root: Path) -> None:
     create, remove = _plan(root)
     try:
         for spec in remove:
-            spec.target.unlink()
+            mirror_paths.remove_link(root, spec.target, spec.link_target)
         for spec in create:
-            spec.target.parent.mkdir(parents=True, exist_ok=True)
-            spec.target.symlink_to(
+            mirror_paths.create_link(
+                root,
+                spec.target,
                 spec.link_target,
-                target_is_directory=spec.source_is_directory,
+                directory=spec.source_is_directory,
             )
-    except OSError as exc:
+    except (OSError, mirror_paths.UnsafePath) as exc:
         raise ClientLinkError(
             f'could not synchronize client links: {exc}'
         ) from exc

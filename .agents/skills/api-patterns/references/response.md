@@ -3,6 +3,15 @@
 > Preserve contratos existentes. Em erros, siga o formato do estilo da API e
 > mantenha a resposta sanitizada.
 
+## Sumário
+
+- [Quando usar envelope](#quando-usar-envelope)
+- [Formato de sucesso](#formato-de-sucesso)
+- [Formato de erro em REST/HTTP](#formato-de-erro-em-resthttp)
+- [Formato de erro em GraphQL e tRPC](#formato-de-erro-em-graphql-e-trpc)
+- [Paginação](#pagina%C3%A7%C3%A3o)
+- [Status codes e body](#status-codes-e-body)
+
 ## Quando usar envelope
 
 Retornar um array bruto (`[{...}, {...}]`) na raiz da resposta parece simples, mas

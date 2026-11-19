@@ -52,11 +52,14 @@ def staged_shell_files(
 ) -> list[tuple[str, str, tuple[str, ...]]]:
     """Return changed shell files with the exact Git content to validate."""
     files: list[tuple[str, str, tuple[str, ...]]] = []
-    for path in get_changed_paths(revision_range=revision_range):
+    for path in get_changed_paths(
+        revision_range=revision_range, include_projection=True
+    ):
         content = read_git_file(
             path,
             revision_range=revision_range,
             encoding_errors='surrogateescape',
+            include_projection=True,
         )
         if content is None:
             raise ShellInspectionError(

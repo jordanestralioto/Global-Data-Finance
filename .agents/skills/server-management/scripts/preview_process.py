@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import contextlib
 import ctypes
+import errno
 import os
 import signal
 import subprocess
@@ -13,6 +15,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+PROC = Path('/proc')
+# <linux/pidfd.h>: signal the group that the pidfd's process leads (6.9+).
+PIDFD_SIGNAL_PROCESS_GROUP = 4
+SendSignal = Callable[..., None]
+
 
 @dataclass(frozen=True)
 class ProcessHandle:
@@ -20,22 +27,77 @@ class ProcessHandle:
     terminate: Callable[[], None]
 
 
-def _linux_identity(pid: int) -> str:
-    boot_id = (
-        Path('/proc/sys/kernel/random/boot_id')
-        .read_text(encoding='ascii')
-        .strip()
-    )
+def _linux_stat(pid: int) -> list[bytes]:
+    """Return the `/proc/<pid>/stat` fields that follow the command name."""
     try:
-        stat = Path(f'/proc/{pid}/stat').read_bytes()
+        stat = (PROC / str(pid) / 'stat').read_bytes()
     except FileNotFoundError as exc:
         raise ProcessLookupError(f'process {pid} is unavailable') from exc
     end = stat.rfind(b')')
-    fields = stat[end + 2 :].split() if end >= 0 else []
+    return stat[end + 2 :].split() if end >= 0 else []
+
+
+def _linux_identity(pid: int) -> tuple[str, int]:
+    """Return the start identity of `pid` and its process group."""
+    boot_file = PROC / 'sys/kernel/random/boot_id'
+    boot_id = boot_file.read_text(encoding='ascii').strip()
+    fields = _linux_stat(pid)
     if not boot_id or len(fields) < 20 or fields[0] in {b'Z', b'X', b'x'}:
         raise ProcessLookupError(f'process {pid} is unavailable')
     start_ticks = fields[19].decode('ascii')
-    return f'linux:{boot_id}:{start_ticks}'
+    return f'linux:{boot_id}:{start_ticks}', int(fields[2])
+
+
+def _group_of(pid: int) -> int | None:
+    with contextlib.suppress(OSError, IndexError, ValueError):
+        return int(_linux_stat(pid)[2])
+    return None
+
+
+def _open_members(pgid: int, pidfd_open: Callable[[int], int]) -> list[int]:
+    """Open a pidfd for each other process whose group is `pgid`.
+
+    The group is read again once the pidfd is open. A pidfd signal reaches its
+    process only while it keeps the PID it was opened on, so a signaled member
+    was in `pgid` at that second read.
+    """
+    members: list[int] = []
+    for entry in PROC.iterdir():
+        if not entry.name.isdigit():
+            continue
+        pid = int(entry.name)
+        if pid == pgid or _group_of(pid) != pgid:
+            continue
+        try:
+            member = pidfd_open(pid)
+        except OSError:
+            continue
+        if _group_of(pid) == pgid:
+            members.append(member)
+        else:
+            os.close(member)
+    return members
+
+
+def _terminate_members(
+    pgid: int,
+    leader_fd: int,
+    pidfd_open: Callable[[int], int],
+    send_signal: SendSignal,
+) -> None:
+    """Signal the group one pidfd at a time, for kernels before Linux 6.9."""
+    members = _open_members(pgid, pidfd_open)
+    try:
+        # While the leader exists, no other group can take the number `pgid`,
+        # so every member read above belonged to this group. If the leader is
+        # gone, this raises ProcessLookupError before any process is signaled.
+        send_signal(leader_fd, 0)
+        for descriptor in (leader_fd, *members):
+            with contextlib.suppress(ProcessLookupError):
+                send_signal(descriptor, signal.SIGTERM)
+    finally:
+        for member in members:
+            os.close(member)
 
 
 @contextmanager
@@ -46,11 +108,29 @@ def _open_linux(pid: int) -> Iterator[ProcessHandle]:
         raise OSError('safe preview control requires Linux pidfd support')
     descriptor = pidfd_open(pid)
     try:
-        identity = _linux_identity(pid)
-        yield ProcessHandle(
-            identity,
-            lambda: send_signal(descriptor, signal.SIGTERM),
-        )
+        identity, group = _linux_identity(pid)
+
+        def terminate() -> None:
+            if group != pid:
+                # Not a group leader: only this process belongs to the preview.
+                send_signal(descriptor, signal.SIGTERM)
+                return
+            # The server behind `npm` -> `sh` keeps the port when only the
+            # leader is signaled. Every signal goes through a pidfd: once
+            # this group is gone, its numeric ID can name an unrelated group.
+            try:
+                send_signal(
+                    descriptor,
+                    signal.SIGTERM,
+                    None,
+                    PIDFD_SIGNAL_PROCESS_GROUP,
+                )
+            except OSError as exc:
+                if exc.errno != errno.EINVAL:
+                    raise
+                _terminate_members(pid, descriptor, pidfd_open, send_signal)
+
+        yield ProcessHandle(identity, terminate)
     finally:
         os.close(descriptor)
 

@@ -3,6 +3,14 @@
 Leia somente a seção da camada escolhida. Use comandos e dependências existentes
 no consumidor; a falta de uma ferramenta não autoriza inventar medições.
 
+## Sumário
+
+- [Request HTTP sem instrumentação da aplicação](#request-http-sem-instrumenta%C3%A7%C3%A3o-da-aplica%C3%A7%C3%A3o)
+- [Navegação e interação no browser](#navega%C3%A7%C3%A3o-e-intera%C3%A7%C3%A3o-no-browser)
+- [CPU Python após isolar o processo suspeito](#cpu-python-ap%C3%B3s-isolar-o-processo-suspeito)
+- [Event loop Node após isolar o processo](#event-loop-node-ap%C3%B3s-isolar-o-processo)
+- [Query identificada em Postgres](#query-identificada-em-postgres)
+
 ## Request HTTP sem instrumentação da aplicação
 
 Para um GET reproduzível, substitua a URL e mantenha os mesmos parâmetros em
@@ -76,6 +84,35 @@ No prompt de `pstats`, use `sort cumulative` e `stats 20` para localizar custo
 acumulado, depois `sort time` para custo próprio. Perfis incluem overhead;
 compare a latência sem profiler antes/depois. `cProfile` não substitui um trace
 de I/O concorrente nem mede automaticamente uma aplicação não escrita em Python.
+
+## Event loop Node após isolar o processo
+
+Meça durante a reprodução do sintoma, com o processo real em uso. Os valores do
+histograma estão em nanossegundos; divida por `1e6` para milissegundos. O trecho
+abaixo é ESM (`.mjs`), que aceita `await` no nível superior:
+
+```js
+import { monitorEventLoopDelay } from 'node:perf_hooks';
+
+const histogram = monitorEventLoopDelay({ resolution: 10 });
+histogram.enable();
+// Aquecimento: sem esta espera, um bloqueio imediato pode não aparecer no histograma.
+await new Promise((resolve) => setTimeout(resolve, 50));
+// ... dispare a operação suspeita aqui e aguarde sua conclusão ...
+await new Promise((resolve) => setTimeout(resolve, 50));
+histogram.disable();
+console.log(JSON.stringify({ p99_ms: histogram.percentile(99) / 1e6, max_ms: histogram.max / 1e6 }));
+```
+
+Em teste local com um bloqueio síncrono de 300 ms, o histograma reportou 11 ms
+sem o aquecimento e cerca de 310 ms com ele. Um `max_ms` alto ligado à operação
+suspeita é evidência de bloqueio do event loop. Nesta janela curta há poucas
+amostras e `p99_ms` tende a igualar `max_ms`; para distinguir bloqueios
+recorrentes, meça em uma janela longa com o processo sob carga. Para localizar a
+função, gere um perfil com
+`node --cpu-prof --cpu-prof-dir=<dir> <script>` e importe o `.cpuprofile` no painel
+Performance do Chrome DevTools. Perfis incluem overhead; compare a latência sem o
+profiler antes de concluir.
 
 ## Query identificada em Postgres
 

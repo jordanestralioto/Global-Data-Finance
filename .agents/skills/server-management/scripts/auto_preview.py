@@ -2,6 +2,7 @@
 """Manage a local preview server without signaling an unrelated process.
 
 Manages (start/stop/status) the local development server for previewing the application.
+Each action prints one JSON result and exits 1 when its status is `error`.
 
 Usage:
     python .agents/skills/server-management/scripts/auto_preview.py start [port]
@@ -14,7 +15,6 @@ import contextlib
 import json
 import os
 import subprocess
-import sys
 from pathlib import Path
 
 from preview_process import capture_identity, open_process
@@ -23,7 +23,6 @@ AGENT_DIR = Path('.agents')
 PID_FILE = AGENT_DIR / 'preview.pid'
 META_FILE = AGENT_DIR / 'preview.json'
 LOG_FILE = AGENT_DIR / 'preview.log'
-INFO_ICON = '\N{INFORMATION SOURCE}\N{VARIATION SELECTOR-16}'
 
 
 def get_project_root() -> Path:
@@ -55,7 +54,7 @@ def get_start_command(root: Path) -> list[str] | None:
     try:
         with open(pkg_file, encoding='utf-8') as f:
             data = json.load(f)
-    except (OSError, json.JSONDecodeError):
+    except (OSError, ValueError):  # ValueError: invalid JSON or UTF-8.
         return None
 
     if not isinstance(data, dict):
@@ -78,7 +77,8 @@ def _read_saved_preview() -> tuple[int | None, str | None, int]:
     identity: str | None = None
 
     if META_FILE.exists():
-        with contextlib.suppress(OSError, json.JSONDecodeError):
+        # ValueError covers both invalid JSON and bytes that are not UTF-8.
+        with contextlib.suppress(OSError, ValueError):
             meta = json.loads(META_FILE.read_text(encoding='utf-8'))
             if isinstance(meta, dict):
                 if type(meta.get('pid')) is int:
@@ -95,22 +95,34 @@ def _read_saved_preview() -> tuple[int | None, str | None, int]:
     return pid, identity, port
 
 
-def start_server(port: int = 3000) -> None:
+def _report(action: str, status: str, **details: object) -> int:
+    """Print one JSON result for the agent and return the exit code."""
+    print(json.dumps({'action': action, 'status': status, **details}))
+    return 1 if status == 'error' else 0
+
+
+def start_server(port: int = 3000) -> int:
     try:
         capture_identity(os.getpid())
     except OSError as exc:
-        print(f'❌ Safe preview control is unavailable: {exc}')
-        raise SystemExit(1) from exc
+        return _report(
+            'start',
+            'error',
+            diagnostic=f'Safe preview control is unavailable: {exc}',
+        )
 
     saved_pid, saved_identity, _ = _read_saved_preview()
     if saved_pid is not None and saved_identity:
         try:
             if is_preview_process(saved_pid, saved_identity):
-                print(f'⚠️  Preview already running (PID: {saved_pid})')
-                return
+                return _report('start', 'already_running', pid=saved_pid)
         except OSError as exc:
-            print(f'❌ Cannot inspect existing preview: {exc}')
-            raise SystemExit(1) from exc
+            return _report(
+                'start',
+                'error',
+                pid=saved_pid,
+                diagnostic=f'Cannot inspect existing preview: {exc}',
+            )
     if PID_FILE.exists() or META_FILE.exists():
         cleanup_state()
 
@@ -118,22 +130,31 @@ def start_server(port: int = 3000) -> None:
     cmd = get_start_command(root)
 
     if not cmd:
-        print("❌ No 'dev' or 'start' script found in package.json")
-        sys.exit(1)
+        return _report(
+            'start',
+            'error',
+            diagnostic="No 'dev' or 'start' script found in package.json",
+        )
 
-    AGENT_DIR.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
     env['PORT'] = str(port)
 
-    print(f'🚀 Starting preview on port {port}...')
-
-    with open(LOG_FILE, 'w', encoding='utf-8') as log:
-        process = subprocess.Popen(
-            cmd,
-            cwd=str(root),
-            stdout=log,
-            stderr=log,
-            env=env,
+    try:
+        AGENT_DIR.mkdir(parents=True, exist_ok=True)
+        # A separate session makes the preview a process-group leader, so
+        # stop can reach the server spawned behind npm. Windows ignores it.
+        with open(LOG_FILE, 'w', encoding='utf-8') as log:
+            process = subprocess.Popen(
+                cmd,
+                cwd=str(root),
+                stdout=log,
+                stderr=log,
+                env=env,
+                start_new_session=True,
+            )
+    except OSError as exc:
+        return _report(
+            'start', 'error', diagnostic=f'Could not launch preview: {exc}'
         )
 
     try:
@@ -146,52 +167,84 @@ def start_server(port: int = 3000) -> None:
         PID_FILE.write_text(f'{process.pid}\n')
         META_FILE.write_text(json.dumps(metadata, indent=2) + '\n')
     except OSError as exc:
+        diagnostic = f'Could not track preview process: {exc}'
         if process.poll() is None:
-            process.terminate()
+            try:
+                process.terminate()
+            except OSError as stop_exc:
+                diagnostic += (
+                    f'; terminating PID {process.pid} also failed, so it '
+                    f'may still be running: {stop_exc}'
+                )
         cleanup_state()
-        print(f'❌ Could not track preview process: {exc}')
-        raise SystemExit(1) from exc
+        return _report(
+            'start', 'error', pid=process.pid, diagnostic=diagnostic
+        )
 
-    print(f'✅ Preview started! (PID: {process.pid})')
-    print(f'   Logs: {LOG_FILE}')
-    print(f'   URL: http://localhost:{port}')
+    return _report(
+        'start',
+        'started',
+        pid=process.pid,
+        port=port,
+        requested_url=f'http://localhost:{port}',
+        log=str(LOG_FILE),
+    )
 
 
-def stop_server() -> None:
+def stop_server() -> int:
     if not PID_FILE.exists() and not META_FILE.exists():
-        print(f'{INFO_ICON}  No preview server found.')
-        return
+        return _report(
+            'stop', 'not_running', diagnostic='No preview state was found.'
+        )
 
     pid, identity, _ = _read_saved_preview()
 
     if pid is None or pid <= 1 or not identity:
-        print(f'{INFO_ICON}  No verifiable preview process found.')
         cleanup_state()
-        return
+        return _report(
+            'stop',
+            'not_running',
+            diagnostic=(
+                'Saved state had no verifiable process; it was cleared '
+                'without signaling any process.'
+            ),
+        )
 
     try:
         with open_process(pid) as process:
             if process.identity != identity:
-                print(
-                    f'⚠️  PID {pid} belongs to another process. '
-                    'Refusing to terminate it.'
-                )
                 cleanup_state()
-                return
+                return _report(
+                    'stop',
+                    'not_running',
+                    pid=pid,
+                    diagnostic=(
+                        f'PID {pid} belongs to another process; the state '
+                        'was cleared without signaling it.'
+                    ),
+                )
             process.terminate()
     except ProcessLookupError:
-        print(f'{INFO_ICON}  Process was not running.')
         cleanup_state()
-        return
+        return _report(
+            'stop',
+            'not_running',
+            pid=pid,
+            diagnostic='Process was not running.',
+        )
     except OSError as exc:
-        print(f'❌ Could not safely stop preview: {exc}')
-        return
+        return _report(
+            'stop',
+            'error',
+            pid=pid,
+            diagnostic=f'Could not safely stop preview: {exc}',
+        )
 
     cleanup_state()
-    print(f'🛑 Preview stopped (PID: {pid})')
+    return _report('stop', 'stopped', pid=pid)
 
 
-def status_server() -> None:
+def status_server() -> int:
     pid, identity, port = _read_saved_preview()
     running = False
 
@@ -199,42 +252,42 @@ def status_server() -> None:
         try:
             running = is_preview_process(pid, identity)
         except OSError as exc:
-            print(f'❌ Cannot inspect preview status: {exc}')
-            return
+            return _report(
+                'status',
+                'error',
+                pid=pid,
+                diagnostic=f'Cannot inspect preview status: {exc}',
+            )
         if not running:
             cleanup_state()
-            pid = None
     elif PID_FILE.exists() or META_FILE.exists():
         cleanup_state()
-        pid = None
 
-    url = f'http://localhost:{port}' if running else 'Unknown'
-
-    print('\n=== Preview Status ===')
-    if running:
-        print('✅ Status: Running')
-        print(f'🔢 PID: {pid}')
-        print(f'🌐 URL: {url}')
-        print(f'📝 Logs: {LOG_FILE}')
-    else:
-        print('⚪ Status: Stopped')
-    print('===================\n')
+    if not running:
+        return _report('status', 'stopped')
+    return _report(
+        'status',
+        'running',
+        pid=pid,
+        requested_url=f'http://localhost:{port}',
+        log=str(LOG_FILE),
+    )
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser()
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description='Start, stop or inspect the local preview server.'
+    )
     parser.add_argument('action', choices=['start', 'stop', 'status'])
-    parser.add_argument('port', nargs='?', default='3000')
-
-    args = parser.parse_args()
+    parser.add_argument('port', nargs='?', type=int, default=3000)
+    args = parser.parse_args(argv)
 
     if args.action == 'start':
-        start_server(int(args.port))
-    elif args.action == 'stop':
-        stop_server()
-    elif args.action == 'status':
-        status_server()
+        return start_server(args.port)
+    if args.action == 'stop':
+        return stop_server()
+    return status_server()
 
 
 if __name__ == '__main__':
-    main()
+    raise SystemExit(main())

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import gzip
-from collections.abc import AsyncIterator
+import re
+from collections.abc import AsyncIterator, Callable
 from pathlib import Path
 
 import httpx
@@ -210,11 +211,6 @@ async def test_head_never_reads_encoded_bodies_or_rejects_metadata_length(
             False,
         ),
         (
-            'https://origin.example.test/start',
-            'http://origin.example.test/final',
-            False,
-        ),
-        (
             'http://origin.example.test/start',
             'https://origin.example.test/final',
             False,
@@ -282,3 +278,138 @@ async def test_redirect_credentials_are_confined_to_the_initial_origin(
         assert 'x-custom-credential' not in seen[1]
         assert 'authorization' not in seen[1]
         assert 'cookie' not in seen[1]
+
+
+INITIAL = 'https://origin.example.test/start'
+
+
+def _redirect_once(
+    location: str, seen: list[httpx.URL]
+) -> Callable[[httpx.Request], httpx.Response]:
+    """Redirect the first request and serve a body to any later hop."""
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        seen.append(request.url)
+        if len(seen) == 1:
+            return httpx.Response(302, headers={'location': location})
+        return httpx.Response(200, content=b'ZIP')
+
+    return respond
+
+
+async def _request(
+    adapter: RequestsAdapter, method: str, target: Path
+) -> None:
+    """Send one HEAD or bounded download through the shared adapter."""
+    if method == 'head':
+        await adapter.async_head(INITIAL)
+    else:
+        await adapter.async_download_file(INITIAL, str(target), max_bytes=8)
+
+
+@pytest.mark.parametrize('method', ['head', 'download'])
+@pytest.mark.parametrize('allow_cross_origin', [True, False])
+@pytest.mark.parametrize(
+    'location',
+    ['http://origin.example.test/final', 'http://mirror.example.test/final'],
+)
+async def test_https_request_is_never_redirected_to_another_scheme(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    method: str,
+    allow_cross_origin: bool,
+    location: str,
+) -> None:
+    """The plaintext hop is rejected before it is sent, on any host."""
+    seen: list[httpx.URL] = []
+    install_mock_http_transport(monkeypatch, _redirect_once(location, seen))
+    target = tmp_path / 'archive.zip'
+    target.write_bytes(b'previous archive')
+    adapter = RequestsAdapter(allow_cross_origin_redirects=allow_cross_origin)
+
+    with pytest.raises(SecurityError, match='leaves HTTPS'):
+        await _request(adapter, method, target)
+
+    assert seen == [httpx.URL(INITIAL)]
+    assert target.read_bytes() == b'previous archive'
+    assert list(tmp_path.iterdir()) == [target]
+
+
+@pytest.mark.parametrize('method', ['head', 'download'])
+@pytest.mark.parametrize(
+    'location',
+    [
+        'https://cdn.example.test/final',
+        'https://origin.example.test:8443/final',
+    ],
+)
+async def test_origin_bound_adapter_rejects_cross_origin_https_hops(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    method: str,
+    location: str,
+) -> None:
+    """A changed host or port is rejected before the request is sent."""
+    seen: list[httpx.URL] = []
+    install_mock_http_transport(monkeypatch, _redirect_once(location, seen))
+    target = tmp_path / 'archive.zip'
+    target.write_bytes(b'previous archive')
+    adapter = RequestsAdapter(allow_cross_origin_redirects=False)
+
+    with pytest.raises(
+        SecurityError,
+        match=re.escape(
+            'outside the requested origin https://origin.example.test'
+        ),
+    ):
+        await _request(adapter, method, target)
+
+    assert seen == [httpx.URL(INITIAL)]
+    assert target.read_bytes() == b'previous archive'
+    assert list(tmp_path.iterdir()) == [target]
+
+
+@pytest.mark.parametrize('method', ['head', 'download'])
+@pytest.mark.parametrize(
+    'location', ['/final', 'https://origin.example.test:443/final']
+)
+async def test_origin_bound_adapter_follows_same_origin_redirects(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    method: str,
+    location: str,
+) -> None:
+    """Redirects that keep scheme, host, and port remain supported."""
+    seen: list[httpx.URL] = []
+    install_mock_http_transport(monkeypatch, _redirect_once(location, seen))
+    target = tmp_path / 'archive.zip'
+    adapter = RequestsAdapter(allow_cross_origin_redirects=False)
+
+    await _request(adapter, method, target)
+
+    assert [(url.scheme, url.host, url.port, url.path) for url in seen] == [
+        ('https', 'origin.example.test', None, '/start'),
+        ('https', 'origin.example.test', None, '/final'),
+    ]
+    if method == 'download':
+        assert target.read_bytes() == b'ZIP'
+
+
+async def test_rejected_redirect_diagnostic_omits_credentials_and_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Only the target origin is reported, never its user info or query."""
+    location = (
+        'http://user:synthetic-secret@'  # pragma: allowlist secret
+        'mirror.example.test/a?code=x1'
+    )
+    install_mock_http_transport(monkeypatch, _redirect_once(location, []))
+
+    with pytest.raises(SecurityError) as raised:
+        await _request(RequestsAdapter(), 'download', tmp_path / 'a.zip')
+
+    assert str(raised.value) == (
+        'Security violation: redirect target http://mirror.example.test '
+        'leaves HTTPS'
+    )
+    assert list(tmp_path.iterdir()) == []

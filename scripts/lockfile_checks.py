@@ -5,9 +5,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from scripts.diagnostics import summarize_diagnostic
 from scripts.process_runner import ProcessRunnerError, run_process
 
 UV_LOCK_CHECK = ('uv', 'lock', '--check')
+UV_LOCK_OUTDATED_EXIT_CODE = 1
 
 
 class LockfileInfrastructureError(RuntimeError):
@@ -37,10 +39,12 @@ def is_lockfile_in_sync(
 ) -> bool:
     """Return whether a native package manager confirms lockfile coherence.
 
-    No universal wall-clock budget is imposed here. A native command that
-    returns non-zero means the existing lockfile is not confirmed as coherent.
-    A missing tool or child-process execution error is infrastructure failure
-    and must remain distinguishable from that deterministic mismatch.
+    No universal wall-clock budget is imposed here. ``uv lock --check`` exits
+    with status 1 when the lockfile needs an update; that deterministic
+    mismatch returns ``False``. A missing tool, a resolver or network failure,
+    or any other non-zero status is infrastructure failure and raises, so it
+    stays distinguishable from the mismatch. The raised message carries the
+    redacted, bounded summary of uv's diagnostic.
     """
     target_dir = root / manifest_dir
     if manifest_path.name != 'pyproject.toml' or existing_locks != ['uv.lock']:
@@ -56,6 +60,14 @@ def is_lockfile_in_sync(
     except ProcessRunnerError as err:
         raise LockfileInfrastructureError(
             f'Unable to execute native lockfile check "{command_text}" '
-            f'for {manifest_path.as_posix()} (uv.lock): {err}'
+            f'for {manifest_path.as_posix()} (uv.lock): '
+            f'{summarize_diagnostic(str(err))}'
         ) from err
-    return result.returncode == 0
+    if result.returncode in {0, UV_LOCK_OUTDATED_EXIT_CODE}:
+        return result.returncode == 0
+    detail = summarize_diagnostic(result.stderr or result.stdout or '')
+    raise LockfileInfrastructureError(
+        f'Native lockfile check "{command_text}" exited '
+        f'{result.returncode} for {manifest_path.as_posix()} (uv.lock): '
+        f'{detail or "no diagnostic output"}'
+    )

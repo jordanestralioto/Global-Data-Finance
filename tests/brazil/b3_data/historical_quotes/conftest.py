@@ -29,7 +29,7 @@ def configured_dataset_path() -> Path:
     """Return the configured dataset directory or skip the opt-in suite."""
     configured_path = os.environ.get('COTAHIST_PATH')
     if not configured_path:
-        pytest.skip(
+        pytest.skip(  # skip-reason: opt-in suite without COTAHIST_PATH
             'COTAHIST_PATH is not set. Run the opt-in suite with: '
             f'{_LOCAL_DATA_COMMAND}'
         )

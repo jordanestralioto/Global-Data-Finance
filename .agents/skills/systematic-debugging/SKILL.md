@@ -16,7 +16,7 @@ description: >-
 ## Fundamentos
 
 - **Sintoma vs Causa Raiz:** Se a superfície visível mostra um erro, a falha raramente nasce exatamente ali. O problema pode estar na entrada, na camada intermediária, na integração ou no armazenamento. Depurar a borda errada desperdiça tempo.
-- **O Anti-Pattern do "Chute Cego":** Alterar o código baseado em suposições ("Acho que se eu mover essa lógica resolve") sem reproduzir o bug antes destrói a base de código a longo prazo. Você só pode alterar código de produção quando a Causa Raiz for PROVADA.
+- **O Anti-Pattern do "Chute Cego":** Alterar código com base em suposição ("acho que se eu mover essa lógica resolve"), sem reproduzir o bug, esconde a causa e acumula remendos. Corrija a causa só depois de prová-la. Se a falha estiver afetando usuários antes disso, uma mitigação delimitada e reversível (rollback, desligar uma feature flag, limitar retries) é aceitável quando declarada como mitigação, com a incerteza explícita e a forma de verificar o efeito. Ela não encerra a investigação nem deve ser apresentada como correção da causa raiz.
 - **Isolamento de Variáveis:** Se o bug só ocorre em uma rota, fluxo, job ou comando, não mude componentes globais sem evidência. Se o log mostra dezenas de mensagens, comece pela primeira falha material.
 - **Ambiente Quebrado Parece Bug de Código:** Antes de depurar import, bootstrap, runtime ou falha que só acontece numa máquina, confirme que o ambiente local bate com o que o repositório declara. Corrigir código sobre um setup corrompido só mascara a causa real.
 - **Bug Intermitente Nem Sempre Reproduz 10/10:** Quando o defeito é flaky, a meta não é perfeição artificial; a meta é obter um sinal observável, estreito e repetível o bastante para distinguir hipóteses concorrentes sem corrigir no escuro.
@@ -31,12 +31,12 @@ Adote as fases abaixo na ordem. Quando o sintoma apontar para setup local, a Fas
    - Use a documentação viva do projeto, manifests, arquivos de exemplo e arquivos de versão como fonte de verdade. Se houver duas instruções operacionais conflitantes, resolva esse drift documental antes de concluir que a aplicação está lendo o arquivo "errado".
    - Confirme o fluxo oficial de bootstrap, sincronização de dependências e inicialização definido pelo repositório antes de concluir que o bug é de código.
    - Se houver gerenciador de versões, lockfile ou manifesto de dependências, valide primeiro esse estado e só então reinstale ou re-sincronize dependências quando houver drift real.
-   - Se a falha for apenas processo, porta ocupada, worker, healthcheck ou operação contínua, pare aqui e encaminhe para `server-management`.
+   - Se a falha for apenas processo, porta ocupada, worker, healthcheck ou operação contínua, pare aqui e encaminhe para `server-management`; se ela não estiver instalada, descreva o diagnóstico operacional necessário e a evidência, sem declarar o encaminhamento executado.
    - Se a evidência apontar para segredo exposto, config insegura, credencial vazando ou risco material de segurança, pare aqui e escale para `security-engineer`.
 2. **Fase 1: Reprodução Estável**
    - Não crie código corretivo. Primeiro tente escrever um teste, script ou sequência mínima que gere o erro de forma determinística.
    - Se o bug for intermitente e não fechar 10 em 10 vezes, reduza o escopo até obter um sinal observável e repetível o bastante para comparar hipóteses: uma chamada específica, um input, uma condição de corrida, um horário, uma flag, ou um log invariável.
-   - Se você não consegue reproduzir nem obter sinal mínimo, não aplique fix "por feeling". Continue coletando evidência ou declare bloqueio explícito de reprodução.
+   - Se você não consegue reproduzir nem obter sinal mínimo, não aplique fix "por feeling". Continue coletando evidência ou declare bloqueio explícito de reprodução; se o impacto não puder esperar, aplique só a mitigação declarada descrita em Fundamentos.
 3. **Fase 2: Identificação do Escopo (Binary Search)**
    - Isole o sistema por camadas. O erro está na interface visível, no serviço intermediário, na integração ou na infraestrutura? Use a ferramenta de menor nível adequada para testar a camada abaixo independentemente da camada acima.
 4. **Fase 3: Confirmação da Causa Raiz**
@@ -76,41 +76,3 @@ Adote as fases abaixo na ordem. Quando o sintoma apontar para setup local, a Fas
 
 **Entrada:** "Encontrei um token exposto no serviço e quero classificar a severidade."
 **Por quê não:** O problema dominante virou risco material de segurança. Escale para `security-engineer`, não continue como debugging genérico.
-
-## Evals de trigger
-
-Deve acionar:
-
-- "bug intermitente sem causa clara"
-- "funciona na minha máquina mas no CI passa"
-- "falha de import sem saber se o problema é ambiente ou código"
-- "minhas variáveis não estão carregando"
-- "preciso achar root cause"
-
-Não deve acionar:
-
-- "feature nova bem definida"
-- "ERR_REQUIRE_ESM ao carregar um pacote no Node.js"
-- "configura workers e healthcheck"
-- "audita segredo exposto no serviço"
-- "gera README"
-
-## Evals de workflow
-
-### Reproducao e Hipotese
-
-- [ ] a resposta explicita o sintoma observado antes de propor correção
-- [ ] a resposta descreve um cenário mínimo de reprodução ou um sinal mínimo para bugs intermitentes
-- [ ] a resposta lista pelo menos uma hipótese descartada ou reduzida por evidência
-
-### Preflight de Ambiente
-
-- [ ] quando o sintoma envolve setup local, a resposta verifica arquivos de ambiente contra seus exemplos sem expor valores
-- [ ] quando o sintoma envolve setup local, a resposta valida arquivos de versão, manifests ou lockfiles relevantes
-- [ ] a resposta usa o fluxo oficial do repositório antes de concluir que o bug é de código
-
-### Fechamento
-
-- [ ] a resposta não aplica fix antes de declarar a evidência que sustenta a causa raiz
-- [ ] a resposta valida o cenário afetado após a correção ou declara explicitamente por que a validação ficou bloqueada
-- [ ] a resposta encaminha para `server-management` ou `security-engineer` quando o problema dominante sai do escopo de debugging

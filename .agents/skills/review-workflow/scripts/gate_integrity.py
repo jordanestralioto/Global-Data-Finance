@@ -126,13 +126,20 @@ def declared_contract(change: str | None, session_dir: Path) -> dict[str, Any]:
     if HOOK_ID.search(config):
         if HOOK_STAGES.search(config):
             raise ArtifactError(
-                'stage-specific hooks require a structured validation contract'
+                'stage-specific hooks require a declared validation contract: '
+                'add .review-validation.json with an aggregate '
+                'validationCommand covering every required stage, '
+                'or openspec/handoff.json'
             )
         return {
             'mode': 'pre-commit',
             'command': ['pre-commit', 'run', '--all-files'],
         }
-    raise ArtifactError('no declared validation contract was found')
+    raise ArtifactError(
+        'no declared validation contract was found: add '
+        '.review-validation.json with an aggregate validationCommand, '
+        'openspec/handoff.json, or .pre-commit-config.yaml'
+    )
 
 
 def _git(*args: str) -> bytes:

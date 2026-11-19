@@ -21,127 +21,127 @@
     },
     {
       "hasScripts": true,
-      "hash": "sha256:c59fc596ae8579110d5294d7337d4c7eaf4af22b9cd76c8ebd1b35e6f68e7e3d",
+      "hash": "sha256:6051af36835b69e09f8923a6ff90866fe75aaacd44f12131ea961af241280b6a",
       "id": "skills/agents-md-author",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:bf3b025773e4b80b0fb280e94441973117bdb56d0882ec73f2c210c78da240d7",
+      "hash": "sha256:e4c39c35db6fa14449c7ba8b9f463310920494f1027744483c1434989e30db28",
       "id": "skills/api-patterns",
       "selectedBy": "dependency:skills/review-workflow"
     },
     {
       "hasScripts": false,
-      "hash": "sha256:d59b48c7dbcea1ca8b0b20913bab24bfb2ba43d5b7c432ecf9997f8b4c1cbb14",
+      "hash": "sha256:7c9c95d6469b2a51612f3760bd9151246b3f9123fd5a35d6b3a9f5eb94e47ae4",
       "id": "skills/architecture",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:b1ea2ebdc90e85049713c9e7acccd7117a38f1f4101533850662bbfe1a9faccd",
+      "hash": "sha256:07900cac87818f9c3c67e1ca83212301e4bb93fbe9d1dd55fab1ca680e92aadf",
       "id": "skills/database-design",
       "selectedBy": "dependency:skills/review-workflow"
     },
     {
-      "hasScripts": true,
-      "hash": "sha256:60ada3f3a301a7908b0e4050a85fd9a1702980dad556a077cad03ba4698a4582",
+      "hasScripts": false,
+      "hash": "sha256:38e5c1106edc4d6d76ad0186cf37b22f717e67f5fdc8bb0b5fd3700e3c9a065e",
       "id": "skills/lint-and-validate",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:16b41977d685a31656c71c881cbf865a52f07738aa8e702fd3c5a333a5798072",
+      "hash": "sha256:47744bc3139e29b3155f50c57f4c6b3f5c3d657f3e8b210f8dc5ee406efd8bf1",
       "id": "skills/local-quality-gates",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:15b387230fa9d05e0581003a2706b5bb03003794f667963da948f7d0532f72b0",
+      "hash": "sha256:9364b8a4a9840ae851e36276406633a96abca689b1894966bd78759efd371941",
       "id": "skills/modularizar",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": false,
-      "hash": "sha256:c3cd6f9c0672419f527d2af7920fe5a79e2214846135d22b2bd6dda8888002ef",
+      "hash": "sha256:0fb8a995970b9fee25f1848985dea8eae9259d704c8062ff43ad102b77b0b59d",
       "id": "skills/openspec-workflow",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:476d83523936f8a5323a2c8f50eb8bbef7a02b03dca330dca3a87fc228af3766",
+      "hash": "sha256:ac756fac128a7410be52402b1cdd08ebf1e7ce6d83cff449a0c5a02ae783f23e",
       "id": "skills/performance-profiling",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": false,
-      "hash": "sha256:52a07ebae88342783039d665a63faeb0e36f7920faf22093bab6ea00af917ad2",
+      "hash": "sha256:0fc156b5165512e8a438e0051cb04830a3214142eef00c2af35a81b3c49a4554",
       "id": "skills/red-team-tactics",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": false,
-      "hash": "sha256:0c2d8fa589a9996f22e4eb5b9816853cbae549bc83dab5eccbb6e89ea1218434",
+      "hash": "sha256:993fbd45a3750ff2f427c02fa766b2cf76837a19c993788fc7d8f4675608f1e8",
       "id": "skills/resolve-open-questions",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:77c525f7801415a4e7033f0e9d98d1ab6b1beaace288eaf05047fcf88e429039",
+      "hash": "sha256:f252923f1c7117134f1ac140cf54917c5f8519c5b7d65db52eaadbc9f2e73100",
       "id": "skills/review-workflow",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:f32a9e5acb59ac97f9c123dc0092fbd8c4b45c19630e6643d306f40e199237de",
+      "hash": "sha256:a304af916d16901aa39a4569ff9b963ee7ae46c600ade1a5419ce4246bb4af1d",
       "id": "skills/server-management",
       "selectedBy": "manifest"
     },
     {
-      "hasScripts": false,
-      "hash": "sha256:48f065b17fd0ab6494660b6df54e76fffb4bb78aed64b1fc4261f4d82007086e",
+      "hasScripts": true,
+      "hash": "sha256:d24d027f1d908d2bc79432961035562f4b9f9cc97ee0b1cdfea260d5d8a7b417",
       "id": "skills/skill-governance",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:68cbdfaed876b0e959269aca4056db1f316b4b78bb7bb36ebdca0b629c89e394",
+      "hash": "sha256:fadab2bf17f2cbef26702eff348c609b64a113f453af64d1dbb3b1d24479297d",
       "id": "skills/structural-inspector",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": false,
-      "hash": "sha256:1dfb7e8ed69420dfbab92d33bc3f04f20cfbfc94c78b3e55e011701eb85ed935",
+      "hash": "sha256:2c6349eecc429339cd41fe76c659abb8531620f92541102a873f3d48e5572836",
       "id": "skills/systematic-debugging",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:3bbafece478a57542bdf5fdc0ebed16fc739e53eb5cbdc88d603fe9f50e2d27f",
+      "hash": "sha256:45de4e44ac33c16c02b62554a0a837b6cec3cd2ec3aed73ae294e3bc16b95aba",
       "id": "skills/testing-patterns",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:57b9141dc0c0483240216ff3c7d94d0de3c489e95720659d3082db54e1781cac",
+      "hash": "sha256:79ea58ec8d61e47ef19eb8221be65f183ff2e8b96fceabe63fdab2dcaa911977",
       "id": "skills/vulnerability-scanner",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:7125591197e7b9a634f88c3b39169b468bc0c10f6d7191cff54c0909b46a4a08",
+      "hash": "sha256:a5bda3c1ecc98576b25697db0de21a8c0ce316a78b53e48e1582064be62203c5",
       "id": "tools/check-max-lines",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:40c7df1945cc6881134d72211b094b9fb6a09de5dc42100da1fca0bdf12bb154",
+      "hash": "sha256:ed1664697b8ea9d88390ffb4f02c582218227d7f7a912475a6e56c6329376efc",
       "id": "tools/harness-verify",
       "selectedBy": "manifest"
     },
     {
       "hasScripts": true,
-      "hash": "sha256:6ed8a07b50ec3f156d4f4e45930f8f770daeaaebd11d8c0e0d9dd17199ac1926",
+      "hash": "sha256:66c35cb3013fab0b6ae45f1f140cc65e7a0ac64e2bdc570b9a7d868e815116db",
       "id": "tools/validate-commit-msg",
       "selectedBy": "manifest"
     },

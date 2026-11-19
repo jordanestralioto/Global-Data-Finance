@@ -2,7 +2,8 @@
 """Portable sanity checker for git diffs to detect AI coding agent traps.
 
 Detects common issues introduced on added/modified lines (+):
-  - Leftover debug statements (console.log, breakpoint, debugger, raw print)
+  - Leftover debug statements (console logging, Python breakpoints,
+    JavaScript debug statements, raw prints)
   - Stubbed implementations / unfulfilled placeholders (TODO throws, pass stubs)
   - Newly added type/lint bypasses in executable or configuration files
   - Operational hook and shell bypasses in every textual file
@@ -35,6 +36,10 @@ TS_NOCHECK_LABEL = '@ts-' + 'nocheck'
 TS_EXPECT_ERROR_LABEL = '@ts-' + 'expect-error'
 PYTHON_TYPE_IGNORE_LABEL = '#' + ' type: ignore'
 
+# Compared by identity in _check_debug_violations: quoting the call name
+# there would make this scanner flag its own source.
+PRINT_PATTERN = re.compile(r'(?<![a-zA-Z0-9_])print\(')
+
 DEBUG_PATTERNS = [
     (
         re.compile(r'\b' + r'break' + r'point\(\)'),
@@ -49,7 +54,7 @@ DEBUG_PATTERNS = [
         'console.log/debug statement detected',
     ),
     (
-        re.compile(r'(?<![a-zA-Z0-9_])print\('),
+        PRINT_PATTERN,
         f'raw {PRINT_LABEL} call detected (use logger or allow in CLI files)',
     ),
 ]
@@ -184,7 +189,15 @@ def get_staged_diff(target_files: list[str] | None = None) -> str:
     if target_files:
         cmd.extend(target_files)
     try:
-        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        # Staged files may hold bytes that are not UTF-8, such as a Latin-1
+        # fixture. They become U+FFFD; every pattern matches ASCII text.
+        res = subprocess.run(
+            cmd,
+            capture_output=True,
+            encoding='utf-8',
+            errors='replace',
+            check=True,
+        )
         return res.stdout
     except (
         subprocess.CalledProcessError,
@@ -203,7 +216,7 @@ def _check_debug_violations(
     errors: list[str] = []
     allow_print = file_path in allow_print_files
     for pattern, desc in DEBUG_PATTERNS:
-        if 'print(' in desc and allow_print:
+        if pattern is PRINT_PATTERN and allow_print:
             continue
         if pattern.search(content) and not DEBUG_ALLOW_RE.search(content):
             errors.append(f'{file_path}:{line_num}: [DEBUG] {desc}')

@@ -55,6 +55,21 @@ to keep external and slow scenarios outside the intended run.
   types, content, and temporary-file cleanup. Pandas and Polars are not runtime
   dependencies of the library.
 - Document deletions and consolidations in `.test-integrity-policy.json`.
+- To skip a test, mark it `xfail`, or take it out of the default selection
+  (`slow`, `perf`, `real_data`), write `skip-reason: <why>` on the marker or
+  call line. `test-integrity` rejects these new constructs without a reason
+  wherever they appear: decorators, `pytestmark`, `pytest.param(marks=...)`,
+  `applymarker`, `pytest.skip()`, `importorskip`, `raise SkipTest`, `unittest`
+  decorators imported by name, and aliases defined in the module. In
+  `conftest.py`, every `collect_ignore` entry and collection hook also needs a
+  reason. A changed construct counts as new: changing its condition, its
+  target, an enclosing `if`, `while`, or `except`, or a module value it reads
+  requires a reason different from the one the previous commit gave. Moving or
+  reformatting the construct does not. A `pytest.ini` change that narrows the
+  selection (`-m`, `-k`, `--deselect`, `--ignore`, `testpaths`, and similar)
+  requires a new `# skip-reason: <why>` comment line. The analysis is
+  syntactic and per-module: local variables and markers or values imported
+  from another module are not followed.
 
 The structural gate below checks tiers and observations in test bodies;
 it is heuristic and does not prove assertion semantics:

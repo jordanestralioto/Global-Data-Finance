@@ -1,13 +1,14 @@
 ---
 name: agents-md-author
 description: >-
-  Use para criar ou revisar um `AGENTS.md` que ajude agentes a entender o
-  objetivo do projeto, onde começar no código, como validar e quais regras do
-  repositório seguir. Ative quando o usuário pedir "cria um agents.md",
-  "documenta o projeto para agentes", "onde o agente deve começar?" ou uma
-  revisão de instruções locais em um monorepo. Abrange documentos raiz e de
-  subárvore. Não use para criar outra skill, escrever um README comum ou decidir
-  arquitetura.
+  Use para criar, revisar ou enxugar um `AGENTS.md` com o que agentes não
+  descobririam sozinhos: comandos exatos, regras e gotchas do repositório e
+  rotas não óbvias no código. Ative quando o usuário pedir "cria um agents.md",
+  "documenta o projeto para agentes", "meu AGENTS.md está grande demais",
+  "onde o agente deve começar?" ou uma revisão de instruções locais em um
+  monorepo. Abrange documentos raiz e de subárvore. Para criar ou revisar
+  skills, use `skill-governance`; para decidir arquitetura, `architecture`. Não
+  use para escrever um README comum.
 ---
 
 # AGENTS.md Author
@@ -35,38 +36,42 @@ description: >-
    existente. Inclua arquivos ocultos ao localizar CI, como `.github/workflows/`;
    `rg --files` sem `--hidden` pode omiti-los.
 
-3. Ao criar uma orientação raiz, use `assets/AGENTS.template.md`. Ao atualizar
-   um arquivo existente, preserve regras válidas fora do pedido. Uma orientação
-   local herda a política aplicável acima dela e registra somente diferenças da
-   subárvore. Para copiar o esqueleto raiz sem sobrescrever um arquivo, use
+3. Ao criar uma orientação raiz, use `assets/AGENTS.template.md`. Ao revisar um
+   arquivo existente, proponha cada corte com o motivo e preserve regras válidas
+   fora do pedido. Uma orientação local herda a política aplicável acima dela e
+   registra somente diferenças da subárvore. Para copiar o esqueleto raiz sem
+   sobrescrever um arquivo, use
    `python3 <skill-directory>/scripts/init_agents_md.py --output <path/to/AGENTS.md>`;
    `--stdout` permite inspecioná-lo sem gravar.
 
-4. Organize a orientação raiz em cinco blocos. Os títulos do template são
-   sugestões em inglês; escreva no idioma permitido pela política explícita do
-   repositório alvo:
+4. Escreva só o que muda o comportamento do agente. Agentes seguem essas
+   instruções à risca e cada linha custa contexto em toda tarefa; mapas de
+   diretórios, listas de componentes e práticas que o agente já segue por padrão
+   aumentam o custo sem melhorar o resultado. Priorize, nesta ordem:
 
-   - `Project Overview`: missão, consumidores e limites principais.
-   - `Architecture & Ownership`: primeiro caminho de código, fluxo e owners.
-   - `Development Workflow`: comandos confirmados para configurar, executar e
-     validar.
-   - `Engineering Rules`: práticas de engenharia e políticas duráveis do alvo.
-   - `Documentation Map`: documento certo para a próxima pergunta.
+   - comandos exatos, com flags, que o agente não deduziria do manifest;
+   - regras e gotchas não óbvios: convenções fora do padrão, arquivos gerados e
+     seu gerador, invariantes e erros que agentes ou revisões já cometeram;
+   - rotas não óbvias: qual caminho possui uma responsabilidade e qual documento
+     responde a qual pergunta.
 
-   Cada detalhe deve ajudar a escolher onde começar, editar, testar ou aprender.
-   Com títulos traduzidos, confira manualmente as cinco funções: a CLI só
-   confirma a estrutura. Métricas, tabelas e inventários são opcionais; não os
-   inclua sem função decisória.
+   Para cada linha, pergunte se o agente erraria sem ela; se não, corte. Não
+   repita o README nem a árvore de diretórios, mas mantenha o propósito do
+   projeto: este arquivo entra em toda sessão, e o README só quando o agente
+   decide abri-lo. O que o projeto prioriza quando objetivos conflitam e o que
+   fica fora de escopo vêm de uma decisão registrada ou do usuário; sem fonte,
+   pergunte na devolutiva em vez de deduzir do código. Mire em menos de 200
+   linhas por arquivo. O template sugere `Project Overview`,
+   `Development Workflow`, `Engineering Rules` e `Navigation`; funda, renomeie,
+   traduza conforme a política do alvo ou omita as que não acrescentam nada.
 
-5. Mantenha as regras portáteis concretas: inspecione a fonte responsável,
-   preserve contratos e fronteiras, faça mudanças coesas, atualize testes e
-   documentação afetados, valide de forma proporcional e relate checks que
-   falharam ou não rodaram. Idioma, `__init__.py`, manager, framework e regras de
-   qualidade específicas entram somente quando são fatos ou políticas
-   confirmados no alvo. O Python executa os helpers da skill; não implica que o
-   projeto use Python, `uv` ou qualquer outra stack. Consulte
-   `references/policy-authoring.md` quando houver
-   escolha de política ou fontes conflitantes.
+5. Registre regras específicas somente quando forem fatos ou políticas
+   confirmados no alvo: idioma, `__init__.py`, manager, framework e regras de
+   qualidade não entram por suposição. Um erro que o agente repetiu ou que uma
+   revisão pegou é o candidato mais forte a regra. O Python executa os helpers
+   da skill; não implica que o projeto use Python, `uv` ou qualquer outra stack.
+   Consulte `references/policy-authoring.md` quando houver escolha de política
+   ou fontes conflitantes.
 
 6. Faça uma revisão factual separada da validação estrutural. Links relativos
    precisam apontar para caminhos existentes; comandos precisam ter uma fonte;
@@ -86,10 +91,10 @@ description: >-
    código `0`; informe a revisão de conteúdo, a validação executada e qualquer
    conflito ou check que ficou pendente. Não exija uma etapa formal de aprovação.
 
-   Acrescente `--size-report` para informar bytes UTF-8 e linhas. Se o alvo tiver
-   um orçamento confirmado por arquivo, `--max-bytes <bytes>` emite aviso ao
-   excedê-lo, sem mudar o resultado estrutural. Não imponha um teto universal
-   nem trate a medida de um arquivo como validação da cadeia do cliente. Os
+   Acrescente `--size-report` para conferir bytes UTF-8 e linhas contra a meta
+   de 200 linhas. Se o alvo tiver um orçamento confirmado por arquivo,
+   `--max-bytes <bytes>` emite aviso ao ultrapassá-lo, sem mudar o resultado
+   estrutural. A medida de um arquivo não valida a cadeia do cliente. Os
    detalhes de marcadores, tamanho e inicialização estão em
    `references/content-contract.md`.
 
@@ -102,7 +107,6 @@ Abra somente a referência que resolve uma dúvida concreta:
 | Entender o conteúdo esperado em cada seção                   | `references/content-contract.md` |
 | Resolver fatos, preferências ou políticas divergentes        | `references/policy-authoring.md` |
 | Descobrir instruções ativas, fallbacks ou limites do cliente | `references/source-discovery.md` |
-| Executar os evals de navegação e fidelidade factual          | `references/evals.md`            |
 
 ## Exemplos
 
@@ -111,9 +115,17 @@ Abra somente a referência que resolve uma dúvida concreta:
 **Entrada:** “Cria um AGENTS.md para o monorepo e mostra onde começar em cada
 serviço.”
 
-**Saída esperada:** documentar o objetivo e os caminhos iniciais confirmados;
-manter comandos e diferenças locais nos owners corretos; apontar o próximo
-documento sem listar a árvore inteira.
+**Saída esperada:** registrar comandos confirmados, regras não óbvias e o
+caminho inicial de cada serviço; manter diferenças locais nos arquivos de cada
+serviço; apontar o próximo documento sem repetir o README nem listar a árvore.
+
+### Caso positivo
+
+**Entrada:** “Meu AGENTS.md tem 400 linhas; enxuga sem perder o que importa.”
+
+**Saída esperada:** propor cortes com motivo (trechos colados do README, árvore
+de diretórios, práticas que o agente já segue, regras que um lint impõe) e
+manter propósito, prioridades, comandos, gotchas e rotas confirmados.
 
 ### Caso negativo
 
@@ -122,24 +134,3 @@ documento sem listar a árvore inteira.
 **Por quê não:** a tarefa é corrigir código. Use a skill de domínio adequada se
 necessário; só altere `AGENTS.md` se o usuário pedir essa documentação ou se uma
 regra recorrente precisar ser registrada.
-
-## Evals de trigger
-
-Deve acionar:
-
-- “Cria um AGENTS.md forte para este projeto.”
-- “Documenta o objetivo e ensina o agente onde começar no código.”
-- “Esse arquivo local deve repetir as regras do root?”
-- “Revisa as instruções do meu monorepo e resolve o que está conflitante.”
-
-Não deve acionar:
-
-- “Cria uma skill com frontmatter e evals.” → `skill-governance`.
-- “Qual arquitetura devo escolher?” → `architecture`.
-- “Escreve um README de onboarding.” → documentação geral.
-- “Troca npm por pnpm neste projeto.” → alteração de tooling.
-
-## Evals de workflow
-
-Os três cenários com assertions estão em `references/evals.md`. O estado da
-execução com Luna Max fica registrado separadamente das validações estruturais.

@@ -91,56 +91,5 @@ extract if justified. Update one record without repeated permission requests.
 
 **Input:** "Desenha a arquitetura nova do backend sem um alvo definido."
 **Reason:** use `architecture`; this skill needs a bounded refactoring target.
-
-## Evals de trigger
-
-Should trigger:
-
-- "quebra esse arquivo gigante em módulos"
-- "modularisa esse arquivozao e reaproveita os utils que ja existem"
-- "extrai utilitários desse monólito e mantém o import público pelo pacote"
-- "[$modularizar] src/service.py"
-
-Não deve acionar:
-
-- "só renomeia essa função"
-- "mede o gargalo dessa query antes de mudar código"
-- "define a arquitetura dessa feature nova"
-- "organiza a legibilidade sem extrair módulos nem migrar contratos"
-
-## Evals de workflow
-
-These are proposed behavioral checks. Run in disposable consumers and inspect
-transcripts and changed files before claiming effectiveness.
-
-### Full implementation already authorized
-
-Request: "Modulariza esse service, ajusta os callers e pode executar tudo."
-
-- [ ] References the existing authorization without asking again.
-- [ ] Uses one record outside generated projections and the repository root.
-- [ ] Cleans up and validates before deciding whether extraction is necessary.
-- [ ] Removes the legacy file, migrates callers and checks actual destinations.
-- [ ] Updates outcomes in place without a duplicate report.
-
-### Cleanup is sufficient
-
-Request: "Só extrai se ainda houver responsabilidades misturadas após a limpeza."
-
-- [ ] Records `PHASE_2_NEEDED: NO` with supporting evidence when cleanup suffices.
-- [ ] Finishes with native checks and risks, without mechanical splitting.
-
-### User requests approval first
-
-Request: "Me mostra o plano; não altera código antes de eu aprovar."
-
-- [ ] Presents a concrete proposal and waits before source edits.
-- [ ] References the approval before executing the authorized scope.
-
-### Completion claim contradicts code
-
-Fixture: the record claims success but a legacy file or invalid module remains.
-
-- [ ] Runs the helper on actual paths and reports the structural failure.
-- [ ] Reports native checks separately, including unsupported or untested behavior.
-- [ ] Preserves canonical package imports rather than listing them as retired.
+If `architecture` is not installed, state the open structural decision, its
+evidence and the next step instead of refactoring or claiming the handoff.

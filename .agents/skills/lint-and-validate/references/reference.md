@@ -1,5 +1,13 @@
 # Contratos de validação
 
+## Sumário
+
+- [Escolha do comando](#escolha-do-comando)
+- [Escopo e modo de execução](#escopo-e-modo-de-execu%C3%A7%C3%A3o)
+- [Vinculação da evidência](#vincula%C3%A7%C3%A3o-da-evid%C3%AAncia)
+- [Compatibilidade dos assets publicados](#compatibilidade-dos-assets-publicados)
+- [Leitura de falhas](#leitura-de-falhas)
+
 ## Escolha do comando
 
 Leia os comandos declarados pelo repositório operado antes de executar qualquer

@@ -45,7 +45,7 @@ def test_hook_fails_closed_for_missing_message(tmp_path: Path) -> None:
     [
         ('feat: add audit proof', 0, 0),
         ('arbitrary message', 1, 0),
-        ('feat: trailing period.', 0, 1),
+        ('feat: trailing period.', 1, 1),
         ('feat: ' + 'a' * 495, 0, 1),
         ('Merge branch develop.', 0, 0),
     ],

@@ -27,6 +27,7 @@ requirements, are available in both supported documentation languages:
    ```bash
    uv sync --locked --all-extras --dev
    uv run --locked --no-sync pre-commit install --install-hooks
+   uv run --locked --no-sync python scripts/check_push_snapshot.py --install
    ```
 
 4. Implement the change within the existing CVM, B3, application, or shared

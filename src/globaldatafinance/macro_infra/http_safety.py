@@ -21,21 +21,58 @@ _PUBLIC_REDIRECT_HEADERS = frozenset(
 )
 
 
+def redirect_target_hook(
+    *, allow_cross_origin: bool
+) -> Callable[[httpx.Request], Awaitable[None]]:
+    """Reject an unsafe redirect hop of one request chain before it is sent.
+
+    The first request sent defines the origin. A chain that starts on HTTPS
+    never continues on another scheme; without cross-origin permission,
+    every later hop also keeps the initial host and port.
+    """
+    initial: httpx.URL | None = None
+
+    async def reject_unsafe_target(request: httpx.Request) -> None:
+        nonlocal initial
+        if initial is None:
+            initial = request.url
+            return
+        target = request.url
+        if initial.scheme == 'https' and target.scheme != 'https':
+            raise SecurityError(
+                f'redirect target {_display_origin(target)} leaves HTTPS'
+            )
+        if not allow_cross_origin and _origin(target) != _origin(initial):
+            raise SecurityError(
+                f'redirect target {_display_origin(target)} is outside the '
+                f'requested origin {_display_origin(initial)}'
+            )
+
+    return reject_unsafe_target
+
+
 def redirect_header_hook(
     url: str,
 ) -> Callable[[httpx.Request], Awaitable[None]]:
     """Keep credentials on the original scheme, host, and port only."""
-    original = httpx.URL(url)
-    origin = (original.scheme, original.host, original.port)
+    origin = _origin(httpx.URL(url))
 
     async def restrict_headers(request: httpx.Request) -> None:
-        target = request.url
-        if (target.scheme, target.host, target.port) != origin:
+        if _origin(request.url) != origin:
             for name in tuple(request.headers):
                 if name not in _PUBLIC_REDIRECT_HEADERS:
                     del request.headers[name]
 
     return restrict_headers
+
+
+def _origin(url: httpx.URL) -> tuple[str, str, int | None]:
+    return (url.scheme, url.host, url.port)
+
+
+def _display_origin(url: httpx.URL) -> str:
+    """Render scheme, host, and port without credentials, path, or query."""
+    return str(httpx.URL(scheme=url.scheme, host=url.host, port=url.port))
 
 
 def bounded_download_headers(

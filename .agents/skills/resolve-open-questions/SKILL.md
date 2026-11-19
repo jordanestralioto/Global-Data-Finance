@@ -189,37 +189,6 @@ iniciar implementação.
 
 ### Caso negativo
 
-**Entrada:** “implementa a importação conforme o plano que já decidimos”.
-
-**Por quê não:** execução já autorizada; resolva dúvidas novas pontualmente.
-
-### Caso negativo
-
 **Entrada:** “esse plano está completo?” ou “CSV ou JSON, o que você acha?”.
 
 **Por quê não:** revisão ou exploração pontual, sem intenção de persistência.
-
-## Evals de trigger
-
-Deve acionar:
-
-- “me sabatina sobre esse plano”
-- “registra as decisões enquanto me sabatina”
-- “quero registrar e fechar todas as decisões antes de implementar”
-- “continua a sabatina da importação”
-- “quero poder retomar essa discussão depois”
-
-Não deve acionar:
-
-- “quais perguntas você tem antes de começar?” — pergunta rápida; responda na
-  conversa sem criar ou atualizar documento
-- “me explica os riscos?” ou “quais são as opções?” — exploração pontual
-- “esse plano está completo?” — revisão
-- “escreve o plano de implementação” — plano direto
-- “implementa conforme o plano que já decidimos” — execução
-- “cria a proposal OpenSpec dessa change” — workflow próprio
-- “revisa esse código” ou “cria um ADR da decisão tomada” — outro entregável
-
-Os cenários de comportamento e os limites da evidência estão em
-[references/EVALS.md](references/EVALS.md). Testes do validador não comprovam
-que um agente segue o procedimento; essa conclusão exige transcrições avaliadas.

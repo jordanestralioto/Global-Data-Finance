@@ -57,7 +57,7 @@ STUB_PATTERNS = [
 
 BYPASS_PATTERNS = [
     (
-        re.compile(r'#!?[\s]*(?:allow|expect)\s*\('),
+        re.compile(r'#!?\[\s*(?:allow|expect)\s*\('),
         'Rust lint suppression attribute added',
     ),
     (

@@ -5,8 +5,11 @@
 #
 # This is a scaffold, not a release-pinned project configuration. Before use,
 # replace every `REPLACE_WITH_FROZEN_SHA` with a current 40-character commit SHA
-# and keep the release in a comment. Resolve remote hooks with:
-#   pre-commit autoupdate --freeze
+# and keep the release in a comment. For an annotated tag, both
+# `pre-commit autoupdate --freeze` and `git rev-parse <tag>` return the tag
+# object SHA. Resolve the commit and compare each pin with upstream:
+#   git ls-remote <repo> 'refs/tags/<tag>' 'refs/tags/<tag>^{}'
+# The `^{}` line is the commit; a lightweight tag has none and its ref is it.
 # If a hook declares `additional_dependencies`, pin a compatible group together
 # after resolving it; do not update the base package independently.
 
@@ -21,11 +24,17 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: REPLACE_WITH_FROZEN_SHA  # <RELEASE_VERSION>
     hooks:
+      # The hook manifest also declares these three in pre-push, and
+      # default_stages does not override a manifest: pin the stage so a
+      # fixer never rewrites files during a push.
       - id: trailing-whitespace
+        stages: [pre-commit]
       - id: end-of-file-fixer
+        stages: [pre-commit]
       - id: check-merge-conflict
       - id: check-added-large-files
         args: ['--maxkb=500']
+        stages: [pre-commit]
       - id: check-case-conflict
       - id: check-yaml
         args: ['--unsafe']

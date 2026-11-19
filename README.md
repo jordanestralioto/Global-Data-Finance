@@ -189,6 +189,7 @@ versionado e instale os hooks:
 ```bash
 uv sync --locked --all-extras --dev
 uv run --locked --no-sync pre-commit install --install-hooks
+uv run --locked --no-sync python scripts/check_push_snapshot.py --install
 ```
 
 A participação segue o [Código de Conduta](https://github.com/jordanestralioto/Global-Data-Finance/blob/develop/CODE_OF_CONDUCT.md).

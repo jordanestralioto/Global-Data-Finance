@@ -5,6 +5,18 @@ escritos integralmente em inglês para um desenvolvedor júnior que conhece
 somente `AGENTS.md` e a documentação canônica ligada por ele. O texto precisa
 eliminar decisões implícitas; clareza para um especialista não basta.
 
+## Sumário
+
+- [Proveniência](#proveni%C3%AAncia)
+- [Lifecycle e gates](#lifecycle-e-gates)
+- [Proposal](#proposal)
+- [Delta specs](#delta-specs)
+- [Design](#design)
+- [Tasks e tipos](#tasks-e-tipos)
+- [Evidência de conclusão](#evid%C3%AAncia-de-conclus%C3%A3o)
+- [Exceções legadas](#exce%C3%A7%C3%B5es-legadas)
+- [Limite do gate](#limite-do-gate)
+
 ## Proveniência
 
 Cada change nova possui `.openspec.yaml` com `decision_source`: `type`

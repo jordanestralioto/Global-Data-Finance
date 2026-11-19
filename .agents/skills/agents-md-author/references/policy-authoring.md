@@ -41,16 +41,18 @@ exatos e a fonte que os mantém. Não copie um gate roster inteiro para o
 
 Acrescente políticas que mudam decisões recorrentes, como ownership de schemas,
 limites de autorização, invariantes de dados, padrão arquitetural obrigatório,
-compatibilidade pública ou fonte de geração de arquivos. Não registre detalhes
+compatibilidade pública ou fonte de geração de arquivos. O candidato mais forte
+é um erro que o agente repetiu ou que uma revisão pegou. Não registre detalhes
 incidentais de funções nem uma preferência técnica como se já fosse arquitetura
 implantada.
 
-Mantenha orientação operacional curta e útil a qualquer cliente: proteja
-segredos na comunicação, consulte fontes canônicas, nomeie divergências sem
-inventar uma resposta e relate verificações que falharam ou foram ignoradas.
-Permissões, ações destrutivas e controles mecânicos pertencem às regras do
-cliente e aos hooks/gates que realmente existem no alvo; não invente esses
-controles para preencher o documento.
+Não pré-preencha orientação operacional genérica, como proteger segredos,
+consultar fontes ou relatar checks: agentes atuais já a seguem, e cada linha
+custa contexto em toda tarefa. Inclua uma regra assim só com motivo concreto no
+alvo, como um arquivo que guarda credenciais ou um gate que costuma ser dado
+como aprovado sem rodar. Permissões, ações destrutivas e controles mecânicos
+pertencem às regras do cliente e aos hooks/gates que realmente existem no alvo;
+não invente esses controles para preencher o documento.
 
 ## Quando fontes divergem
 

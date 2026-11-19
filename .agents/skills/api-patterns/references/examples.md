@@ -4,6 +4,17 @@
 > precondition, job assíncrono ou contrato de erro. Adapte ao estilo já escolhido
 > no repositório.
 
+## Sumário
+
+- [REST: listagem paginada com envelope e problem details](#rest-listagem-paginada-com-envelope-e-problem-details)
+- [REST: update com concorrência otimista](#rest-update-com-concorr%C3%AAncia-otimista)
+- [REST: job assíncrono com `202 Accepted`](#rest-job-ass%C3%ADncrono-com-202-accepted)
+- [GraphQL: ownership e erro sanitizado](#graphql-ownership-e-erro-sanitizado)
+- [tRPC: procedure protegida com filtro de ownership](#trpc-procedure-protegida-com-filtro-de-ownership)
+- [Webhook receiver: trust boundary explícita](#webhook-receiver-trust-boundary-expl%C3%ADcita)
+- [Rate limit antes do custo](#rate-limit-antes-do-custo)
+- [Quando usar o validador](#quando-usar-o-validador)
+
 ## REST: listagem paginada com envelope e problem details
 
 ```http

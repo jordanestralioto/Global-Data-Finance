@@ -90,7 +90,10 @@ to make sources uniform.
 A new source needs a complete delivery: source implementation, a facade in
 `application/`, a public export, behavior tests, and documentation in Portuguese
 and English. Keep dependencies acyclic and restrict `__init__.py` to explicit
-exports.
+exports. Sources under `brazil/` stay mutually independent through the
+import-linter contract, including new ones. A new top-level area in
+`globaldatafinance` must join the layered contract in `pyproject.toml`; the
+tooling tests fail until it is classified.
 
 Tests mirror public, source, and shared boundaries. Their subdirectories
 organize topics; they do not create runtime layers. See [testing](testing.md)

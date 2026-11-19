@@ -28,8 +28,8 @@ class _PsutilModule(Protocol):
 psutil = cast(_PsutilModule, import_module('psutil'))
 
 
-@pytest.mark.perf
-@pytest.mark.slow
+@pytest.mark.perf  # skip-reason: opt-in resource measurement
+@pytest.mark.slow  # skip-reason: generates a large CVM CSV
 def test_large_cvm_csv_keeps_bounded_process_growth(tmp_path) -> None:
     """Measure the bounded-memory path with a deterministic large archive."""
     row_count = 100_000
