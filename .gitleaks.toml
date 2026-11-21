@@ -9,24 +9,6 @@ useDefault = true
 # (the CI scan) to `paths` alone, so it skips every matching file before
 # `condition` or `regexes` are evaluated.
 
-# Harness projections stay in scope. Their content is owned by central-skills;
-# each audited documentation sample is bound to the file that publishes it.
-[[allowlists]]
-description = "Audited Idempotency-Key sample in the async webhook reference"
-targetRules = ["generic-api-key"]
-condition = "AND"
-paths = ['''^\.agents/skills/api-patterns/references/async-webhooks\.md$''']
-regexTarget = "line"
-regexes = ['''(?m)^Idempotency-Key: 0f1b4f9d-0b53-4d4f-9167-8dfeeb3d9a2d\r?$''']
-
-[[allowlists]]
-description = "Audited Idempotency-Key sample in the API examples reference"
-targetRules = ["generic-api-key"]
-condition = "AND"
-paths = ['''^\.agents/skills/api-patterns/references/examples\.md$''']
-regexTarget = "line"
-regexes = ['''(?m)^Idempotency-Key: 6e1d3d43-2e8b-4d05-9f95-9f1dbf0ef32b\r?$''']
-
 [[allowlists]]
 description = "Audited detect-secrets fingerprints for benchmark digests"
 targetRules = ["generic-api-key"]

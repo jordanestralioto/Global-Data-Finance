@@ -4,9 +4,9 @@
 
 `globaldatafinance` is a Python library that extracts, normalizes, and persists
 Brazilian CVM filings and B3 historical quotes; see the [README](README.md).
-Applications consume it as a package; it is not a deployed service. Do not add
-a web framework, deployment runtime, or competing architectural path without
-an explicit decision.
+Applications consume it as a package; it is not a deployed service. Do not add a
+web framework, deployment runtime, or competing architectural path without an
+explicit decision.
 
 ## Development Workflow
 
@@ -55,21 +55,21 @@ globally.
 
 ## Engineering Rules
 
-- Branch from `develop` and open pull requests against `develop`.
 - Code, comments, branches, commits, pull requests, and planning artifacts are
   English. Product documentation is Portuguese by default, with a matching
   English `*.en.md` counterpart; update both.
 - Do not write irrelevant comments in code.
-- `__init__.py` files contain only explicit exports, never implementation
-  logic. Do not add modules whose only purpose is re-exporting other modules.
+- `__init__.py` files contain only explicit exports, never implementation logic.
+  Do not add modules whose only purpose is re-exporting other modules.
 - Preserve the public boundary in `src/globaldatafinance/__init__.py` and the
   facades under `src/globaldatafinance/application/`: signatures, defaults,
   result and exception behavior, persisted schemas, and output naming. Stop and
   ask before any breaking change.
 - Keep CVM and B3 behavior in their owners under
   `src/globaldatafinance/brazil/`. Move a concern to `core/`, `macro_infra/`, or
-  `macro_exceptions/` only when it is genuinely shared; do not force both sources
-  into an identical internal layout or add abstractions only for symmetry.
+  `macro_exceptions/` only when it is genuinely shared; do not force both
+  sources into an identical internal layout or add abstractions only for
+  symmetry.
 - Preserve the B3 `COTAHIST_AYYYY.(ZIP|TXT)` filename contract, basename-only
   output names, and the distinct `fast`/`slow` processing semantics.
 - Keep I/O at the boundary, orchestration separate from validation and
@@ -81,8 +81,8 @@ globally.
 - Add a data source as one vertical slice: source implementation under
   `brazil/`, facade under `application/`, root export, mirrored behavior tests,
   and Portuguese and English documentation.
-- `scripts/process_runner.py` is the sole subprocess boundary; its scoped
-  `S603` exception is not precedent. Do not broaden Ruff selections or ignores
+- `scripts/process_runner.py` is the sole subprocess boundary; its scoped `S603`
+  exception is not precedent. Do not broaden Ruff selections or ignores
   casually.
 - After a clean cutover, remove dead code, compatibility paths, duplicated
   ownership, and stale documentation unless compatibility is an explicit

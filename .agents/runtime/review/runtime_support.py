@@ -19,6 +19,9 @@ from harness.paths import repo_root
 from harness.selection import load_review_owner
 
 CURRENT_SCHEMA_VERSION = '1.0.0'
+# Derived from this file rather than imported from harness.paths, so a
+# projected copy resolves the consumer's own .agents tree (and SKILLS_ROOT its
+# installed skills) even when another harness package is already imported.
 HARNESS_ROOT = Path(__file__).resolve().parents[2]
 REPO_ROOT = repo_root()
 AGENTS_ROOT = HARNESS_ROOT
@@ -297,7 +300,7 @@ def render_human_view(artifact: dict[str, Any]) -> str:
                     f'- priority: {item["priority"]}',
                     f'- pack: {item["packId"]}',
                     f'- files: {", ".join(item["files"])}',
-                    f'- skills: {", ".join(item["skills"])}',
+                    f'- skills: {", ".join(item["skills"]) or "none"}',
                     f'- checklists: {", ".join(item["checklists"])}',
                 ],
             )
@@ -746,6 +749,19 @@ def detect_packs(changed_files: list[str], security_touch: str) -> list[str]:
     return sorted(matched, key=lambda name: -PACK_REGISTRY[name]['priority'])
 
 
+def installed_pack_skills(skills: list[str], skills_root: Path) -> list[str]:
+    """Return the pack skills installed under ``skills_root``, in order.
+
+    A pack names every skill that can guide its review, but a project holds
+    only the skills it selected plus those the review owner requires. A plan
+    item never sends the reviewer to a skill the project lacks, so an item
+    may list no skill at all.
+    """
+    return [
+        name for name in skills if (skills_root / name / 'SKILL.md').is_file()
+    ]
+
+
 def build_plan_items(
     changed_files: list[str],
     security_touch: str,
@@ -779,7 +795,7 @@ def build_plan_items(
                 'packId': pack_id,
                 'status': 'pending',
                 'files': item_files,
-                'skills': pack['skills'],
+                'skills': installed_pack_skills(pack['skills'], SKILLS_ROOT),
                 'checklists': pack['checklists'],
                 'contextFiles': item_files,
                 'expansions': [],

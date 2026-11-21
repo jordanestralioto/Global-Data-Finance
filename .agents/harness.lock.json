@@ -15,7 +15,7 @@
     },
     {
       "hasScripts": true,
-      "hash": "sha256:c79fe1670e270342e99427ff74c61ad34f6104668fdb18362611c35d30dd1217",
+      "hash": "sha256:cdcfb9a6bbbc45803d63c5ecebffaa7ee041064842bb35362674a517b5eb4da0",
       "id": "runtime/review",
       "selectedBy": "manifest"
     },
@@ -26,22 +26,10 @@
       "selectedBy": "manifest"
     },
     {
-      "hasScripts": true,
-      "hash": "sha256:e4c39c35db6fa14449c7ba8b9f463310920494f1027744483c1434989e30db28",
-      "id": "skills/api-patterns",
-      "selectedBy": "dependency:skills/review-workflow"
-    },
-    {
       "hasScripts": false,
       "hash": "sha256:7c9c95d6469b2a51612f3760bd9151246b3f9123fd5a35d6b3a9f5eb94e47ae4",
       "id": "skills/architecture",
       "selectedBy": "manifest"
-    },
-    {
-      "hasScripts": true,
-      "hash": "sha256:07900cac87818f9c3c67e1ca83212301e4bb93fbe9d1dd55fab1ca680e92aadf",
-      "id": "skills/database-design",
-      "selectedBy": "dependency:skills/review-workflow"
     },
     {
       "hasScripts": false,
@@ -51,7 +39,7 @@
     },
     {
       "hasScripts": true,
-      "hash": "sha256:47744bc3139e29b3155f50c57f4c6b3f5c3d657f3e8b210f8dc5ee406efd8bf1",
+      "hash": "sha256:f55a4d0cd3482f27556bf411a873b09bee920ccee581ab9d7dcf03ecba59fa13",
       "id": "skills/local-quality-gates",
       "selectedBy": "manifest"
     },
@@ -63,7 +51,7 @@
     },
     {
       "hasScripts": false,
-      "hash": "sha256:0fb8a995970b9fee25f1848985dea8eae9259d704c8062ff43ad102b77b0b59d",
+      "hash": "sha256:23331ab7ef2c9330c16e2a39481241407926363744461f75596b656b0719d6e2",
       "id": "skills/openspec-workflow",
       "selectedBy": "manifest"
     },
@@ -89,18 +77,6 @@
       "hasScripts": true,
       "hash": "sha256:f252923f1c7117134f1ac140cf54917c5f8519c5b7d65db52eaadbc9f2e73100",
       "id": "skills/review-workflow",
-      "selectedBy": "manifest"
-    },
-    {
-      "hasScripts": true,
-      "hash": "sha256:a304af916d16901aa39a4569ff9b963ee7ae46c600ade1a5419ce4246bb4af1d",
-      "id": "skills/server-management",
-      "selectedBy": "manifest"
-    },
-    {
-      "hasScripts": true,
-      "hash": "sha256:d24d027f1d908d2bc79432961035562f4b9f9cc97ee0b1cdfea260d5d8a7b417",
-      "id": "skills/skill-governance",
       "selectedBy": "manifest"
     },
     {
@@ -221,9 +197,7 @@
     ".agents/scripts/harness_verify.py",
     ".agents/scripts/validate-commit-msg.sh",
     ".agents/skills/agents-md-author",
-    ".agents/skills/api-patterns",
     ".agents/skills/architecture",
-    ".agents/skills/database-design",
     ".agents/skills/lint-and-validate",
     ".agents/skills/local-quality-gates",
     ".agents/skills/modularizar",
@@ -232,8 +206,6 @@
     ".agents/skills/red-team-tactics",
     ".agents/skills/resolve-open-questions",
     ".agents/skills/review-workflow",
-    ".agents/skills/server-management",
-    ".agents/skills/skill-governance",
     ".agents/skills/structural-inspector",
     ".agents/skills/systematic-debugging",
     ".agents/skills/testing-patterns",

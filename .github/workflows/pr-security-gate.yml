@@ -86,8 +86,6 @@ jobs:
         run: |
           controls=(
             .secrets.baseline
-            .agents/skills/api-patterns/references/async-webhooks.md
-            .agents/skills/api-patterns/references/examples.md
           )
           for path in "${controls[@]}"; do
             canary="$(mktemp -d "$RUNNER_TEMP/gitleaks-control.XXXXXX")"

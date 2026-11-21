@@ -99,14 +99,16 @@
     },
     "skills/review-workflow": {
       "hasScripts": true,
+      "optionalRequires": [
+        "skills/api-patterns",
+        "skills/database-design"
+      ],
       "requires": [
         "runtime/review",
         "skills/lint-and-validate",
         "skills/vulnerability-scanner",
         "skills/red-team-tactics",
         "skills/architecture",
-        "skills/api-patterns",
-        "skills/database-design",
         "skills/structural-inspector",
         "skills/systematic-debugging",
         "skills/testing-patterns",
